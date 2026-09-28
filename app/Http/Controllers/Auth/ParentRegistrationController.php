@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\ParentLinkService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
 
 class ParentRegistrationController extends Controller
 {
+    public function __construct(private ParentLinkService $parentLinkService) {}
+
     /**
      * Show the parent registration form.
      */
@@ -213,30 +216,21 @@ class ParentRegistrationController extends Controller
                         throw new \RuntimeException('student_not_found');
                     }
 
-                    // Attach via pivot (safe — unique constraint prevents duplicates)
-                    $alreadyLinked = DB::table('parent_student')
-                        ->where('parent_user_id', $parentUser->id)
-                        ->where('student_id', $student->id)
-                        ->exists();
+                    // ParentLinkService handles both the first-claim case (safe to
+                    // activate immediately) and the case where this student already
+                    // has a guardian on file (goes to 'pending' + notifies the
+                    // existing guardian, rather than silently granting access to
+                    // whoever supplied a correct IC number).
+                    $linkResult = $this->parentLinkService->requestLink(
+                        $parentUser, $student, $validated['relationship']
+                    );
 
-                    if (!$alreadyLinked) {
-                        DB::table('parent_student')->insert([
-                            'parent_user_id' => $parentUser->id,
-                            'student_id'     => $student->id,
-                            'relationship'   => $validated['relationship'],
-                            'is_primary'     => true,
-                            'status'         => 'active',
-                            'created_at'     => now(),
-                            'updated_at'     => now(),
-                        ]);
-
-                        // Also set parent_user_id for backward compat if not already set
-                        if (!$student->parent_user_id) {
-                            $student->update(['parent_user_id' => $parentUser->id]);
-                        }
-                    }
-
-                    return ['parent' => $parentUser, 'student' => $student, 'isNew' => false];
+                    return [
+                        'parent'     => $parentUser,
+                        'student'    => $student,
+                        'isNew'      => false,
+                        'linkStatus' => $linkResult['status'],
+                    ];
                 } else {
                     // --- 2b. Create new child student ---
                     $selectedSubjectNames = !empty($validated['subjects']) ? $validated['subjects'] : [];
@@ -254,13 +248,25 @@ class ParentRegistrationController extends Controller
                         $childEmail = $prefix . $counter . '@olympianscholars.my';
                     }
 
+                    // Random password — previously this reused the parent's own
+                    // plaintext password verbatim, meaning the child always knew
+                    // the parent's real password and a compromise of either
+                    // account compromised both. must_change_password forces the
+                    // child to set their own on first login; the initial value
+                    // is shown once on the registration success page below since
+                    // the auto-generated @olympianscholars.my address isn't a
+                    // real inbox the credential could otherwise be emailed to.
+                    $childPassword = Str::password(14);
+
                     $childUser = User::create([
                         'name'     => $validated['child_name'],
                         'email'    => $childEmail,
                         'phone'    => '',
                         'role'     => 'student',
-                        'password' => Hash::make($validated['password']),
+                        'password' => Hash::make($childPassword),
                     ]);
+                    $childUser->must_change_password = true;
+                    $childUser->save();
 
                     $childIcHash = Student::hashIc($validated['child_ic_number']);
 
@@ -294,14 +300,17 @@ class ParentRegistrationController extends Controller
                         StudentRegistrationController::enrollInSubjects($student, $selectedSubjectNames, $validated['level'] ?? null, $feeStructureId);
                     }
 
-                    $childPassword = $validated['password'];
-                    return ['parent' => $parentUser, 'student' => $student, 'isNew' => true, 'childPassword' => $childPassword];
+                    return ['parent' => $parentUser, 'student' => $student, 'isNew' => true, 'childPassword' => $childPassword, 'childEmail' => $childEmail];
                 }
             });
 
             Auth::login($result['parent']);
 
-            $latestInvoice = $result['student']->invoices()->latest('id')->first();
+            // A 'pending' link (existing student already has another guardian on
+            // file) grants no access yet — do not expose that child's billing
+            // details on the success page until the existing guardian approves.
+            $linkIsActive = $result['isNew'] || ($result['linkStatus'] ?? 'active') === 'active';
+            $latestInvoice = $linkIsActive ? $result['student']->invoices()->latest('id')->first() : null;
 
             session()->flash('reg_success', [
                 'parent_name'    => $result['parent']->name,
@@ -310,6 +319,9 @@ class ParentRegistrationController extends Controller
                 'child_level'    => $result['student']->level,
                 'child_school'   => $result['student']->school_name,
                 'is_new_child'   => $result['isNew'],
+                'link_pending'   => !$linkIsActive,
+                'child_email'    => $result['isNew'] ? ($result['childEmail'] ?? null) : null,
+                'child_password' => $result['isNew'] ? ($result['childPassword'] ?? null) : null,
                 'masked_ic'      => Student::maskedIc($validated['child_ic_number']),
                 'relationship'   => $validated['relationship'],
                 'invoice_id'     => $latestInvoice?->id,

@@ -104,7 +104,7 @@ class PageController extends Controller
             'parent_name'           => 'required_if:register_as,parent|nullable|string|min:2|max:255',
             'educator_name'         => 'required_if:register_as,educator|nullable|string|min:2|max:255',
             'school_name'           => 'nullable|string|max:255',
-            'email'                 => 'required|email|max:255',
+            'email'                 => 'required|email|max:255|unique:users,email',
             'phone'                 => ['required', 'string', 'min:8', 'max:50', 'regex:/^[0-9\s\-\+\(\)]+$/'],
             'password'              => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/'],
             'programme'             => 'required|string|max:50',
@@ -187,6 +187,7 @@ class PageController extends Controller
         ]);
 
         $selectedSubjectNames = !empty($validated['subjects']) ? $validated['subjects'] : [$validated['subject']];
+        $childCredentialsNotice = null;
 
         // 2. Create Student record if student or parent
         if ($validated['register_as'] === 'student') {
@@ -220,13 +221,22 @@ class PageController extends Controller
                     $studentEmail = $prefix . $counter . '@olympianscholars.my';
                 }
 
+                // Random password — previously reused the parent's own plaintext
+                // password verbatim (same issue as ParentRegistrationController).
+                // must_change_password forces the child to set their own; the
+                // initial value is surfaced once in the redirect flash message
+                // below since studentEmail isn't a real inbox it could be sent to.
+                $childPassword = Str::password(14);
+
                 $childUser = User::create([
                     'name'     => $validated['student_name'],
                     'email'    => $studentEmail,
                     'phone'    => $validated['phone'],
                     'role'     => 'student',
-                    'password' => Hash::make($validated['password']),
+                    'password' => Hash::make($childPassword),
                 ]);
+                $childUser->must_change_password = true;
+                $childUser->save();
 
                 $student = Student::create([
                     'user_id'        => $childUser->id,
@@ -235,6 +245,8 @@ class PageController extends Controller
                     'total_points'   => 100,
                     'streak_days'    => 1,
                 ]);
+
+                $childCredentialsNotice = " Your child's login — Email: {$studentEmail}, Temporary Password: {$childPassword} (they will be asked to set their own password on first login — save this now, it will not be shown again).";
             }
             static::enrollStudentInSubjects($student, $selectedSubjectNames, $validated['level'] ?? 'SPM');
         }
@@ -269,7 +281,7 @@ class PageController extends Controller
         };
 
         return redirect()->route($dashboardRoute)
-            ->with('success', 'Welcome to Olympian Scholars! Your account has been created and you are now logged in.');
+            ->with('success', 'Welcome to Olympian Scholars! Your account has been created and you are now logged in.' . ($childCredentialsNotice ?? ''));
     }
 
     /**
@@ -304,7 +316,11 @@ class PageController extends Controller
             if (!$course) {
                 $course = Course::create([
                     'subject_id'    => $subject->id,
-                    'teacher_id'    => $defaultTeacher?->id ?? 1,
+                    // teacher_id is nullable — previously fell back to a
+                    // hardcoded 1 when no teacher existed yet, which crashed
+                    // with a FK violation in any environment where teacher
+                    // id 1 doesn't exist (fresh DB, or that teacher deleted).
+                    'teacher_id'    => $defaultTeacher?->id,
                     'title'         => $subject->name,
                     'description'   => 'Comprehensive learning course for ' . $subject->name,
                     'level'         => $level ?: 'SPM',

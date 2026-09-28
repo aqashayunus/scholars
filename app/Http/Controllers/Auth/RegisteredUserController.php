@@ -39,6 +39,16 @@ class RegisteredUserController extends Controller
             'role' => ['required', 'in:student,parent'],
         ]);
 
+        // NOTE: this generic endpoint is not linked from any UI — the real
+        // registration flows are /register/student, /register/parent, and
+        // /register/teacher (Auth/StudentRegistrationController,
+        // ParentRegistrationController, TeacherApplicationController), which
+        // validate their inputs properly and handle child-linking through
+        // ParentLinkService. This endpoint previously also accepted unvalidated
+        // child_name/child_email and defaulted the child's password to the
+        // hardcoded literal 'password123' when none was supplied — removed
+        // rather than fixed, since it duplicated (and diverged from) the real
+        // parent registration flow's logic.
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -54,40 +64,6 @@ class RegisteredUserController extends Controller
                 'level' => 'SPM',
                 'total_points' => 0,
             ]);
-        }
-
-        // Create and link Child account if registering as parent and child info is provided
-        if ($user->role === 'parent' && $request->filled('child_name') && $request->filled('child_email')) {
-            $childUser = User::create([
-                'name'     => $request->child_name,
-                'email'    => $request->child_email,
-                'password' => Hash::make($request->child_password ?: 'password123'),
-                'role'     => 'student',
-            ]);
-
-            $childStudent = \App\Models\Student::create([
-                'user_id'        => $childUser->id,
-                'parent_user_id' => $user->id,
-                'level'          => $request->child_level ?: 'SPM',
-                'total_points'   => 100,
-                'streak_days'    => 1,
-            ]);
-
-            $courses = \App\Models\Course::where('status', 'published')->take(3)->get();
-            if ($courses->isEmpty()) {
-                $courses = \App\Models\Course::take(3)->get();
-            }
-            foreach ($courses as $course) {
-                \App\Models\Enrollment::firstOrCreate([
-                    'student_id' => $childStudent->id,
-                    'course_id'  => $course->id,
-                ], [
-                    'status'            => 'active',
-                    'enrolled_at'       => now(),
-                    'progress_pct'      => 0,
-                    'completed_lessons' => 0,
-                ]);
-            }
         }
 
         // Send Welcome Email (logged to storage/logs/laravel.log in dev)

@@ -71,6 +71,32 @@
             </div>
         </div>
 
+        @if(!empty($data['child_password']))
+        <div class="card mb-6 text-left border border-primary-200/80 bg-primary-50/30">
+            <p class="text-xs font-semibold text-primary uppercase tracking-wide mb-2">Child's Login Details — Save This Now</p>
+            <p class="text-xs text-muted mb-3">This password is shown only once. Your child will be asked to set their own password on first login.</p>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-muted">Login Email</span>
+                    <span class="font-mono text-charcoal">{{ $data['child_email'] }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-muted">Temporary Password</span>
+                    <span class="font-mono font-bold text-charcoal">{{ $data['child_password'] }}</span>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        @if(!empty($data['link_pending']))
+        <div class="card mb-6 text-left border border-amber-200/80 bg-amber-50/40">
+            <p class="text-xs text-amber-800 font-medium">
+                This student already has a guardian on file. We've sent them a request to approve your access —
+                you'll be able to view {{ $data['child_name'] }}'s information once they approve it.
+            </p>
+        </div>
+        @endif
+
         {{-- Child Invoice & FPX Payment Option --}}
         @if(!empty($data['invoice_amount']))
         <div class="card mb-6 text-left border border-blue-200/80 bg-blue-50/30">

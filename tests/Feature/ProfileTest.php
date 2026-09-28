@@ -38,7 +38,8 @@ class ProfileTest extends TestCase
 
         $user->refresh();
 
-        $this->assertSame('Test User', $user->name);
+        // User::name is stored/read uppercased via an Eloquent attribute cast (app/Models/User.php).
+        $this->assertSame('TEST USER', $user->name);
         $this->assertSame('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
     }
