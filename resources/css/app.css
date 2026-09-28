@@ -1,0 +1,224 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800&family=Montserrat:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply font-sans text-charcoal antialiased;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-heading;
+    }
+
+    /* ── Hide scrollbars in all cards, tables, lists & containers (retains scrolling) ── */
+    *:not(html) {
+        -ms-overflow-style: none !important; /* IE and Edge */
+        scrollbar-width: none !important; /* Firefox */
+    }
+
+    *:not(html)::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }
+
+    /* Clean, subtle scrollbar for main HTML page only */
+    html::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    html::-webkit-scrollbar-track {
+        background: #f8fafc;
+    }
+
+    html::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 9999px;
+        border: 2px solid #f8fafc;
+    }
+
+    html::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    html {
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f8fafc;
+    }
+}
+
+@layer components {
+
+    /* ── Buttons ── */
+    .btn-primary {
+        @apply inline-flex items-center justify-center text-center gap-2 bg-primary text-white font-semibold px-6 py-3 rounded-full shadow-md hover:bg-primary-700 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center justify-center text-center gap-2 bg-white text-primary font-semibold px-6 py-3 rounded-full border-2 border-primary hover:bg-primary hover:text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2;
+    }
+
+    .btn-accent {
+        @apply inline-flex items-center justify-center text-center gap-2 bg-accent text-white font-semibold px-6 py-3 rounded-full shadow-md hover:bg-accent-dark hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-out;
+    }
+
+    .btn-sm {
+        @apply px-4 py-2 text-sm rounded-full;
+    }
+
+    /* ── Cards ── */
+    .card {
+        @apply bg-white rounded-3xl shadow-card p-6 hover:shadow-card-hover transition-shadow duration-300;
+    }
+
+    .card-sm {
+        @apply bg-white rounded-2xl shadow-card p-4;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+    }
+
+    .badge-blue {
+        @apply badge bg-primary-100 text-primary-800;
+    }
+
+    .badge-gold {
+        @apply badge bg-accent-light text-accent-dark;
+    }
+
+    .badge-green {
+        @apply badge bg-emerald-100 text-emerald-700;
+    }
+
+    .badge-red {
+        @apply badge bg-red-100 text-red-700;
+    }
+
+    .badge-grey {
+        @apply badge bg-gray-100 text-gray-600;
+    }
+
+    /* ── Section headings ── */
+    .section-label {
+        @apply text-accent font-stats font-semibold text-sm tracking-widest uppercase;
+    }
+
+    .section-title {
+        @apply text-3xl md:text-4xl font-heading font-bold text-charcoal leading-tight;
+    }
+
+    .section-subtitle {
+        @apply text-muted text-lg max-w-2xl mx-auto;
+    }
+
+    /* ── Nav link ── */
+    .nav-link {
+        @apply text-charcoal hover:text-primary font-medium transition-colors duration-150 text-sm;
+    }
+
+    .nav-link-active {
+        @apply text-primary font-semibold border-b-2 border-primary pb-0.5;
+    }
+
+    /* ── Dashboard sidebar item ── */
+    .sidebar-item {
+        @apply flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold text-gray-600 hover:bg-primary-50 hover:text-primary transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0;
+    }
+
+    .sidebar-item-active {
+        @apply bg-primary text-white shadow-md hover:bg-primary-600 hover:text-white;
+    }
+
+    .sidebar-item-active svg {
+        @apply text-white fill-none stroke-current;
+    }
+
+    /* ── Dashboard sidebar item (Dark) ── */
+    .sidebar-item-dark {
+        @apply flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold text-gray-400 hover:bg-slate-800/80 hover:text-white transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0;
+    }
+
+    .sidebar-item-dark-active {
+        @apply bg-blue-600 text-white shadow-md hover:bg-blue-700 hover:text-white;
+    }
+
+    .sidebar-item-dark-active svg {
+        @apply text-white fill-none stroke-current;
+    }
+
+    /* Collapsed sidebar styling on desktop only */
+    @media (min-width: 1024px) {
+        aside.lg\:w-20 .sidebar-item span,
+        aside.lg\:w-20 .sidebar-item-dark span {
+            display: none !important;
+        }
+
+        aside.lg\:w-20 .sidebar-item,
+        aside.lg\:w-20 .sidebar-item-dark {
+            justify-content: center !important;
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+        }
+    }
+
+    /* ── Hide scrollbar utility ── */
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    /* ── Stat card ── */
+    .stat-card {
+        @apply bg-white rounded-2xl sm:rounded-3xl shadow-card p-3.5 sm:p-5 md:p-6 hover:shadow-card-hover transition-shadow duration-300 flex items-center gap-3 sm:gap-4 min-w-0;
+    }
+
+    .stat-icon {
+        @apply w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0;
+    }
+
+    /* ── Input fields ── */
+    .form-input {
+        @apply w-full rounded-xl border-gray-200 bg-surface px-4 py-3 text-sm text-charcoal placeholder-muted focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors duration-150;
+    }
+
+    .form-label {
+        @apply block text-sm font-semibold text-charcoal mb-1.5;
+    }
+
+    .form-error {
+        @apply text-red-500 text-xs mt-1;
+    }
+}
+
+@layer utilities {
+    .text-gradient {
+        @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+    }
+
+    .bg-gradient-brand {
+        @apply bg-gradient-to-br from-primary-900 via-primary to-primary-700;
+    }
+
+    .glass {
+        @apply bg-white/10 backdrop-blur-md border border-white/20;
+    }
+}
