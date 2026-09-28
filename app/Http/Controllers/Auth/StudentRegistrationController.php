@@ -277,7 +277,11 @@ class StudentRegistrationController extends Controller
             if (!$course) {
                 $course = Course::create([
                     'subject_id'    => $subject->id,
-                    'teacher_id'    => $defaultTeacher?->id ?? 1,
+                    // teacher_id is nullable — previously fell back to a
+                    // hardcoded 1 when no teacher existed yet, which crashed
+                    // with a FK violation in any environment where teacher
+                    // id 1 doesn't exist (fresh DB, or that teacher deleted).
+                    'teacher_id'    => $defaultTeacher?->id,
                     'title'         => $subject->name,
                     'description'   => 'Comprehensive learning course for ' . $subject->name,
                     'level'         => $level ?: 'SPM',
