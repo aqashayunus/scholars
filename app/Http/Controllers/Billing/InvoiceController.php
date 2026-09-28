@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Billing;
 
+use App\Enums\InvoiceStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Student;
@@ -31,10 +32,10 @@ class InvoiceController extends Controller
 
         $summary = [
             'total_invoices' => $invoices->count(),
-            'outstanding'    => $invoices->whereIn('status', Invoice::UNPAID_STATUSES)->count(),
-            'paid'           => $invoices->where('status', Invoice::STATUS_PAID)->count(),
-            'overdue'        => $invoices->where('status', Invoice::STATUS_OVERDUE)->count(),
-            'total_owed'     => $invoices->whereIn('status', Invoice::UNPAID_STATUSES)->sum('outstanding_amount'),
+            'outstanding'    => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->count(),
+            'paid'           => $invoices->where('status', InvoiceStatus::Paid)->count(),
+            'overdue'        => $invoices->where('status', InvoiceStatus::Overdue)->count(),
+            'total_owed'     => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->sum('outstanding_amount'),
         ];
 
         return view('student.fees.index', compact('invoices', 'summary', 'student'));
@@ -52,7 +53,7 @@ class InvoiceController extends Controller
             ->get();
 
         // Flatten all outstanding invoices across children for checkout
-        $outstandingInvoices = $children->flatMap(fn ($s) => $s->invoices->whereIn('status', Invoice::UNPAID_STATUSES));
+        $outstandingInvoices = $children->flatMap(fn ($s) => $s->invoices->whereIn('status', InvoiceStatus::unpaidStatuses()));
 
         return view('parent.fees.index', compact('children', 'outstandingInvoices'));
     }
@@ -86,7 +87,7 @@ class InvoiceController extends Controller
 
         // Find or create a pending payment for this invoice
         $payment = $invoice->paymentTransactions()
-            ->where('status', \App\Models\Payment::STATUS_PENDING)
+            ->where('status', \App\Enums\PaymentStatus::Pending)
             ->first();
 
         if (!$payment) {

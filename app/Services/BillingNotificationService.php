@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\InvoiceReminder;
 use App\Models\Payment;
@@ -342,13 +343,13 @@ class BillingNotificationService
      * Notify student and parents when invoice status changes.
      * Note: Does NOT mention "admin" to ensure neutral, institutional tone.
      */
-    public static function notifyInvoiceStatusUpdated(Invoice $invoice, ?string $oldStatus = null): void
+    public static function notifyInvoiceStatusUpdated(Invoice $invoice, ?InvoiceStatus $oldStatus = null): void
     {
         try {
             $invoice->loadMissing('student.user');
             $student = $invoice->student;
             $studentName = $student?->user?->name ?? 'Student';
-            $statusLabel = strtoupper(str_replace('_', ' ', $invoice->status));
+            $statusLabel = strtoupper(str_replace('_', ' ', $invoice->status->value));
 
             // 1. Notify Student
             if ($student?->user_id) {

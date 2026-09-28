@@ -35,10 +35,10 @@
                     <div class="text-right">
                         @php
                             $badge = match($invoice->status) {
-                                'paid'           => 'bg-green-400/20 text-green-300 border-green-400/30',
-                                'overdue'        => 'bg-red-400/20 text-red-300 border-red-400/30',
-                                'partially_paid' => 'bg-amber-400/20 text-amber-300 border-amber-400/30',
-                                'cancelled'      => 'bg-gray-400/20 text-gray-300 border-gray-400/30',
+                                \App\Enums\InvoiceStatus::Paid           => 'bg-green-400/20 text-green-300 border-green-400/30',
+                                \App\Enums\InvoiceStatus::Overdue        => 'bg-red-400/20 text-red-300 border-red-400/30',
+                                \App\Enums\InvoiceStatus::PartiallyPaid  => 'bg-amber-400/20 text-amber-300 border-amber-400/30',
+                                \App\Enums\InvoiceStatus::Cancelled      => 'bg-gray-400/20 text-gray-300 border-gray-400/30',
                                 default          => 'bg-blue-400/20 text-blue-200 border-blue-400/30',
                             };
                         @endphp
@@ -196,14 +196,14 @@
                         <p class="font-bold text-sm text-gray-900">RM {{ number_format($payment->pivot->amount_applied ?? $payment->amount, 2) }}</p>
                         @php
                             $pBadge = match($payment->status) {
-                                'successful' => 'bg-green-100 text-green-700',
-                                'failed'     => 'bg-red-100 text-red-700',
-                                'cancelled'  => 'bg-gray-100 text-gray-500',
+                                \App\Enums\PaymentStatus::Successful => 'bg-green-100 text-green-700',
+                                \App\Enums\PaymentStatus::Failed     => 'bg-red-100 text-red-700',
+                                \App\Enums\PaymentStatus::Cancelled  => 'bg-gray-100 text-gray-500',
                                 default      => 'bg-amber-100 text-amber-700',
                             };
                         @endphp
                         <span class="inline-flex mt-1 px-2 py-0.5 rounded-full text-xs font-semibold {{ $pBadge }}">
-                            {{ ucfirst($payment->status) }}
+                            {{ ucfirst($payment->status->value) }}
                         </span>
                     </div>
                 </div>

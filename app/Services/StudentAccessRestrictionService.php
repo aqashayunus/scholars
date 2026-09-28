@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\StudentStatus;
 use App\Models\Invoice;
 use App\Models\Student;
 use Carbon\Carbon;
@@ -19,9 +21,9 @@ class StudentAccessRestrictionService
 
         return Invoice::where('student_id', $studentId)
             ->where(function ($query) {
-                $query->where('status', Invoice::STATUS_OVERDUE)
+                $query->where('status', InvoiceStatus::Overdue)
                     ->orWhere(function ($pastDueQuery) {
-                        $pastDueQuery->whereIn('status', [Invoice::STATUS_ISSUED, Invoice::STATUS_PARTIALLY_PAID])
+                        $pastDueQuery->whereIn('status', [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid])
                             ->whereNotNull('due_date')
                             ->where('due_date', '<', now()->toDateString());
                     });
@@ -39,9 +41,9 @@ class StudentAccessRestrictionService
 
         $overdueInvoices = Invoice::where('student_id', $studentId)
             ->where(function ($query) {
-                $query->where('status', Invoice::STATUS_OVERDUE)
+                $query->where('status', InvoiceStatus::Overdue)
                     ->orWhere(function ($pastDueQuery) {
-                        $pastDueQuery->whereIn('status', [Invoice::STATUS_ISSUED, Invoice::STATUS_PARTIALLY_PAID])
+                        $pastDueQuery->whereIn('status', [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid])
                             ->whereNotNull('due_date')
                             ->where('due_date', '<', now()->toDateString());
                     });
@@ -93,22 +95,22 @@ class StudentAccessRestrictionService
         }
 
         $activeInvoices = Invoice::where('student_id', $studentId)
-            ->whereNotIn('status', [Invoice::STATUS_CANCELLED, Invoice::STATUS_DRAFT])
+            ->whereNotIn('status', [InvoiceStatus::Cancelled, InvoiceStatus::Draft])
             ->get();
 
         if ($activeInvoices->isEmpty()) {
             return 'PAID';
         }
 
-        if ($activeInvoices->contains('status', Invoice::STATUS_PARTIALLY_PAID)) {
+        if ($activeInvoices->contains('status', InvoiceStatus::PartiallyPaid)) {
             return 'PARTIALLY_PAID';
         }
 
-        if ($activeInvoices->contains('status', Invoice::STATUS_ISSUED)) {
+        if ($activeInvoices->contains('status', InvoiceStatus::Issued)) {
             return 'PENDING';
         }
 
-        $allPaid = $activeInvoices->every(fn ($inv) => $inv->status === Invoice::STATUS_PAID);
+        $allPaid = $activeInvoices->every(fn ($inv) => $inv->status === InvoiceStatus::Paid);
 
         return $allPaid ? 'PAID' : 'PENDING';
     }
@@ -124,13 +126,13 @@ class StudentAccessRestrictionService
         $isRestricted = $this->isStudentRestricted($student);
 
         if ($isRestricted) {
-            if ($student->status !== 'inactive' && $student->status !== 'restricted') {
-                $student->status = 'restricted';
+            if ($student->status !== StudentStatus::Inactive && $student->status !== StudentStatus::Restricted) {
+                $student->status = StudentStatus::Restricted;
                 $student->save();
             }
         } else {
-            if ($student->status === 'restricted') {
-                $student->status = 'active';
+            if ($student->status === StudentStatus::Restricted) {
+                $student->status = StudentStatus::Active;
                 $student->save();
             }
         }

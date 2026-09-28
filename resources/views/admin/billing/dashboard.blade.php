@@ -81,7 +81,7 @@
                         </div>
                         <div class="text-right flex-shrink-0">
                             <p class="text-sm font-bold text-gray-900">RM {{ number_format($invoice->total_amount, 2) }}</p>
-                            @php $b = match($invoice->status) { 'paid'=>'bg-green-100 text-green-700','overdue'=>'bg-red-100 text-red-700','partially_paid'=>'bg-amber-100 text-amber-700','cancelled'=>'bg-gray-100 text-gray-500',default=>'bg-blue-100 text-blue-700' }; @endphp
+                            @php $b = match($invoice->status) { \App\Enums\InvoiceStatus::Paid=>'bg-green-100 text-green-700', \App\Enums\InvoiceStatus::Overdue=>'bg-red-100 text-red-700', \App\Enums\InvoiceStatus::PartiallyPaid=>'bg-amber-100 text-amber-700', \App\Enums\InvoiceStatus::Cancelled=>'bg-gray-100 text-gray-500', default=>'bg-blue-100 text-blue-700' }; @endphp
                             <span class="inline-flex mt-0.5 px-2 py-0.5 rounded-full text-xs font-semibold {{ $b }}">{{ $invoice->status_label }}</span>
                         </div>
                     </div>

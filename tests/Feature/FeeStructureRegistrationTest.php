@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
 use App\Models\Setting;
@@ -108,7 +109,7 @@ class FeeStructureRegistrationTest extends TestCase
         $invoice = Invoice::where('student_id', $student->id)->latest('id')->first();
         $this->assertNotNull($invoice);
         $this->assertEquals($fee->id, $invoice->fee_structure_id);
-        $this->assertEquals('issued', $invoice->status);
+        $this->assertEquals(InvoiceStatus::Issued, $invoice->status);
         $this->assertGreaterThan(0, $invoice->total_amount);
 
         // Verify redirect to success page

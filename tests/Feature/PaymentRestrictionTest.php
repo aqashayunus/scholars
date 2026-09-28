@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Enrollment;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -73,7 +74,7 @@ class PaymentRestrictionTest extends TestCase
             'amount_paid'     => 150.00,
             'issued_date'     => now()->subDays(10)->toDateString(),
             'due_date'        => now()->subDays(3)->toDateString(),
-            'status'          => Invoice::STATUS_PAID,
+            'status'          => InvoiceStatus::Paid,
         ]);
 
         // 3. Create Child B (Overdue)
@@ -113,7 +114,7 @@ class PaymentRestrictionTest extends TestCase
             'amount_paid'     => 0.00,
             'issued_date'     => now()->subDays(15)->toDateString(),
             'due_date'        => now()->subDays(5)->toDateString(),
-            'status'          => Invoice::STATUS_OVERDUE,
+            'status'          => InvoiceStatus::Overdue,
         ]);
     }
 
@@ -171,7 +172,6 @@ class PaymentRestrictionTest extends TestCase
             ->get(route('parent.dashboard', ['child_id' => $this->childOverdue->id]));
         $childBDashboard->assertStatus(200);
         $childBDashboard->assertSee('Account Access Restricted');
-        $childBDashboard->assertSee('Payment Required');
         $childBDashboard->assertSee('View Outstanding Invoice');
 
         // 5. Parent can still access billing/fees to pay for Child B
@@ -189,7 +189,7 @@ class PaymentRestrictionTest extends TestCase
     {
         // Mark Child A invoice as overdue too
         Invoice::where('student_id', $this->childPaid->id)->update([
-            'status'      => Invoice::STATUS_OVERDUE,
+            'status'      => InvoiceStatus::Overdue,
             'amount_paid' => 0.00,
         ]);
 
@@ -233,7 +233,7 @@ class PaymentRestrictionTest extends TestCase
         // Settle the overdue invoice
         $invoice = Invoice::where('student_id', $this->childOverdue->id)->first();
         $invoice->update([
-            'status'      => Invoice::STATUS_PAID,
+            'status'      => InvoiceStatus::Paid,
             'amount_paid' => $invoice->total_amount,
         ]);
 

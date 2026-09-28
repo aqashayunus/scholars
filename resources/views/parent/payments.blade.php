@@ -311,7 +311,7 @@
                                     'parent_email'   => auth()->user()->email,
                                 ]);
                             @endphp
-                            <tr x-show="(activeTab === 'all' || activeTab === '{{ $p->status }}') && matchesSearch({{ $itemJson }})" class="hover:bg-blue-50/20 transition-colors">
+                            <tr x-show="(activeTab === 'all' || activeTab === '{{ $p->status->value }}') && matchesSearch({{ $itemJson }})" class="hover:bg-blue-50/20 transition-colors">
                                 <td class="py-4 px-6 font-bold text-gray-900">
                                     <span class="font-mono text-xs text-blue-600 bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded-lg">
                                         {{ $p->reference_no ?? 'OS-INV-' . str_pad($p->id, 5, '0', STR_PAD_LEFT) }}
@@ -338,11 +338,11 @@
                                     {{ $p->payment_method ?? '—' }}
                                 </td>
                                 <td class="py-4 px-6">
-                                    @if ($p->status === 'paid')
+                                    @if ($p->status === \App\Enums\PaymentStatus::Successful)
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200/60">
                                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Paid
                                         </span>
-                                    @elseif ($p->status === 'overdue')
+                                    @elseif ($p->status === \App\Enums\PaymentStatus::Failed)
                                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-200/60">
                                             <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Overdue
                                         </span>
@@ -353,7 +353,7 @@
                                     @endif
                                 </td>
                                 <td class="py-4 px-6 text-right">
-                                    @if ($p->status === 'paid')
+                                    @if ($p->status === \App\Enums\PaymentStatus::Successful)
                                         <button @click="openReceiptModal({{ $itemJson }})" class="py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1">
                                             <svg class="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                             <span>Receipt</span>
@@ -396,7 +396,7 @@
                             'parent_email'   => auth()->user()->email,
                         ]);
                     @endphp
-                    <div x-show="(activeTab === 'all' || activeTab === '{{ $p->status }}') && matchesSearch({{ $itemJson }})" class="p-4 bg-gray-50/70 border border-gray-100 rounded-2xl space-y-3">
+                    <div x-show="(activeTab === 'all' || activeTab === '{{ $p->status->value }}') && matchesSearch({{ $itemJson }})" class="p-4 bg-gray-50/70 border border-gray-100 rounded-2xl space-y-3">
                         <div class="flex items-start justify-between gap-2">
                             <div>
                                 <span class="font-mono text-[10px] text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
@@ -404,9 +404,9 @@
                                 </span>
                                 <h4 class="font-extrabold text-xs text-gray-900 mt-1.5">{{ $p->description }}</h4>
                             </div>
-                            @if ($p->status === 'paid')
+                            @if ($p->status === \App\Enums\PaymentStatus::Successful)
                                 <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">Paid</span>
-                            @elseif ($p->status === 'overdue')
+                            @elseif ($p->status === \App\Enums\PaymentStatus::Failed)
                                 <span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">Overdue</span>
                             @else
                                 <span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">Pending</span>
@@ -425,7 +425,7 @@
                         </div>
 
                         <div class="pt-2">
-                            @if ($p->status === 'paid')
+                            @if ($p->status === \App\Enums\PaymentStatus::Successful)
                                 <button @click="openReceiptModal({{ $itemJson }})" class="w-full py-2 bg-white hover:bg-gray-100 border border-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-all inline-flex items-center justify-center gap-1.5 shadow-2xs">
                                     <svg class="w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     <span>View Receipt</span>

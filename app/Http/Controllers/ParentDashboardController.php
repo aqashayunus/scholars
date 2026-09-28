@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
@@ -18,11 +20,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Collection;
 use App\Services\StudentAccessRestrictionService;
+use App\Services\ParentLinkService;
 use Illuminate\Support\Str;
 
 class ParentDashboardController extends Controller
 {
-    public function __construct(private StudentAccessRestrictionService $restrictionService) {}
+    public function __construct(
+        private StudentAccessRestrictionService $restrictionService,
+        private ParentLinkService $parentLinkService,
+    ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // SECURITY HELPERS
@@ -243,13 +249,16 @@ class ParentDashboardController extends Controller
 
         $payments = $paymentsQuery->orderByDesc('id')->get();
 
-        $totalOutstanding = (float) $payments->whereIn('status', ['pending', 'overdue'])->sum('amount');
-        $pendingCount     = $payments->whereIn('status', ['pending', 'overdue'])->count();
+        // Payment has no 'overdue' state (pending/successful/failed/cancelled) —
+        // overdue-ness is an Invoice property, not a Payment one; dropped rather
+        // than kept as a dead phantom branch.
+        $totalOutstanding = (float) $payments->where('status', PaymentStatus::Pending)->sum('amount');
+        $pendingCount     = $payments->where('status', PaymentStatus::Pending)->count();
         $outstanding      = $totalOutstanding;
 
         // ── Last payment made ──
         $lastPaymentMade = $payments->first(function ($p) {
-            return in_array($p->status, ['paid', 'successful']);
+            return $p->status === PaymentStatus::Successful;
         });
 
         // ── Next payment due ──
@@ -257,21 +266,21 @@ class ParentDashboardController extends Controller
         $nextInvoiceDue   = null;
         if (!empty($relevantChildIds)) {
             $nextInvoiceDue = Invoice::whereIn('student_id', $relevantChildIds)
-                ->whereIn('status', Invoice::UNPAID_STATUSES)
+                ->whereIn('status', InvoiceStatus::unpaidStatuses())
                 ->with('student.user')
                 ->orderBy('due_date', 'asc')
                 ->first();
 
             // Sync total outstanding and pending count if child invoices exist outside payments table
             $childInvoiceOutstanding = (float) Invoice::whereIn('student_id', $relevantChildIds)
-                ->whereIn('status', Invoice::UNPAID_STATUSES)
+                ->whereIn('status', InvoiceStatus::unpaidStatuses())
                 ->sum(DB::raw('total_amount - amount_paid'));
 
             if ($totalOutstanding <= 0 && $childInvoiceOutstanding > 0) {
                 $totalOutstanding = $childInvoiceOutstanding;
                 $outstanding      = $totalOutstanding;
                 $pendingCount     = Invoice::whereIn('student_id', $relevantChildIds)
-                    ->whereIn('status', Invoice::UNPAID_STATUSES)
+                    ->whereIn('status', InvoiceStatus::unpaidStatuses())
                     ->count();
             }
         }
@@ -304,8 +313,8 @@ class ParentDashboardController extends Controller
                 'status_label'   => $statusLabel,
                 'subtext'        => $nextInvoiceDue->student?->user?->name ?? $nextInvoiceDue->invoice_number,
             ];
-        } elseif ($pendingP = $payments->whereIn('status', ['pending', 'overdue'])->first()) {
-            $isOverdue = $pendingP->status === 'overdue';
+        } elseif ($pendingP = $payments->where('status', PaymentStatus::Pending)->first()) {
+            $isOverdue = false; // Payment has no 'overdue' state (payments enum: pending/successful/failed/cancelled) — overdue-ness is an Invoice property, not a Payment one. This comparison could never be true even before the enum conversion.
             $nextPaymentDue = (object) [
                 'type'           => 'payment',
                 'amount'         => (float) $pendingP->amount,
@@ -644,34 +653,16 @@ class ParentDashboardController extends Controller
                 ->withErrors(['identifier' => 'No student found with that IC number or email. Please check and try again.']);
         }
 
-        // Check if student is already linked via pivot
-        $alreadyLinked = DB::table('parent_student')
-            ->where('parent_user_id', $parent->id)
-            ->where('student_id', $student->id)
-            ->exists() || $student->parent_user_id === $parent->id;
+        $result = $this->parentLinkService->requestLink($parent, $student, $relationship);
 
-        if ($alreadyLinked) {
-            return redirect()->back()
-                ->with('success', "{$student->user->name} is already linked to your account.");
-        }
-
-        // Link the student to this parent
-        DB::table('parent_student')->insertOrIgnore([
-            'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => $relationship,
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
-
-        if (!$student->parent_user_id) {
-            $student->update(['parent_user_id' => $parent->id]);
-        }
-
-        return redirect()->route('parent.dashboard', ['child_id' => $student->id])
-            ->with('success', "✓ Successfully linked {$student->user->name} to your parent account!");
+        return match ($result['status']) {
+            'already_linked' => redirect()->back()
+                ->with('success', "{$student->user->name} is already linked to your account."),
+            'active' => redirect()->route('parent.dashboard', ['child_id' => $student->id])
+                ->with('success', "✓ Successfully linked {$student->user->name} to your parent account!"),
+            'pending' => redirect()->back()
+                ->with('success', 'This student already has a guardian on file. A request has been sent to the existing guardian for approval — you will gain access once they approve it.'),
+        };
     }
 
     /**
@@ -698,15 +689,18 @@ class ParentDashboardController extends Controller
 
         $payments = $paymentsQuery->orderByDesc('id')->get();
 
-        $totalPaid         = (float) $payments->whereIn('status', ['paid', 'successful'])->sum('amount');
-        $totalOutstanding  = (float) $payments->whereIn('status', ['pending', 'overdue'])->sum('amount');
-        $pendingCount      = $payments->whereIn('status', ['pending', 'overdue'])->count();
-        $paidCount         = $payments->whereIn('status', ['paid', 'successful'])->count();
-        $latestPayment     = $payments->whereIn('status', ['paid', 'successful'])->first();
+        // Payment has no 'overdue' state (pending/successful/failed/cancelled) —
+        // overdue-ness is an Invoice property, not a Payment one; dropped rather
+        // than kept as a dead phantom branch.
+        $totalPaid         = (float) $payments->where('status', PaymentStatus::Successful)->sum('amount');
+        $totalOutstanding  = (float) $payments->where('status', PaymentStatus::Pending)->sum('amount');
+        $pendingCount      = $payments->where('status', PaymentStatus::Pending)->count();
+        $paidCount         = $payments->where('status', PaymentStatus::Successful)->count();
+        $latestPayment     = $payments->where('status', PaymentStatus::Successful)->first();
 
         // ── Last payment made ──
         $lastPaymentMade = $payments->first(function ($p) {
-            return in_array($p->status, ['paid', 'successful']);
+            return $p->status === PaymentStatus::Successful;
         });
 
         // ── Next payment due ──
@@ -714,20 +708,20 @@ class ParentDashboardController extends Controller
         $nextInvoiceDue   = null;
         if (!empty($relevantChildIds)) {
             $nextInvoiceDue = Invoice::whereIn('student_id', $relevantChildIds)
-                ->whereIn('status', Invoice::UNPAID_STATUSES)
+                ->whereIn('status', InvoiceStatus::unpaidStatuses())
                 ->with('student.user')
                 ->orderBy('due_date', 'asc')
                 ->first();
 
             // Sync total outstanding and pending count if child invoices exist outside payments table
             $childInvoiceOutstanding = (float) Invoice::whereIn('student_id', $relevantChildIds)
-                ->whereIn('status', Invoice::UNPAID_STATUSES)
+                ->whereIn('status', InvoiceStatus::unpaidStatuses())
                 ->sum(DB::raw('total_amount - amount_paid'));
 
             if ($totalOutstanding <= 0 && $childInvoiceOutstanding > 0) {
                 $totalOutstanding = $childInvoiceOutstanding;
                 $pendingCount     = Invoice::whereIn('student_id', $relevantChildIds)
-                    ->whereIn('status', Invoice::UNPAID_STATUSES)
+                    ->whereIn('status', InvoiceStatus::unpaidStatuses())
                     ->count();
             }
         }
@@ -760,8 +754,8 @@ class ParentDashboardController extends Controller
                 'status_label'   => $statusLabel,
                 'subtext'        => $nextInvoiceDue->student?->user?->name ?? $nextInvoiceDue->invoice_number,
             ];
-        } elseif ($pendingP = $payments->whereIn('status', ['pending', 'overdue'])->first()) {
-            $isOverdue = $pendingP->status === 'overdue';
+        } elseif ($pendingP = $payments->where('status', PaymentStatus::Pending)->first()) {
+            $isOverdue = false; // Payment has no 'overdue' state (payments enum: pending/successful/failed/cancelled) — overdue-ness is an Invoice property, not a Payment one. This comparison could never be true even before the enum conversion.
             $nextPaymentDue = (object) [
                 'type'           => 'payment',
                 'amount'         => (float) $pendingP->amount,
@@ -777,7 +771,7 @@ class ParentDashboardController extends Controller
         }
 
         // Pending invoices list for quick checkout
-        $pendingPayments = $payments->whereIn('status', ['pending', 'overdue'])->values();
+        $pendingPayments = $payments->where('status', PaymentStatus::Pending)->values();
 
         return view('parent.payments', compact(
             'children', 'child', 'payments', 'totalPaid', 'totalOutstanding',
@@ -805,7 +799,10 @@ class ParentDashboardController extends Controller
 
         $paymentsToPay = Payment::where('user_id', $user->id)
             ->whereIn('id', $paymentIds)
-            ->whereIn('status', ['pending', 'overdue'])
+            // 'overdue' has never been a valid Payment status (enum:
+            // pending/successful/failed/cancelled) — dropped, matches the
+            // pattern fixed elsewhere in this Phase 3 pass.
+            ->where('status', \App\Enums\PaymentStatus::Pending)
             ->get();
 
         if ($paymentsToPay->isEmpty()) {
@@ -821,7 +818,18 @@ class ParentDashboardController extends Controller
         foreach ($paymentsToPay as $p) {
             $txnRef = 'OS-TXN-' . date('Ymd') . '-' . strtoupper(Str::random(6));
             $p->update([
-                'status'         => 'paid',
+                // 'paid' is not a valid Payment status — same class of bug
+                // fixed in AdminDashboardController::verifyPayment(). NOTE:
+                // unlike verifyPayment(), this path never updates the related
+                // Invoice's status on success — the invoice stays
+                // issued/overdue even after this Payment is marked successful.
+                // That's a pre-existing behavioral gap (this is a third,
+                // separate "process a payment" implementation — see also
+                // PaymentService::handleGatewayWebhook and
+                // AdminDashboardController::verifyPayment), left as-is here
+                // since fixing it is a product-behavior change, not an enum
+                // type-safety one; worth consolidating in Phase 4.
+                'status'         => \App\Enums\PaymentStatus::Successful,
                 'payment_method' => $methodTitle,
                 'reference_no'   => $txnRef,
                 'paid_at'        => now(),
@@ -872,12 +880,12 @@ class ParentDashboardController extends Controller
             ->latest('due_date')
             ->get();
 
-        $totalFamilyOutstanding = $allFamilyInvoices->where('status', 'outstanding')->sum('total_amount');
+        $totalFamilyOutstanding = $allFamilyInvoices->whereIn('status', InvoiceStatus::unpaidStatuses())->sum('total_amount');
 
         // Current selected child's invoices
         $invoices = $allFamilyInvoices->where('student_id', $selectedChild->id)->values();
-        $outstandingInvoices = $invoices->filter(fn($inv) => in_array($inv->status, ['outstanding', 'pending_verification']))->values();
-        $paidInvoices        = $invoices->filter(fn($inv) => $inv->status === 'paid')->values();
+        $outstandingInvoices = $invoices->filter(fn($inv) => in_array($inv->status, InvoiceStatus::unpaidStatuses(), true))->values();
+        $paidInvoices        = $invoices->filter(fn($inv) => $inv->status === InvoiceStatus::Paid)->values();
 
         $payments = Payment::where('student_id', $selectedChild->id)
             ->with(['invoice', 'payer'])
@@ -914,7 +922,7 @@ class ParentDashboardController extends Controller
 
         $invoice = Invoice::whereIn('student_id', $childIds)->with('student.user')->findOrFail($id);
 
-        if ($invoice->status === 'paid') {
+        if ($invoice->status === InvoiceStatus::Paid) {
             return back()->with('info', 'This invoice has already been fully paid.');
         }
 
@@ -961,11 +969,13 @@ class ParentDashboardController extends Controller
                 'payment_method' => $paymentMethod,
                 'reference_no'   => $refNo,
                 'receipt_number' => $receiptNo,
-                'status'         => 'paid',
+                // Same fix as processPayment() above — 'paid' is Invoice's
+                // vocabulary, not Payment's.
+                'status'         => \App\Enums\PaymentStatus::Successful,
                 'paid_at'        => now(),
             ]);
 
-            $invoice->update(['status' => 'paid']);
+            $invoice->update(['status' => InvoiceStatus::Paid]);
 
             \App\Models\UserNotification::create([
                 'user_id' => $parent->id,

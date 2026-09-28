@@ -48,12 +48,12 @@
                             <td class="px-4 py-3 text-xs text-gray-500">{{ $payment->invoices->pluck('invoice_number')->implode(', ') ?: '—' }}</td>
                             <td class="px-4 py-3 text-right font-bold text-gray-900">RM {{ number_format($payment->amount, 2) }}</td>
                             <td class="px-4 py-3 text-center">
-                                @php $pb = match($payment->status) { 'successful'=>'bg-green-100 text-green-700','failed'=>'bg-red-100 text-red-700','cancelled'=>'bg-gray-100 text-gray-500',default=>'bg-amber-100 text-amber-700' }; @endphp
-                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold {{ $pb }}">{{ ucfirst($payment->status) }}</span>
+                                @php $pb = match($payment->status) { \App\Enums\PaymentStatus::Successful=>'bg-green-100 text-green-700', \App\Enums\PaymentStatus::Failed=>'bg-red-100 text-red-700', \App\Enums\PaymentStatus::Cancelled=>'bg-gray-100 text-gray-500', default=>'bg-amber-100 text-amber-700' }; @endphp
+                                <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold {{ $pb }}">{{ ucfirst($payment->status->value) }}</span>
                             </td>
                             <td class="px-4 py-3 text-center">
                                 <a href="{{ route('admin.billing.payment.show', $payment) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold">
-                                    {{ $payment->status === 'pending' ? 'Review' : 'View' }}
+                                    {{ $payment->status === \App\Enums\PaymentStatus::Pending ? 'Review' : 'View' }}
                                 </a>
                             </td>
                         </tr>

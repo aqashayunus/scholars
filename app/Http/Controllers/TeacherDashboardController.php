@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StudentAssignmentStatus;
 use App\Models\Assignment;
 use App\Models\Course;
 use App\Models\Enrollment;
@@ -458,9 +459,9 @@ class TeacherDashboardController extends Controller
                     $studentEmail = $student?->user?->email ?? '';
                     $sa = $assignment->results->firstWhere('student_id', $enrollment->student_id);
 
-                    if ($sa && in_array($sa->status, ['submitted', 'graded', 'late'])) {
+                    if ($sa && in_array($sa->status, [StudentAssignmentStatus::Submitted, StudentAssignmentStatus::Graded, StudentAssignmentStatus::Late], true)) {
                         $submittedCount++;
-                        if ($sa->status === 'late') $lateCount++;
+                        if ($sa->status === StudentAssignmentStatus::Late) $lateCount++;
                         $roster[] = [
                             'student_id'      => $enrollment->student_id,
                             'assignment_id'   => $assignment->id,
@@ -469,9 +470,9 @@ class TeacherDashboardController extends Controller
                             'submittedDate'   => $sa->submitted_at ? $sa->submitted_at->format('d M Y g:i A') : ($sa->created_at ? $sa->created_at->format('d M Y g:i A') : '–'),
                             'rawMarks'        => $sa->score,
                             'marks'           => $sa->score !== null ? $sa->score . ' / ' . $totalMarks : 'Pending Review',
-                            'status'          => $sa->status === 'graded' ? 'Reviewed' : ($sa->status === 'late' ? 'Late' : 'Submitted'),
+                            'status'          => $sa->status === StudentAssignmentStatus::Graded ? 'Reviewed' : ($sa->status === StudentAssignmentStatus::Late ? 'Late' : 'Submitted'),
                             'rawStatus'       => $sa->status,
-                            'statusBg'        => $sa->status === 'graded' ? 'bg-emerald-50 text-emerald-700' : ($sa->status === 'late' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'),
+                            'statusBg'        => $sa->status === StudentAssignmentStatus::Graded ? 'bg-emerald-50 text-emerald-700' : ($sa->status === StudentAssignmentStatus::Late ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'),
                             'notes'           => $sa->submission_notes,
                             'teacherFeedback' => $sa->teacher_feedback,
                             'fileName'        => $sa->file_name,

@@ -2,16 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
-    // ── Status Constants ──────────────────────────────────────────────────────
-    const STATUS_PENDING    = 'pending';
-    const STATUS_SUCCESSFUL = 'successful';
-    const STATUS_FAILED     = 'failed';
-    const STATUS_CANCELLED  = 'cancelled';
-
     protected $fillable = [
         'user_id',
         'invoice_id',          // legacy: single-invoice payments
@@ -35,6 +30,7 @@ class Payment extends Model
     protected $casts = [
         'amount'  => 'decimal:2',
         'paid_at' => 'datetime',
+        'status'  => PaymentStatus::class,
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -94,12 +90,12 @@ class Payment extends Model
 
     public function isSuccessful(): bool
     {
-        return $this->status === self::STATUS_SUCCESSFUL;
+        return $this->status === PaymentStatus::Successful;
     }
 
     public function isPending(): bool
     {
-        return $this->status === self::STATUS_PENDING;
+        return $this->status === PaymentStatus::Pending;
     }
 
     /**

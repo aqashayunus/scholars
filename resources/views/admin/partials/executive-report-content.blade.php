@@ -136,7 +136,7 @@
                         <td class="p-1.5 border-r border-black text-right font-mono font-bold text-black">RM {{ number_format($pay->amount, 2) }}</td>
                         <td class="p-1.5 text-center">
                             <span class="font-bold text-[8.5px] uppercase text-black">
-                                {{ $pay->status }}
+                                {{ $pay->status->value }}
                             </span>
                         </td>
                     </tr>

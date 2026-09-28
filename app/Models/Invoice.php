@@ -2,20 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\InvoiceStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 class Invoice extends Model
 {
-    // ── Status Constants ──────────────────────────────────────────────────────
-    const STATUS_DRAFT          = 'draft';
-    const STATUS_ISSUED         = 'issued';
-    const STATUS_PARTIALLY_PAID = 'partially_paid';
-    const STATUS_PAID           = 'paid';
-    const STATUS_OVERDUE        = 'overdue';
-    const STATUS_CANCELLED      = 'cancelled';
-
-    const UNPAID_STATUSES = [self::STATUS_ISSUED, self::STATUS_PARTIALLY_PAID, self::STATUS_OVERDUE];
+    use HasFactory;
 
     protected $fillable = [
         'student_id',
@@ -41,6 +35,7 @@ class Invoice extends Model
         'amount_paid'     => 'decimal:2',
         'issued_date'     => 'date',
         'due_date'        => 'date',
+        'status'          => InvoiceStatus::class,
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -101,15 +96,7 @@ class Invoice extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match ($this->status) {
-            self::STATUS_DRAFT          => 'Draft',
-            self::STATUS_ISSUED         => 'Issued',
-            self::STATUS_PARTIALLY_PAID => 'Partially Paid',
-            self::STATUS_PAID           => 'Paid',
-            self::STATUS_OVERDUE        => 'Overdue',
-            self::STATUS_CANCELLED      => 'Cancelled',
-            default                     => ucfirst($this->status),
-        };
+        return $this->status->label();
     }
 
     /**
@@ -118,13 +105,12 @@ class Invoice extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {
-            self::STATUS_DRAFT          => 'badge-secondary',
-            self::STATUS_ISSUED         => 'badge-info',
-            self::STATUS_PARTIALLY_PAID => 'badge-warning',
-            self::STATUS_PAID           => 'badge-success',
-            self::STATUS_OVERDUE        => 'badge-danger',
-            self::STATUS_CANCELLED      => 'badge-dark',
-            default                     => 'badge-secondary',
+            InvoiceStatus::Draft         => 'badge-secondary',
+            InvoiceStatus::Issued        => 'badge-info',
+            InvoiceStatus::PartiallyPaid => 'badge-warning',
+            InvoiceStatus::Paid          => 'badge-success',
+            InvoiceStatus::Overdue       => 'badge-danger',
+            InvoiceStatus::Cancelled     => 'badge-dark',
         };
     }
 
@@ -132,17 +118,17 @@ class Invoice extends Model
 
     public function isFullyPaid(): bool
     {
-        return $this->status === self::STATUS_PAID;
+        return $this->status === InvoiceStatus::Paid;
     }
 
     public function isCancelled(): bool
     {
-        return $this->status === self::STATUS_CANCELLED;
+        return $this->status === InvoiceStatus::Cancelled;
     }
 
     public function isOverdue(): bool
     {
-        return $this->status === self::STATUS_OVERDUE;
+        return $this->status === InvoiceStatus::Overdue;
     }
 
     /**
@@ -150,7 +136,7 @@ class Invoice extends Model
      */
     public function requiresPayment(): bool
     {
-        return in_array($this->status, self::UNPAID_STATUSES);
+        return in_array($this->status, InvoiceStatus::unpaidStatuses(), true);
     }
 
     /**

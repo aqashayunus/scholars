@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StudentAssignmentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class StudentAssignment extends Model
@@ -25,6 +26,7 @@ class StudentAssignment extends Model
         'answers_json'       => 'array',
         'time_taken_seconds' => 'integer',
         'score'              => 'integer',
+        'status'             => StudentAssignmentStatus::class,
     ];
 
     public function getTahapBadgeClass(): string

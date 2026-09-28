@@ -1,0 +1,146 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Student;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+/**
+ * Phase 3 — real-render smoke coverage for every billing view touched by the
+ * Invoice/Payment enum conversion. Grep sweeps repeatedly missed live crash
+ * sites this pass (bare Blade echoes, match() on raw strings, ucfirst() on
+ * an enum instance all throw once status is cast to a backed enum) — this
+ * empirically renders every page with real invoices/payments across every
+ * status value, rather than trusting the sweep alone.
+ */
+class BillingEnumRenderSmokeTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+    private User $parent;
+    private User $studentUser;
+    private Student $student;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->admin = User::create(['name' => 'Admin', 'email' => 'admin@render.test', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $this->parent = User::create(['name' => 'Parent', 'email' => 'parent@render.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $this->studentUser = User::create(['name' => 'Student', 'email' => 'student@render.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $this->student = Student::create(['user_id' => $this->studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
+        // authorizeInvoiceAccess() (Billing\InvoiceController) checks only the
+        // pivot-based authorizedChildren(), not the legacy parent_user_id
+        // column — both must be set for the parent fixture to be authorized.
+        \Illuminate\Support\Facades\DB::table('parent_student')->insert([
+            'parent_user_id' => $this->parent->id,
+            'student_id'     => $this->student->id,
+            'status'         => 'active',
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        // One invoice per status so every match()/badge branch actually renders.
+        foreach (InvoiceStatus::cases() as $i => $status) {
+            Invoice::create([
+                'student_id'     => $this->student->id,
+                'invoice_number' => 'INV-RENDER-' . $i,
+                'title'          => 'Render Test Invoice ' . $status->value,
+                'billing_period' => 'September 2026',
+                'subtotal'       => 100,
+                'total_amount'   => 100,
+                'amount_paid'    => $status === InvoiceStatus::Paid ? 100 : 0,
+                'issued_date'    => now()->toDateString(),
+                'due_date'       => now()->addDays(7)->toDateString(),
+                'status'         => $status,
+            ]);
+        }
+
+        // One payment per status so every match()/badge branch actually renders.
+        foreach (PaymentStatus::cases() as $i => $status) {
+            Payment::create([
+                'user_id'        => $this->parent->id,
+                'student_id'     => $this->student->id,
+                'payer_id'       => $this->parent->id,
+                'payer_type'     => 'parent',
+                'description'    => 'Render Test Payment ' . $status->value,
+                'amount'         => 50,
+                'payment_method' => 'bank_transfer',
+                'reference_no'   => 'REF-RENDER-' . $i,
+                'status'         => $status,
+                'paid_at'        => now(),
+            ]);
+        }
+    }
+
+    public function test_admin_dashboard_billing_section_renders(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertOk();
+    }
+
+    public function test_admin_billing_dashboard_renders(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.billing.dashboard'))->assertOk();
+    }
+
+    // Note: admin.billing.invoices / .show are deprecated redirect-only
+    // routes — they send the admin to admin/dashboard#invoices, which is
+    // where the real invoice management UI now lives (already covered by
+    // test_admin_dashboard_billing_section_renders above). Pre-existing app
+    // behavior, not part of this enum conversion — nothing to smoke-test here.
+
+    public function test_admin_billing_payments_index_renders(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.billing.payments'))->assertOk();
+    }
+
+    // Note: admin.billing.payment.show (routes/web.php) is a closure that
+    // unconditionally redirects to admin/dashboard#financials — it never
+    // invokes BillingController::paymentShow() or renders
+    // admin/billing/payments/show.blade.php. Both are genuinely unreachable
+    // dead code (confirmed: no other route references either). Still fixed
+    // the enum-safety issues there during this pass since it costs nothing
+    // and guards against a latent bug if the route is ever wired up — but
+    // there is nothing to smoke-test here today.
+
+    public function test_parent_fees_page_renders(): void
+    {
+        $this->actingAs($this->parent)->get(route('parent.fees'))->assertOk();
+    }
+
+    public function test_parent_fees_show_renders_for_every_status(): void
+    {
+        foreach (Invoice::all() as $invoice) {
+            $this->actingAs($this->parent)
+                ->get(route('parent.fees.show', $invoice))
+                ->assertOk();
+        }
+    }
+
+    public function test_parent_payments_page_renders(): void
+    {
+        $this->actingAs($this->parent)->get(route('parent.payments'))->assertOk();
+    }
+
+    public function test_student_fees_page_renders(): void
+    {
+        $this->actingAs($this->studentUser)->get(route('student.fees'))->assertOk();
+    }
+
+    public function test_student_fees_show_renders_for_every_status(): void
+    {
+        foreach (Invoice::all() as $invoice) {
+            $this->actingAs($this->studentUser)
+                ->get(route('student.fees.show', $invoice))
+                ->assertOk();
+        }
+    }
+}

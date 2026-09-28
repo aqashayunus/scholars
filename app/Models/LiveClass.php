@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\LiveClassStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class LiveClass extends Model
@@ -56,12 +57,21 @@ class LiveClass extends Model
         }
     }
 
-    public function getStatusAttribute($value): string
+    /**
+     * Status is computed live from scheduled_at/duration (see
+     * getComputedStatusAttribute()), not a simple stored value — this
+     * accessor wraps that raw string in the LiveClassStatus enum so callers
+     * get the same type-safe comparison behavior as every other status
+     * field. The underlying DB column still stores the raw string (written
+     * by the saving() hook below via computed_status), since MySQL's native
+     * enum column needs a string, not a PHP enum instance.
+     */
+    public function getStatusAttribute($value): LiveClassStatus
     {
         if (!$this->scheduled_at) {
-            return $value ?? 'upcoming';
+            return LiveClassStatus::tryFrom($value ?? 'upcoming') ?? LiveClassStatus::Upcoming;
         }
-        return $this->computed_status;
+        return LiveClassStatus::from($this->computed_status);
     }
 
     public function course()      { return $this->belongsTo(Course::class); }

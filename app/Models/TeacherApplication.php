@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TeacherApplicationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -25,6 +26,7 @@ class TeacherApplication extends Model
 
     protected $casts = [
         'approved_at' => 'datetime',
+        'status' => TeacherApplicationStatus::class,
     ];
 
     public function user()

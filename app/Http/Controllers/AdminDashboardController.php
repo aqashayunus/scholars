@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LiveClass;
-use App\Models\Message;
 use App\Models\Payment;
 use App\Models\RecordedClass;
 use App\Models\Setting;
@@ -33,6 +33,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\WelcomeMail;
 use App\Mail\EngagementBlastMail;
@@ -107,7 +109,7 @@ class AdminDashboardController extends Controller
         }
 
         foreach ($allInvoices as $inv) {
-            $isOverdue = $inv->status === 'overdue' || ($inv->isPastDue() && $inv->requiresPayment());
+            $isOverdue = $inv->status === InvoiceStatus::Overdue || ($inv->isPastDue() && $inv->requiresPayment());
             $inv->is_overdue = $isOverdue;
             if ($isOverdue && $inv->due_date) {
                 $inv->days_overdue = max(1, (int) now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($inv->due_date)->startOfDay()));
@@ -146,7 +148,7 @@ class AdminDashboardController extends Controller
         $activeDiagnostic = $selectedDiagId ? $diagnosticTests->firstWhere('id', $selectedDiagId) : $diagnosticTests->first();
         $activeDiagId    = $activeDiagnostic?->id;
 
-        $allDiagnosticStudents = Student::where('status', 'active')
+        $allDiagnosticStudents = Student::where('status', \App\Enums\StudentStatus::Active)
             ->whereHas('user', function($qu) {
                 $qu->where('is_active', true);
             })
@@ -159,7 +161,10 @@ class AdminDashboardController extends Controller
                 $q->with('assignment');
             }])->get()->map(function($st) {
             $sa = $st->studentAssignments->first();
-            $isCompleted = $sa && in_array($sa->status, ['submitted', 'graded', 'completed']);
+            // 'completed' was never a valid StudentAssignment status (enum:
+            // pending/submitted/graded/late) — dropped, same phantom-value
+            // pattern fixed elsewhere in this Phase 3 pass.
+            $isCompleted = $sa && in_array($sa->status, [\App\Enums\StudentAssignmentStatus::Submitted, \App\Enums\StudentAssignmentStatus::Graded], true);
             $score = $isCompleted ? (int)$sa->score : null;
             $tahap = $isCompleted ? ($sa->tahap_kepandaian ?: ($score >= 80 ? 'Cemerlang' : ($score >= 60 ? 'Baik' : ($score >= 40 ? 'Sederhana' : 'Perlu Bimbingan')))) : 'Belum Diuji';
             $timeTaken = $sa?->time_taken_seconds ?: 0;
@@ -212,7 +217,7 @@ class AdminDashboardController extends Controller
         $deactivatedUserIds = User::where('is_active', false)->pluck('id');
 
         // (B) Inactive students from students table
-        $inactiveStudentUserIds = Student::where('status', '!=', 'active')
+        $inactiveStudentUserIds = Student::where('status', '!=', \App\Enums\StudentStatus::Active)
             ->pluck('user_id')
             ->filter();
 
@@ -371,7 +376,7 @@ class AdminDashboardController extends Controller
                 'role'      => ucfirst($p->user->role ?? 'Student'),
                 'action'    => 'Payment of RM ' . number_format($p->amount, 2) . ' for ' . ($p->course->title ?? $p->description ?? 'Course Fee'),
                 'module'    => 'Financials',
-                'status'    => strtoupper($p->status ?? 'PAID'),
+                'status'    => strtoupper($p->status?->value ?? 'PAID'),
                 'date'      => $p->paid_at ? $p->paid_at->format('d M Y, H:i') : ($p->created_at ? $p->created_at->format('d M Y, H:i') : 'Recent'),
                 'timestamp' => $p->paid_at ? $p->paid_at->timestamp : ($p->created_at ? $p->created_at->timestamp : 0),
             ];
@@ -390,18 +395,20 @@ class AdminDashboardController extends Controller
             ];
         });
 
-        $msgLogs = Message::with(['sender', 'receiver'])->latest('id')->take(10)->get()->map(function ($m) {
-            return [
-                'id'        => 'MSG-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
-                'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
-                'role'      => ucfirst($m->sender->role ?? 'User'),
-                'action'    => 'Sent live communication message to ' . ($m->receiver->name ?? 'User #' . $m->receiver_id),
-                'module'    => 'Messenger',
-                'status'    => 'SENT',
-                'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
-                'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
-            ];
-        });
+        $msgLogs = \App\Models\ChatMessage::with(['sender', 'conversation.participants.user'])
+            ->latest('id')->take(10)->get()->map(function ($m) {
+                $receiver = $m->conversation?->otherParticipant($m->sender_id);
+                return [
+                    'id'        => 'MSG-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
+                    'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
+                    'role'      => ucfirst($m->sender->role ?? 'User'),
+                    'action'    => 'Sent live communication message to ' . ($receiver->name ?? 'a conversation'),
+                    'module'    => 'Messenger',
+                    'status'    => 'SENT',
+                    'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
+                    'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
+                ];
+            });
 
         $userLogs = User::latest('id')->take(10)->get()->map(function ($u) {
             return [
@@ -471,14 +478,11 @@ class AdminDashboardController extends Controller
             'courses.*'      => 'exists:courses,id',
         ]);
 
-        // Auto-generate password: 2 characters of Name (uppercase) + last 6 digits of IC
-        $cleanName    = preg_replace('/[^A-Za-z]/', '', $validated['name']);
-        $firstTwoName = strtoupper(substr($cleanName, 0, 2));
-
-        $cleanIc      = preg_replace('/[^0-9]/', '', $validated['ic_number']);
-        $lastSixIc    = substr($cleanIc, -6);
-
-        $passwordText = $firstTwoName . $lastSixIc;
+        // Random temporary password — previously derived as 2 letters of the name
+        // + last 6 IC digits, which is guessable by anyone who knows the user's
+        // name and IC (and the public IC-lookup endpoint handed out exactly
+        // that). must_change_password forces a real password on first login.
+        $passwordText = Str::password(14);
 
         $user = User::create([
             'name'     => $validated['name'],
@@ -487,6 +491,8 @@ class AdminDashboardController extends Controller
             'phone'    => $validated['phone'] ?? null,
             'password' => Hash::make($passwordText),
         ]);
+        $user->must_change_password = true;
+        $user->save();
 
         if ($user->role === 'student') {
             $student = Student::create([
@@ -592,10 +598,20 @@ class AdminDashboardController extends Controller
     public function resetUserPassword(Request $request, $id)
     {
         $user = User::findOrFail($id);
-        // Use DB-configured default temp password instead of hardcoded 'secret123'
-        $newPassword = $request->input('password', Setting::get('default_temp_password', 'Temp@1234'));
+
+        $validated = $request->validate([
+            'password' => ['nullable', 'string', Rules\Password::defaults()],
+        ]);
+
+        // A random password when the admin doesn't supply one — never a fixed,
+        // shared default. Either way the user must set their own on next login,
+        // and the value is never echoed back into the UI (it was previously
+        // rendered into the success flash message, which persists in the
+        // session store and any screenshot/log of the admin's screen).
+        $newPassword = $validated['password'] ?? Str::password(14);
 
         $user->password = Hash::make($newPassword);
+        $user->must_change_password = true;
         $user->save();
 
         try {
@@ -603,13 +619,13 @@ class AdminDashboardController extends Controller
                 'user_id' => $user->id,
                 'type'    => 'security',
                 'title'   => 'PASSWORD UPDATED',
-                'message' => "Your account password has been updated. Please ensure your credentials remain secure.",
+                'message' => "Your account password has been reset by an administrator. You will be asked to set a new password on your next login.",
                 'read_at' => null,
             ]);
         } catch (\Throwable $e) {}
 
         return redirect()->to(route('admin.dashboard') . '#users')
-            ->with('success', "Password for '{$user->name}' has been reset to '{$newPassword}'.");
+            ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
     }
 
     // ── COURSE CRUD ───────────────────────────────────────────────────────────
@@ -1917,9 +1933,15 @@ class AdminDashboardController extends Controller
         DB::transaction(function () use ($application, $request) {
             // 1. Find or create user account for teacher
             $user = User::where('email', $application->email)->first();
-            $tempPassword = Setting::get('default_temp_password', 'AsterEdu2026!');
 
             if (!$user) {
+                // Random per-teacher password, not a shared default previously
+                // known to every approved teacher (and never actually emailed
+                // to them, meaning it was distributed out-of-band as tribal
+                // knowledge). Emailed via WelcomeMail below; must_change_password
+                // forces a real password before first real use.
+                $tempPassword = Str::password(14);
+
                 $user = User::create([
                     'name'     => $application->full_name,
                     'email'    => $application->email,
@@ -1927,6 +1949,14 @@ class AdminDashboardController extends Controller
                     'role'     => 'teacher',
                     'password' => Hash::make($tempPassword),
                 ]);
+                $user->must_change_password = true;
+                $user->save();
+
+                try {
+                    Mail::to($user->email)->send(new WelcomeMail($user, $tempPassword));
+                } catch (\Exception $e) {
+                    report($e);
+                }
             } else {
                 $user->update(['role' => 'teacher']);
             }
@@ -1945,7 +1975,7 @@ class AdminDashboardController extends Controller
             // 3. Update application status
             $application->update([
                 'user_id'     => $user->id,
-                'status'      => 'approved',
+                'status'      => \App\Enums\TeacherApplicationStatus::Approved,
                 'admin_notes' => $request->input('admin_notes', 'Application approved.'),
                 'approved_at' => now(),
             ]);
@@ -1969,7 +1999,7 @@ class AdminDashboardController extends Controller
         $application = TeacherApplication::findOrFail($id);
 
         $application->update([
-            'status'      => 'rejected',
+            'status'      => \App\Enums\TeacherApplicationStatus::Rejected,
             'admin_notes' => $request->input('admin_notes', 'Application not approved at this time.'),
         ]);
 
@@ -2050,7 +2080,7 @@ class AdminDashboardController extends Controller
                     $pay->course->title ?? $pay->description ?? 'Tuition Fee',
                     $pay->payment_method ?? 'FPX Online',
                     number_format($pay->amount, 2, '.', ''),
-                    strtoupper($pay->status ?? 'PAID'),
+                    strtoupper($pay->status?->value ?? 'PAID'),
                     $pay->paid_at ? $pay->paid_at->format('Y-m-d H:i') : ($pay->created_at ? $pay->created_at->format('Y-m-d H:i') : 'N/A'),
                 ]);
             }
@@ -2794,10 +2824,16 @@ class AdminDashboardController extends Controller
 
     public function updateInvoiceStatus(Request $request, $id)
     {
+        // NOTE: unreachable — not registered in routes/web.php. The live
+        // equivalent is the '/invoices/{id}/status' closure in that file.
+        // Fixed anyway while touching it: this validation list previously
+        // included the phantom values 'outstanding'/'pending_verification'
+        // (never valid Invoice statuses) while excluding the real
+        // 'draft'/'issued'/'partially_paid' — same fix as the live closure.
         $invoice = \App\Models\Invoice::findOrFail($id);
         $oldStatus = $invoice->status;
-        $status = $request->validate(['status' => 'required|in:outstanding,pending_verification,paid,overdue,cancelled'])['status'];
-        
+        $status = $request->validate(['status' => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled'])['status'];
+
         $invoice->update(['status' => $status]);
 
         \App\Services\BillingNotificationService::notifyInvoiceStatusUpdated($invoice, $oldStatus);
@@ -2813,14 +2849,18 @@ class AdminDashboardController extends Controller
         if ($action === 'approve') {
             $receiptNo = 'RCP-' . date('Y') . '-' . str_pad($payment->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
             $payment->update([
-                'status'         => 'paid',
+                // 'paid' is not a valid Payment status (payments.status enum is
+                // pending/successful/failed/cancelled — 'paid' is Invoice's
+                // vocabulary). This was throwing a DB error under strict SQL
+                // mode on every approval before this fix.
+                'status'         => \App\Enums\PaymentStatus::Successful,
                 'receipt_number' => $receiptNo,
                 'verified_by'    => auth()->id(),
                 'paid_at'        => $payment->paid_at ?? now(),
             ]);
 
             if ($payment->invoice_id) {
-                $payment->invoice->update(['status' => 'paid']);
+                $payment->invoice->update(['status' => InvoiceStatus::Paid]);
             }
 
             // In-app alert for payer, student, and parents without mentioning admin
@@ -2839,12 +2879,18 @@ class AdminDashboardController extends Controller
         } else {
             $reason = $request->input('reason', 'Payment details could not be verified');
             $payment->update([
-                'status'      => 'rejected',
+                // 'rejected' is not a valid Payment status either — same class
+                // of bug as the approve branch above.
+                'status'      => \App\Enums\PaymentStatus::Failed,
                 'verified_by' => auth()->id(),
             ]);
 
             if ($payment->invoice_id) {
-                $payment->invoice->update(['status' => 'outstanding']);
+                // 'outstanding' has never been a valid Invoice status (see the
+                // two other dead 'outstanding' whereIn() sites fixed earlier in
+                // this same Phase 3 pass) — the invoice reverts to awaiting
+                // payment, i.e. 'issued'.
+                $payment->invoice->update(['status' => InvoiceStatus::Issued]);
             }
 
             // In-app alert for payer, student, and parents without mentioning admin
@@ -3019,15 +3065,15 @@ class AdminDashboardController extends Controller
         $today = now()->startOfDay();
 
         // 1. Reconcile status if invoice is active (not fully paid and not cancelled)
-        if (!in_array($invoice->status, [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])) {
+        if (!in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
             if ($newDueDate->lt($today)) {
-                $invoice->status = Invoice::STATUS_OVERDUE;
+                $invoice->status = InvoiceStatus::Overdue;
             } else {
                 // If it was overdue, lift overdue back to partially_paid or issued
                 if ((float)$invoice->amount_paid > 0) {
-                    $invoice->status = Invoice::STATUS_PARTIALLY_PAID;
+                    $invoice->status = InvoiceStatus::PartiallyPaid;
                 } else {
-                    $invoice->status = Invoice::STATUS_ISSUED;
+                    $invoice->status = InvoiceStatus::Issued;
                 }
             }
             $invoice->save();
@@ -3040,7 +3086,7 @@ class AdminDashboardController extends Controller
 
         // 3. Reschedule pending email reminders to match new due date
         InvoiceReminder::where('invoice_id', $invoice->id)->where('status', 'pending')->delete();
-        if ($invoice->student && in_array($invoice->status, Invoice::UNPAID_STATUSES)) {
+        if ($invoice->student && in_array($invoice->status, InvoiceStatus::unpaidStatuses())) {
             app(\App\Services\InvoiceService::class)->scheduleReminders($invoice, $invoice->student);
         }
 
@@ -3082,8 +3128,8 @@ class AdminDashboardController extends Controller
             $remaining = \App\Models\PaymentInvoice::where('payment_id', $paymentId)->count();
             $adminNote = "Invoice {$number} deleted by admin.";
             if ($remaining === 0) {
-                if ($payment->status === \App\Models\Payment::STATUS_PENDING) {
-                    $payment->update(['status' => \App\Models\Payment::STATUS_FAILED, 'payment_proof_notes' => $adminNote]);
+                if ($payment->status === \App\Enums\PaymentStatus::Pending) {
+                    $payment->update(['status' => \App\Enums\PaymentStatus::Failed, 'payment_proof_notes' => $adminNote]);
                 } else {
                     $payment->update(['amount' => 0, 'payment_proof_notes' => $adminNote]);
                 }
@@ -3179,10 +3225,10 @@ class AdminDashboardController extends Controller
     public function toggleStudentStatus($id)
     {
         $student = Student::findOrFail($id);
-        $newStatus = ($student->status === 'inactive') ? 'active' : 'inactive';
+        $newStatus = ($student->status === \App\Enums\StudentStatus::Inactive) ? \App\Enums\StudentStatus::Active : \App\Enums\StudentStatus::Inactive;
         $student->update(['status' => $newStatus]);
         if ($student->user) {
-            $student->user->update(['is_active' => ($newStatus === 'active')]);
+            $student->user->update(['is_active' => ($newStatus === \App\Enums\StudentStatus::Active)]);
         }
 
         $name = $student->user->name ?? 'Student #' . $id;
@@ -3341,7 +3387,7 @@ class AdminDashboardController extends Controller
 
         // Determine the base recipient query (non-active users)
         $restrictedStudentUserIds = Student::whereHas('invoices', function ($q) {
-            $q->whereIn('status', ['overdue', 'outstanding'])->whereDate('due_date', '<', now());
+            $q->where('status', InvoiceStatus::Overdue)->whereDate('due_date', '<', now()); // 'outstanding' was never a valid Invoice::status value / enum case — removed
         })->pluck('user_id')->filter();
 
         $inactiveTeacherUserIds = Teacher::whereIn('application_status', ['inactive', 'deactivated'])
@@ -3407,7 +3453,7 @@ class AdminDashboardController extends Controller
     public function exportInactiveUsersCsv(): StreamedResponse
     {
         $restrictedStudentUserIds = Student::whereHas('invoices', function ($q) {
-            $q->whereIn('status', ['overdue', 'outstanding'])->whereDate('due_date', '<', now());
+            $q->where('status', InvoiceStatus::Overdue)->whereDate('due_date', '<', now()); // 'outstanding' was never a valid Invoice::status value / enum case — removed
         })->pluck('user_id')->filter();
 
         $inactiveTeacherUserIds = Teacher::whereIn('application_status', ['inactive', 'deactivated'])

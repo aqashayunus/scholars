@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\InvoiceReminder;
 use Illuminate\Bus\Queueable;
@@ -46,7 +47,7 @@ class SendInvoiceReminderJob implements ShouldQueue
         $invoice = $reminder->invoice;
 
         // Critical guard: stop if invoice is now paid or cancelled
-        if (!$invoice || in_array($invoice->status, [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])) {
+        if (!$invoice || in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
             $reminder->update(['status' => 'skipped', 'sent_at' => now()]);
             Log::info("[SendInvoiceReminderJob] Reminder #{$reminder->id} skipped — invoice is {$invoice?->status}.");
             return;

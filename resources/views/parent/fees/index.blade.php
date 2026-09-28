@@ -49,7 +49,7 @@
                     </div>
                 </div>
                 @php
-                    $childOutstanding = $child->invoices->whereIn('status', \App\Models\Invoice::UNPAID_STATUSES)->sum('outstanding_amount');
+                    $childOutstanding = $child->invoices->whereIn('status', \App\Enums\InvoiceStatus::unpaidStatuses())->sum('outstanding_amount');
                 @endphp
                 @if($childOutstanding > 0)
                     <span class="text-sm font-bold text-red-600">RM {{ number_format($childOutstanding, 2) }} outstanding</span>
@@ -104,10 +104,10 @@
                                 <td class="px-4 py-3 text-center">
                                     @php
                                         $badge = match($invoice->status) {
-                                            'paid' => 'bg-green-100 text-green-700',
-                                            'overdue' => 'bg-red-100 text-red-700',
-                                            'partially_paid' => 'bg-amber-100 text-amber-700',
-                                            'cancelled' => 'bg-gray-100 text-gray-500',
+                                            \App\Enums\InvoiceStatus::Paid => 'bg-green-100 text-green-700',
+                                            \App\Enums\InvoiceStatus::Overdue => 'bg-red-100 text-red-700',
+                                            \App\Enums\InvoiceStatus::PartiallyPaid => 'bg-amber-100 text-amber-700',
+                                            \App\Enums\InvoiceStatus::Cancelled => 'bg-gray-100 text-gray-500',
                                             default => 'bg-blue-100 text-blue-700',
                                         };
                                     @endphp

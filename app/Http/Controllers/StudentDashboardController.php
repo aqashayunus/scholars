@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\StudentAssignmentStatus;
 use App\Models\Assignment;
 use App\Models\Enrollment;
 use App\Models\FeeStructure;
@@ -406,12 +408,16 @@ class StudentDashboardController extends Controller
         });
 
         $totalTasks = $assignments->count();
-        $completedCount = $assignments->whereIn('status', ['submitted', 'completed', 'graded'])->count();
-        $pendingCount = $assignments->where('status', 'pending')->count();
+        // 'completed' was never a valid StudentAssignment status. These are
+        // Collection::whereIn()/where() calls (PHP-level loose comparison),
+        // not query-builder calls — they need real enum cases, not strings,
+        // since == between an enum instance and a string never matches.
+        $completedCount = $assignments->whereIn('status', [StudentAssignmentStatus::Submitted, StudentAssignmentStatus::Graded])->count();
+        $pendingCount = $assignments->where('status', StudentAssignmentStatus::Pending)->count();
         
         // Overdue ONLY applies to tasks due AFTER the student enrolled
         $overdueCount = $assignments->filter(function($sa) {
-            return $sa->status === 'pending' 
+            return $sa->status === StudentAssignmentStatus::Pending 
                 && !$sa->is_catch_up 
                 && $sa->assignment 
                 && $sa->assignment->due_date 
@@ -420,11 +426,11 @@ class StudentDashboardController extends Controller
 
         // Tasks assigned before enrollment are classified as Catch-up
         $catchUpCount = $assignments->filter(function($sa) {
-            return $sa->status === 'pending' && ($sa->is_catch_up ?? false);
+            return $sa->status === StudentAssignmentStatus::Pending && ($sa->is_catch_up ?? false);
         })->count();
 
         $dueThisWeekCount = $assignments->filter(function($sa) {
-            return $sa->status === 'pending' 
+            return $sa->status === StudentAssignmentStatus::Pending 
                 && !$sa->is_catch_up 
                 && $sa->assignment 
                 && $sa->assignment->due_date 
@@ -434,7 +440,7 @@ class StudentDashboardController extends Controller
         $completionRate = $totalTasks > 0 ? round(($completedCount / $totalTasks) * 100) : 0;
 
         $upcomingDeadlines = $assignments->filter(function($sa) {
-            return $sa->status === 'pending' && !$sa->is_catch_up && $sa->assignment && $sa->assignment->due_date;
+            return $sa->status === StudentAssignmentStatus::Pending && !$sa->is_catch_up && $sa->assignment && $sa->assignment->due_date;
         })->sortBy(fn($sa) => $sa->assignment->due_date)->take(5);
 
         $enrolledSubjects = $assignments->map(fn($sa) => $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General'))->filter()->unique()->values();
@@ -599,7 +605,7 @@ class StudentDashboardController extends Controller
         $highScoreQuizzesCount = $quizResults->filter(fn($q) => $q->percent >= 80)->count();
         $avgQuizScore          = $completedQuizzesCount > 0 ? (int) round($quizResults->avg(fn($q) => $q->percent)) : 0;
         
-        $submittedAssignmentsCount = $assignments->whereIn('status', ['submitted', 'graded'])->count();
+        $submittedAssignmentsCount = $assignments->whereIn('status', [StudentAssignmentStatus::Submitted, StudentAssignmentStatus::Graded])->count();
         $attendedClassesCount      = $attendances->whereIn('status', ['attended', 'late'])->count();
         $streakDays                = max(1, $student->streak_days ?? 1);
 
@@ -1122,11 +1128,11 @@ class StudentDashboardController extends Controller
             ->latest('due_date')
             ->get();
 
-        $outstandingInvoices = $invoices->filter(fn($inv) => in_array($inv->status, ['outstanding', 'pending_verification']))->values();
-        $paidInvoices        = $invoices->filter(fn($inv) => $inv->status === 'paid')->values();
-        $overdueInvoices     = $invoices->filter(fn($inv) => $inv->status === 'overdue' || ($inv->status === 'outstanding' && $inv->due_date->isPast()))->values();
+        $outstandingInvoices = $invoices->filter(fn($inv) => in_array($inv->status, InvoiceStatus::unpaidStatuses(), true))->values();
+        $paidInvoices        = $invoices->filter(fn($inv) => $inv->status === InvoiceStatus::Paid)->values();
+        $overdueInvoices     = $invoices->filter(fn($inv) => $inv->status === InvoiceStatus::Overdue)->values();
 
-        $totalOutstandingAmount = $outstandingInvoices->where('status', 'outstanding')->sum('total_amount');
+        $totalOutstandingAmount = $outstandingInvoices->sum('total_amount');
         $totalPaidAmount        = $paidInvoices->sum('total_amount');
 
         $payments = Payment::where('student_id', $student->id)
@@ -1163,7 +1169,7 @@ class StudentDashboardController extends Controller
         $student = $this->getStudent();
         $invoice = Invoice::where('student_id', $student->id)->findOrFail($id);
 
-        if ($invoice->status === 'paid') {
+        if ($invoice->status === InvoiceStatus::Paid) {
             return back()->with('info', 'This invoice has already been fully paid.');
         }
 
@@ -1188,11 +1194,17 @@ class StudentDashboardController extends Controller
                 'payment_method'  => 'bank_transfer',
                 'proof_file_path' => $proofPath,
                 'reference_no'    => $refNo,
-                'status'          => 'pending',
+                'status'          => \App\Enums\PaymentStatus::Pending,
                 'paid_at'         => now(),
             ]);
 
-            $invoice->update(['status' => 'pending_verification']);
+            // 'pending_verification' was never a valid Invoice status (enum:
+            // draft/issued/partially_paid/paid/overdue/cancelled) — would
+            // throw under strict SQL mode. The Payment record just created
+            // above already correctly carries PaymentStatus::Pending, which
+            // is the real "awaiting verification" signal; the invoice stays
+            // at its current status (issued/overdue) until an admin approves
+            // the payment via AdminDashboardController::verifyPayment().
 
             return back()->with('success', 'Payment proof submitted successfully! Your payment is pending verification.');
         } else {
@@ -1210,11 +1222,11 @@ class StudentDashboardController extends Controller
                 'payment_method' => $paymentMethod,
                 'reference_no'   => $refNo,
                 'receipt_number' => $receiptNo,
-                'status'         => 'paid',
+                'status'         => \App\Enums\PaymentStatus::Successful,
                 'paid_at'        => now(),
             ]);
 
-            $invoice->update(['status' => 'paid']);
+            $invoice->update(['status' => InvoiceStatus::Paid]);
 
             \App\Models\UserNotification::create([
                 'user_id' => auth()->id(),

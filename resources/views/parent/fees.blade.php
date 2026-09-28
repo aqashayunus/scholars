@@ -92,13 +92,13 @@
                             @forelse($invoices as $inv)
                                 <tr x-show="(
                                     (tab === 'all') ||
-                                    (tab === 'outstanding' && ('{{ $inv->status }}' === 'outstanding' || '{{ $inv->status }}' === 'pending_verification')) ||
-                                    (tab === 'paid' && '{{ $inv->status }}' === 'paid')
+                                    (tab === 'outstanding' && ('{{ $inv->status->value }}' === 'outstanding' || '{{ $inv->status->value }}' === 'pending_verification')) ||
+                                    (tab === 'paid' && '{{ $inv->status->value }}' === 'paid')
                                 ) && (
-                                    !searchQuery || 
-                                    '{{ strtolower($inv->invoice_number) }}'.includes(searchQuery.toLowerCase()) || 
+                                    !searchQuery ||
+                                    '{{ strtolower($inv->invoice_number) }}'.includes(searchQuery.toLowerCase()) ||
                                     '{{ strtolower($inv->title) }}'.includes(searchQuery.toLowerCase()) ||
-                                    '{{ strtolower($inv->status) }}'.includes(searchQuery.toLowerCase())
+                                    '{{ strtolower($inv->status->value) }}'.includes(searchQuery.toLowerCase())
                                 )" class="hover:bg-gray-50 transition-colors">
                                     
                                     {{-- 1. Invoice No --}}
@@ -138,11 +138,9 @@
 
                                     {{-- 8. Status --}}
                                     <td class="py-3.5 px-4 whitespace-nowrap text-gray-700">
-                                        @if($inv->status === 'paid')
+                                        @if($inv->status === \App\Enums\InvoiceStatus::Paid)
                                             Paid
-                                        @elseif($inv->status === 'pending_verification')
-                                            Pending Verification
-                                        @elseif($inv->status === 'overdue' || $inv->is_overdue)
+                                        @elseif($inv->status === \App\Enums\InvoiceStatus::Overdue || $inv->is_overdue)
                                             Overdue
                                         @else
                                             Outstanding
@@ -156,7 +154,7 @@
 
                                     {{-- 10. Action with Clean Icons --}}
                                     <td class="py-3.5 px-4 text-center whitespace-nowrap">
-                                        @if($inv->status === 'paid')
+                                        @if($inv->status === \App\Enums\InvoiceStatus::Paid)
                                             <button type="button" 
                                                     @click="selectedReceipt = {{ json_encode([
                                                         'invoice_number' => $inv->invoice_number,
@@ -173,12 +171,6 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                                 </svg>
                                             </button>
-                                        @elseif($inv->status === 'pending_verification')
-                                            <span title="Slip under review" class="p-2 text-gray-400 inline-flex items-center justify-center cursor-help">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                                </svg>
-                                            </span>
                                         @else
                                             <button type="button" 
                                                     @click="selectedInvoice = {{ json_encode($inv) }}; showPayModal = true" 
@@ -230,7 +222,7 @@
                                     <td class="py-3.5 px-4 uppercase text-gray-600 text-[11px]">{{ $p->payment_method }}</td>
                                     <td class="py-3.5 px-4 font-semibold text-gray-900">RM {{ number_format($p->amount, 2) }}</td>
                                     <td class="py-3.5 px-4 text-gray-700 capitalize">
-                                        {{ $p->status }}
+                                        {{ $p->status->value }}
                                     </td>
                                     <td class="py-3.5 px-4 font-mono text-gray-500">
                                         {{ $p->receipt_number ?? '—' }}

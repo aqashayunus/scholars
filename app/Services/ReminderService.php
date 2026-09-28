@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Models\Invoice;
 use App\Models\InvoiceReminder;
 use App\Models\Setting;
@@ -36,7 +37,7 @@ class ReminderService
             $invoice = $reminder->invoice;
 
             // Guard: skip if invoice is paid or cancelled
-            if (!$invoice || in_array($invoice->status, [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])) {
+            if (!$invoice || in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
                 $reminder->update(['status' => 'skipped']);
                 continue;
             }
@@ -73,7 +74,7 @@ class ReminderService
             ]);
 
         if ($count > 0) {
-            Log::info("[ReminderService] Skipped {$count} pending reminder(s) for invoice #{$invoice->id} ({$invoice->invoice_number}) — invoice is {$invoice->status}.");
+            Log::info("[ReminderService] Skipped {$count} pending reminder(s) for invoice #{$invoice->id} ({$invoice->invoice_number}) — invoice is {$invoice->status->value}.");
         }
 
         return $count;

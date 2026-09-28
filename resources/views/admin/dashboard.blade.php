@@ -274,7 +274,7 @@
                                     <td class="py-3 px-4 text-gray-600 font-normal">{{ $pay->course->title ?? $pay->description ?? 'Tuition Fee' }}</td>
                                     <td class="py-3 px-4 text-gray-500 font-normal">{{ $pay->payment_method ?? 'Online FPX' }}</td>
                                     <td class="py-3 px-4 text-gray-900 font-normal">RM {{ number_format($pay->amount, 2) }}</td>
-                                    <td class="py-3 px-4 font-normal text-gray-700 uppercase">{{ $pay->status ?? 'PAID' }}</td>
+                                    <td class="py-3 px-4 font-normal text-gray-700 uppercase">{{ $pay->status?->value ?? 'PAID' }}</td>
                                     <td class="py-3 px-4 text-right text-gray-400 font-normal">{{ $pay->paid_at ? $pay->paid_at->format('d M Y') : ($pay->created_at ? $pay->created_at->format('d M Y') : 'Recent') }}</td>
                                 </tr>
                             @empty
@@ -299,7 +299,7 @@
                         <div>
                             <h3 class="font-semibold text-base text-gray-900 flex items-center gap-2">
                                 <span>Teacher Onboarding &amp; Approval Pipeline</span>
-                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">{{ $teacherApplications->where('status', 'pending')->count() }} Pending Review</span>
+                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-medium">{{ $teacherApplications->where('status', \App\Enums\TeacherApplicationStatus::Pending)->count() }} Pending Review</span>
                             </h3>
                             <p class="text-xs text-gray-500 font-normal">Review incoming instructor applications, qualifications, and approve teaching credentials</p>
                         </div>
@@ -327,12 +327,12 @@
                                         <td class="py-3 px-3 font-medium text-gray-800">{{ $app->experience_years }} Years</td>
                                         <td class="py-3 px-3 font-medium text-blue-600">{{ $app->preferred_subjects }}</td>
                                         <td class="py-3 px-3">
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase {{ $app->status === 'approved' ? 'bg-emerald-50 text-emerald-700' : ($app->status === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800') }}">
-                                                {{ $app->status }}
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase {{ $app->status === \App\Enums\TeacherApplicationStatus::Approved ? 'bg-emerald-50 text-emerald-700' : ($app->status === \App\Enums\TeacherApplicationStatus::Rejected ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800') }}">
+                                                {{ $app->status->value }}
                                             </span>
                                         </td>
                                         <td class="py-3 px-3 text-right">
-                                            @if($app->status === 'pending')
+                                            @if($app->status === \App\Enums\TeacherApplicationStatus::Pending)
                                                 <div class="flex items-center justify-end gap-1.5">
                                                     <form action="{{ route('admin.teacher-applications.approve', $app->id) }}" method="POST">
                                                         @csrf
@@ -625,7 +625,7 @@
                                     $activeEnrollments = $st->activeEnrollments->count();
                                     $parentCount = count($parentsData);
                                     $teacherCount = $assignedTeachers->count();
-                                    $isInactive = ($st->status === 'inactive');
+                                    $isInactive = ($st->status === \App\Enums\StudentStatus::Inactive);
 
                                     // Initials
                                     $initials = collect(explode(' ', $studentName))
@@ -870,7 +870,7 @@
                                 data-name="{{ strtolower($st->name) }}"
                                 data-email="{{ strtolower($st->email) }}"
                                 data-status="{{ strtolower($st->status) }}">
-                                
+
                                 {{-- Student Particulars --}}
                                 <td class="py-3 px-4">
                                     <div class="font-medium text-gray-900">{{ $st->name }}</div>
@@ -1514,8 +1514,8 @@
                                             @endif
                                         </td>
                                         <td class="py-3.5 px-4">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-medium uppercase {{ $lc->status === 'upcoming' ? 'bg-slate-100 text-slate-700' : ($lc->status === 'live' ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'bg-gray-100 text-gray-600') }}">
-                                                {{ $lc->status ?? 'upcoming' }}
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-medium uppercase {{ $lc->status === \App\Enums\LiveClassStatus::Upcoming ? 'bg-slate-100 text-slate-700' : ($lc->status === \App\Enums\LiveClassStatus::Live ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'bg-gray-100 text-gray-600') }}">
+                                                {{ $lc->status->value }}
                                             </span>
                                         </td>
                                         <td class="py-3.5 px-4 text-right">
@@ -2083,10 +2083,10 @@
                             @forelse($allInvoices as $inv)
                                 @php
                                     $bClass = match($inv->status) {
-                                        'paid' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                        'overdue' => 'bg-rose-50 text-rose-700 border-rose-200',
-                                        'partially_paid' => 'bg-amber-50 text-amber-700 border-amber-200',
-                                        'cancelled' => 'bg-gray-100 text-gray-500 border-gray-200',
+                                        \App\Enums\InvoiceStatus::Paid => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        \App\Enums\InvoiceStatus::Overdue => 'bg-rose-50 text-rose-700 border-rose-200',
+                                        \App\Enums\InvoiceStatus::PartiallyPaid => 'bg-amber-50 text-amber-700 border-amber-200',
+                                        \App\Enums\InvoiceStatus::Cancelled => 'bg-gray-100 text-gray-500 border-gray-200',
                                         default => 'bg-blue-50 text-blue-700 border-blue-200',
                                     };
                                     $parentName = $inv->student->parents->first()?->name ?? $inv->student->parent?->name ?? null;
@@ -2122,7 +2122,7 @@
                                             'amount' => (float) ($pmt->pivot->amount_applied ?? $pmt->amount),
                                             'method' => ucfirst(str_replace('_', ' ', $pmt->payment_method ?? 'transfer')),
                                             'paid_at' => $pmt->paid_at ? $pmt->paid_at->format('d M Y, H:i') : ($pmt->created_at ? $pmt->created_at->format('d M Y') : '–'),
-                                            'status' => ucfirst($pmt->status),
+                                            'status' => ucfirst($pmt->status->value),
                                         ])->values(),
                                         'reminders' => $inv->reminders->map(fn($rem) => [
                                             'type_label' => $rem->type_label,
@@ -2289,11 +2289,11 @@
                                 @foreach($allInvoices as $inv)
                                     @php
                                         $statusTextColor = match($inv->status) {
-                                            'paid'           => 'text-emerald-700',
-                                            'partially_paid' => 'text-amber-700',
-                                            'issued'         => 'text-blue-700',
-                                            'overdue'        => 'text-rose-700',
-                                            'cancelled'      => 'text-gray-500',
+                                            \App\Enums\InvoiceStatus::Paid           => 'text-emerald-700',
+                                            \App\Enums\InvoiceStatus::PartiallyPaid  => 'text-amber-700',
+                                            \App\Enums\InvoiceStatus::Issued         => 'text-blue-700',
+                                            \App\Enums\InvoiceStatus::Overdue        => 'text-rose-700',
+                                            \App\Enums\InvoiceStatus::Cancelled      => 'text-gray-500',
                                             default          => 'text-purple-700',
                                         };
                                         $hasPayment = $inv->paymentTransactions->isNotEmpty();
@@ -2313,7 +2313,7 @@
                                             'date'           => $latestPmt->paid_at ? $latestPmt->paid_at->format('d M Y, H:i') : ($latestPmt->created_at ? $latestPmt->created_at->format('d M Y') : '–'),
                                             'proof_url'      => $latestPmt->proof_url,
                                             'notes'          => $latestPmt->payment_proof_notes ?: '–',
-                                            'status'         => ucfirst($latestPmt->status),
+                                            'status'         => ucfirst($latestPmt->status->value),
                                         ] : null;
 
                                         $invModalData = [
@@ -2369,11 +2369,11 @@
                                         <td class="py-3 px-4 text-right whitespace-nowrap">
                                             <select @change="handleStatusChange($event, {{ json_encode($invModalData) }})"
                                                     class="bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-2xs font-medium">
-                                                <option value="paid" {{ $inv->status === 'paid' ? 'selected' : '' }}>Full Paid</option>
-                                                <option value="partially_paid" {{ $inv->status === 'partially_paid' ? 'selected' : '' }}>Partially Paid</option>
-                                                <option value="issued" {{ $inv->status === 'issued' ? 'selected' : '' }}>Unpaid / Issued</option>
-                                                <option value="overdue" {{ $inv->status === 'overdue' ? 'selected' : '' }}>Overdue</option>
-                                                <option value="cancelled" {{ $inv->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                                <option value="paid" {{ $inv->status === \App\Enums\InvoiceStatus::Paid ? 'selected' : '' }}>Full Paid</option>
+                                                <option value="partially_paid" {{ $inv->status === \App\Enums\InvoiceStatus::PartiallyPaid ? 'selected' : '' }}>Partially Paid</option>
+                                                <option value="issued" {{ $inv->status === \App\Enums\InvoiceStatus::Issued ? 'selected' : '' }}>Unpaid / Issued</option>
+                                                <option value="overdue" {{ $inv->status === \App\Enums\InvoiceStatus::Overdue ? 'selected' : '' }}>Overdue</option>
+                                                <option value="cancelled" {{ $inv->status === \App\Enums\InvoiceStatus::Cancelled ? 'selected' : '' }}>Cancelled</option>
                                             </select>
                                         </td>
                                     </tr>
@@ -2700,12 +2700,12 @@
                                     <td class="py-3 px-4 uppercase text-gray-500 font-normal text-[11px]">{{ $pay->payment_method ?? 'FPX' }}</td>
                                     <td class="py-3 px-4 text-gray-900 font-semibold whitespace-nowrap">RM {{ number_format($pay->amount, 2) }}</td>
                                     <td class="py-3 px-4 font-normal text-gray-700 whitespace-nowrap">
-                                        @if($pay->status === 'paid' || $pay->status === 'successful')
+                                        @if($pay->status === \App\Enums\PaymentStatus::Successful)
                                             Paid
-                                        @elseif($pay->status === 'pending')
+                                        @elseif($pay->status === \App\Enums\PaymentStatus::Pending)
                                             Pending
                                         @else
-                                            {{ ucfirst($pay->status) }}
+                                            {{ ucfirst($pay->status->value) }}
                                         @endif
                                     </td>
                                     <td class="py-3 px-4 text-gray-400">{{ $pay->paid_at ? $pay->paid_at->format('d M Y, H:i') : ($pay->created_at ? $pay->created_at->format('d M Y') : 'Recent') }}</td>
@@ -2718,7 +2718,7 @@
                                                 'payer'          => ucfirst($pay->payer_type) . ': ' . ($pay->payer->name ?? ($pay->user->name ?? 'User')),
                                                 'method'         => ucfirst(str_replace('_', ' ', $pay->payment_method ?? 'FPX')),
                                                 'amount'         => number_format($pay->amount, 2),
-                                                'status'         => ucfirst($pay->status),
+                                                'status'         => ucfirst($pay->status->value),
                                                 'date'           => $pay->paid_at ? $pay->paid_at->format('d M Y, H:i') : ($pay->created_at ? $pay->created_at->format('d M Y') : '—'),
                                                 'notes'          => $pay->payment_proof_notes ?? '—',
                                                 'proof_url'      => $pay->proof_url,
@@ -2734,7 +2734,7 @@
                                                     class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-100 flex items-center justify-center transition cursor-pointer">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             </button>
-                                            @if($pay->status === 'pending')
+                                            @if($pay->status === \App\Enums\PaymentStatus::Pending)
                                                 {{-- Approve icon button --}}
                                                 <button type="button"
                                                         @click="openApproveModal({{ json_encode($payModalPayload) }})"

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
 use App\Models\InvoiceReminder;
@@ -32,7 +34,7 @@ class PaymentService
     public function initiateManualTransfer(array $invoiceIds, User $payer, array $data = []): Payment
     {
         $invoices = Invoice::whereIn('id', $invoiceIds)
-            ->whereIn('status', Invoice::UNPAID_STATUSES)
+            ->whereIn('status', InvoiceStatus::unpaidStatuses())
             ->get();
 
         if ($invoices->isEmpty()) {
@@ -64,7 +66,7 @@ class PaymentService
                 'payment_method' => 'bank_transfer',
                 'proof_file_path'=> $data['proof_file_path'] ?? null,
                 'reference_no'   => $data['reference_no'] ?? null,
-                'status'         => Payment::STATUS_PENDING,
+                'status'         => PaymentStatus::Pending,
             ]);
 
             // Create payment_invoices allocations
@@ -95,7 +97,7 @@ class PaymentService
      */
     public function approveManualPayment(Payment $payment, User $admin, ?string $notes = null): void
     {
-        if ($payment->status !== Payment::STATUS_PENDING) {
+        if ($payment->status !== PaymentStatus::Pending) {
             throw new \RuntimeException("Payment #{$payment->id} is not in pending status.");
         }
 
@@ -103,7 +105,7 @@ class PaymentService
             $receiptNumber = Payment::generateReceiptNumber();
 
             $payment->update([
-                'status'               => Payment::STATUS_SUCCESSFUL,
+                'status'               => PaymentStatus::Successful,
                 'receipt_number'       => $receiptNumber,
                 'verified_by'          => $admin->id,
                 'payment_proof_notes'  => $notes,
@@ -134,12 +136,12 @@ class PaymentService
      */
     public function rejectManualPayment(Payment $payment, User $admin, string $reason): void
     {
-        if ($payment->status !== Payment::STATUS_PENDING) {
+        if ($payment->status !== PaymentStatus::Pending) {
             throw new \RuntimeException("Payment #{$payment->id} is not in pending status.");
         }
 
         $payment->update([
-            'status'              => Payment::STATUS_FAILED,
+            'status'              => PaymentStatus::Failed,
             'verified_by'         => $admin->id,
             'payment_proof_notes' => "Rejected: {$reason}",
         ]);
@@ -203,12 +205,12 @@ class PaymentService
         // if (!$payment) { throw new \RuntimeException("Payment not found for gateway ref: {$gatewayRef}"); }
         //
         // if ($payload['status'] === 'paid') {
-        //     $payment->update(['status' => Payment::STATUS_SUCCESSFUL, 'paid_at' => now()]);
+        //     $payment->update(['status' => PaymentStatus::Successful, 'paid_at' => now()]);
         //     foreach ($payment->paymentInvoices as $alloc) {
         //         $this->invoiceService->recalculateAmountPaid($alloc->invoice);
         //     }
         // } else {
-        //     $payment->update(['status' => Payment::STATUS_FAILED]);
+        //     $payment->update(['status' => PaymentStatus::Failed]);
         // }
     }
 

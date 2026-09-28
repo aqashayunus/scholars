@@ -269,7 +269,7 @@
                             @foreach($assignments->take(3) as $sa)
                                 @if(!$sa->assignment) @continue @endif
                                 @php
-                                    $isPending = $sa->status === 'pending';
+                                    $isPending = $sa->status === \App\Enums\StudentAssignmentStatus::Pending;
                                     $badgeBg = $isPending ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800';
                                     $cardBg = $isPending ? 'bg-amber-50/50 border-amber-100 hover:border-amber-300' : 'bg-gray-50 border-gray-100 hover:border-gray-200';
                                     $dueText = $sa->assignment?->due_date ? 'Due ' . \Carbon\Carbon::parse($sa->assignment->due_date)->format('D, d M') : 'Assignment Task';
@@ -277,7 +277,7 @@
                                 <li class="p-3 {{ $cardBg }} rounded-2xl border cursor-pointer transition-all" @click="window.location.href='{{ route('student.tasks') }}'">
                                     <div class="flex justify-between items-start">
                                         <span class="font-bold text-gray-900">{{ $sa->assignment?->title ?? 'Homework Task' }}</span>
-                                        <span class="px-2 py-0.5 rounded-md {{ $badgeBg }} font-black text-[10px] uppercase">{{ ucfirst($sa->status ?? 'Pending') }}</span>
+                                        <span class="px-2 py-0.5 rounded-md {{ $badgeBg }} font-black text-[10px] uppercase">{{ $sa->status ? ucfirst($sa->status->value) : 'Pending' }}</span>
                                     </div>
                                     <span class="text-gray-400 text-[11px] block mt-1">{{ $dueText }} • {{ $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'Course') }}</span>
                                 </li>

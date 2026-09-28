@@ -447,7 +447,7 @@
                     </div>
 
                     @if ($latestPayment)
-                        @php $isPaid = $latestPayment->status === 'paid'; @endphp
+                        @php $isPaid = $latestPayment->status === \App\Enums\PaymentStatus::Successful; @endphp
                         <div class="p-4 {{ $isPaid ? 'bg-emerald-50/70 border-emerald-100' : 'bg-amber-50/70 border-amber-100' }} rounded-2xl border flex items-center gap-3 mb-3">
                             <div class="w-10 h-10 rounded-full {{ $isPaid ? 'bg-emerald-500' : 'bg-amber-500' }} text-white flex items-center justify-center shrink-0 shadow-sm">
                                 @if ($isPaid)
@@ -462,7 +462,7 @@
                                 </h4>
                                 <p class="text-[11px] {{ $isPaid ? 'text-emerald-700' : 'text-amber-700' }} font-medium mt-0.5">
                                     RM {{ number_format($latestPayment->amount, 2) }} •
-                                    {{ $latestPayment->paid_at ? $latestPayment->paid_at->format('j M Y') : ucfirst($latestPayment->status) }}
+                                    {{ $latestPayment->paid_at ? $latestPayment->paid_at->format('j M Y') : ucfirst($latestPayment->status->value) }}
                                 </p>
                             </div>
                         </div>

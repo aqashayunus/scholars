@@ -16,8 +16,8 @@
                         <h1 class="text-2xl font-black">RM {{ number_format($payment->amount, 2) }}</h1>
                         <p class="text-gray-300 text-sm mt-1">{{ ucfirst(str_replace('_', ' ', $payment->payment_method ?? '—')) }} · {{ $payment->created_at->format('d M Y H:i') }}</p>
                     </div>
-                    @php $pb = match($payment->status) { 'successful'=>'bg-green-400/20 text-green-300 border-green-400/30','failed'=>'bg-red-400/20 text-red-300 border-red-400/30','cancelled'=>'bg-gray-400/20 text-gray-300 border-gray-400/30',default=>'bg-amber-400/20 text-amber-300 border-amber-400/30' }; @endphp
-                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border {{ $pb }}">{{ ucfirst($payment->status) }}</span>
+                    @php $pb = match($payment->status) { \App\Enums\PaymentStatus::Successful=>'bg-green-400/20 text-green-300 border-green-400/30', \App\Enums\PaymentStatus::Failed=>'bg-red-400/20 text-red-300 border-red-400/30', \App\Enums\PaymentStatus::Cancelled=>'bg-gray-400/20 text-gray-300 border-gray-400/30', default=>'bg-amber-400/20 text-amber-300 border-amber-400/30' }; @endphp
+                    <span class="inline-flex px-3 py-1 rounded-full text-xs font-bold border {{ $pb }}">{{ ucfirst($payment->status->value) }}</span>
                 </div>
             </div>
 
@@ -63,7 +63,7 @@
         </div>
 
         {{-- Approve / Reject Actions --}}
-        @if($payment->status === 'pending')
+        @if($payment->status === \App\Enums\PaymentStatus::Pending)
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {{-- Approve --}}
             <div class="bg-green-50 border border-green-200 rounded-2xl p-6">

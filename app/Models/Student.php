@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StudentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -117,6 +118,7 @@ class Student extends Model
     protected $casts = [
         'last_active_at' => 'datetime',
         'date_of_birth'  => 'date',
+        'status'         => StudentStatus::class,
     ];
 
     public function user()        { return $this->belongsTo(User::class); }

@@ -432,9 +432,9 @@
                     @if(!$sa->assignment) @continue @endif
                     @php
                         $isCatchUp = (bool) ($sa->is_catch_up ?? false);
-                        $isOverdue = !$isCatchUp && $sa->status === 'pending' && $sa->assignment?->due_date && \Carbon\Carbon::parse($sa->assignment->due_date)->isPast();
-                        $displayStatus = $isCatchUp ? 'catch-up' : ($isOverdue ? 'overdue' : ($sa->status === 'submitted' || $sa->status === 'graded' ? 'completed' : $sa->status));
-                        $dueCat = $isCatchUp ? 'catch-up' : ($isOverdue ? 'overdue' : ($sa->status === 'pending' ? 'week' : 'completed'));
+                        $isOverdue = !$isCatchUp && $sa->status === \App\Enums\StudentAssignmentStatus::Pending && $sa->assignment?->due_date && \Carbon\Carbon::parse($sa->assignment->due_date)->isPast();
+                        $displayStatus = $isCatchUp ? 'catch-up' : ($isOverdue ? 'overdue' : ($sa->status === \App\Enums\StudentAssignmentStatus::Submitted || $sa->status === \App\Enums\StudentAssignmentStatus::Graded ? 'completed' : $sa->status->value));
+                        $dueCat = $isCatchUp ? 'catch-up' : ($isOverdue ? 'overdue' : ($sa->status === \App\Enums\StudentAssignmentStatus::Pending ? 'week' : 'completed'));
                         $updatedTs = $sa->assignment?->updated_at?->timestamp 
                             ?? $sa->assignment?->created_at?->timestamp 
                             ?? $sa->updated_at?->timestamp 

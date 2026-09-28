@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
@@ -30,13 +32,13 @@ class BillingController extends Controller
     {
         $stats = [
             'total_invoices'    => Invoice::count(),
-            'issued_invoices'   => Invoice::where('status', Invoice::STATUS_ISSUED)->count(),
-            'paid_invoices'     => Invoice::where('status', Invoice::STATUS_PAID)->count(),
-            'overdue_invoices'  => Invoice::where('status', Invoice::STATUS_OVERDUE)->count(),
-            'partial_invoices'  => Invoice::where('status', Invoice::STATUS_PARTIALLY_PAID)->count(),
-            'outstanding_amount'=> Invoice::whereIn('status', Invoice::UNPAID_STATUSES)->get()->sum('outstanding_amount'),
-            'total_collected'   => Payment::where('status', Payment::STATUS_SUCCESSFUL)->sum('amount'),
-            'pending_payments'  => Payment::where('status', Payment::STATUS_PENDING)->count(),
+            'issued_invoices'   => Invoice::where('status', InvoiceStatus::Issued)->count(),
+            'paid_invoices'     => Invoice::where('status', InvoiceStatus::Paid)->count(),
+            'overdue_invoices'  => Invoice::where('status', InvoiceStatus::Overdue)->count(),
+            'partial_invoices'  => Invoice::where('status', InvoiceStatus::PartiallyPaid)->count(),
+            'outstanding_amount'=> Invoice::whereIn('status', InvoiceStatus::unpaidStatuses())->get()->sum('outstanding_amount'),
+            'total_collected'   => Payment::where('status', PaymentStatus::Successful)->sum('amount'),
+            'pending_payments'  => Payment::where('status', PaymentStatus::Pending)->count(),
         ];
 
         $recentInvoices = Invoice::with(['student.user'])
@@ -45,7 +47,7 @@ class BillingController extends Controller
             ->get();
 
         $pendingPayments = Payment::with(['student.user', 'invoices'])
-            ->where('status', Payment::STATUS_PENDING)
+            ->where('status', PaymentStatus::Pending)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();
@@ -117,7 +119,7 @@ class BillingController extends Controller
                 'amount_paid'    => 0,
                 'issued_date'    => now()->toDateString(),
                 'due_date'       => $request->due_date,
-                'status'         => Invoice::STATUS_ISSUED,
+                'status'         => InvoiceStatus::Issued,
             ]);
 
             foreach ($request->items as $item) {
@@ -149,11 +151,11 @@ class BillingController extends Controller
 
     public function invoiceCancel(Invoice $invoice)
     {
-        if (in_array($invoice->status, [Invoice::STATUS_PAID, Invoice::STATUS_CANCELLED])) {
+        if (in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
             return back()->with('error', 'Cannot cancel a paid or already cancelled invoice.');
         }
 
-        $invoice->update(['status' => Invoice::STATUS_CANCELLED]);
+        $invoice->update(['status' => InvoiceStatus::Cancelled]);
 
         // Skip all pending reminders
         app(\App\Services\ReminderService::class)->skipRemainingReminders($invoice);

@@ -237,7 +237,7 @@ class TimetableController extends Controller
                     'time_str'              => $lc->scheduled_at->format('h:i A'),
                     'duration_minutes'      => $duration,
                     'meeting_url'           => $lc->meeting_url,
-                    'status'                => $lc->status,
+                    'status'                => $lc->status->value,
                     'is_rescheduled'        => (bool) $lc->is_rescheduled,
                     'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
                     'reschedule_reason'     => $lc->reschedule_reason,
@@ -619,7 +619,7 @@ class TimetableController extends Controller
                 'time_str'              => $lc->scheduled_at->format('h:i A'),
                 'duration_minutes'      => $duration,
                 'meeting_url'           => $lc->meeting_url,
-                'status'                => $lc->status, // upcoming, live, completed
+                'status'                => $lc->status->value, // upcoming, live, completed
                 'is_rescheduled'        => (bool) $lc->is_rescheduled,
                 'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
                 'reschedule_reason'     => $lc->reschedule_reason,
@@ -666,7 +666,7 @@ class TimetableController extends Controller
                 'time_str'              => $lc->scheduled_at->format('h:i A'),
                 'duration_minutes'      => $duration,
                 'meeting_url'           => $lc->meeting_url,
-                'status'                => $lc->status,
+                'status'                => $lc->status->value,
                 'is_rescheduled'        => (bool) $lc->is_rescheduled,
                 'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
                 'reschedule_reason'     => $lc->reschedule_reason,

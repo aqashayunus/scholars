@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\InvoiceStatus;
 use App\Models\FeeStructure;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
@@ -85,7 +86,7 @@ class InvoiceService
                         'amount_paid'      => 0.00,
                         'issued_date'      => $issueDate,
                         'due_date'         => $dueDate,
-                        'status'           => Invoice::STATUS_ISSUED,
+                        'status'           => InvoiceStatus::Issued,
                     ]);
 
                     foreach ($pricing->lineItems as $line) {
@@ -134,7 +135,7 @@ class InvoiceService
                         'amount_paid'      => 0.00,
                         'issued_date'      => $issueDate,
                         'due_date'         => $dueDate,
-                        'status'           => Invoice::STATUS_ISSUED,
+                        'status'           => InvoiceStatus::Issued,
                     ]);
 
                     // Line item for the Core Package
@@ -176,7 +177,7 @@ class InvoiceService
                     'amount_paid'     => 0.00,
                     'issued_date'     => $issueDate,
                     'due_date'        => $dueDate,
-                    'status'          => Invoice::STATUS_ISSUED,
+                    'status'          => InvoiceStatus::Issued,
                 ]);
 
                 // Create line items (price-snapshotted from subject.monthly_fee)
@@ -265,7 +266,7 @@ class InvoiceService
                 'amount_paid'      => 0.00,
                 'issued_date'      => $issueDate,
                 'due_date'         => $dueDate,
-                'status'           => Invoice::STATUS_ISSUED,
+                'status'           => InvoiceStatus::Issued,
             ]);
 
             // Create snapshotted line items (immutable historical record)
@@ -330,20 +331,20 @@ class InvoiceService
     public function recalculateAmountPaid(Invoice $invoice): void
     {
         $totalPaid = $invoice->paymentInvoices()
-            ->whereHas('payment', fn ($q) => $q->where('status', \App\Models\Payment::STATUS_SUCCESSFUL))
+            ->whereHas('payment', fn ($q) => $q->where('status', \App\Enums\PaymentStatus::Successful))
             ->sum('amount_applied');
 
         $totalPaid = (float) $totalPaid;
         $totalDue  = (float) $invoice->total_amount;
 
         if ($totalPaid >= $totalDue) {
-            $newStatus = Invoice::STATUS_PAID;
+            $newStatus = InvoiceStatus::Paid;
         } elseif ($totalPaid > 0) {
-            $newStatus = Invoice::STATUS_PARTIALLY_PAID;
+            $newStatus = InvoiceStatus::PartiallyPaid;
         } elseif ($invoice->isPastDue()) {
-            $newStatus = Invoice::STATUS_OVERDUE;
+            $newStatus = InvoiceStatus::Overdue;
         } else {
-            $newStatus = Invoice::STATUS_ISSUED;
+            $newStatus = InvoiceStatus::Issued;
         }
 
         $invoice->update([
@@ -357,7 +358,7 @@ class InvoiceService
         }
 
         // If now fully paid, stop all pending reminders
-        if ($newStatus === Invoice::STATUS_PAID) {
+        if ($newStatus === InvoiceStatus::Paid) {
             app(ReminderService::class)->skipRemainingReminders($invoice);
 
             // Send payment received email
@@ -378,14 +379,14 @@ class InvoiceService
      */
     public function markOverdueInvoices(): int
     {
-        $invoices = Invoice::whereIn('status', [Invoice::STATUS_ISSUED, Invoice::STATUS_PARTIALLY_PAID])
+        $invoices = Invoice::whereIn('status', [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid])
             ->where('due_date', '<', now()->toDateString())
             ->with('student')
             ->get();
 
         $count = 0;
         foreach ($invoices as $inv) {
-            $inv->update(['status' => Invoice::STATUS_OVERDUE]);
+            $inv->update(['status' => InvoiceStatus::Overdue]);
             $count++;
             if ($inv->student) {
                 app(\App\Services\StudentAccessRestrictionService::class)->syncStudentStatus($inv->student);

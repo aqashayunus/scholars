@@ -82,7 +82,8 @@ class DiagnosticTestController extends Controller
             'mcqCount'          => $mcqCount,
             'fillBlankCount'    => $fillBlankCount,
             'timeLimitMinutes'  => $assignment->time_limit_minutes ?: 20,
-            'isCompleted'       => in_array($studentAssignment->status, ['submitted', 'graded', 'completed']),
+            // 'completed' was never a valid StudentAssignment status.
+            'isCompleted'       => in_array($studentAssignment->status, [\App\Enums\StudentAssignmentStatus::Submitted, \App\Enums\StudentAssignmentStatus::Graded], true),
             'answersSummary'    => $studentAssignment->answers_json ?: [],
             'hasSectionB'       => $fillBlankCount > 0,
             'sectionBQuestions' => $fillBlankCount,
