@@ -8,10 +8,10 @@ use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\AdminContentController;
-use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParentDashboardController;
+use App\Http\Controllers\ParentLinkRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TeacherDashboardController;
@@ -33,9 +33,18 @@ Route::get('/blog', [PageController::class, 'blog'])->name('blog');
 Route::get('/blog/{slug}', [PageController::class, 'blogShow'])->name('blog.show');
 Route::get('/faq', [PageController::class, 'faq'])->name('faq');
 Route::get('/free-trial', [PageController::class, 'freeTrial'])->name('free-trial');
-Route::post('/free-trial', [PageController::class, 'submitFreeTrial'])->name('free-trial.submit');
-Route::post('/api/check-registration-availability', [PageController::class, 'checkRegistrationAvailability'])->name('registration.check-availability');
+Route::post('/free-trial', [PageController::class, 'submitFreeTrial'])->name('free-trial.submit')->middleware('throttle:6,1');
+Route::post('/api/check-registration-availability', [PageController::class, 'checkRegistrationAvailability'])->name('registration.check-availability')->middleware('throttle:15,1');
 Route::get('/learning-platform', [PageController::class, 'learningPlatform'])->name('learning-platform');
+
+// Guardian link approval — clicked from an emailed signed URL, no auth required
+// (the signature itself is the authorization). See app/Services/ParentLinkService.php.
+Route::get('/parent-link-requests/{pivot}/approve', [ParentLinkRequestController::class, 'approve'])
+    ->name('parent-link-requests.approve')
+    ->middleware('signed');
+Route::get('/parent-link-requests/{pivot}/deny', [ParentLinkRequestController::class, 'deny'])
+    ->name('parent-link-requests.deny')
+    ->middleware('signed');
 
 // ──────────────────────────────────────────────────
 // ROLE-SPECIFIC REGISTRATION FLOWS
@@ -43,18 +52,18 @@ Route::get('/learning-platform', [PageController::class, 'learningPlatform'])->n
 
 // Student Registration
 Route::get('/register/student', [StudentRegistrationController::class, 'create'])->name('register.student')->middleware('guest');
-Route::post('/register/student', [StudentRegistrationController::class, 'store'])->name('register.student.submit')->middleware('guest');
+Route::post('/register/student', [StudentRegistrationController::class, 'store'])->name('register.student.submit')->middleware(['guest', 'throttle:6,1']);
 Route::get('/register/student/success', [StudentRegistrationController::class, 'success'])->name('register.student.success');
 
 // Parent Registration + IC-based AJAX verification
 Route::get('/register/parent', [ParentRegistrationController::class, 'create'])->name('register.parent')->middleware('guest');
-Route::post('/register/parent', [ParentRegistrationController::class, 'store'])->name('register.parent.submit')->middleware('guest');
-Route::post('/api/verify-student-ic', [ParentRegistrationController::class, 'verifyStudentIc'])->name('register.verify.ic');
+Route::post('/register/parent', [ParentRegistrationController::class, 'store'])->name('register.parent.submit')->middleware(['guest', 'throttle:6,1']);
+Route::post('/api/verify-student-ic', [ParentRegistrationController::class, 'verifyStudentIc'])->name('register.verify.ic')->middleware('throttle:10,1');
 Route::get('/register/parent/success', [ParentRegistrationController::class, 'success'])->name('register.parent.success');
 
 // Teacher Application (Apply to Teach — no password, creates application record only)
 Route::get('/register/teacher', [TeacherApplicationController::class, 'create'])->name('register.teacher')->middleware('guest');
-Route::post('/register/teacher', [TeacherApplicationController::class, 'store'])->name('register.teacher.submit')->middleware('guest');
+Route::post('/register/teacher', [TeacherApplicationController::class, 'store'])->name('register.teacher.submit')->middleware(['guest', 'throttle:6,1']);
 Route::get('/register/teacher/success', [TeacherApplicationController::class, 'success'])->name('register.teacher.success');
 
 // ──────────────────────────────────────────────────
@@ -93,10 +102,13 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
     Route::get('/fees/{invoice}', [InvoiceController::class, 'show'])->name('fees.show');
     Route::post('/fees/{invoice}/proof', [InvoiceController::class, 'uploadProof'])->name('fees.proof');
     Route::post('/fees/pay', [PaymentController::class, 'store'])->name('fees.pay');
-    Route::get('/messages', [MessageController::class, 'studentIndex'])->name('messages');
-    Route::get('/messages/conversation/{userId}', [MessageController::class, 'conversation'])->name('messages.conversation');
-    Route::post('/messages/send', [MessageController::class, 'send'])->name('messages.send');
-    Route::post('/messages/contacts-preview', [MessageController::class, 'contactsPreview'])->name('messages.contacts.preview');
+    // Full-page messenger over the Conversation/ChatMessage stack — DISABLED
+    // per repo owner: product currently focuses solely on the floating
+    // widget (resources/views/components/floating-chatbox.blade.php), which
+    // uses the same chat.* backend and is unaffected. View and backend logic
+    // are intact at resources/views/chat/_full-page-messenger.blade.php and
+    // resources/views/student/messages.blade.php — uncomment to re-enable.
+    // Route::view('/messages', 'student.messages')->name('messages');
     Route::get('/profile', [StudentDashboardController::class, 'profile'])->name('profile');
     Route::patch('/profile', [StudentDashboardController::class, 'updateProfile'])->name('profile.update');
     Route::patch('/profile/password', [StudentDashboardController::class, 'updatePassword'])->name('profile.password');
@@ -112,7 +124,7 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
 Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->group(function () {
     Route::get('/dashboard', [ParentDashboardController::class, 'dashboard'])->name('dashboard');
     Route::post('/children', [ParentDashboardController::class, 'storeChild'])->name('children.store');
-    Route::post('/connect-child', [ParentDashboardController::class, 'connectChild'])->name('children.connect');
+    Route::post('/connect-child', [ParentDashboardController::class, 'connectChild'])->name('children.connect')->middleware('throttle:10,1');
 
     // Query-param style routes (?child_id=X)
     Route::get('/progress', [ParentDashboardController::class, 'progress'])->name('progress');
@@ -183,10 +195,13 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
 
     Route::get('/student-monitoring', [TeacherDashboardController::class, 'monitoring'])->name('monitoring');
     Route::get('/progress', [TeacherDashboardController::class, 'monitoring'])->name('progress');
-    Route::get('/messages', [MessageController::class, 'teacherIndex'])->name('messages');
-    Route::get('/messages/conversation/{userId}', [MessageController::class, 'conversation'])->name('messages.conversation');
-    Route::post('/messages/send', [MessageController::class, 'send'])->name('messages.send');
-    Route::post('/messages/contacts-preview', [MessageController::class, 'contactsPreview'])->name('messages.contacts.preview');
+    // Full-page messenger over the Conversation/ChatMessage stack — DISABLED
+    // per repo owner: product currently focuses solely on the floating
+    // widget (resources/views/components/floating-chatbox.blade.php), which
+    // uses the same chat.* backend and is unaffected. View and backend logic
+    // are intact at resources/views/chat/_full-page-messenger.blade.php and
+    // resources/views/teacher/messages.blade.php — uncomment to re-enable.
+    // Route::view('/messages', 'teacher.messages')->name('messages');
     Route::post('/notifications/read-all', [TeacherDashboardController::class, 'readAllNotifications'])->name('notifications.readAll');
 
     // Gig routes
@@ -364,7 +379,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         // payment record so payments.amount reflects what was actually approved.
         if (in_array($request->status, ['paid', 'partially_paid'])) {
             $pendingPayment = $invoice->paymentTransactions()
-                ->where('payments.status', \App\Models\Payment::STATUS_PENDING)
+                ->where('payments.status', \App\Enums\PaymentStatus::Pending)
                 ->first();
 
             if ($pendingPayment) {
@@ -378,7 +393,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
                     if (!$pendingPayment->receipt_number) {
                         $pendingPayment->receipt_number = \App\Models\Payment::generateReceiptNumber();
                     }
-                    $pendingPayment->status      = \App\Models\Payment::STATUS_SUCCESSFUL;
+                    $pendingPayment->status      = \App\Enums\PaymentStatus::Successful;
                     $pendingPayment->verified_by = auth()->id();
                     $pendingPayment->paid_at     = now();
                 }
@@ -442,7 +457,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
             'amount_paid'      => 0,
             'issued_date'      => now()->toDateString(),
             'due_date'         => $request->due_date,
-            'status'           => \App\Models\Invoice::STATUS_ISSUED,
+            'status'           => \App\Enums\InvoiceStatus::Issued,
         ]);
 
         \App\Models\InvoiceItem::create([
@@ -490,7 +505,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
                 'description'         => "Payment for Invoice #{$invoice->invoice_number}",
                 'amount'              => $amount,
                 'payment_method'      => $request->payment_method,
-                'status'              => \App\Models\Payment::STATUS_SUCCESSFUL,
+                'status'              => \App\Enums\PaymentStatus::Successful,
                 'receipt_number'      => $receiptNumber,
                 'verified_by'         => $admin->id,
                 'paid_at'             => now(),
@@ -507,8 +522,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         });
 
         $invoice->refresh();
-        $typeLabel = $invoice->status === \App\Models\Invoice::STATUS_PAID ? 'full' : 'partial';
-        $isPartial = $invoice->status !== \App\Models\Invoice::STATUS_PAID;
+        $typeLabel = $invoice->status === \App\Enums\InvoiceStatus::Paid ? 'full' : 'partial';
+        $isPartial = $invoice->status !== \App\Enums\InvoiceStatus::Paid;
 
         // In-app alert for student & parent
         \App\Services\BillingNotificationService::notifyPaymentRecorded($invoice, $amount, $receiptNumber, $isPartial);
@@ -644,9 +659,6 @@ Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
     // Attachments
     Route::post('/conversations/{conversation}/attachments', [ChatController::class, 'uploadAttachment'])->name('conversations.attachments');
     Route::get('/attachments/{attachment}/download', [ChatController::class, 'downloadAttachment'])->name('attachment.download');
-
-    // Read receipts (blue tick)
-    Route::post('/conversations/{conversation}/read', [ChatController::class, 'markRead'])->name('conversations.read');
 
     // Typing indicators
     Route::post('/conversations/{conversation}/typing', [ChatController::class, 'setTyping'])->name('conversations.typing');

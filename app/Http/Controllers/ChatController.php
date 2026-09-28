@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EnrollmentStatus;
 use App\Models\ChatAuditLog;
 use App\Models\ChatMessage;
 use App\Models\ChatMessageAttachment;
@@ -131,12 +132,12 @@ class ChatController extends Controller
             $directory = $directory->concat($admins);
         }
 
-        // Student: Enrolled course teachers
+        // Student: Enrolled course teachers, and their own active parent/guardian(s)
         if ($me->isStudent()) {
             $student = $me->studentProfile;
             if ($student) {
                 $teachers = Enrollment::where('student_id', $student->id)
-                    ->whereIn('status', ['enrolled', 'active', 'completed'])
+                    ->whereIn('status', [EnrollmentStatus::Enrolled, EnrollmentStatus::Active, EnrollmentStatus::Completed])
                     ->with('course.teacher.user', 'course')
                     ->get()
                     ->map(function ($e) {
@@ -154,6 +155,15 @@ class ChatController extends Controller
                     })->filter();
 
                 $directory = $directory->concat($teachers);
+
+                $parents = $this->activeGuardiansOf($student)->map(fn($parent) => [
+                    'contact_id'       => $parent->id,
+                    'contact_name'     => $parent->name,
+                    'contact_role'     => 'parent',
+                    'contact_initials' => $this->initials($parent->name),
+                    'context_label'    => 'Parent / Guardian',
+                ]);
+                $directory = $directory->concat($parents);
             }
         }
 
@@ -195,10 +205,20 @@ class ChatController extends Controller
             }
         }
 
-        // Parent: Teachers of linked children
+        // Parent: Teachers of linked children, and the children themselves
         if ($me->isParent()) {
-            $children = $me->studentChildren()->with(['enrollments.course.teacher.user', 'enrollments.course', 'user'])->get();
+            $children = $this->activeChildrenOf($me)->load(['enrollments.course.teacher.user', 'enrollments.course', 'user']);
             foreach ($children as $child) {
+                if ($child->user) {
+                    $directory->push([
+                        'contact_id'       => $child->user->id,
+                        'contact_name'     => $child->user->name,
+                        'contact_role'     => 'student',
+                        'contact_initials' => $this->initials($child->user->name),
+                        'context_label'    => 'Your Child',
+                    ]);
+                }
+
                 foreach ($child->enrollments as $e) {
                     $teacherUser = $e->course?->teacher?->user;
                     if ($teacherUser) {
@@ -575,26 +595,6 @@ class ChatController extends Controller
             ->pluck('users.name');
 
         return response()->json(['typing' => $typing]);
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // 10. MARK AS READ
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public function markRead(int $conversationId): JsonResponse
-    {
-        $me   = auth()->id();
-        $conv = Conversation::findOrFail($conversationId);
-        abort_unless($conv->hasParticipant($me), 403);
-
-        $lastMsg = $conv->messages()->latest('id')->first();
-        if ($lastMsg) {
-            ConversationParticipant::where('conversation_id', $conversationId)
-                ->where('user_id', $me)
-                ->update(['last_read_message_id' => $lastMsg->id, 'last_read_at' => now()]);
-        }
-
-        return response()->json(['ok' => true]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1050,19 +1050,57 @@ class ChatController extends Controller
                 if (!$enrolled) return 'You can only message teachers of your enrolled courses.';
                 return null;
             }
-            return 'Students can only message enrolled teachers or admin.';
+            if ($contact->isParent()) {
+                if (!$this->isActiveGuardianOf($contact->id, $me->studentProfile?->id)) {
+                    return 'You can only message your own parent/guardian.';
+                }
+                return null;
+            }
+            return 'Students can only message enrolled teachers, admin, or their own parent/guardian.';
         }
 
         if ($me->isTeacher()) {
             if ($contact->isAdmin()) return null;
-            if ($contact->isStudent() || $contact->isParent()) return null;
-            return 'Teachers can only message students, parents, or admin.';
+            if ($contact->isStudent()) {
+                $teaches = $contact->studentProfile?->enrollments()
+                    ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                    ->exists();
+                if (!$teaches) return 'You can only message students enrolled in your courses.';
+                return null;
+            }
+            if ($contact->isParent()) {
+                // A parent is contactable by a teacher only if that parent has
+                // at least one active child enrolled in one of this teacher's
+                // courses — mirrors the student-side enrollment whitelist so a
+                // teacher can't message every parent in the system, only the
+                // families they actually teach.
+                $teachesTheirChild = $contact->studentChildren()
+                    ->wherePivot('status', 'active')
+                    ->get()
+                    ->contains(fn($student) => $student->enrollments()
+                        ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                        ->exists())
+                    || $contact->children()
+                        ->get()
+                        ->contains(fn($student) => $student->enrollments()
+                            ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                            ->exists());
+                if (!$teachesTheirChild) return 'You can only message parents of students enrolled in your courses.';
+                return null;
+            }
+            return 'Teachers can only message enrolled students, their parents, or admin.';
         }
 
         if ($me->isParent()) {
             if ($contact->isAdmin()) return null;
             if ($contact->isTeacher()) return null;
-            return 'Parents can only message teachers or admin.';
+            if ($contact->isStudent()) {
+                if (!$this->isActiveGuardianOf($me->id, $contact->studentProfile?->id)) {
+                    return 'You can only message your own children.';
+                }
+                return null;
+            }
+            return 'Parents can only message teachers, admin, or their own children.';
         }
 
         if ($me->isAdmin()) {
@@ -1070,6 +1108,53 @@ class ChatController extends Controller
         }
 
         return 'Unauthorized to contact this user.';
+    }
+
+    /**
+     * Whether $parentUserId is an ACTIVE guardian of $studentId — checks both
+     * the legacy Student::parent_user_id column and an active parent_student
+     * pivot row. Deliberately excludes 'pending'/'denied' pivot rows (see
+     * App\Services\ParentLinkService): a guardian link request that hasn't
+     * been approved yet must not grant chat access to the child.
+     */
+    private function isActiveGuardianOf(int $parentUserId, ?int $studentId): bool
+    {
+        if (!$studentId) return false;
+
+        $student = \App\Models\Student::find($studentId);
+        if (!$student) return false;
+
+        if ($student->parent_user_id === $parentUserId) return true;
+
+        return \Illuminate\Support\Facades\DB::table('parent_student')
+            ->where('parent_user_id', $parentUserId)
+            ->where('student_id', $studentId)
+            ->where('status', 'active')
+            ->exists();
+    }
+
+    /**
+     * All ACTIVE children of a parent (legacy column + active pivot,
+     * deduplicated), for surfacing in the chat directory.
+     */
+    private function activeChildrenOf(User $parent): \Illuminate\Support\Collection
+    {
+        $legacy = $parent->children()->get();
+        $pivot  = $parent->studentChildren()->wherePivot('status', 'active')->get();
+
+        return $legacy->concat($pivot)->unique('id')->values();
+    }
+
+    /**
+     * All ACTIVE guardians of a student (legacy column + active pivot,
+     * deduplicated), for surfacing in the chat directory.
+     */
+    private function activeGuardiansOf(\App\Models\Student $student): \Illuminate\Support\Collection
+    {
+        $legacy = $student->parent_user_id ? User::where('id', $student->parent_user_id)->get() : collect();
+        $pivot  = $student->parents()->wherePivot('status', 'active')->get();
+
+        return $legacy->concat($pivot)->unique('id')->values();
     }
 
     private function auditLog(int $viewerId, int $childId, ?int $conversationId, string $action): void
