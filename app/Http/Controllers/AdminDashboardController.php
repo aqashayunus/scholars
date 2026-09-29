@@ -28,10 +28,15 @@ use App\Models\Assignment;
 use App\Models\StudentAssignment;
 use App\Models\FeeStructure;
 use App\Services\Admin\CertificateService;
+use App\Services\Admin\CurriculumService;
 use App\Services\Admin\GigService;
 use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\StoreCertificateRequest;
+use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
+use App\Http\Requests\Admin\UpdateCourseRequest;
+use App\Http\Requests\Admin\UpdateSubtopicRequest;
+use App\Http\Requests\Admin\UpdateTopicRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -634,113 +639,26 @@ class AdminDashboardController extends Controller
 
     // ── COURSE CRUD ───────────────────────────────────────────────────────────
 
-    public function storeCourse(Request $request)
+    public function storeCourse(StoreCourseRequest $request, CurriculumService $curriculum)
     {
-        $validated = $request->validate([
-            'title'        => 'required|string|max:255',
-            'subject_id'   => 'required|exists:subjects,id',
-            'teacher_id'   => 'nullable|exists:teachers,id',
-            'level'        => 'required|string|max:50',
-            'monthly_fee'  => 'required|numeric|min:0',
-            'status'       => 'required|in:published,draft,archived',
-            'total_lessons'=> 'nullable|integer|min:1',
-            'description'  => 'nullable|string',
-        ]);
-
-        $monthlyFee = $validated['monthly_fee'];
-        unset($validated['monthly_fee']);
-
-        if (empty($validated['teacher_id'])) {
-            $subject = \App\Models\Subject::find($validated['subject_id']);
-            $validated['teacher_id'] = $subject?->teachers?->first()?->id ?? \App\Models\Teacher::first()?->id ?? null;
-        }
-
-        $course = Course::create($validated);
-
-        // Write fee to the subject — this is the authoritative billing source
-        \App\Models\Subject::where('id', $course->subject_id)->update(['monthly_fee' => $monthlyFee]);
-
-        try {
-            if ($course->teacher_id) {
-                $teacher = Teacher::find($course->teacher_id);
-                if ($teacher?->user_id) {
-                    \App\Models\UserNotification::create([
-                        'user_id' => $teacher->user_id,
-                        'type'    => 'course',
-                        'title'   => 'NEW COURSE ASSIGNED',
-                        'message' => "The course '{$course->title}' ({$course->level}) has been assigned to your educator profile.",
-                        'read_at' => null,
-                    ]);
-                }
-            }
-        } catch (\Throwable $e) {}
+        [$course, $monthlyFee] = $curriculum->createCourse($request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-catalog')
             ->with('success', "Course '{$course->title}' created. Subject fee set to " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($monthlyFee, 2) . "/month.");
     }
 
-    public function updateCourse(Request $request, $id)
+    public function updateCourse(UpdateCourseRequest $request, $id, CurriculumService $curriculum)
     {
         $course = Course::findOrFail($id);
-
-        $validated = $request->validate([
-            'title'        => 'required|string|max:255',
-            'subject_id'   => 'required|exists:subjects,id',
-            'teacher_id'   => 'nullable|exists:teachers,id',
-            'level'        => 'required|string|max:50',
-            'monthly_fee'  => 'required|numeric|min:0',
-            'status'       => 'required|in:published,draft,archived',
-            'total_lessons'=> 'nullable|integer|min:1',
-            'description'  => 'nullable|string',
-        ]);
-
-        $monthlyFee = $validated['monthly_fee'];
-        unset($validated['monthly_fee']);
-
-        if (!isset($validated['teacher_id']) || $validated['teacher_id'] === null) {
-            unset($validated['teacher_id']);
-        }
-
-        $course->update($validated);
-
-        // Write fee to the subject — this is the authoritative billing source
-        \App\Models\Subject::where('id', $course->subject_id)->update(['monthly_fee' => $monthlyFee]);
-
-        try {
-            if ($course->teacher_id) {
-                $teacher = Teacher::find($course->teacher_id);
-                if ($teacher?->user_id) {
-                    \App\Models\UserNotification::create([
-                        'user_id' => $teacher->user_id,
-                        'type'    => 'course',
-                        'title'   => 'COURSE DETAILS UPDATED',
-                        'message' => "Details for course '{$course->title}' have been updated.",
-                        'read_at' => null,
-                    ]);
-                }
-            }
-            foreach ($course->enrollments as $enrollment) {
-                if ($enrollment->student?->user_id) {
-                    \App\Models\UserNotification::create([
-                        'user_id' => $enrollment->student->user_id,
-                        'type'    => 'course',
-                        'title'   => 'COURSE DETAILS UPDATED',
-                        'message' => "Details for your enrolled course '{$course->title}' have been updated.",
-                        'read_at' => null,
-                    ]);
-                }
-            }
-        } catch (\Throwable $e) {}
+        [$course, $monthlyFee] = $curriculum->updateCourse($course, $request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-catalog')
             ->with('success', "Course '{$course->title}' updated. Subject fee: " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($monthlyFee, 2) . "/month.");
     }
 
-    public function destroyCourse($id)
+    public function destroyCourse($id, CurriculumService $curriculum)
     {
-        $course = Course::findOrFail($id);
-        $title = $course->title;
-        $course->delete();
+        $title = $curriculum->deleteCourse($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-catalog')
             ->with('success', "Course '{$title}' removed from catalog.");
@@ -748,126 +666,33 @@ class AdminDashboardController extends Controller
 
     // ── SUBJECT CRUD ─────────────────────────────────────────────────────────
 
-    public function storeSubject(Request $request)
+    public function storeSubject(Request $request, CurriculumService $curriculum)
     {
-        // Support bulk/multiple subjects in a single form
-        if ($request->has('subjects') && is_array($request->subjects)) {
-            $createdCount = 0;
-            DB::transaction(function () use ($request, &$createdCount) {
-                $maxOrder = Subject::max('order') ?? 0;
-                foreach ($request->subjects as $item) {
-                    if (empty($item['name'])) continue;
-                    
-                    $educationType = $item['education_type'] ?? 'secondary';
-                    $stage = $item['stage'] ?? ($educationType === 'primary' ? 'Primary' : 'Upper Secondary');
-                    $formYear = $item['form_year'] ?? ($educationType === 'primary' ? 'Year 4' : 'Form 4');
-                    $category = $item['category'] ?? 'Core';
+        $result = $curriculum->storeSubject($request);
 
-                    $slugBase = !empty($item['slug']) ? $item['slug'] : ($item['name'] . ' ' . $formYear);
-                    $slug = \Illuminate\Support\Str::slug($slugBase);
-                    $originalSlug = $slug;
-                    $counter = 1;
-                    while (Subject::where('slug', $slug)->exists()) {
-                        $slug = $originalSlug . '-' . $counter++;
-                    }
-
-                    Subject::create([
-                        'name'           => $item['name'],
-                        'slug'           => $slug,
-                        'code'           => !empty($item['code']) ? $item['code'] : 'KPM-' . strtoupper(\Illuminate\Support\Str::random(6)),
-                        'education_type' => $educationType,
-                        'stage'          => $stage,
-                        'form_year'      => $formYear,
-                        'category'       => $category,
-                        'stream_package' => $item['stream_package'] ?? null,
-                        'level'          => $item['level'] ?? ($educationType === 'primary' ? 'Primary' : 'SPM'),
-                        'color'          => $item['color'] ?? '#3b82f6',
-                        'icon'           => $item['icon'] ?? 'academic-cap',
-                        'description'    => $item['description'] ?? null,
-                        'order'          => !empty($item['order']) ? (int)$item['order'] : (++$maxOrder),
-                        'is_active'      => isset($item['is_active']) ? (bool)$item['is_active'] : true,
-                    ]);
-                    $createdCount++;
-                }
-            });
-
+        if ($result['bulk']) {
             return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-                ->with('success', "{$createdCount} KPM curriculum subject(s) created successfully.");
+                ->with('success', "{$result['count']} KPM curriculum subject(s) created successfully.");
         }
 
-        // Fallback for single subject
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'slug'           => 'nullable|string|max:255',
-            'code'           => 'nullable|string|max:50',
-            'education_type' => 'required|in:primary,secondary',
-            'stage'          => 'required|string|max:50',
-            'form_year'      => 'required|string|max:50',
-            'category'       => 'required|string|max:50',
-            'stream_package' => 'nullable|string|max:50',
-            'description'    => 'nullable|string',
-            'level'          => 'required|string|max:50',
-            'color'          => 'required|string|max:20',
-            'icon'           => 'nullable|string|max:50',
-            'order'          => 'nullable|integer',
-        ]);
-
-        if (empty($validated['slug'])) {
-            $validated['slug'] = \Illuminate\Support\Str::slug($validated['name'] . ' ' . $validated['form_year']);
-        }
-        $originalSlug = $validated['slug'];
-        $counter = 1;
-        while (Subject::where('slug', $validated['slug'])->exists()) {
-            $validated['slug'] = $originalSlug . '-' . $counter++;
-        }
-
-        if (empty($validated['code'])) {
-            $validated['code'] = 'KPM-' . strtoupper(\Illuminate\Support\Str::random(6));
-        }
-
-        $maxOrder = Subject::max('order') ?? 0;
-        $validated['order'] = !empty($validated['order']) ? (int)$validated['order'] : ($maxOrder + 1);
-        $validated['is_active'] = $request->has('is_active') ? 1 : 0;
-
-        $subject = Subject::create($validated);
+        $subject = $result['subject'];
 
         return redirect()->to(route('admin.dashboard') . '#courses-subjects')
             ->with('success', "Subject '{$subject->name}' ({$subject->code}) created successfully.");
     }
 
-    public function updateSubject(Request $request, $id)
+    public function updateSubject(Request $request, $id, CurriculumService $curriculum)
     {
         $subject = Subject::findOrFail($id);
-
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'slug'           => 'required|string|max:255|unique:subjects,slug,' . $subject->id,
-            'code'           => 'nullable|string|max:50',
-            'education_type' => 'required|in:kindergarten,primary,secondary',
-            'stage'          => 'required|string|max:50',
-            'form_year'      => 'required|string|max:50',
-            'category'       => 'required|string|max:50',
-            'stream_package' => 'nullable|string|max:50',
-            'description'    => 'nullable|string',
-            'level'          => 'required|string|max:50',
-            'color'          => 'required|string|max:20',
-            'icon'           => 'nullable|string|max:50',
-            'order'          => 'nullable|integer',
-        ]);
-
-        $validated['is_active'] = $request->has('is_active') ? 1 : 0;
-
-        $subject->update($validated);
+        $subject = $curriculum->updateSubject($subject, $request);
 
         return redirect()->to(route('admin.dashboard') . '#courses-subjects')
             ->with('success', "Subject '{$subject->name}' updated successfully.");
     }
 
-    public function destroySubject($id)
+    public function destroySubject($id, CurriculumService $curriculum)
     {
-        $subject = Subject::findOrFail($id);
-        $name = $subject->name;
-        $subject->delete();
+        $name = $curriculum->deleteSubject($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-subjects')
             ->with('success', "Subject '{$name}' deleted successfully.");
@@ -875,155 +700,71 @@ class AdminDashboardController extends Controller
 
     // ── TOPIC & SUBTOPIC CRUD (CURRICULUM SYLLABUS BUILDER) ───────────────────
 
-    public function storeTopic(Request $request)
+    public function storeTopic(Request $request, CurriculumService $curriculum)
     {
-        $subjectId = $request->input('subject_id');
-        if (!$subjectId || !Subject::where('id', $subjectId)->exists()) {
+        $result = $curriculum->storeTopic($request);
+
+        if (isset($result['error'])) {
             return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('error', 'Please select a valid subject.');
+                ->with('error', $result['error']);
         }
 
-        // Support bulk/multiple topics in a single form
-        if ($request->has('topics') && is_array($request->topics)) {
-            $createdCount = 0;
-            DB::transaction(function () use ($request, $subjectId, &$createdCount) {
-                $maxChapter = SubjectTopic::where('subject_id', $subjectId)->max('chapter_number') ?? 0;
-                
-                foreach ($request->topics as $item) {
-                    if (empty($item['title'])) continue;
-
-                    $chNumber = !empty($item['chapter_number']) ? (int)$item['chapter_number'] : (++$maxChapter);
-                    if ($chNumber > $maxChapter) {
-                        $maxChapter = $chNumber;
-                    }
-
-                    SubjectTopic::create([
-                        'subject_id'     => $subjectId,
-                        'chapter_number' => $chNumber,
-                        'title'          => $item['title'],
-                        'description'    => $item['description'] ?? null,
-                    ]);
-                    $createdCount++;
-                }
-            });
-
+        if ($result['bulk']) {
             return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('success', "{$createdCount} curriculum topic(s) added successfully.");
+                ->with('success', "{$result['count']} curriculum topic(s) added successfully.");
         }
 
-        // Fallback for single topic
-        $validated = $request->validate([
-            'subject_id'     => 'required|exists:subjects,id',
-            'chapter_number' => 'nullable|integer|min:1',
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
-        ]);
-
-        if (empty($validated['chapter_number'])) {
-            $validated['chapter_number'] = (SubjectTopic::where('subject_id', $validated['subject_id'])->max('chapter_number') ?? 0) + 1;
-        }
-
-        $topic = SubjectTopic::create($validated);
+        $topic = $result['topic'];
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Curriculum Topic 'Chapter {$topic->chapter_number}: {$topic->title}' added successfully.");
     }
 
-    public function updateTopic(Request $request, $id)
+    public function updateTopic(UpdateTopicRequest $request, $id, CurriculumService $curriculum)
     {
         $topic = SubjectTopic::findOrFail($id);
-
-        $validated = $request->validate([
-            'subject_id'     => 'required|exists:subjects,id',
-            'chapter_number' => 'required|integer|min:1',
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
-        ]);
-
-        $topic->update($validated);
+        $topic = $curriculum->updateTopic($topic, $request);
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Curriculum Topic '{$topic->title}' updated successfully.");
     }
 
-    public function destroyTopic($id)
+    public function destroyTopic($id, CurriculumService $curriculum)
     {
-        $topic = SubjectTopic::findOrFail($id);
-        $title = $topic->title;
-        $topic->delete();
+        $title = $curriculum->deleteTopic($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Curriculum Topic '{$title}' and its subtopics deleted successfully.");
     }
 
-    public function storeSubtopic(Request $request, $topicId)
+    public function storeSubtopic(Request $request, $topicId, CurriculumService $curriculum)
     {
-        $topic = SubjectTopic::findOrFail($topicId);
+        $result = $curriculum->storeSubtopic($topicId, $request);
+        $topic = $result['topic'];
 
-        // Support bulk/multiple subtopics in a single form
-        if ($request->has('subtopics') && is_array($request->subtopics)) {
-            $createdCount = 0;
-            DB::transaction(function () use ($request, $topic, &$createdCount) {
-                $maxOrder = $topic->subtopics()->max('order') ?? 0;
-
-                foreach ($request->subtopics as $item) {
-                    if (empty($item['title'])) continue;
-
-                    $order = !empty($item['order']) ? (int)$item['order'] : (++$maxOrder);
-                    if ($order > $maxOrder) {
-                        $maxOrder = $order;
-                    }
-
-                    $topic->subtopics()->create([
-                        'title'          => $item['title'],
-                        'default_status' => $item['default_status'] ?? 'Not Started',
-                        'order'          => $order,
-                    ]);
-                    $createdCount++;
-                }
-            });
-
+        if ($result['bulk']) {
             return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('success', "{$createdCount} checkpoint(s) added under '{$topic->title}'.");
+                ->with('success', "{$result['count']} checkpoint(s) added under '{$topic->title}'.");
         }
 
-        // Fallback for single subtopic
-        $validated = $request->validate([
-            'title'          => 'required|string|max:255',
-            'default_status' => 'required|in:Mastered,In Progress,Needs Practice,Not Started',
-            'order'          => 'nullable|integer|min:1',
-        ]);
-
-        $maxOrder = $topic->subtopics()->max('order') ?: 0;
-        $validated['order'] = $validated['order'] ?? ($maxOrder + 1);
-
-        $subtopic = $topic->subtopics()->create($validated);
+        $subtopic = $result['subtopic'];
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Subtopic '{$subtopic->title}' added under {$topic->title}.");
     }
 
-    public function updateSubtopic(Request $request, $id)
+    public function updateSubtopic(UpdateSubtopicRequest $request, $id, CurriculumService $curriculum)
     {
         $subtopic = SubjectSubtopic::findOrFail($id);
-
-        $validated = $request->validate([
-            'title'          => 'required|string|max:255',
-            'default_status' => 'required|in:Mastered,In Progress,Needs Practice,Not Started',
-            'order'          => 'required|integer|min:1',
-        ]);
-
-        $subtopic->update($validated);
+        $subtopic = $curriculum->updateSubtopic($subtopic, $request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Subtopic '{$subtopic->title}' updated successfully.");
     }
 
-    public function destroySubtopic($id)
+    public function destroySubtopic($id, CurriculumService $curriculum)
     {
-        $subtopic = SubjectSubtopic::findOrFail($id);
-        $title = $subtopic->title;
-        $subtopic->delete();
+        $title = $curriculum->deleteSubtopic($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-topics')
             ->with('success', "Subtopic '{$title}' deleted successfully.");
