@@ -28,13 +28,18 @@ use App\Models\Assignment;
 use App\Models\StudentAssignment;
 use App\Models\FeeStructure;
 use App\Services\Admin\CertificateService;
+use App\Services\Admin\ClassSchedulingService;
 use App\Services\Admin\CurriculumService;
 use App\Services\Admin\GigService;
 use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\StoreCertificateRequest;
 use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
+use App\Http\Requests\Admin\StoreLiveClassRequest;
+use App\Http\Requests\Admin\StoreRecordedClassRequest;
 use App\Http\Requests\Admin\UpdateCourseRequest;
+use App\Http\Requests\Admin\UpdateLiveClassRequest;
+use App\Http\Requests\Admin\UpdateRecordedClassRequest;
 use App\Http\Requests\Admin\UpdateSubtopicRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
 use Illuminate\Http\Request;
@@ -772,161 +777,26 @@ class AdminDashboardController extends Controller
 
     // ── LIVE CLASS CRUD ──────────────────────────────────────────────────────
 
-    public function storeLiveClass(Request $request)
+    public function storeLiveClass(StoreLiveClassRequest $request, ClassSchedulingService $scheduling)
     {
-        $validated = $request->validate([
-            'course_id'        => 'required|exists:courses,id',
-            'teacher_id'       => 'nullable|exists:teachers,id',
-            'education_level'  => 'nullable|string|max:100',
-            'target_age'       => 'nullable|string|max:100',
-            'topic'            => 'required|string|max:255',
-            'subtopic'         => 'nullable|string|max:255',
-            'title'            => 'required|string|max:255',
-            'scheduled_at'     => 'required|date',
-            'duration_minutes' => 'required|integer|min:5|max:480',
-            'meeting_url'      => 'nullable|url|max:255',
-        ]);
-
-        if (empty($validated['teacher_id'])) {
-            $courseObj = Course::find($validated['course_id']);
-            if ($courseObj && $courseObj->teacher_id) {
-                $validated['teacher_id'] = $courseObj->teacher_id;
-            }
-        }
-
-        if (empty($validated['target_age']) && !empty($validated['education_level'])) {
-            $validated['target_age'] = $validated['education_level'];
-        } elseif (empty($validated['education_level']) && !empty($validated['target_age'])) {
-            $validated['education_level'] = $validated['target_age'];
-        }
-
-        $validated['duration_minutes'] = (int) ($validated['duration_minutes'] ?? 60);
-        $start = \Carbon\Carbon::parse($validated['scheduled_at']);
-        $end   = (clone $start)->addMinutes($validated['duration_minutes']);
-        $now   = now();
-        if ($now->lt($start)) {
-            $validated['status'] = 'upcoming';
-        } elseif ($now->between($start, $end)) {
-            $validated['status'] = 'live';
-        } else {
-            $validated['status'] = 'completed';
-        }
-
-        $liveClass = LiveClass::create($validated);
-
-        try {
-            $course = $liveClass->course;
-            $teacher = $liveClass->teacher ?? $course?->teacher;
-            if ($course) {
-                $timeStr = \Carbon\Carbon::parse($liveClass->scheduled_at)->format('d M Y, h:i A');
-                if ($teacher?->user_id) {
-                    \App\Models\UserNotification::create([
-                        'user_id' => $teacher->user_id,
-                        'type'    => 'live_class',
-                        'title'   => 'LIVE CLASS SCHEDULED',
-                        'message' => "A live session '{$liveClass->title}' for {$course->title} has been scheduled for {$timeStr}.",
-                        'read_at' => null,
-                    ]);
-                }
-                foreach ($course->enrollments as $enrollment) {
-                    if ($enrollment->student?->user_id) {
-                        \App\Models\UserNotification::create([
-                            'user_id' => $enrollment->student->user_id,
-                            'type'    => 'live_class',
-                            'title'   => 'NEW LIVE CLASS SCHEDULED',
-                            'message' => "A new live session '{$liveClass->title}' for {$course->title} is scheduled for {$timeStr}.",
-                            'read_at' => null,
-                        ]);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {}
+        $liveClass = $scheduling->createLiveClass($request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-live')
             ->with('success', "Live Class '{$liveClass->title}' scheduled successfully.");
     }
 
-    public function updateLiveClass(Request $request, $id)
+    public function updateLiveClass(UpdateLiveClassRequest $request, $id, ClassSchedulingService $scheduling)
     {
         $liveClass = LiveClass::findOrFail($id);
-
-        $validated = $request->validate([
-            'course_id'        => 'required|exists:courses,id',
-            'teacher_id'       => 'nullable|exists:teachers,id',
-            'education_level'  => 'nullable|string|max:100',
-            'target_age'       => 'nullable|string|max:100',
-            'topic'            => 'required|string|max:255',
-            'subtopic'         => 'nullable|string|max:255',
-            'title'            => 'required|string|max:255',
-            'scheduled_at'     => 'required|date',
-            'duration_minutes' => 'required|integer|min:5|max:480',
-            'meeting_url'      => 'nullable|url|max:255',
-        ]);
-
-        if (empty($validated['teacher_id'])) {
-            $courseObj = Course::find($validated['course_id']);
-            if ($courseObj && $courseObj->teacher_id) {
-                $validated['teacher_id'] = $courseObj->teacher_id;
-            }
-        }
-
-        if (empty($validated['target_age']) && !empty($validated['education_level'])) {
-            $validated['target_age'] = $validated['education_level'];
-        } elseif (empty($validated['education_level']) && !empty($validated['target_age'])) {
-            $validated['education_level'] = $validated['target_age'];
-        }
-
-        $validated['duration_minutes'] = (int) ($validated['duration_minutes'] ?? 60);
-        $start = \Carbon\Carbon::parse($validated['scheduled_at']);
-        $end   = (clone $start)->addMinutes($validated['duration_minutes']);
-        $now   = now();
-        if ($now->lt($start)) {
-            $validated['status'] = 'upcoming';
-        } elseif ($now->between($start, $end)) {
-            $validated['status'] = 'live';
-        } else {
-            $validated['status'] = 'completed';
-        }
-
-        $liveClass->update($validated);
-
-        try {
-            $course = $liveClass->course;
-            $teacher = $liveClass->teacher ?? $course?->teacher;
-            if ($course) {
-                $timeStr = \Carbon\Carbon::parse($liveClass->scheduled_at)->format('d M Y, h:i A');
-                if ($teacher?->user_id) {
-                    \App\Models\UserNotification::create([
-                        'user_id' => $teacher->user_id,
-                        'type'    => 'live_class',
-                        'title'   => 'LIVE CLASS UPDATED',
-                        'message' => "The live session '{$liveClass->title}' for {$course->title} has been updated ({$timeStr}).",
-                        'read_at' => null,
-                    ]);
-                }
-                foreach ($course->enrollments as $enrollment) {
-                    if ($enrollment->student?->user_id) {
-                        \App\Models\UserNotification::create([
-                            'user_id' => $enrollment->student->user_id,
-                            'type'    => 'live_class',
-                            'title'   => 'LIVE CLASS UPDATED',
-                            'message' => "The live session '{$liveClass->title}' for {$course->title} has been updated. Scheduled: {$timeStr}.",
-                            'read_at' => null,
-                        ]);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {}
+        $liveClass = $scheduling->updateLiveClass($liveClass, $request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-live')
             ->with('success', "Live Class '{$liveClass->title}' updated successfully.");
     }
 
-    public function destroyLiveClass($id)
+    public function destroyLiveClass($id, ClassSchedulingService $scheduling)
     {
-        $liveClass = LiveClass::findOrFail($id);
-        $title = $liveClass->title;
-        $liveClass->delete();
+        $title = $scheduling->deleteLiveClass($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-live')
             ->with('success', "Live Class '{$title}' removed.");
@@ -934,71 +804,26 @@ class AdminDashboardController extends Controller
 
     // ── RECORDED CLASS CRUD ──────────────────────────────────────────────────
 
-    public function storeRecordedClass(Request $request)
+    public function storeRecordedClass(StoreRecordedClassRequest $request, ClassSchedulingService $scheduling)
     {
-        $validated = $request->validate([
-            'course_id'        => 'nullable|exists:courses,id',
-            'subject_id'       => 'nullable|exists:subjects,id',
-            'title'            => 'required|string|max:255',
-            'topic_name'       => 'required|string|max:255',
-            'video_url'        => 'required|url|max:255',
-            'thumbnail'        => 'nullable|string|max:255',
-            'duration_minutes' => 'required|integer|min:1|max:480',
-            'views_count'      => 'nullable|integer|min:0',
-            'summary'          => 'nullable|string',
-        ]);
-
-        $validated['views_count'] = $validated['views_count'] ?? 0;
-
-        $recordedClass = RecordedClass::create($validated);
-
-        try {
-            if ($recordedClass->course) {
-                foreach ($recordedClass->course->enrollments as $enrollment) {
-                    if ($enrollment->student?->user_id) {
-                        \App\Models\UserNotification::create([
-                            'user_id' => $enrollment->student->user_id,
-                            'type'    => 'course',
-                            'title'   => 'NEW RECORDED LESSON AVAILABLE',
-                            'message' => "A new recorded lesson '{$recordedClass->title}' ({$recordedClass->topic_name}) is now available in your course library.",
-                            'read_at' => null,
-                        ]);
-                    }
-                }
-            }
-        } catch (\Throwable $e) {}
+        $recordedClass = $scheduling->createRecordedClass($request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' added to vault.");
     }
 
-    public function updateRecordedClass(Request $request, $id)
+    public function updateRecordedClass(UpdateRecordedClassRequest $request, $id, ClassSchedulingService $scheduling)
     {
         $recordedClass = RecordedClass::findOrFail($id);
-
-        $validated = $request->validate([
-            'course_id'        => 'nullable|exists:courses,id',
-            'subject_id'       => 'nullable|exists:subjects,id',
-            'title'            => 'required|string|max:255',
-            'topic_name'       => 'required|string|max:255',
-            'video_url'        => 'required|url|max:255',
-            'thumbnail'        => 'nullable|string|max:255',
-            'duration_minutes' => 'required|integer|min:1|max:480',
-            'views_count'      => 'nullable|integer|min:0',
-            'summary'          => 'nullable|string',
-        ]);
-
-        $recordedClass->update($validated);
+        $recordedClass = $scheduling->updateRecordedClass($recordedClass, $request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' updated successfully.");
     }
 
-    public function destroyRecordedClass($id)
+    public function destroyRecordedClass($id, ClassSchedulingService $scheduling)
     {
-        $recordedClass = RecordedClass::findOrFail($id);
-        $title = $recordedClass->title;
-        $recordedClass->delete();
+        $title = $scheduling->deleteRecordedClass($id);
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$title}' deleted.");
