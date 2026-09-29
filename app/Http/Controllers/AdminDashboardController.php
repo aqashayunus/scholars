@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InvoiceStatus;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LiveClass;
@@ -21,12 +20,12 @@ use App\Models\User;
 use App\Models\AcademicEvent;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
-use App\Models\InvoiceReminder;
 use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\Assignment;
 use App\Models\FeeStructure;
 use App\Services\Admin\AssignmentQuizService;
+use App\Services\Admin\BillingAdminService;
 use App\Services\Admin\CertificateService;
 use App\Services\Admin\ClassSchedulingService;
 use App\Services\Admin\CurriculumService;
@@ -52,7 +51,6 @@ use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -460,73 +458,14 @@ class AdminDashboardController extends Controller
 
     // ── CSV EXPORTS ───────────────────────────────────────────────────────────
 
-    public function exportPaymentsCsv(): StreamedResponse
+    public function exportPaymentsCsv(BillingAdminService $billing): StreamedResponse
     {
-        $payments = Payment::with(['user', 'course'])->latest('id')->get();
-        $symbol = Setting::get('currency_symbol', 'RM');
-        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))) . '_payments_' . date('Y-m-d_His') . '.csv';
-
-        $headers = [
-            'Content-type'        => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
-        ];
-
-        return response()->stream(function () use ($payments, $symbol) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Invoice ID', 'Payer Name', 'Payer Email', 'Course Item', 'Payment Method', "Amount ({$symbol})", 'Status', 'Payment Date']);
-
-            foreach ($payments as $pay) {
-                fputcsv($handle, [
-                    'INV-' . str_pad($pay->id, 5, '0', STR_PAD_LEFT),
-                    $pay->user->name ?? 'User #' . $pay->user_id,
-                    $pay->user->email ?? 'N/A',
-                    $pay->course->title ?? $pay->description ?? 'Tuition Fee',
-                    $pay->payment_method ?? 'FPX Online',
-                    number_format($pay->amount, 2, '.', ''),
-                    strtoupper($pay->status?->value ?? 'PAID'),
-                    $pay->paid_at ? $pay->paid_at->format('Y-m-d H:i') : ($pay->created_at ? $pay->created_at->format('Y-m-d H:i') : 'N/A'),
-                ]);
-            }
-
-            fclose($handle);
-        }, 200, $headers);
+        return $billing->exportPaymentsCsv();
     }
 
-    public function exportEnrollmentsCsv(): StreamedResponse
+    public function exportEnrollmentsCsv(BillingAdminService $billing): StreamedResponse
     {
-        $enrollments = Enrollment::with(['student.user', 'course.subject', 'course.teacher.user'])->latest('id')->get();
-        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))) . '_enrollments_' . date('Y-m-d_His') . '.csv';
-
-        $headers = [
-            'Content-type'        => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
-        ];
-
-        return response()->stream(function () use ($enrollments) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Enrollment ID', 'Student Name', 'Student Email', 'Course Title', 'Subject', 'Teacher Name', 'Progress (%)', 'Enrolled Date']);
-
-            foreach ($enrollments as $enr) {
-                fputcsv($handle, [
-                    'ENR-' . str_pad($enr->id, 5, '0', STR_PAD_LEFT),
-                    $enr->student?->user?->name ?? 'Student #' . $enr->student_id,
-                    $enr->student?->user?->email ?? 'N/A',
-                    $enr->course->title ?? 'Course #' . $enr->course_id,
-                    $enr->course->subject->name ?? 'General',
-                    $enr->course->teacher->user->name ?? 'Staff',
-                    $enr->progress_pct ?? 0,
-                    $enr->enrolled_at ? $enr->enrolled_at->format('Y-m-d H:i') : ($enr->created_at ? $enr->created_at->format('Y-m-d H:i') : 'N/A'),
-                ]);
-            }
-
-            fclose($handle);
-        }, 200, $headers);
+        return $billing->exportEnrollmentsCsv();
     }
 
     // ── SETTINGS & PLATFORM CONFIG ────────────────────────────────────────────
@@ -700,84 +639,25 @@ class AdminDashboardController extends Controller
 
     // ── FINANCIAL & FEE MANAGEMENT CRUD ─────────────────────────────────────────
 
-    public function storeFeeStructure(Request $request)
+    public function storeFeeStructure(Request $request, BillingAdminService $billing)
     {
-        $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'amount'          => 'required|numeric|min:0',
-            'education_level' => 'required|string|max:100',
-            'frequency'       => 'required|in:monthly,term,one_time,yearly',
-            'is_active'       => 'nullable',
-            'student_id'      => 'nullable|exists:students,id',
-        ]);
-
-        $validated['is_active'] = $request->boolean('is_active', true);
-        if (empty($validated['student_id'])) {
-            $validated['student_id'] = null;
-        }
-
-        $fee = \App\Models\FeeStructure::create($validated);
-
-        \App\Models\FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'package_created',
-            'target_type' => 'FeeStructure',
-            'ip_address'  => $request->ip(),
-            'details'     => "Created fee structure '{$fee->name}' at RM {$fee->amount}" . ($fee->student_id ? " (Targeted to student #{$fee->student_id})" : ""),
-        ]);
+        $fee = $billing->createFeeStructure($request);
 
         return back()->with('success', "Fee structure '{$fee->name}' created successfully!");
     }
 
-    public function updateFeeStructure(Request $request, $id)
+    public function updateFeeStructure(Request $request, $id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::findOrFail($id);
-        $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'amount'          => 'required|numeric|min:0',
-            'education_level' => 'required|string|max:100',
-            'frequency'       => 'required|in:monthly,term,one_time,yearly',
-            'is_active'       => 'nullable',
-            'student_id'      => 'nullable|exists:students,id',
-            // Package engine fields
-            'package_type'     => 'nullable|in:individual,fixed_bundle,pick_n,tiered,custom',
-            'minimum_subjects' => 'nullable|integer|min:1|max:20',
-            'maximum_subjects' => 'nullable|integer|min:1|max:20|gte:minimum_subjects',
-            'effective_from'   => 'nullable|date',
-            'effective_until'  => 'nullable|date|after_or_equal:effective_from',
-            'status'           => 'nullable|in:draft,active,inactive,archived',
-        ]);
-
-        $validated['is_active']  = $request->boolean('is_active', true);
-        $validated['student_id'] = $request->filled('student_id') ? $validated['student_id'] : null;
-
-        $oldValues = $fee->only(['name', 'amount', 'package_type', 'status']);
-        $fee->update($validated);
-
-        \App\Models\FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'package_updated',
-            'target_type' => 'FeeStructure',
-            'target_id'   => $fee->id,
-            'ip_address'  => $request->ip(),
-            'details'     => json_encode([
-                'old' => $oldValues,
-                'new' => $fee->only(['name', 'amount', 'package_type', 'status']),
-            ]),
-        ]);
+        $fee = FeeStructure::findOrFail($id);
+        $fee = $billing->updateFeeStructure($fee, $request);
 
         return back()->with('success', "Fee structure '{$fee->name}' updated successfully.");
     }
 
-    public function destroyFeeStructure($id)
+    public function destroyFeeStructure($id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::findOrFail($id);
-        $name = $fee->name;
-        // Soft delete (SoftDeletes trait on FeeStructure)
-        // Invoice references (fee_structure_id) remain intact for history
-        $fee->delete();
+        $name = $billing->deleteFeeStructure($id);
+
         return back()->with('success', "Fee structure '{$name}' removed.");
     }
 
@@ -786,37 +666,10 @@ class AdminDashboardController extends Controller
     /**
      * Replace all subject associations for a fee structure package.
      */
-    public function updateFeeStructureSubjects(Request $request, $id)
+    public function updateFeeStructureSubjects(Request $request, $id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::findOrFail($id);
-
-        $validated = $request->validate([
-            'subjects'                  => 'nullable|array',
-            'subjects.*.subject_id'     => 'required|exists:subjects,id',
-            'subjects.*.is_required'    => 'required|boolean',
-            'subjects.*.sort_order'     => 'nullable|integer|min:0',
-        ]);
-
-        DB::transaction(function () use ($fee, $validated, $request) {
-            // Sync subjects using the pivot table
-            $syncData = [];
-            foreach ($validated['subjects'] ?? [] as $idx => $sub) {
-                $syncData[$sub['subject_id']] = [
-                    'is_required' => (bool) $sub['is_required'],
-                    'sort_order'  => (int) ($sub['sort_order'] ?? $idx),
-                ];
-            }
-            $fee->subjects()->sync($syncData);
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'subject_sync',
-                'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['subject_ids' => array_keys($syncData)]),
-            ]);
-        });
+        $fee = FeeStructure::findOrFail($id);
+        $billing->syncFeeStructureSubjects($fee, $request);
 
         return response()->json(['success' => true, 'message' => 'Subjects updated for "' . $fee->name . '".']);
     }
@@ -824,49 +677,10 @@ class AdminDashboardController extends Controller
     /**
      * Replace all billing components (items) for a fee structure.
      */
-    public function updateFeeStructureItems(Request $request, $id)
+    public function updateFeeStructureItems(Request $request, $id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::findOrFail($id);
-
-        $validated = $request->validate([
-            'items'                      => 'nullable|array',
-            'items.*.name'               => 'required|string|max:255',
-            'items.*.description'        => 'nullable|string',
-            'items.*.item_type'          => 'required|in:registration,tuition,material,resource,assessment,deposit,other',
-            'items.*.amount'             => 'required|numeric|min:0',
-            'items.*.quantity'           => 'nullable|integer|min:1',
-            'items.*.billing_frequency'  => 'required|in:one_time,monthly,term,annual',
-            'items.*.is_optional'        => 'nullable|boolean',
-            'items.*.is_refundable'      => 'nullable|boolean',
-            'items.*.sort_order'         => 'nullable|integer|min:0',
-        ]);
-
-        DB::transaction(function () use ($fee, $validated, $request) {
-            $fee->items()->delete();
-
-            foreach ($validated['items'] ?? [] as $idx => $item) {
-                $fee->items()->create([
-                    'name'              => $item['name'],
-                    'description'       => $item['description'] ?? null,
-                    'item_type'         => $item['item_type'],
-                    'amount'            => $item['amount'],
-                    'quantity'          => $item['quantity'] ?? 1,
-                    'billing_frequency' => $item['billing_frequency'],
-                    'is_optional'       => $item['is_optional'] ?? false,
-                    'is_refundable'     => $item['is_refundable'] ?? false,
-                    'sort_order'        => $item['sort_order'] ?? $idx,
-                ]);
-            }
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'billing_component_sync',
-                'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['items_count' => count($validated['items'] ?? [])]),
-            ]);
-        });
+        $fee = FeeStructure::findOrFail($id);
+        $billing->syncFeeStructureItems($fee, $request);
 
         return response()->json(['success' => true, 'message' => 'Billing components updated.']);
     }
@@ -874,42 +688,10 @@ class AdminDashboardController extends Controller
     /**
      * Replace all pricing tiers for a tiered fee structure.
      */
-    public function updateFeeStructureTiers(Request $request, $id)
+    public function updateFeeStructureTiers(Request $request, $id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::findOrFail($id);
-
-        $validated = $request->validate([
-            'tiers'                       => 'required|array|min:1',
-            'tiers.*.minimum_subjects'    => 'required|integer|min:1',
-            'tiers.*.maximum_subjects'    => 'required|integer|min:1|gte:tiers.*.minimum_subjects',
-            'tiers.*.price'               => 'required|numeric|min:0',
-            'tiers.*.sort_order'          => 'nullable|integer|min:0',
-        ]);
-
-        // Validate non-overlapping tiers
-        app(\App\Services\PackagePricingService::class)->validateTiers($validated['tiers']);
-
-        DB::transaction(function () use ($fee, $validated, $request) {
-            $fee->priceTiers()->delete();
-
-            foreach ($validated['tiers'] as $idx => $tier) {
-                $fee->priceTiers()->create([
-                    'minimum_subjects' => $tier['minimum_subjects'],
-                    'maximum_subjects' => $tier['maximum_subjects'],
-                    'price'            => $tier['price'],
-                    'sort_order'       => $tier['sort_order'] ?? $idx,
-                ]);
-            }
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'pricing_changed',
-                'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['tiers' => $validated['tiers']]),
-            ]);
-        });
+        $fee = FeeStructure::findOrFail($id);
+        $billing->syncFeeStructureTiers($fee, $request);
 
         return response()->json(['success' => true, 'message' => 'Pricing tiers updated.']);
     }
@@ -918,51 +700,10 @@ class AdminDashboardController extends Controller
      * Duplicate an existing fee structure (copy config, subjects, items, tiers).
      * Does NOT copy enrollments, invoices, or payments.
      */
-    public function duplicateFeeStructure(Request $request, $id)
+    public function duplicateFeeStructure(Request $request, $id, BillingAdminService $billing)
     {
-        $original = \App\Models\FeeStructure::with(['subjects', 'items', 'priceTiers'])->findOrFail($id);
-
-        $new = DB::transaction(function () use ($original, $request) {
-            $new = $original->replicate(['student_id', 'parent_fee_structure_id', 'version', 'deleted_at']);
-            $new->name      = 'Copy of ' . $original->name;
-            $new->status    = \App\Models\FeeStructure::STATUS_DRAFT;
-            $new->is_active = false;
-            $new->version   = 1;
-            $new->parent_fee_structure_id = null;
-            $new->save();
-
-            // Copy subject associations
-            foreach ($original->subjects as $subject) {
-                $new->subjects()->attach($subject->id, [
-                    'is_required' => $subject->pivot->is_required,
-                    'sort_order'  => $subject->pivot->sort_order,
-                ]);
-            }
-
-            // Copy billing items
-            foreach ($original->items as $item) {
-                $new->items()->create($item->only([
-                    'name', 'description', 'item_type', 'amount',
-                    'quantity', 'billing_frequency', 'is_optional', 'is_refundable', 'sort_order',
-                ]));
-            }
-
-            // Copy price tiers
-            foreach ($original->priceTiers as $tier) {
-                $new->priceTiers()->create($tier->only(['minimum_subjects', 'maximum_subjects', 'price', 'sort_order']));
-            }
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'package_duplicated',
-                'target_type' => 'FeeStructure',
-                'target_id'   => $new->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['original_id' => $original->id, 'original_name' => $original->name]),
-            ]);
-
-            return $new;
-        });
+        $original = FeeStructure::findOrFail($id);
+        $new = $billing->duplicateFeeStructure($id, $request);
 
         return back()->with('success', "Package duplicated as \"Copy of {$original->name}\" (Draft). Edit it before activating.");
     }
@@ -971,71 +712,10 @@ class AdminDashboardController extends Controller
      * Create a new version of an existing fee structure.
      * Existing students remain on the old version.
      */
-    public function createFeeStructureVersion(Request $request, $id)
+    public function createFeeStructureVersion(Request $request, $id, BillingAdminService $billing)
     {
-        $original = \App\Models\FeeStructure::with(['subjects', 'items', 'priceTiers'])->findOrFail($id);
-
-        $validated = $request->validate([
-            'amount'          => 'nullable|numeric|min:0',
-            'effective_from'  => 'nullable|date',
-            'effective_until' => 'nullable|date|after_or_equal:effective_from',
-            'notes'           => 'nullable|string|max:500',
-        ]);
-
-        $newVersion = DB::transaction(function () use ($original, $validated, $request) {
-            // Deactivate the original
-            $original->update(['status' => \App\Models\FeeStructure::STATUS_INACTIVE]);
-
-            // Create new version
-            $new = $original->replicate(['deleted_at', 'version']);
-            $new->version = $original->version + 1;
-            $new->name    = $original->name . ' v' . $new->version;
-            $new->parent_fee_structure_id = $original->parent_fee_structure_id ?? $original->id;
-            $new->status    = \App\Models\FeeStructure::STATUS_DRAFT;
-            $new->is_active = false;
-
-            if (isset($validated['amount']))          $new->amount         = $validated['amount'];
-            if (isset($validated['effective_from']))  $new->effective_from = $validated['effective_from'];
-            if (isset($validated['effective_until'])) $new->effective_until = $validated['effective_until'];
-
-            $new->save();
-
-            // Copy subject associations
-            foreach ($original->subjects as $subject) {
-                $new->subjects()->attach($subject->id, [
-                    'is_required' => $subject->pivot->is_required,
-                    'sort_order'  => $subject->pivot->sort_order,
-                ]);
-            }
-
-            // Copy billing items
-            foreach ($original->items as $item) {
-                $new->items()->create($item->only([
-                    'name', 'description', 'item_type', 'amount',
-                    'quantity', 'billing_frequency', 'is_optional', 'is_refundable', 'sort_order',
-                ]));
-            }
-
-            // Copy price tiers
-            foreach ($original->priceTiers as $tier) {
-                $new->priceTiers()->create($tier->only(['minimum_subjects', 'maximum_subjects', 'price', 'sort_order']));
-            }
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'package_version_created',
-                'target_type' => 'FeeStructure',
-                'target_id'   => $new->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode([
-                    'original_id'  => $original->id,
-                    'new_version'  => $new->version,
-                    'notes'        => $validated['notes'] ?? null,
-                ]),
-            ]);
-
-            return $new;
-        });
+        $original = FeeStructure::findOrFail($id);
+        $newVersion = $billing->createFeeStructureVersion($id, $request);
 
         return back()->with('success', "Version {$newVersion->version} of \"{$original->name}\" created as Draft. Activate it when ready.");
     }
@@ -1043,20 +723,9 @@ class AdminDashboardController extends Controller
     /**
      * API: Get subjects for a fee structure (for JS live preview in registration).
      */
-    public function apiFeeStructureSubjects($id)
+    public function apiFeeStructureSubjects($id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::with('subjects')->findOrFail($id);
-        return response()->json([
-            'package_type'     => $fee->package_type ?? 'individual',
-            'minimum_subjects' => $fee->minimum_subjects,
-            'maximum_subjects' => $fee->maximum_subjects,
-            'subjects'         => $fee->subjects->map(fn ($s) => [
-                'id'          => $s->id,
-                'name'        => $s->name,
-                'is_required' => (bool) $s->pivot->is_required,
-                'monthly_fee' => (float) ($s->monthly_fee ?? 0),
-            ]),
-        ]);
+        return response()->json($billing->feeStructureSubjectsForApi($id));
     }
 
     /**
@@ -1064,208 +733,23 @@ class AdminDashboardController extends Controller
      * Used by the registration form's live price preview.
      * NOTE: This is for UX only — server always recalculates on final submit.
      */
-    public function apiFeeStructurePreview(Request $request, $id)
+    public function apiFeeStructurePreview(Request $request, $id, BillingAdminService $billing)
     {
-        $fee = \App\Models\FeeStructure::with(['subjects', 'items', 'priceTiers'])->findOrFail($id);
+        $result = $billing->previewFeeStructurePricing($id, $request);
 
-        if (!$fee->is_available) {
-            return response()->json(['error' => 'Package is not available.'], 422);
-        }
-
-        $subjectIds = array_map('intval', array_filter((array) $request->query('subject_ids', [])));
-
-        try {
-            $pricing = app(\App\Services\PackagePricingService::class)->calculate($fee, $subjectIds);
-            return response()->json($pricing->toArray());
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
-        }
+        return response()->json($result['pricing'] ?? ['error' => $result['error']], $result['status']);
     }
 
-    public function storeInvoice(Request $request)
+    public function updateFinanceSettings(Request $request, BillingAdminService $billing)
     {
-        $validated = $request->validate([
-            'student_id'       => 'required|exists:students,id',
-            'fee_structure_id' => 'nullable|exists:fee_structures,id',
-            'title'            => 'required|string|max:255',
-            'description'      => 'nullable|string',
-            'subtotal'         => 'required|numeric|min:0',
-            'discount_amount'  => 'nullable|numeric|min:0',
-            'due_date'         => 'required|date',
-        ]);
-
-        $discount = (float) ($validated['discount_amount'] ?? 0);
-        $subtotal = (float) $validated['subtotal'];
-        $total    = max(0, $subtotal - $discount);
-
-        $invNumber = 'INV-' . date('Y') . '-' . strtoupper(substr(md5(uniqid()), 0, 6));
-
-        $invoice = \App\Models\Invoice::create([
-            'student_id'       => $validated['student_id'],
-            'fee_structure_id' => $validated['fee_structure_id'] ?? null,
-            'invoice_number'   => $invNumber,
-            'title'            => $validated['title'],
-            'description'      => $validated['description'] ?? null,
-            'subtotal'         => $subtotal,
-            'discount_amount'  => $discount,
-            'total_amount'     => $total,
-            'due_date'         => $validated['due_date'],
-            'status'           => 'outstanding',
-        ]);
-
-        $student = \App\Models\Student::find($validated['student_id']);
-        
-        // In-app notifications for both student and parents without mentioning admin
-        \App\Services\BillingNotificationService::notifyInvoiceIssued($invoice);
-
-        \App\Models\FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'issue_invoice',
-            'target_type' => 'Invoice',
-            'target_id'   => $invoice->id,
-            'ip_address'  => $request->ip(),
-            'details'     => "Issued invoice #{$invNumber} of RM {$total} to Student #" . ($student?->id ?? 'unknown'),
-        ]);
-
-        return back()->with('success', "Invoice #{$invNumber} issued to student successfully!");
-    }
-
-    public function updateInvoiceStatus(Request $request, $id)
-    {
-        // NOTE: unreachable — not registered in routes/web.php. The live
-        // equivalent is the '/invoices/{id}/status' closure in that file.
-        // Fixed anyway while touching it: this validation list previously
-        // included the phantom values 'outstanding'/'pending_verification'
-        // (never valid Invoice statuses) while excluding the real
-        // 'draft'/'issued'/'partially_paid' — same fix as the live closure.
-        $invoice = \App\Models\Invoice::findOrFail($id);
-        $oldStatus = $invoice->status;
-        $status = $request->validate(['status' => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled'])['status'];
-
-        $invoice->update(['status' => $status]);
-
-        \App\Services\BillingNotificationService::notifyInvoiceStatusUpdated($invoice, $oldStatus);
-
-        return back()->with('success', "Invoice #{$invoice->invoice_number} status updated to {$status}.");
-    }
-
-    public function verifyPayment(Request $request, $id)
-    {
-        $payment = \App\Models\Payment::findOrFail($id);
-        $action = $request->validate(['action' => 'required|in:approve,reject'])['action'];
-
-        if ($action === 'approve') {
-            $receiptNo = 'RCP-' . date('Y') . '-' . str_pad($payment->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
-            $payment->update([
-                // 'paid' is not a valid Payment status (payments.status enum is
-                // pending/successful/failed/cancelled — 'paid' is Invoice's
-                // vocabulary). This was throwing a DB error under strict SQL
-                // mode on every approval before this fix.
-                'status'         => \App\Enums\PaymentStatus::Successful,
-                'receipt_number' => $receiptNo,
-                'verified_by'    => auth()->id(),
-                'paid_at'        => $payment->paid_at ?? now(),
-            ]);
-
-            if ($payment->invoice_id) {
-                $payment->invoice->update(['status' => InvoiceStatus::Paid]);
-            }
-
-            // In-app alert for payer, student, and parents without mentioning admin
-            \App\Services\BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), true);
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'approve_payment',
-                'target_type' => 'Payment',
-                'target_id'   => $payment->id,
-                'ip_address'  => $request->ip(),
-                'details'     => "Approved payment #{$payment->reference_no} of RM {$payment->amount}. Generated Receipt #{$receiptNo}",
-            ]);
-
-            return back()->with('success', "Payment #{$payment->reference_no} approved and marked as Paid!");
-        } else {
-            $reason = $request->input('reason', 'Payment details could not be verified');
-            $payment->update([
-                // 'rejected' is not a valid Payment status either — same class
-                // of bug as the approve branch above.
-                'status'      => \App\Enums\PaymentStatus::Failed,
-                'verified_by' => auth()->id(),
-            ]);
-
-            if ($payment->invoice_id) {
-                // 'outstanding' has never been a valid Invoice status (see the
-                // two other dead 'outstanding' whereIn() sites fixed earlier in
-                // this same Phase 3 pass) — the invoice reverts to awaiting
-                // payment, i.e. 'issued'.
-                $payment->invoice->update(['status' => InvoiceStatus::Issued]);
-            }
-
-            // In-app alert for payer, student, and parents without mentioning admin
-            \App\Services\BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), false, $reason);
-
-            \App\Models\FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'reject_payment',
-                'target_type' => 'Payment',
-                'target_id'   => $payment->id,
-                'ip_address'  => $request->ip(),
-                'details'     => "Rejected bank transfer payment #{$payment->reference_no}",
-            ]);
-
-            return back()->with('success', "Payment rejected. Invoice returned to outstanding.");
-        }
-    }
-
-    public function updateFinanceSettings(Request $request)
-    {
-        $validated = $request->validate([
-            'company_bank_name'           => 'required|string|max:255',
-            'company_bank_account_name'   => 'required|string|max:255',
-            'company_bank_account_number' => 'required|string|max:255',
-            'company_bank_instructions'   => 'nullable|string',
-            'gateway_provider'            => 'required|string|max:100',
-            'gateway_merchant_id'         => 'nullable|string|max:255',
-            'gateway_sandbox_mode'        => 'nullable|boolean',
-        ]);
-
-        \App\Models\Setting::set('company_bank_name', $validated['company_bank_name'], 'finance', 'Company Bank Name');
-        \App\Models\Setting::set('company_bank_account_name', $validated['company_bank_account_name'], 'finance', 'Company Account Name');
-        \App\Models\Setting::set('company_bank_account_number', $validated['company_bank_account_number'], 'finance', 'Company Account Number');
-        \App\Models\Setting::set('company_bank_instructions', $validated['company_bank_instructions'] ?? '', 'finance', 'Transfer Instructions');
-        \App\Models\Setting::set('gateway_provider', $validated['gateway_provider'], 'finance', 'Gateway Provider');
-        if (!empty($validated['gateway_merchant_id'])) {
-            \App\Models\Setting::set('gateway_merchant_id', $validated['gateway_merchant_id'], 'finance', 'Gateway Merchant ID');
-        }
-        \App\Models\Setting::set('gateway_sandbox_mode', $request->has('gateway_sandbox_mode') ? '1' : '0', 'finance', 'Gateway Sandbox Mode');
-
-        \App\Models\FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_settings',
-            'target_type' => 'FinanceSettings',
-            'ip_address'  => $request->ip(),
-            'details'     => "Updated company banking & payment gateway settings.",
-        ]);
+        $billing->updateFinanceSettings($request);
 
         return back()->with('success', 'Finance and payment settings updated successfully.');
     }
 
-    public function revealGatewayCredentials(Request $request)
+    public function revealGatewayCredentials(Request $request, BillingAdminService $billing)
     {
-        \App\Models\FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'view_credentials',
-            'target_type' => 'GatewayCredentials',
-            'ip_address'  => $request->ip(),
-            'details'     => "Admin revealed sensitive payment gateway credentials.",
-        ]);
-
-        return response()->json([
-            'success'     => true,
-            'merchant_id' => \App\Models\Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
-            'api_key'     => 'sk_live_' . md5('osc_live_secret_key_prod'),
-            'provider'    => \App\Models\Setting::get('gateway_provider', 'mock_fpx'),
-        ]);
+        return response()->json($billing->revealGatewayCredentials($request));
     }
 
     public function clearSystemCache()
@@ -1280,175 +764,43 @@ class AdminDashboardController extends Controller
 
     // ── INVOICE CRUD (Admin) ──────────────────────────────────────────────────
 
-    public function updateInvoice(Request $request, $id)
+    public function updateInvoice(Request $request, $id, BillingAdminService $billing)
     {
         $invoice = Invoice::findOrFail($id);
-        $oldDueDate = $invoice->due_date ? $invoice->due_date->toDateString() : null;
-
-        $validated = $request->validate([
-            'title'          => 'required|string|max:255',
-            'billing_period' => 'nullable|string|max:100',
-            'due_date'       => 'required|date',
-            'notes'          => 'nullable|string|max:1000',
-        ]);
-
-        $dueDateChanged = $oldDueDate !== Carbon::parse($validated['due_date'])->toDateString();
-        
-        if (isset($validated['notes']) && !\Illuminate\Support\Facades\Schema::hasColumn('invoices', 'notes')) {
-            $validated['description'] = $validated['notes'];
-            unset($validated['notes']);
-        }
-
-        $invoice->update($validated);
-
-        if ($dueDateChanged) {
-            $this->syncInvoiceDueDateChange($invoice, 'Updated via invoice editor', $oldDueDate);
-        } else {
-            // Alert student & parents of invoice modifications
-            \App\Services\BillingNotificationService::notifyInvoiceUpdated($invoice);
-        }
+        $invoice = $billing->updateInvoice($invoice, $request);
 
         return redirect()->to(route('admin.dashboard') . '#financials')
             ->with('success', "Invoice {$invoice->invoice_number} updated successfully.");
     }
 
-    public function updateInvoiceDueDate(Request $request, $id)
+    public function updateInvoiceDueDate(Request $request, $id, BillingAdminService $billing)
     {
         $invoice = Invoice::findOrFail($id);
-        $oldDueDate = $invoice->due_date ? $invoice->due_date->toDateString() : null;
-
-        $validated = $request->validate([
-            'due_date' => 'required|date',
-            'reason'   => 'nullable|string|max:255',
-        ]);
-
-        $invoice->due_date = $validated['due_date'];
-        $invoice->save();
-
-        $this->syncInvoiceDueDateChange($invoice, $validated['reason'] ?? null, $oldDueDate);
+        $result = $billing->updateInvoiceDueDate($invoice, $request);
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Due date for invoice {$invoice->invoice_number} updated to " . $invoice->due_date->format('d M Y') . ".",
-                'invoice' => $invoice->fresh(),
+                'message' => $result['message'],
+                'invoice' => $result['invoice'],
             ]);
         }
 
         return redirect()->to(route('admin.dashboard') . '#financials')
-            ->with('success', "Due date for invoice {$invoice->invoice_number} updated to " . $invoice->due_date->format('d M Y') . ".");
+            ->with('success', $result['message']);
     }
 
-    public function updateDefaultDueDays(Request $request)
+    public function updateDefaultDueDays(Request $request, BillingAdminService $billing)
     {
-        $validated = $request->validate([
-            'invoice_due_days'             => 'required|integer|min:1|max:180',
-            'bundle_elective_discount_pct' => 'nullable|numeric|min:0|max:100',
-        ]);
-
-        Setting::set('billing.invoice_due_days', (string)$validated['invoice_due_days'], 'billing', 'Invoice Due Days (after issue date)');
-        if (isset($validated['bundle_elective_discount_pct'])) {
-            Setting::set('billing.bundle_elective_discount_pct', (string)$validated['bundle_elective_discount_pct'], 'billing', 'Bundle Elective Add-on Discount (%)');
-        }
-        Setting::clearCache();
-
-        FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_default_due_days',
-            'target_type' => 'Setting',
-            'ip_address'  => $request->ip(),
-            'details'     => "Updated default invoice payment due timeline to {$validated['invoice_due_days']} days (bundle elective discount: " . ($validated['bundle_elective_discount_pct'] ?? '0') . "%).",
-        ]);
+        $billing->updateDefaultDueDays($request);
 
         return redirect()->to(route('admin.dashboard') . '#financials')
             ->with('success', "Billing policies updated successfully.");
     }
 
-    /**
-     * Reconcile status, reminders, and student access restriction when an invoice due date changes.
-     */
-    protected function syncInvoiceDueDateChange(Invoice $invoice, ?string $reason = null, ?string $oldDueDate = null)
+    public function destroyInvoice($id, BillingAdminService $billing)
     {
-        $newDueDate = Carbon::parse($invoice->due_date)->startOfDay();
-        $today = now()->startOfDay();
-
-        // 1. Reconcile status if invoice is active (not fully paid and not cancelled)
-        if (!in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
-            if ($newDueDate->lt($today)) {
-                $invoice->status = InvoiceStatus::Overdue;
-            } else {
-                // If it was overdue, lift overdue back to partially_paid or issued
-                if ((float)$invoice->amount_paid > 0) {
-                    $invoice->status = InvoiceStatus::PartiallyPaid;
-                } else {
-                    $invoice->status = InvoiceStatus::Issued;
-                }
-            }
-            $invoice->save();
-        }
-
-        // 2. Sync student access restriction immediately
-        if ($invoice->student) {
-            app(\App\Services\StudentAccessRestrictionService::class)->syncStudentStatus($invoice->student);
-        }
-
-        // 3. Reschedule pending email reminders to match new due date
-        InvoiceReminder::where('invoice_id', $invoice->id)->where('status', 'pending')->delete();
-        if ($invoice->student && in_array($invoice->status, InvoiceStatus::unpaidStatuses())) {
-            app(\App\Services\InvoiceService::class)->scheduleReminders($invoice, $invoice->student);
-        }
-
-        // 4. Record Financial Audit Log
-        $newDueDateStr = $invoice->due_date ? $invoice->due_date->format('d M Y') : $newDueDate->toDateString();
-        $oldDueDateStr = $oldDueDate ? Carbon::parse($oldDueDate)->format('d M Y') : 'N/A';
-
-        FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_invoice_due_date',
-            'target_type' => 'Invoice',
-            'target_id'   => $invoice->id,
-            'ip_address'  => request()->ip(),
-            'details'     => "Updated due date for invoice #{$invoice->invoice_number} from {$oldDueDateStr} to {$newDueDateStr}." .
-                             ($reason ? " Reason: {$reason}" : ""),
-        ]);
-
-        // 5. Notify Users (Student & Parents) without mentioning admin
-        \App\Services\BillingNotificationService::notifyInvoiceDueDateUpdated($invoice, $reason, $oldDueDateStr);
-    }
-
-    public function destroyInvoice($id)
-    {
-        $invoice = \App\Models\Invoice::findOrFail($id);
-        $number  = $invoice->invoice_number;
-
-        // 1. Collect linked payment IDs BEFORE deleting pivot rows
-        $linkedPaymentIds = \App\Models\PaymentInvoice::where('invoice_id', $id)->pluck('payment_id');
-
-        // 2. Remove related items, reminders, and payment_invoices pivot rows
-        $invoice->items()->delete();
-        $invoice->reminders()->delete();
-        \App\Models\PaymentInvoice::where('invoice_id', $id)->delete();
-
-        // 3. Sync orphaned / affected payment records so Ledger stays accurate
-        foreach ($linkedPaymentIds as $paymentId) {
-            $payment = \App\Models\Payment::find($paymentId);
-            if (!$payment) continue;
-            $remaining = \App\Models\PaymentInvoice::where('payment_id', $paymentId)->count();
-            $adminNote = "Invoice {$number} deleted by admin.";
-            if ($remaining === 0) {
-                if ($payment->status === \App\Enums\PaymentStatus::Pending) {
-                    $payment->update(['status' => \App\Enums\PaymentStatus::Failed, 'payment_proof_notes' => $adminNote]);
-                } else {
-                    $payment->update(['amount' => 0, 'payment_proof_notes' => $adminNote]);
-                }
-            } else {
-                $newAmt = \App\Models\PaymentInvoice::where('payment_id', $paymentId)->sum('amount_applied');
-                $payment->update(['amount' => $newAmt]);
-            }
-        }
-
-        // 4. Delete the invoice
-        $invoice->delete();
+        $number = $billing->deleteInvoice($id);
 
         return redirect()->to(route('admin.dashboard') . '#financials')
             ->with('success', "Invoice {$number} deleted. Linked pending payments have been reset.");
