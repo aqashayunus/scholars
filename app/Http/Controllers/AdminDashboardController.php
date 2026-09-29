@@ -32,19 +32,24 @@ use App\Services\Admin\ClassSchedulingService;
 use App\Services\Admin\CurriculumService;
 use App\Services\Admin\GigService;
 use App\Services\Admin\TeacherApplicationService;
+use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
+use App\Http\Requests\Admin\BlastEngagementEmailRequest;
+use App\Http\Requests\Admin\ResetUserPasswordRequest;
 use App\Http\Requests\Admin\StoreCertificateRequest;
 use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
 use App\Http\Requests\Admin\StoreLiveClassRequest;
 use App\Http\Requests\Admin\StoreRecordedClassRequest;
 use App\Http\Requests\Admin\StoreTeacherClassRequest;
+use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateCourseRequest;
 use App\Http\Requests\Admin\UpdateLiveClassRequest;
 use App\Http\Requests\Admin\UpdateRecordedClassRequest;
 use App\Http\Requests\Admin\UpdateSubtopicRequest;
 use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -482,164 +487,40 @@ class AdminDashboardController extends Controller
 
     // ── USER CRUD ─────────────────────────────────────────────────────────────
 
-    public function storeUser(Request $request)
+    public function storeUser(StoreUserRequest $request, UserManagementService $users)
     {
-        $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'email'          => 'required|email|max:255|unique:users,email',
-            'role'           => 'required|in:admin,teacher,student,parent',
-            'phone'          => 'nullable|string|max:30',
-            'ic_number'      => 'required|string|min:6',
-            'parent_user_id' => 'nullable|exists:users,id',
-            'courses'        => 'nullable|array',
-            'courses.*'      => 'exists:courses,id',
-        ]);
-
-        // Random temporary password — previously derived as 2 letters of the name
-        // + last 6 IC digits, which is guessable by anyone who knows the user's
-        // name and IC (and the public IC-lookup endpoint handed out exactly
-        // that). must_change_password forces a real password on first login.
-        $passwordText = Str::password(14);
-
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'role'     => $validated['role'],
-            'phone'    => $validated['phone'] ?? null,
-            'password' => Hash::make($passwordText),
-        ]);
-        $user->must_change_password = true;
-        $user->save();
-
-        if ($user->role === 'student') {
-            $student = Student::create([
-                'user_id'        => $user->id,
-                'parent_user_id' => $validated['parent_user_id'] ?? null,
-                'level'          => 'SPM',
-                'total_points'   => 0,
-            ]);
-
-            // Enroll in selected courses
-            if (!empty($validated['courses'])) {
-                foreach ($validated['courses'] as $courseId) {
-                    Enrollment::create([
-                        'student_id'        => $student->id,
-                        'course_id'         => $courseId,
-                        'status'            => 'active',
-                        'progress_pct'      => 0,
-                        'completed_lessons' => 0,
-                    ]);
-                }
-
-                try {
-                    app(\App\Services\InvoiceService::class)->generateForStudent($student);
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::info("Admin auto-invoice note for student #{$student->id}: " . $e->getMessage());
-                }
-            }
-        } elseif ($user->role === 'teacher') {
-            Teacher::firstOrCreate(['user_id' => $user->id], ['specialization' => 'General Academic', 'rating' => 5.0, 'experience_years' => 1]);
-        }
-
-        // Send Welcome Email containing credentials details
-        try {
-            Mail::to($user->email)->send(new WelcomeMail($user, $passwordText));
-        } catch (\Exception $e) {
-            report($e);
-        }
+        $user = $users->createUser($request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$user->name}' created successfully. Welcome email dispatched to {$user->email}.");
     }
 
-    public function updateUser(Request $request, $id)
+    public function updateUser(UpdateUserRequest $request, $id, UserManagementService $users)
     {
         $user = User::findOrFail($id);
-
-        $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email,' . $user->id,
-            'role'     => 'required|in:admin,teacher,student,parent',
-            'phone'    => 'nullable|string|max:30',
-            'password' => 'nullable|string|min:6',
-        ]);
-
-        $user->name  = $validated['name'];
-        $user->email = $validated['email'];
-        $user->role  = $validated['role'];
-        $user->phone = $validated['phone'] ?? null;
-
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
-        $user->save();
-
-        if ($user->role === 'student' && !$user->studentProfile) {
-            Student::create(['user_id' => $user->id, 'level' => 'SPM', 'total_points' => 0]);
-        } elseif ($user->role === 'teacher' && !$user->teacherProfile) {
-            Teacher::create(['user_id' => $user->id, 'specialization' => 'General Academic', 'rating' => 5.0, 'experience_years' => 1]);
-        }
-
-        try {
-            \App\Models\UserNotification::create([
-                'user_id' => $user->id,
-                'type'    => 'profile',
-                'title'   => 'ACCOUNT PROFILE UPDATED',
-                'message' => "Your profile details have been updated.",
-                'read_at' => null,
-            ]);
-        } catch (\Throwable $e) {}
+        $user = $users->updateUser($user, $request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$user->name}' updated successfully.");
     }
 
-    public function destroyUser($id)
+    public function destroyUser($id, UserManagementService $users)
     {
         if (auth()->id() == $id) {
             return redirect()->to(route('admin.dashboard') . '#users')
                 ->with('error', 'Cannot delete your own active administrator account.');
         }
 
-        $user = User::findOrFail($id);
-        $userName = $user->name;
-
-        if ($user->studentProfile) $user->studentProfile()->delete();
-        if ($user->teacherProfile) $user->teacherProfile()->delete();
-        $user->delete();
+        $userName = $users->deleteUser($id);
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$userName}' deleted successfully.");
     }
 
-    public function resetUserPassword(Request $request, $id)
+    public function resetUserPassword(ResetUserPasswordRequest $request, $id, UserManagementService $users)
     {
         $user = User::findOrFail($id);
-
-        $validated = $request->validate([
-            'password' => ['nullable', 'string', Rules\Password::defaults()],
-        ]);
-
-        // A random password when the admin doesn't supply one — never a fixed,
-        // shared default. Either way the user must set their own on next login,
-        // and the value is never echoed back into the UI (it was previously
-        // rendered into the success flash message, which persists in the
-        // session store and any screenshot/log of the admin's screen).
-        $newPassword = $validated['password'] ?? Str::password(14);
-
-        $user->password = Hash::make($newPassword);
-        $user->must_change_password = true;
-        $user->save();
-
-        try {
-            \App\Models\UserNotification::create([
-                'user_id' => $user->id,
-                'type'    => 'security',
-                'title'   => 'PASSWORD UPDATED',
-                'message' => "Your account password has been reset by an administrator. You will be asked to set a new password on your next login.",
-                'read_at' => null,
-            ]);
-        } catch (\Throwable $e) {}
+        $users->resetPassword($user, $request->validated()['password'] ?? null);
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
@@ -2586,98 +2467,17 @@ class AdminDashboardController extends Controller
             ->with('success', "Class '{$course->title}' created and assigned to {$name}.");
     }
 
-    public function toggleStudentStatus($id)
+    public function toggleStudentStatus($id, UserManagementService $users)
     {
-        $student = Student::findOrFail($id);
-        $newStatus = ($student->status === \App\Enums\StudentStatus::Inactive) ? \App\Enums\StudentStatus::Active : \App\Enums\StudentStatus::Inactive;
-        $student->update(['status' => $newStatus]);
-        if ($student->user) {
-            $student->user->update(['is_active' => ($newStatus === \App\Enums\StudentStatus::Active)]);
-        }
-
-        $name = $student->user->name ?? 'Student #' . $id;
-        $label = ucfirst($newStatus);
-
-        try {
-            if ($student->user_id) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $student->user_id,
-                    'type'    => 'account',
-                    'title'   => 'ACCOUNT STATUS UPDATED',
-                    'message' => "Your student portal account status has been updated to {$label}.",
-                    'read_at' => null,
-                ]);
-            }
-            $parents = \App\Services\BillingNotificationService::getStudentParents($student);
-            foreach ($parents as $parent) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $parent->id,
-                    'type'    => 'account',
-                    'title'   => 'STUDENT ACCOUNT STATUS UPDATED',
-                    'message' => "The account status for student {$name} has been updated to {$label}.",
-                    'read_at' => null,
-                ]);
-            }
-        } catch (\Throwable $e) {}
-
-        try {
-            FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'student_status_changed',
-                'target_type' => Student::class,
-                'target_id'   => $student->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "Student '{$name}' (ID: {$student->id}) status set to {$newStatus} by Admin.",
-            ]);
-        } catch (\Throwable $e) {
-            // Ignore audit fail silently to prevent blocking admin action
-        }
+        [$name, $label] = $users->toggleStudentStatus($id);
 
         return redirect()->to(route('admin.dashboard') . '#student')
             ->with('success', "Student '{$name}' status updated to {$label}.");
     }
 
-    public function toggleTeacherStatus($id)
+    public function toggleTeacherStatus($id, UserManagementService $users)
     {
-        $teacher = Teacher::findOrFail($id);
-        $newStatus = ($teacher->application_status === 'inactive' || $teacher->application_status === 'deactivated') ? 'active' : 'inactive';
-        
-        $updateData = ['application_status' => $newStatus];
-        if ($newStatus === 'inactive') {
-            $updateData['is_online'] = false;
-        }
-        $teacher->update($updateData);
-        if ($teacher->user) {
-            $teacher->user->update(['is_active' => ($newStatus === 'active')]);
-        }
-
-        $name = $teacher->user->name ?? 'Teacher #' . $id;
-        $label = ucfirst($newStatus);
-
-        try {
-            if ($teacher->user_id) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $teacher->user_id,
-                    'type'    => 'account',
-                    'title'   => 'ACCOUNT STATUS UPDATED',
-                    'message' => "Your educator account status has been updated to {$label}.",
-                    'read_at' => null,
-                ]);
-            }
-        } catch (\Throwable $e) {}
-
-        try {
-            FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'teacher_status_changed',
-                'target_type' => Teacher::class,
-                'target_id'   => $teacher->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "Teacher '{$name}' (ID: {$teacher->id}) status set to {$newStatus} by Admin for company record archiving.",
-            ]);
-        } catch (\Throwable $e) {
-            // Ignore audit fail silently to prevent blocking admin action
-        }
+        [$name, $label] = $users->toggleTeacherStatus($id);
 
         return redirect()->to(route('admin.dashboard') . '#teachers')
             ->with('success', "Teacher '{$name}' status updated to {$label} (Company record preserved).");
@@ -2689,121 +2489,26 @@ class AdminDashboardController extends Controller
      * Toggle a user's is_active flag (admin account deactivation / reactivation).
      * Also syncs associated student.status or teacher.application_status.
      */
-    public function toggleUserIsActive($id)
+    public function toggleUserIsActive($id, UserManagementService $users)
     {
-        $user = User::with(['studentProfile', 'teacherProfile'])->findOrFail($id);
+        $result = $users->toggleUserIsActive($id);
 
-        // Do not allow admin to deactivate themselves
-        if ($user->id === auth()->id()) {
+        if ($result === null) {
             return redirect()->back()->with('error', 'You cannot deactivate your own account.');
         }
 
-        $newActive = !$user->is_active;
-        $user->update(['is_active' => $newActive]);
-
-        // Sync child profiles
-        if ($user->studentProfile) {
-            $user->studentProfile->update(['status' => $newActive ? 'active' : 'inactive']);
-        }
-        if ($user->teacherProfile) {
-            $user->teacherProfile->update(['application_status' => $newActive ? 'active' : 'inactive']);
-        }
-
-        $label = $newActive ? 'Reactivated' : 'Deactivated';
-
-        try {
-            \App\Models\UserNotification::create([
-                'user_id' => $user->id,
-                'type'    => 'account',
-                'title'   => 'ACCOUNT STATUS UPDATED',
-                'message' => "Your account has been {$label} by the administrator.",
-                'read_at' => null,
-            ]);
-        } catch (\Throwable $e) {}
-
-        try {
-            FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'user_is_active_toggled',
-                'target_type' => User::class,
-                'target_id'   => $user->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "User '{$user->name}' (ID: {$user->id}, Role: {$user->role}) {$label} by Admin.",
-            ]);
-        } catch (\Throwable $e) {}
+        [$name, $label] = $result;
 
         return redirect()->to(route('admin.dashboard') . '#records')
-            ->with('success', "User '{$user->name}' has been {$label}.");
+            ->with('success', "User '{$name}' has been {$label}.");
     }
 
     /**
      * Send a personalised engagement blast email to selected non-active users.
      */
-    public function blastEngagementEmail(Request $request)
+    public function blastEngagementEmail(BlastEngagementEmailRequest $request, UserManagementService $users)
     {
-        $request->validate([
-            'blast_subject'  => 'required|string|max:255',
-            'blast_body'     => 'required|string|max:5000',
-            'blast_audience' => 'required|string|in:all_inactive,students_only,parents_only,teachers_only',
-            'blast_cta_link' => 'nullable|url|max:500',
-            'blast_cta_label'=> 'nullable|string|max:100',
-        ]);
-
-        // Determine the base recipient query (non-active users)
-        $restrictedStudentUserIds = Student::whereHas('invoices', function ($q) {
-            $q->where('status', InvoiceStatus::Overdue)->whereDate('due_date', '<', now()); // 'outstanding' was never a valid Invoice::status value / enum case — removed
-        })->pluck('user_id')->filter();
-
-        $inactiveTeacherUserIds = Teacher::whereIn('application_status', ['inactive', 'deactivated'])
-            ->pluck('user_id')->filter();
-
-        $deactivatedUserIds = User::where('is_active', false)->pluck('id');
-
-        $nonActiveUserIds = $deactivatedUserIds
-            ->merge($restrictedStudentUserIds)
-            ->merge($inactiveTeacherUserIds)
-            ->unique()->values();
-
-        $query = User::whereIn('id', $nonActiveUserIds);
-
-        // Filter by audience
-        switch ($request->blast_audience) {
-            case 'students_only': $query->where('role', 'student'); break;
-            case 'parents_only':  $query->where('role', 'parent'); break;
-            case 'teachers_only': $query->where('role', 'teacher'); break;
-        }
-
-        $recipients = $query->get();
-        $sent = 0;
-        $failed = 0;
-
-        foreach ($recipients as $recipient) {
-            try {
-                Mail::to($recipient->email)->send(
-                    new EngagementBlastMail(
-                        $recipient,
-                        $request->blast_subject,
-                        $request->blast_body,
-                        $request->blast_cta_link ?? '',
-                        $request->blast_cta_label ?? 'Return to Platform',
-                    )
-                );
-                $sent++;
-            } catch (\Throwable $e) {
-                $failed++;
-            }
-        }
-
-        try {
-            FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'engagement_blast_sent',
-                'target_type' => User::class,
-                'target_id'   => auth()->id(),
-                'ip_address'  => request()->ip(),
-                'details'     => "Engagement blast '{$request->blast_subject}' sent to {$sent} recipient(s) (audience: {$request->blast_audience}). Failed: {$failed}.",
-            ]);
-        } catch (\Throwable $e) {}
+        [$sent, $failed] = $users->sendEngagementBlast($request->validated());
 
         $msg = "Engagement email sent to {$sent} recipient(s).";
         if ($failed > 0) $msg .= " ({$failed} failed — check mail configuration.)";
@@ -2814,46 +2519,9 @@ class AdminDashboardController extends Controller
     /**
      * Export non-active users as a CSV file for external outreach/CRM tools.
      */
-    public function exportInactiveUsersCsv(): StreamedResponse
+    public function exportInactiveUsersCsv(UserManagementService $users): StreamedResponse
     {
-        $restrictedStudentUserIds = Student::whereHas('invoices', function ($q) {
-            $q->where('status', InvoiceStatus::Overdue)->whereDate('due_date', '<', now()); // 'outstanding' was never a valid Invoice::status value / enum case — removed
-        })->pluck('user_id')->filter();
-
-        $inactiveTeacherUserIds = Teacher::whereIn('application_status', ['inactive', 'deactivated'])
-            ->pluck('user_id')->filter();
-
-        $deactivatedUserIds = User::where('is_active', false)->pluck('id');
-
-        $nonActiveUserIds = $deactivatedUserIds
-            ->merge($restrictedStudentUserIds)
-            ->merge($inactiveTeacherUserIds)
-            ->unique()->values();
-
-        $users = User::whereIn('id', $nonActiveUserIds)->latest('id')->get();
-
-        return response()->streamDownload(function () use ($users, $restrictedStudentUserIds, $inactiveTeacherUserIds) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['User ID', 'Full Name', 'Role', 'Email', 'Phone', 'Inactivity Reason', 'Registration Date']);
-            foreach ($users as $u) {
-                $reasons = [];
-                if ($u->is_active === false) $reasons[] = 'Account Deactivated';
-                if ($restrictedStudentUserIds->contains($u->id)) $reasons[] = 'Payment Restricted';
-                if ($inactiveTeacherUserIds->contains($u->id)) $reasons[] = 'Teacher Deactivated';
-                fputcsv($handle, [
-                    '#' . $u->id,
-                    $u->name,
-                    ucfirst($u->role),
-                    $u->email,
-                    $u->phone ?? '',
-                    implode('; ', $reasons) ?: 'Deactivated',
-                    $u->created_at ? $u->created_at->format('d M Y') : '',
-                ]);
-            }
-            fclose($handle);
-        }, 'inactive-users-' . now()->format('Y-m-d') . '.csv', [
-            'Content-Type' => 'text/csv',
-        ]);
+        return $users->exportInactiveUsersCsv();
     }
 }
 
