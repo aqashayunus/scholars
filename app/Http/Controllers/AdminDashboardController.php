@@ -31,16 +31,19 @@ use App\Services\Admin\CertificateService;
 use App\Services\Admin\ClassSchedulingService;
 use App\Services\Admin\CurriculumService;
 use App\Services\Admin\GigService;
+use App\Services\Admin\TeacherApplicationService;
 use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\StoreCertificateRequest;
 use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
 use App\Http\Requests\Admin\StoreLiveClassRequest;
 use App\Http\Requests\Admin\StoreRecordedClassRequest;
+use App\Http\Requests\Admin\StoreTeacherClassRequest;
 use App\Http\Requests\Admin\UpdateCourseRequest;
 use App\Http\Requests\Admin\UpdateLiveClassRequest;
 use App\Http\Requests\Admin\UpdateRecordedClassRequest;
 use App\Http\Requests\Admin\UpdateSubtopicRequest;
+use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -1496,94 +1499,18 @@ class AdminDashboardController extends Controller
 
     // ── TEACHER APPLICATIONS ──────────────────────────────────────────────────
 
-    public function approveTeacherApplication(Request $request, $id)
+    public function approveTeacherApplication(Request $request, $id, TeacherApplicationService $teacherApplications)
     {
         $application = TeacherApplication::findOrFail($id);
-
-        DB::transaction(function () use ($application, $request) {
-            // 1. Find or create user account for teacher
-            $user = User::where('email', $application->email)->first();
-
-            if (!$user) {
-                // Random per-teacher password, not a shared default previously
-                // known to every approved teacher (and never actually emailed
-                // to them, meaning it was distributed out-of-band as tribal
-                // knowledge). Emailed via WelcomeMail below; must_change_password
-                // forces a real password before first real use.
-                $tempPassword = Str::password(14);
-
-                $user = User::create([
-                    'name'     => $application->full_name,
-                    'email'    => $application->email,
-                    'phone'    => $application->phone,
-                    'role'     => 'teacher',
-                    'password' => Hash::make($tempPassword),
-                ]);
-                $user->must_change_password = true;
-                $user->save();
-
-                try {
-                    Mail::to($user->email)->send(new WelcomeMail($user, $tempPassword));
-                } catch (\Exception $e) {
-                    report($e);
-                }
-            } else {
-                $user->update(['role' => 'teacher']);
-            }
-
-            // 2. Create or activate Teacher profile
-            Teacher::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'application_status' => 'active',
-                    'qualification'      => $application->qualification,
-                    'experience_years'   => $application->experience_years,
-                    'bio'                => $application->preferred_subjects ? "Specialist educator in: {$application->preferred_subjects}" : 'Certified Aster Edu Educator',
-                ]
-            );
-
-            // 3. Update application status
-            $application->update([
-                'user_id'     => $user->id,
-                'status'      => \App\Enums\TeacherApplicationStatus::Approved,
-                'admin_notes' => $request->input('admin_notes', 'Application approved.'),
-                'approved_at' => now(),
-            ]);
-
-            try {
-                \App\Models\UserNotification::create([
-                    'user_id' => $user->id,
-                    'type'    => 'application',
-                    'title'   => 'TEACHER APPLICATION APPROVED',
-                    'message' => "Congratulations! Your educator application has been approved. Your educator account is now active.",
-                    'read_at' => null,
-                ]);
-            } catch (\Throwable $e) {}
-        });
+        $teacherApplications->approve($application, $request->input('admin_notes'));
 
         return back()->with('success', "Teacher application for '{$application->full_name}' has been approved and their educator account is now active.");
     }
 
-    public function rejectTeacherApplication(Request $request, $id)
+    public function rejectTeacherApplication(Request $request, $id, TeacherApplicationService $teacherApplications)
     {
         $application = TeacherApplication::findOrFail($id);
-
-        $application->update([
-            'status'      => \App\Enums\TeacherApplicationStatus::Rejected,
-            'admin_notes' => $request->input('admin_notes', 'Application not approved at this time.'),
-        ]);
-
-        if ($application->user_id) {
-            try {
-                \App\Models\UserNotification::create([
-                    'user_id' => $application->user_id,
-                    'type'    => 'application',
-                    'title'   => 'APPLICATION STATUS UPDATE',
-                    'message' => "Your educator application has been reviewed. Status: Not approved at this time.",
-                    'read_at' => null,
-                ]);
-            } catch (\Throwable $e) {}
-        }
+        $teacherApplications->reject($application, $request->input('admin_notes'));
 
         return back()->with('success', "Teacher application for '{$application->full_name}' has been marked as rejected.");
     }
@@ -2639,76 +2566,22 @@ class AdminDashboardController extends Controller
 
     // ── TEACHER SUBJECT & CLASS MANAGEMENT ────────────────────────────────────
 
-    public function updateTeacherSubjects(Request $request, $id)
+    public function updateTeacherSubjects(UpdateTeacherSubjectsRequest $request, $id, TeacherApplicationService $teacherApplications)
     {
         $teacher = Teacher::findOrFail($id);
-        $request->validate([
-            'subject_ids'   => 'nullable|array',
-            'subject_ids.*' => 'exists:subjects,id',
-        ]);
-        $teacher->subjects()->sync($request->input('subject_ids', []));
+        $teacherApplications->updateSubjects($teacher, $request->input('subject_ids', []));
         $name = $teacher->user->name ?? 'Teacher #' . $id;
-
-        try {
-            if ($teacher->user_id) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $teacher->user_id,
-                    'type'    => 'subject',
-                    'title'   => 'TEACHING SUBJECTS UPDATED',
-                    'message' => "Your assigned teaching subjects have been updated.",
-                    'read_at' => null,
-                ]);
-            }
-        } catch (\Throwable $e) {}
 
         return redirect()->to(route('admin.dashboard') . '#teachers')
             ->with('success', "Subject assignments updated for {$name}.");
     }
 
-    public function storeTeacherClass(Request $request, $id)
+    public function storeTeacherClass(StoreTeacherClassRequest $request, $id, TeacherApplicationService $teacherApplications)
     {
         $teacher = Teacher::findOrFail($id);
-        $validated = $request->validate([
-            'title'         => 'required|string|max:255',
-            'subject_id'    => 'required|exists:subjects,id',
-            'level'         => 'required|string|max:50',
-            'schedule'      => 'nullable|string|max:255',
-            'total_lessons' => 'nullable|integer|min:1',
-            'status'        => 'required|in:published,draft,archived',
-            'price'         => 'required|numeric|min:0',
-            'description'   => 'nullable|string',
-        ]);
-
-        $course = Course::create([
-            'teacher_id'    => $teacher->id,
-            'subject_id'    => $validated['subject_id'],
-            'title'         => $validated['title'],
-            'level'         => $validated['level'],
-            'schedule'      => $validated['schedule'] ?? null,
-            'total_lessons' => $validated['total_lessons'] ?? 12,
-            'status'        => $validated['status'],
-            'price'         => $validated['price'],
-            'description'   => $validated['description'] ?? null,
-        ]);
-
-        // Link teacher to this subject in pivot if not already
-        if (!$teacher->subjects()->where('subject_id', $validated['subject_id'])->exists()) {
-            $teacher->subjects()->attach($validated['subject_id']);
-        }
-
-        try {
-            if ($teacher->user_id) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $teacher->user_id,
-                    'type'    => 'course',
-                    'title'   => 'NEW CLASS ASSIGNED',
-                    'message' => "A new class '{$course->title}' ({$course->level}) has been assigned to your educator profile.",
-                    'read_at' => null,
-                ]);
-            }
-        } catch (\Throwable $e) {}
-
+        $course = $teacherApplications->createClass($teacher, $request->validated());
         $name = $teacher->user->name ?? 'Teacher #' . $id;
+
         return redirect()->to(route('admin.dashboard') . '#teachers')
             ->with('success', "Class '{$course->title}' created and assigned to {$name}.");
     }
