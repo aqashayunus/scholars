@@ -27,7 +27,11 @@ use App\Models\Question;
 use App\Models\Assignment;
 use App\Models\StudentAssignment;
 use App\Models\FeeStructure;
+use App\Services\Admin\CertificateService;
+use App\Services\Admin\GigService;
 use App\Services\PdfDiagnosticParser;
+use App\Http\Requests\Admin\StoreCertificateRequest;
+use App\Http\Requests\Admin\StoreGigRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
@@ -2020,33 +2024,17 @@ class AdminDashboardController extends Controller
 
     // ── TEACHING GIGS ─────────────────────────────────────────────────────────
 
-    public function storeGig(Request $request)
+    public function storeGig(StoreGigRequest $request, GigService $gigs)
     {
-        $validated = $request->validate([
-            'title'            => 'required|string|max:255',
-            'subject_id'       => 'required|exists:subjects,id',
-            'scheduled_at'     => 'required|date',
-            'duration_minutes' => 'required|integer|min:15|max:240',
-            'payout_amount'    => 'required|numeric|min:0',
-            'surge_bonus'      => 'nullable|numeric|min:0',
-            'gig_type'         => 'nullable|string|max:50',
-            'notes'            => 'nullable|string',
-        ]);
-
-        $validated['status'] = 'open';
-        $validated['surge_bonus'] = $validated['surge_bonus'] ?? 0;
-
-        $gig = TeachingGig::create($validated);
+        $gig = $gigs->publish($request->validated());
 
         return redirect()->to(route('admin.dashboard') . '#records')
             ->with('success', "Teaching Gig '{$gig->title}' published with payout " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($gig->payout_amount, 2) . ".");
     }
 
-    public function destroyGig($id)
+    public function destroyGig($id, GigService $gigs)
     {
-        $gig = TeachingGig::findOrFail($id);
-        $title = $gig->title;
-        $gig->delete();
+        $title = $gigs->remove($id);
 
         return redirect()->to(route('admin.dashboard') . '#records')
             ->with('success', "Teaching Gig '{$title}' removed.");
@@ -2310,68 +2298,9 @@ class AdminDashboardController extends Controller
     /**
      * Store and award an official certificate to a student.
      */
-    public function storeCertificate(Request $request)
+    public function storeCertificate(StoreCertificateRequest $request, CertificateService $certificates)
     {
-        $validated = $request->validate([
-            'student_id'   => 'required|exists:students,id',
-            'course_id'    => 'nullable|exists:courses,id',
-            'title'        => 'required|string|max:255',
-            'subtitle'     => 'nullable|string|max:255',
-            'cert_number'  => 'nullable|string|max:100|unique:certificates,cert_number',
-            'issued_at'    => 'nullable|date',
-            'issued_by'    => 'nullable|string|max:255',
-            'description'  => 'nullable|string',
-            'file'         => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
-        ]);
-
-        $filePath = null;
-        $fileName = null;
-        if ($request->hasFile('file')) {
-            $uploadedFile = $request->file('file');
-            $fileName     = $uploadedFile->getClientOriginalName();
-            $filePath     = $uploadedFile->store('certificates', 'public');
-        }
-
-        $certNumber = !empty($validated['cert_number']) 
-            ? $validated['cert_number'] 
-            : ('OSC-' . date('Y') . '-' . strtoupper(substr(md5(uniqid()), 0, 6)));
-
-        \App\Models\Certificate::create([
-            'student_id'   => $validated['student_id'],
-            'course_id'    => $validated['course_id'] ?? null,
-            'title'        => $validated['title'],
-            'subtitle'     => $validated['subtitle'] ?? null,
-            'cert_number'  => $certNumber,
-            'file_path'    => $filePath,
-            'file_name'    => $fileName,
-            'issued_at'    => $validated['issued_at'] ?? now(),
-            'issued_by'    => $validated['issued_by'] ?? (auth()->user()->name ?? 'Academy Administration'),
-            'description'  => $validated['description'] ?? null,
-        ]);
-
-        $student = \App\Models\Student::find($validated['student_id']);
-        if ($student && $student->user_id) {
-            \App\Models\UserNotification::create([
-                'user_id' => $student->user_id,
-                'type'    => 'certificate',
-                'title'   => 'NEW CERTIFICATE AWARDED',
-                'message' => "Congratulations! You have been awarded an official certificate: '{$validated['title']}'. View it in your Achievements tab.",
-                'read_at' => null,
-            ]);
-        }
-        if ($student) {
-            $parents = \App\Services\BillingNotificationService::getStudentParents($student);
-            $studentName = $student->user->name ?? 'Your student';
-            foreach ($parents as $parent) {
-                \App\Models\UserNotification::create([
-                    'user_id' => $parent->id,
-                    'type'    => 'certificate',
-                    'title'   => 'STUDENT CERTIFICATE AWARDED',
-                    'message' => "Congratulations! {$studentName} has been awarded an official certificate: '{$validated['title']}'.",
-                    'read_at' => null,
-                ]);
-            }
-        }
+        $certificates->issue($request->validated(), $request->file('file'));
 
         return back()->with('success', 'Official Certificate successfully awarded and issued to student!');
     }
@@ -2379,13 +2308,9 @@ class AdminDashboardController extends Controller
     /**
      * Delete an issued certificate.
      */
-    public function destroyCertificate($id)
+    public function destroyCertificate($id, CertificateService $certificates)
     {
-        $certificate = \App\Models\Certificate::findOrFail($id);
-        if ($certificate->file_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($certificate->file_path)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($certificate->file_path);
-        }
-        $certificate->delete();
+        $certificates->destroy($id);
 
         return back()->with('success', 'Certificate removed successfully.');
     }
