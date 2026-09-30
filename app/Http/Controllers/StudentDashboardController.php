@@ -16,9 +16,7 @@ use App\Models\StudentQuiz;
 use App\Models\StudentTopicMastery;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
 
 class StudentDashboardController extends Controller
@@ -312,26 +310,18 @@ class StudentDashboardController extends Controller
 
     public function myCourses()  { return $this->learning(); }
     public function timetable() { return $this->classes(); }
-    public function profile(Request $request)
+    public function profile(Request $request, \App\Services\Student\ProfileService $profileService)
     {
         $student = $this->getStudent();
-        if ($student) {
-            $student->load(['user', 'parent', 'parents', 'enrollments.course.subject']);
-        }
-        
-        $user = auth()->user();
-        $parent = $student?->parent ?? $student?->parents?->first();
-        $enrolledSubjects = $student ? $student->enrollments->map(fn($e) => $e->course->subject->name ?? null)->filter()->unique()->values() : collect();
-
         $activeTab = $request->query('tab', 'profile');
 
-        return view('student.profile', compact('user', 'student', 'parent', 'enrolledSubjects', 'activeTab'));
+        return view('student.profile', array_merge(['student' => $student], $profileService->profileData($student, $activeTab)));
     }
 
     /**
      * Link the student's account to a parent account by the parent's IC number.
      */
-    public function linkParent(Request $request)
+    public function linkParent(Request $request, \App\Services\Student\ProfileService $profileService)
     {
         $request->validate([
             'parent_ic'    => 'required|string|max:20',
@@ -344,62 +334,22 @@ class StudentDashboardController extends Controller
         $rawIc        = trim($request->input('parent_ic'));
         $relationship = $request->input('relationship', 'Guardian');
 
-        // Only digits must be 12 characters
-        $cleanDigits = preg_replace('/\D/', '', $rawIc);
-        if (strlen($cleanDigits) !== 12) {
+        $result = $profileService->linkParent($student, $rawIc, $relationship);
+
+        if (!$result['success']) {
             return redirect()->route('student.profile', ['tab' => 'profile'])
                 ->withInput()
-                ->withErrors(['parent_ic' => 'Please enter a valid 12-digit MyKad number (e.g. 901231-14-5678).']);
-        }
-
-        // Look up parent by hashed IC
-        $icHash     = \App\Models\User::hashIc($rawIc);
-        $parentUser = \App\Models\User::where('ic_number_hash', $icHash)
-                                      ->where('role', 'parent')
-                                      ->first();
-
-        if (!$parentUser) {
-            return redirect()->route('student.profile', ['tab' => 'profile'])
-                ->withInput()
-                ->withErrors(['parent_ic' => 'No parent account found with that IC number. Please check and try again.']);
-        }
-
-        // Check if already linked
-        $alreadyLinked = \Illuminate\Support\Facades\DB::table('parent_student')
-            ->where('parent_user_id', $parentUser->id)
-            ->where('student_id', $student->id)
-            ->exists() || $student->parent_user_id === $parentUser->id;
-
-        if ($alreadyLinked) {
-            return redirect()->route('student.profile', ['tab' => 'profile'])
-                ->with('profile_updated', "Your account is already linked to {$parentUser->name}.");
-        }
-
-        // Create the link
-        \Illuminate\Support\Facades\DB::table('parent_student')->insertOrIgnore([
-            'parent_user_id' => $parentUser->id,
-            'student_id'     => $student->id,
-            'relationship'   => $relationship,
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
-
-        // Backfill legacy column if empty
-        if (!$student->parent_user_id) {
-            $student->update(['parent_user_id' => $parentUser->id]);
+                ->withErrors(['parent_ic' => $result['field_error']]);
         }
 
         return redirect()->route('student.profile', ['tab' => 'profile'])
-            ->with('profile_updated', "Successfully linked to parent account: {$parentUser->name}.");
+            ->with('profile_updated', $result['message']);
     }
-
 
     /**
      * Update the student's personal information (name, email, phone, level).
      */
-    public function updateProfile(Request $request)
+    public function updateProfile(Request $request, \App\Services\Student\ProfileService $profileService)
     {
         $user    = auth()->user();
         $student = Student::where('user_id', $user->id)->first();
@@ -419,40 +369,7 @@ class StudentDashboardController extends Controller
             'avatar.max'    => 'Profile picture size must not exceed 2MB.',
         ]);
 
-        // Handle Avatar Removal
-        if ($request->boolean('remove_avatar')) {
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
-            }
-            $user->avatar = null;
-        }
-
-        // Handle New Avatar Upload
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
-                Storage::disk('public')->delete($user->avatar);
-            }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = $path;
-        }
-
-        $user->name = $validated['name'];
-        if (!empty($validated['email'])) {
-            if ($user->email !== $validated['email']) {
-                $user->email_verified_at = null;
-            }
-            $user->email = $validated['email'];
-        }
-        if (isset($validated['phone'])) {
-            $user->phone = $validated['phone'];
-        }
-        $user->save();
-
-        if ($student) {
-            $student->update([
-                'school_name' => $validated['school_name'] ?? $student->school_name,
-            ]);
-        }
+        $profileService->updateProfile($user, $student, $validated, $request->boolean('remove_avatar'), $request->file('avatar'));
 
         return Redirect::route('student.profile', ['tab' => 'profile'])->with('profile_updated', 'Profile updated successfully!');
     }
@@ -470,11 +387,11 @@ class StudentDashboardController extends Controller
      * Update the student's password.
      * Parent-managed students are allowed to set a new password without knowing the current one.
      */
-    public function updatePassword(Request $request)
+    public function updatePassword(Request $request, \App\Services\Student\ProfileService $profileService)
     {
         $user    = auth()->user();
         $student = Student::where('user_id', $user->id)->first();
-        $isParentManaged = $student && $student->parent_user_id;
+        $isParentManaged = $profileService->isParentManaged($student);
 
         $rules = [
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
@@ -491,7 +408,7 @@ class StudentDashboardController extends Controller
             'password.min'                      => 'Password must be at least 8 characters.',
         ]);
 
-        $user->update(['password' => Hash::make($validated['password'])]);
+        $profileService->updatePassword($user, $validated['password']);
 
         return Redirect::route('student.profile', ['tab' => 'security'])->with('password_updated', 'Password changed successfully!');
     }
