@@ -2,14 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InvoiceStatus;
-use App\Models\Assignment;
-use App\Models\FeeStructure;
-use App\Models\Invoice;
 use App\Models\LiveClass;
-use App\Models\Payment;
 use App\Models\RecordedClass;
-use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\StudentQuiz;
@@ -425,126 +419,33 @@ class StudentDashboardController extends Controller
     /**
      * Display Student "My Fees" portal.
      */
-    public function fees()
+    public function fees(\App\Services\Student\BillingService $billing)
     {
         $student = $this->getStudent();
-        Invoice::syncStudentInvoices($student);
-        
-        $invoices = Invoice::where('student_id', $student->id)
-            ->with(['feeStructure', 'course.subject', 'payments'])
-            ->latest('due_date')
-            ->get();
 
-        $outstandingInvoices = $invoices->filter(fn($inv) => in_array($inv->status, InvoiceStatus::unpaidStatuses(), true))->values();
-        $paidInvoices        = $invoices->filter(fn($inv) => $inv->status === InvoiceStatus::Paid)->values();
-        $overdueInvoices     = $invoices->filter(fn($inv) => $inv->status === InvoiceStatus::Overdue)->values();
-
-        $totalOutstandingAmount = $outstandingInvoices->sum('total_amount');
-        $totalPaidAmount        = $paidInvoices->sum('total_amount');
-
-        $payments = Payment::where('student_id', $student->id)
-            ->with(['invoice', 'payer'])
-            ->latest('id')
-            ->get();
-
-        // Public Company Bank details for manual bank transfer
-        $bankDetails = [
-            'bank_name'      => Setting::get('company_bank_name', 'Maybank Islamic Berhad'),
-            'account_name'   => Setting::get('company_bank_account_name', 'Olympia Scholars Academy Sdn Bhd'),
-            'account_number' => Setting::get('company_bank_account_number', '5642 8901 2345'),
-            'instructions'   => Setting::get('company_bank_instructions', 'Please include your Student Name & Invoice No in the transfer reference.'),
-        ];
-
-        return view('student.fees', compact(
-            'student',
-            'invoices',
-            'outstandingInvoices',
-            'paidInvoices',
-            'overdueInvoices',
-            'totalOutstandingAmount',
-            'totalPaidAmount',
-            'payments',
-            'bankDetails'
-        ));
+        return view('student.fees', array_merge(['student' => $student], $billing->feesData($student)));
     }
 
     /**
      * Process invoice payment by student.
      */
-    public function payInvoice(Request $request, $id)
+    public function payInvoice(Request $request, $id, \App\Services\Student\BillingService $billing)
     {
         $student = $this->getStudent();
-        $invoice = Invoice::where('student_id', $student->id)->findOrFail($id);
-
-        if ($invoice->status === InvoiceStatus::Paid) {
-            return back()->with('info', 'This invoice has already been fully paid.');
-        }
-
         $paymentMethod = $request->input('payment_method', 'fpx');
 
         if ($paymentMethod === 'bank_transfer') {
             $request->validate([
                 'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             ]);
-
-            $proofPath = $request->file('proof_file')->store('payment_proofs', 'public');
-            $refNo = 'TXN-TRF-' . strtoupper(substr(md5(uniqid()), 0, 8));
-
-            Payment::create([
-                'user_id'         => auth()->id(),
-                'invoice_id'      => $invoice->id,
-                'student_id'      => $student->id,
-                'payer_id'        => auth()->id(),
-                'payer_type'      => 'student',
-                'description'     => $invoice->title . ' (Bank Transfer Slip Uploaded)',
-                'amount'          => $invoice->total_amount,
-                'payment_method'  => 'bank_transfer',
-                'proof_file_path' => $proofPath,
-                'reference_no'    => $refNo,
-                'status'          => \App\Enums\PaymentStatus::Pending,
-                'paid_at'         => now(),
-            ]);
-
-            // 'pending_verification' was never a valid Invoice status (enum:
-            // draft/issued/partially_paid/paid/overdue/cancelled) — would
-            // throw under strict SQL mode. The Payment record just created
-            // above already correctly carries PaymentStatus::Pending, which
-            // is the real "awaiting verification" signal; the invoice stays
-            // at its current status (issued/overdue) until an admin approves
-            // the payment via AdminDashboardController::verifyPayment().
-
-            return back()->with('success', 'Payment proof submitted successfully! Your payment is pending verification.');
-        } else {
-            $refNo = 'TXN-FPX-' . strtoupper(substr(md5(uniqid()), 0, 8));
-            $receiptNo = 'RCP-' . date('Y') . '-' . str_pad($invoice->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
-
-            Payment::create([
-                'user_id'        => auth()->id(),
-                'invoice_id'     => $invoice->id,
-                'student_id'     => $student->id,
-                'payer_id'       => auth()->id(),
-                'payer_type'     => 'student',
-                'description'    => $invoice->title,
-                'amount'         => $invoice->total_amount,
-                'payment_method' => $paymentMethod,
-                'reference_no'   => $refNo,
-                'receipt_number' => $receiptNo,
-                'status'         => \App\Enums\PaymentStatus::Successful,
-                'paid_at'        => now(),
-            ]);
-
-            $invoice->update(['status' => InvoiceStatus::Paid]);
-
-            \App\Models\UserNotification::create([
-                'user_id' => auth()->id(),
-                'type'    => 'payment',
-                'title'   => 'PAYMENT SUCCESSFUL',
-                'message' => "Payment of RM " . number_format($invoice->total_amount, 2) . " for '{$invoice->title}' has been processed. Receipt No: {$receiptNo}.",
-                'read_at' => null,
-            ]);
-
-            return back()->with('success', "Payment successful! Receipt #{$receiptNo} has been generated.");
         }
+
+        $result = $billing->payInvoice($student, (int) $id, $paymentMethod, $request->file('proof_file'));
+
+        return match ($result['status']) {
+            'already_paid' => back()->with('info', $result['message']),
+            default        => back()->with('success', $result['message']),
+        };
     }
 
     private function getStudent(): Student
