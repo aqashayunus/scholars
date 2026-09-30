@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\InvoiceStatus;
 use App\Enums\StudentAssignmentStatus;
 use App\Models\Assignment;
-use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
 use App\Models\LiveClass;
@@ -16,7 +15,6 @@ use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\StudentQuiz;
 use App\Models\StudentTopicMastery;
-use App\Models\Quiz;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -134,18 +132,8 @@ class StudentDashboardController extends Controller
         }
 
         // Personal performance trajectory chart from actual student quiz records
-        $recentQuizzes = StudentQuiz::where('student_id', $student->id)
-            ->orderBy('completed_at', 'asc')
-            ->take(6)
-            ->get();
-
-        if ($recentQuizzes->isNotEmpty()) {
-            $performanceLabels = $recentQuizzes->map(fn($q) => $q->completed_at ? $q->completed_at->format('M') : 'Quiz')->toArray();
-            $performanceData   = $recentQuizzes->map(fn($q) => $q->total_questions > 0 ? (int) round(($q->score / $q->total_questions) * 100) : 0)->toArray();
-        } else {
-            $performanceLabels = [now()->format('M')];
-            $performanceData   = [0];
-        }
+        ['performanceLabels' => $performanceLabels, 'performanceData' => $performanceData] =
+            app(\App\Services\Student\QuizPerformanceService::class)->performanceChartData($student);
 
         $restrictionService = app(\App\Services\StudentAccessRestrictionService::class);
         $isRestricted = $restrictionService->isStudentRestricted($student);
@@ -481,42 +469,33 @@ class StudentDashboardController extends Controller
         return redirect()->back()->with('success', 'Assignment submitted successfully! Your teacher will review and grade your work.');
     }
 
-    public function quiz()
+    public function quiz(\App\Services\Student\QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
-        $courseIds = Enrollment::where('student_id', $student->id)->pluck('course_id');
-        $quiz = Quiz::whereIn('course_id', $courseIds)->first();
-        if ($quiz) {
-            return redirect()->route('student.quiz.show', $quiz->id);
+        $quizId = $quizzes->firstQuizId($student);
+        if ($quizId) {
+            return redirect()->route('student.quiz.show', $quizId);
         }
         return view('student.quiz', compact('student'));
     }
 
-    public function quizShow($id)
+    public function quizShow($id, \App\Services\Student\QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
-        $quiz = Quiz::with(['course.subject', 'questions'])->findOrFail($id);
+        $quiz = $quizzes->showQuiz($id);
         return view('student.quiz', compact('student', 'quiz'));
     }
 
-    public function quizSubmit(Request $request, $id)
+    public function quizSubmit(Request $request, $id, \App\Services\Student\QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
-        $quiz = Quiz::findOrFail($id);
 
         $validated = $request->validate([
             'score'           => 'required|integer',
             'total_questions' => 'required|integer',
         ]);
 
-        StudentQuiz::updateOrCreate([
-            'student_id' => $student->id,
-            'quiz_id'    => $quiz->id,
-        ], [
-            'score'           => $validated['score'],
-            'total_questions' => $validated['total_questions'],
-            'completed_at'    => now(),
-        ]);
+        $quizzes->submitQuiz($student, (int) $id, (int) $validated['score'], (int) $validated['total_questions']);
 
         return response()->json(['success' => true]);
     }
@@ -531,18 +510,8 @@ class StudentDashboardController extends Controller
         $attStats = app(\App\Services\Student\ClassScheduleService::class)->attendanceStats($student);
 
         // Personal performance trajectory chart from actual student quiz records
-        $recentQuizzes = StudentQuiz::where('student_id', $student->id)
-            ->orderBy('completed_at', 'asc')
-            ->take(6)
-            ->get();
-
-        if ($recentQuizzes->isNotEmpty()) {
-            $performanceLabels = $recentQuizzes->map(fn($q) => $q->completed_at ? $q->completed_at->format('M') : 'Quiz')->toArray();
-            $performanceData   = $recentQuizzes->map(fn($q) => $q->total_questions > 0 ? (int) round(($q->score / $q->total_questions) * 100) : 0)->toArray();
-        } else {
-            $performanceLabels = [now()->format('M')];
-            $performanceData   = [0];
-        }
+        ['performanceLabels' => $performanceLabels, 'performanceData' => $performanceData] =
+            app(\App\Services\Student\QuizPerformanceService::class)->performanceChartData($student);
 
         return view('student.progress', compact('student', 'enrollments', 'overallProgress', 'attStats', 'topicMasteries', 'performanceLabels', 'performanceData'));
     }
