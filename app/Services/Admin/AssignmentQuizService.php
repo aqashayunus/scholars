@@ -27,8 +27,9 @@ class AssignmentQuizService
             'target_level'     => 'nullable|string|max:100',
             'course_id'        => 'nullable|exists:courses,id',
             'topic'            => 'nullable|string|max:255',
-            'total_marks'      => 'nullable|integer|min:1|max:1000',
-            'due_date'         => 'nullable|date',
+            'total_marks'        => 'nullable|integer|min:1|max:1000',
+            'time_limit_minutes' => 'nullable|integer|min:1|max:600',
+            'due_date'           => 'nullable|date',
             'description'      => 'nullable|string|max:5000',
             'instructions'     => 'nullable|string|max:5000',
             'file'             => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
@@ -39,6 +40,7 @@ class AssignmentQuizService
         $fileSize = null;
 
         if ($request->hasFile('file')) {
+            Storage::disk('public')->makeDirectory('assignments');
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
@@ -102,6 +104,7 @@ class AssignmentQuizService
                     'type'           => $type,
                     'title'          => $title,
                     'correct_answer' => $ans,
+                    'marks'          => (float) ($item['marks'] ?? 1.0),
                     'image'          => $img,
                     'prompt'         => $item['prompt'] ?? null,
                     'page_number'    => $item['page_number'] ?? ($item['page'] ?? 1),
@@ -137,6 +140,7 @@ class AssignmentQuizService
             'section_b_answer_key' => $sectionBMap ?? null,
             'section_b_questions'  => $sectionBQuestions,
             'questions_data'       => $normalizedQuestions,
+            'is_interactive_pdf'   => $request->boolean('is_interactive_pdf', false),
             'file_path'            => $filePath,
             'file_name'            => $fileName,
             'file_size'            => $fileSize,
@@ -195,7 +199,8 @@ class AssignmentQuizService
             'title'            => 'required|string|max:255',
             'type'             => 'required|string|max:50',
             'target_level'     => 'nullable|string|max:100',
-            'total_marks'      => 'nullable|integer|min:1|max:1000',
+            'total_marks'        => 'nullable|integer|min:1|max:1000',
+            'time_limit_minutes' => 'nullable|integer|min:1|max:600',
             'due_date'         => 'nullable|date',
             'description'      => 'nullable|string|max:5000',
             'instructions'     => 'nullable|string|max:5000',
@@ -203,6 +208,7 @@ class AssignmentQuizService
         ]);
 
         if ($request->hasFile('file')) {
+            Storage::disk('public')->makeDirectory('assignments');
             $file = $request->file('file');
             $assignment->file_name = $file->getClientOriginalName();
             $assignment->file_size = $file->getSize();
@@ -248,6 +254,7 @@ class AssignmentQuizService
                     'type'           => $type,
                     'title'          => $title,
                     'correct_answer' => $ans,
+                    'marks'          => (float) ($item['marks'] ?? 1.0),
                     'image'          => $img,
                     'prompt'         => $item['prompt'] ?? null,
                     'page_number'    => $item['page_number'] ?? ($item['page'] ?? 1),

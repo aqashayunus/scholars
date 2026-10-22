@@ -402,6 +402,14 @@ class AdminDashboardController extends Controller
                 ->with('success', 'Personal task/notes document "' . $assignment->title . '" uploaded and assigned to student successfully.');
         }
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.',
+                'assignment_id' => $assignment->id,
+            ]);
+        }
+
         return redirect()->to(route('admin.dashboard') . $redirectTab)
             ->with('success', 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.');
     }
@@ -410,6 +418,14 @@ class AdminDashboardController extends Controller
     {
         $assignment = Assignment::findOrFail($id);
         $assignment = $assignmentQuizzes->updateTask($assignment, $request);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Task "' . $assignment->title . '" updated successfully.',
+                'assignment_id' => $assignment->id,
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#courses-tasks')
             ->with('success', 'Task "' . $assignment->title . '" updated successfully.');
