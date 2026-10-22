@@ -150,13 +150,35 @@ class BillingAdminService
             'effective_from'   => 'nullable|date',
             'effective_until'  => 'nullable|date|after_or_equal:effective_from',
             'status'           => 'nullable|in:draft,active,inactive,archived',
+            'subjects'               => 'nullable|array',
+            'subjects.*.subject_id'  => 'required|exists:subjects,id',
+            'subjects.*.is_required' => 'required|boolean',
+            'subjects.*.sort_order'  => 'nullable|integer|min:0',
         ]);
 
         $validated['is_active']  = $request->boolean('is_active', true);
         $validated['student_id'] = $request->filled('student_id') ? $validated['student_id'] : null;
 
         $oldValues = $fee->only(['name', 'amount', 'package_type', 'status']);
-        $fee->update($validated);
+        $fee->update(\Illuminate\Support\Arr::except($validated, ['subjects']));
+
+        // Sync subjects inline when submitted alongside the general update
+        // (the dedicated updateFeeStructureSubjects endpoint still exists
+        // separately for the package-builder UI's own save action).
+        if (in_array($validated['package_type'] ?? $fee->package_type, ['fixed_bundle', 'pick_n'])) {
+            $syncData = [];
+            foreach ($validated['subjects'] ?? [] as $idx => $sub) {
+                $syncData[$sub['subject_id']] = [
+                    'is_required' => (bool) $sub['is_required'],
+                    'sort_order'  => (int) ($sub['sort_order'] ?? $idx),
+                ];
+            }
+            if (!empty($syncData)) {
+                $fee->subjects()->sync($syncData);
+            }
+        } elseif (($validated['package_type'] ?? null) === 'individual') {
+            $fee->subjects()->detach();
+        }
 
         FinancialAuditLog::create([
             'user_id'     => auth()->id(),
@@ -632,31 +654,60 @@ class BillingAdminService
     public function updateFinanceSettings(Request $request): void
     {
         $validated = $request->validate([
-            'company_bank_name'           => 'required|string|max:255',
-            'company_bank_account_name'   => 'required|string|max:255',
-            'company_bank_account_number' => 'required|string|max:255',
+            'company_bank_name'           => 'nullable|string|max:255',
+            'company_bank_account_name'   => 'nullable|string|max:255',
+            'company_bank_account_number' => 'nullable|string|max:255',
             'company_bank_instructions'   => 'nullable|string',
-            'gateway_provider'            => 'required|string|max:100',
+            'gateway_provider'            => 'nullable|string|max:100',
             'gateway_merchant_id'         => 'nullable|string|max:255',
             'gateway_sandbox_mode'        => 'nullable|boolean',
+            'billplz_api_key'             => 'nullable|string|max:255',
+            'billplz_x_signature_key'     => 'nullable|string|max:255',
+            'billplz_collection_id'       => 'nullable|string|max:255',
+            'billplz_sandbox'             => 'nullable|boolean',
+            'is_gateway_form'             => 'nullable|boolean',
         ]);
 
-        Setting::set('company_bank_name', $validated['company_bank_name'], 'finance', 'Company Bank Name');
-        Setting::set('company_bank_account_name', $validated['company_bank_account_name'], 'finance', 'Company Account Name');
-        Setting::set('company_bank_account_number', $validated['company_bank_account_number'], 'finance', 'Company Account Number');
-        Setting::set('company_bank_instructions', $validated['company_bank_instructions'] ?? '', 'finance', 'Transfer Instructions');
-        Setting::set('gateway_provider', $validated['gateway_provider'], 'finance', 'Gateway Provider');
-        if (!empty($validated['gateway_merchant_id'])) {
-            Setting::set('gateway_merchant_id', $validated['gateway_merchant_id'], 'finance', 'Gateway Merchant ID');
+        if ($request->has('company_bank_name')) {
+            Setting::set('company_bank_name', $validated['company_bank_name'] ?? '', 'finance', 'Company Bank Name');
         }
-        Setting::set('gateway_sandbox_mode', $request->has('gateway_sandbox_mode') ? '1' : '0', 'finance', 'Gateway Sandbox Mode');
+        if ($request->has('company_bank_account_name')) {
+            Setting::set('company_bank_account_name', $validated['company_bank_account_name'] ?? '', 'finance', 'Company Account Name');
+        }
+        if ($request->has('company_bank_account_number')) {
+            Setting::set('company_bank_account_number', $validated['company_bank_account_number'] ?? '', 'finance', 'Company Account Number');
+        }
+        if ($request->has('company_bank_instructions')) {
+            Setting::set('company_bank_instructions', $validated['company_bank_instructions'] ?? '', 'finance', 'Transfer Instructions');
+        }
+        if ($request->has('gateway_provider')) {
+            Setting::set('gateway_provider', $validated['gateway_provider'] ?? 'billplz', 'finance', 'Gateway Provider');
+        }
+        if ($request->has('gateway_merchant_id')) {
+            Setting::set('gateway_merchant_id', $validated['gateway_merchant_id'] ?? '', 'finance', 'Gateway Merchant ID');
+        }
+
+        // Billplz Gateway Credentials
+        if ($request->has('billplz_api_key')) {
+            Setting::set('billplz_api_key', trim((string) $request->input('billplz_api_key')), 'finance', 'Billplz API Secret Key');
+        }
+        if ($request->has('billplz_x_signature_key')) {
+            Setting::set('billplz_x_signature_key', trim((string) $request->input('billplz_x_signature_key')), 'finance', 'Billplz X-Signature Key');
+        }
+        if ($request->has('billplz_collection_id')) {
+            Setting::set('billplz_collection_id', trim((string) $request->input('billplz_collection_id')), 'finance', 'Billplz Collection ID');
+        }
+        if ($request->has('is_gateway_form')) {
+            Setting::set('billplz_sandbox', $request->has('billplz_sandbox') ? '1' : '0', 'finance', 'Billplz Sandbox Mode');
+            Setting::set('gateway_sandbox_mode', $request->has('billplz_sandbox') ? '1' : '0', 'finance', 'Gateway Sandbox Mode');
+        }
 
         FinancialAuditLog::create([
             'user_id'     => auth()->id(),
             'action'      => 'update_settings',
             'target_type' => 'FinanceSettings',
             'ip_address'  => $request->ip(),
-            'details'     => "Updated company banking & payment gateway settings.",
+            'details'     => "Updated company banking & Billplz payment gateway settings.",
         ]);
     }
 
@@ -670,11 +721,17 @@ class BillingAdminService
             'details'     => "Admin revealed sensitive payment gateway credentials.",
         ]);
 
+        $billplzService = new \App\Services\Billplz\BillplzService();
+
         return [
-            'success'     => true,
-            'merchant_id' => Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
-            'api_key'     => 'sk_live_' . md5('osc_live_secret_key_prod'),
-            'provider'    => Setting::get('gateway_provider', 'mock_fpx'),
+            'success'                 => true,
+            'merchant_id'             => Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
+            'api_key'                 => $billplzService->getApiKey() ?: 'sk_live_' . md5('osc_live_secret_key_prod'),
+            'billplz_api_key'         => $billplzService->getApiKey() ?: '',
+            'billplz_x_signature_key' => $billplzService->getXSignatureKey() ?: '',
+            'billplz_collection_id'   => $billplzService->getCollectionId() ?: '',
+            'billplz_sandbox'         => $billplzService->isSandbox(),
+            'provider'                => Setting::get('gateway_provider', 'billplz'),
         ];
     }
 
