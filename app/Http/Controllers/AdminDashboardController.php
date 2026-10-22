@@ -405,7 +405,16 @@ class AdminDashboardController extends Controller
 
     public function gradeTask(Request $request, $assignmentId, $studentId, AssignmentQuizService $assignmentQuizzes)
     {
-        $assignmentQuizzes->gradeTask($request, $assignmentId, $studentId);
+        $sub = $assignmentQuizzes->gradeTask($request, $assignmentId, $studentId);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'          => true,
+                'message'          => 'Student submission graded successfully.',
+                'graded_file_name' => $sub->graded_file_name,
+                'graded_file_url'  => $sub->graded_file_url,
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#courses-tasks')
             ->with('success', 'Student submission graded successfully.');

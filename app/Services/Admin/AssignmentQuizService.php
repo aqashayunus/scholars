@@ -475,6 +475,7 @@ class AssignmentQuizService
         $validated = $request->validate([
             'score'            => 'required|numeric|min:0|max:1000',
             'teacher_feedback' => 'nullable|string|max:3000',
+            'graded_file'      => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ]);
 
         $sub = StudentAssignment::firstOrNew([
@@ -485,6 +486,17 @@ class AssignmentQuizService
         $sub->score            = $validated['score'];
         $sub->teacher_feedback = $validated['teacher_feedback'] ?? null;
         $sub->status           = 'graded';
+
+        if ($request->hasFile('graded_file')) {
+            $file = $request->file('graded_file');
+            $dir = 'graded_tasks/' . $assignmentId;
+            $savedName = 'graded_' . $studentId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($dir, $savedName, 'public');
+
+            $sub->graded_file_path = $path;
+            $sub->graded_file_name = $file->getClientOriginalName();
+        }
+
         $sub->save();
 
         return $sub;
@@ -492,22 +504,26 @@ class AssignmentQuizService
 
     public function getTaskSubmissions(int $id): array
     {
-        $assignment = Assignment::with(['results.student.user'])->findOrFail($id);
+        $assignment = Assignment::with(['results.student.user', 'results.interactiveSubmission'])->findOrFail($id);
 
         $submissions = $assignment->results->map(function ($sa) use ($assignment) {
             return [
-                'student_id'       => $sa->student_id,
-                'student_name'     => $sa->student?->user?->name ?? 'Student #' . $sa->student_id,
-                'student_email'    => $sa->student?->user?->email ?? '-',
-                'student_level'    => $sa->student?->level ?? '-',
-                'status'           => $sa->status,
-                'score'            => $sa->score,
-                'total_marks'      => $assignment->total_marks ?? 100,
-                'submitted_at'     => $sa->submitted_at ? $sa->submitted_at->format('d M Y, h:i A') : null,
-                'submission_notes' => $sa->submission_notes,
-                'teacher_feedback' => $sa->teacher_feedback,
-                'file_name'        => $sa->file_name,
-                'file_url'         => $sa->file_url,
+                'student_id'                => $sa->student_id,
+                'student_name'              => $sa->student?->user?->name ?? 'Student #' . $sa->student_id,
+                'student_email'             => $sa->student?->user?->email ?? '-',
+                'student_level'             => $sa->student?->level ?? '-',
+                'status'                    => $sa->status,
+                'score'                     => $sa->score,
+                'total_marks'               => $assignment->total_marks ?? 100,
+                'submitted_at'              => $sa->submitted_at ? $sa->submitted_at->format('d M Y, h:i A') : null,
+                'submission_notes'          => $sa->submission_notes,
+                'teacher_feedback'          => $sa->teacher_feedback,
+                'file_name'                 => $sa->file_name,
+                'file_url'                  => $sa->file_url,
+                'graded_file_name'          => $sa->graded_file_name,
+                'graded_file_url'           => $sa->graded_file_url,
+                'interactive_submission_id' => $sa->interactiveSubmission?->id,
+                'interactive_review_url'    => $sa->interactiveSubmission ? route('admin.submissions.review', $sa->interactiveSubmission->id) : null,
             ];
         });
 

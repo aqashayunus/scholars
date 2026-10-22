@@ -445,10 +445,13 @@ class AssignmentService
                                 ->whereIn('course_id', $courseIds)
                                 ->firstOrFail();
 
+        $maxMarks = $assignment->total_marks ?? 100;
+
         $validated = $request->validate([
-            'score'            => 'required|integer|min:0|max:100',
-            'teacher_feedback' => 'nullable|string|max:2000',
+            'score'            => 'required|numeric|min:0|max:' . max(100, $maxMarks),
+            'teacher_feedback' => 'nullable|string|max:3000',
             'status'           => 'required|in:graded,submitted,late',
+            'graded_file'      => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ]);
 
         $sub = StudentAssignment::firstOrNew([
@@ -462,9 +465,22 @@ class AssignmentService
         if (!$sub->submitted_at) {
             $sub->submitted_at = now();
         }
+
+        // Handle uploaded graded task file from teacher
+        if ($request->hasFile('graded_file')) {
+            $file = $request->file('graded_file');
+            $dir = 'graded_tasks/' . $assignment->id;
+            $savedName = 'graded_' . $studentId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($dir, $savedName, 'public');
+
+            $sub->graded_file_path = $path;
+            $sub->graded_file_name = $file->getClientOriginalName();
+        }
+
         $sub->save();
 
         $studentName = $sub->student?->user?->name ?? 'Student';
+        $gradedDocNote = $sub->graded_file_path ? " A graded task document has been attached for your review." : "";
 
         if ($sub->student?->user_id) {
             $feedbackMsg = !empty($validated['teacher_feedback']) ? " Feedback: \"{$validated['teacher_feedback']}\"" : "";
@@ -472,7 +488,7 @@ class AssignmentService
                 'user_id' => $sub->student->user_id,
                 'type'    => 'grade',
                 'title'   => 'Assignment Graded & Reviewed',
-                'message' => "Your teacher graded your submission for '{$assignment->title}' with a score of {$validated['score']}/100.{$feedbackMsg}",
+                'message' => "Your teacher graded your submission for '{$assignment->title}' with a score of {$validated['score']}/{$maxMarks}.{$feedbackMsg}{$gradedDocNote}",
             ]);
         }
 
@@ -480,7 +496,7 @@ class AssignmentService
             'user_id' => auth()->id(),
             'type'    => 'grade',
             'title'   => 'Submission Graded',
-            'message' => "You reviewed and graded {$studentName}'s submission for '{$assignment->title}' ({$validated['score']}/100).",
+            'message' => "You reviewed and graded {$studentName}'s submission for '{$assignment->title}' ({$validated['score']}/{$maxMarks})." . ($sub->graded_file_path ? " (Graded task file uploaded)" : ""),
         ]);
 
         return $sub;
@@ -568,5 +584,142 @@ class AssignmentService
         $quiz->questions()->delete();
         $quiz->results()->delete();
         $quiz->delete();
+    }
+
+    /**
+     * Download a student's submitted assignment file (legacy upload or,
+     * failing that, the interactive-PDF submission's merged final PDF).
+     * cPanel-safe multi-path storage fallback, same shape as MaterialService::download().
+     */
+    public function downloadStudentSubmission(int $studentAssignmentId)
+    {
+        $sa = StudentAssignment::with(['assignment.course', 'student.user', 'interactiveSubmission'])->findOrFail($studentAssignmentId);
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(401, 'Please log in to download this submission.');
+        }
+
+        $authorized = false;
+        if ($user->isAdmin() || $user->isParent()) {
+            $authorized = true;
+        } elseif ($user->isTeacher()) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                if ($sa->assignment?->course?->teacher_id == $teacher->id || $sa->assignment?->teacher_id == $teacher->id) {
+                    $authorized = true;
+                } elseif ($teacher->courses()->where('id', $sa->assignment?->course_id)->exists()) {
+                    $authorized = true;
+                }
+            }
+        } elseif ($user->isStudent()) {
+            $student = \App\Models\Student::where('user_id', $user->id)->first();
+            if ($student && $sa->student_id == $student->id) {
+                $authorized = true;
+            }
+        }
+
+        if (!$authorized) {
+            abort(403, 'Unauthorized to download this submission.');
+        }
+
+        $filePath = $sa->file_path;
+        if (!$filePath && $sa->interactiveSubmission?->final_pdf_path) {
+            $filePath = $sa->interactiveSubmission->final_pdf_path;
+        }
+
+        if (!$filePath) {
+            abort(404, 'No submission file found for this record.');
+        }
+
+        $resolvedFullPath = $this->resolveCpanelSafePath($filePath);
+        if (!$resolvedFullPath) {
+            abort(404, 'The submitted file was not found on the server storage. Please check storage permissions.');
+        }
+
+        $downloadName = $sa->file_name ?: ('submission_' . $sa->id . '.pdf');
+        if (!str_ends_with(strtolower($downloadName), '.pdf') && str_ends_with(strtolower($resolvedFullPath), '.pdf')) {
+            $downloadName .= '.pdf';
+        }
+
+        return response()->download($resolvedFullPath, $downloadName, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
+     * Download the graded file a teacher uploaded for a student's assignment.
+     */
+    public function downloadGradedTask(int $studentAssignmentId)
+    {
+        $sa = StudentAssignment::with(['assignment.course', 'student.user'])->findOrFail($studentAssignmentId);
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(401, 'Please log in to download this graded file.');
+        }
+
+        $authorized = false;
+        if ($user->isAdmin()) {
+            $authorized = true;
+        } elseif ($user->isParent()) {
+            if ($user->studentChildren()->where('students.id', $sa->student_id)->exists() || $user->children()->where('id', $sa->student_id)->exists()) {
+                $authorized = true;
+            }
+        } elseif ($user->isTeacher()) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                if ($sa->assignment?->course?->teacher_id == $teacher->id || $sa->assignment?->teacher_id == $teacher->id) {
+                    $authorized = true;
+                } elseif ($teacher->courses()->where('id', $sa->assignment?->course_id)->exists()) {
+                    $authorized = true;
+                }
+            }
+        } elseif ($user->isStudent()) {
+            $student = \App\Models\Student::where('user_id', $user->id)->first();
+            if ($student && $sa->student_id == $student->id) {
+                $authorized = true;
+            }
+        }
+
+        if (!$authorized) {
+            abort(403, 'Unauthorized to download this graded task.');
+        }
+
+        $filePath = $sa->graded_file_path;
+        if (!$filePath) {
+            abort(404, 'No graded file found for this task.');
+        }
+
+        $resolvedFullPath = $this->resolveCpanelSafePath($filePath);
+        if (!$resolvedFullPath) {
+            abort(404, 'The graded task file was not found on the server storage.');
+        }
+
+        $ext = pathinfo($resolvedFullPath, PATHINFO_EXTENSION);
+        $downloadName = $sa->graded_file_name ?: ('graded_' . $sa->id . ($ext ? ('.' . $ext) : ''));
+
+        return response()->download($resolvedFullPath, $downloadName);
+    }
+
+    /**
+     * Multi-path fallback resolution for cPanel shared hosting, local, and VPS.
+     */
+    private function resolveCpanelSafePath(string $filePath): ?string
+    {
+        if (Storage::disk('public')->exists($filePath)) {
+            return Storage::disk('public')->path($filePath);
+        }
+        if (file_exists(storage_path('app/public/' . $filePath))) {
+            return storage_path('app/public/' . $filePath);
+        }
+        if (file_exists(public_path('storage/' . $filePath))) {
+            return public_path('storage/' . $filePath);
+        }
+        if (file_exists(base_path('storage/app/public/' . $filePath))) {
+            return base_path('storage/app/public/' . $filePath);
+        }
+
+        return null;
     }
 }

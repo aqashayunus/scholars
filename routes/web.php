@@ -92,6 +92,12 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
         Route::get('/diagnostic/{id}/pdf', [\App\Http\Controllers\DiagnosticTestController::class, 'streamPdf'])->name('diagnostic.pdf');
         Route::post('/diagnostic/{id}/submit', [\App\Http\Controllers\DiagnosticTestController::class, 'submit'])->name('diagnostic.submit');
         Route::post('/diagnostic/{id}/save-draft', [\App\Http\Controllers\DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
+        Route::get('/assignments/{assignment}/interactive', [\App\Http\Controllers\InteractiveAssignmentController::class, 'show'])->name('assignments.interactive');
+        Route::get('/assignments/{assignment}/pdf-stream', [\App\Http\Controllers\InteractiveAssignmentController::class, 'streamSourcePdf'])->name('assignments.pdf-stream');
+        Route::get('/submissions/{submission}/init', [\App\Http\Controllers\InteractiveAssignmentController::class, 'loadState'])->name('submissions.init');
+        Route::put('/submissions/{submission}/pages/{pageNumber}', [\App\Http\Controllers\InteractiveAssignmentController::class, 'savePage'])->middleware('throttle:60,1')->name('submissions.pages.save');
+        Route::post('/submissions/{submission}/submit', [\App\Http\Controllers\InteractiveAssignmentController::class, 'submit'])->name('submissions.submit');
+        Route::get('/submissions/{submission}/download-final', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.download-final');
         Route::get('/quiz', [StudentDashboardController::class, 'quiz'])->name('quiz');
         Route::get('/quiz/{id}', [StudentDashboardController::class, 'quizShow'])->name('quiz.show');
         Route::post('/quiz/{id}/submit', [StudentDashboardController::class, 'quizSubmit'])->name('quiz.submit');
@@ -177,6 +183,8 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::post('/classes/{id}/meeting-url', [TeacherDashboardController::class, 'updateMeetingUrl'])->name('classes.meeting-url');
     Route::post('/classes/{liveClass}/attendance', [TeacherDashboardController::class, 'saveAttendance'])->name('classes.attendance.save');
     Route::post('/attendance/corrections/{correctionRequest}/review', [TeacherDashboardController::class, 'reviewCorrection'])->name('attendance.corrections.review');
+    Route::get('/submissions/{submission}/review', [\App\Http\Controllers\InteractiveAssignmentController::class, 'teacherReview'])->name('submissions.review');
+    Route::get('/submissions/{submission}/final-pdf', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
     Route::post('/classes/{id}/tasks', [TeacherDashboardController::class, 'storeTask'])->name('classes.tasks.store');
     Route::get('/classes/{id}', [TeacherDashboardController::class, 'manageClass'])->name('classes.show');
     Route::get('/students', [TeacherDashboardController::class, 'students'])->name('students');
@@ -270,6 +278,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/subjects/{id}/diagnostic-test/create', [AdminDashboardController::class, 'createSubjectDiagnosticTest'])->name('subjects.diagnostic.create');
     Route::delete('/subjects/{id}/diagnostic-test', [AdminDashboardController::class, 'detachSubjectDiagnosticTest'])->name('subjects.diagnostic.detach');
     Route::post('/diagnostic/test-rule', [\App\Http\Controllers\DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
+    Route::get('/submissions/{submission}/review', [\App\Http\Controllers\InteractiveAssignmentController::class, 'adminReview'])->name('submissions.review');
+    Route::get('/submissions/{submission}/final-pdf', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
 
     // Topic & Subtopic CRUD (Curriculum Syllabus Builder)
     Route::post('/topics', [AdminDashboardController::class, 'storeTopic'])->name('topics.store');
@@ -648,6 +658,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/materials/{id}/download', [TeacherDashboardController::class, 'downloadMaterial'])->name('materials.download');
+    Route::get('/student-assignments/{studentAssignment}/download', [TeacherDashboardController::class, 'downloadStudentSubmission'])->name('student-assignments.download');
+    Route::get('/student-assignments/{studentAssignment}/download-graded', [TeacherDashboardController::class, 'downloadGradedTask'])->name('student-assignments.download-graded');
 });
 
 // ──────────────────────────────────────────────────

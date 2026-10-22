@@ -151,6 +151,16 @@ class TeacherDashboardController extends Controller
         ]);
     }
 
+    public function downloadStudentSubmission($studentAssignmentId, AssignmentService $assignments)
+    {
+        return $assignments->downloadStudentSubmission((int) $studentAssignmentId);
+    }
+
+    public function downloadGradedTask($studentAssignmentId, AssignmentService $assignments)
+    {
+        return $assignments->downloadGradedTask((int) $studentAssignmentId);
+    }
+
     public function storeTask(Request $request, $id, AssignmentService $assignments)
     {
         $assignments->storeTask((int) $id, $request);
@@ -240,8 +250,9 @@ class TeacherDashboardController extends Controller
     {
         $sub = $assignments->gradeSubmission((int) $assignmentId, (int) $studentId, $request);
         $studentName = $sub->student?->user?->name ?? 'Student';
+        $maxMarks = $sub->assignment?->total_marks ?? 100;
 
-        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$sub->score}/100)!");
+        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$sub->score}/{$maxMarks})!" . ($sub->graded_file_path ? " Graded document uploaded." : ""));
     }
 
     public function readAllNotifications()
