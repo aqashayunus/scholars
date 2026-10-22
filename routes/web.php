@@ -91,6 +91,7 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
         Route::get('/diagnostic/{id}', [\App\Http\Controllers\DiagnosticTestController::class, 'take'])->name('diagnostic.take');
         Route::get('/diagnostic/{id}/pdf', [\App\Http\Controllers\DiagnosticTestController::class, 'streamPdf'])->name('diagnostic.pdf');
         Route::post('/diagnostic/{id}/submit', [\App\Http\Controllers\DiagnosticTestController::class, 'submit'])->name('diagnostic.submit');
+        Route::post('/diagnostic/{id}/save-draft', [\App\Http\Controllers\DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
         Route::get('/quiz', [StudentDashboardController::class, 'quiz'])->name('quiz');
         Route::get('/quiz/{id}', [StudentDashboardController::class, 'quizShow'])->name('quiz.show');
         Route::post('/quiz/{id}/submit', [StudentDashboardController::class, 'quizSubmit'])->name('quiz.submit');
@@ -264,6 +265,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/subjects', [AdminDashboardController::class, 'storeSubject'])->name('subjects.store');
     Route::put('/subjects/{id}', [AdminDashboardController::class, 'updateSubject'])->name('subjects.update');
     Route::delete('/subjects/{id}', [AdminDashboardController::class, 'destroySubject'])->name('subjects.destroy');
+    Route::get('/subjects/{id}', [AdminDashboardController::class, 'showSubject'])->name('subjects.show');
+    Route::post('/subjects/{id}/diagnostic-test', [AdminDashboardController::class, 'setSubjectDiagnosticTest'])->name('subjects.diagnostic.set');
+    Route::post('/subjects/{id}/diagnostic-test/create', [AdminDashboardController::class, 'createSubjectDiagnosticTest'])->name('subjects.diagnostic.create');
+    Route::delete('/subjects/{id}/diagnostic-test', [AdminDashboardController::class, 'detachSubjectDiagnosticTest'])->name('subjects.diagnostic.detach');
+    Route::post('/diagnostic/test-rule', [\App\Http\Controllers\DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
 
     // Topic & Subtopic CRUD (Curriculum Syllabus Builder)
     Route::post('/topics', [AdminDashboardController::class, 'storeTopic'])->name('topics.store');

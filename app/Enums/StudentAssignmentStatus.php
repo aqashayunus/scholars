@@ -8,6 +8,7 @@ enum StudentAssignmentStatus: string
     case Submitted = 'submitted';
     case Graded = 'graded';
     case Late = 'late';
+    case PendingReview = 'pending_review';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum StudentAssignmentStatus: string
             self::Submitted => 'Submitted',
             self::Graded => 'Graded',
             self::Late => 'Late',
+            self::PendingReview => 'Pending Review',
         };
     }
 }

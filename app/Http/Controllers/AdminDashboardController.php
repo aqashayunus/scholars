@@ -172,6 +172,54 @@ class AdminDashboardController extends Controller
             ->with('success', "Subject '{$name}' deleted successfully.");
     }
 
+    public function showSubject($id, CurriculumService $curriculum)
+    {
+        $subject = $curriculum->findSubjectForJson((int) $id);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            if (!$subject) {
+                return response()->json(['error' => 'Subject not found'], 404);
+            }
+            return response()->json($subject);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects');
+    }
+
+    // ── SUBJECT DIAGNOSTIC TEST MANAGEMENT ────────────────────────────────────
+
+    public function setSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
+    {
+        $result = $curriculum->setSubjectDiagnosticTest($request, (int) $id);
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
+            ->with('success', "Diagnostic test \"{$result['assignment']->title}\" attached to {$result['subject']->display_name}.");
+    }
+
+    public function createSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
+    {
+        $result = $curriculum->createSubjectDiagnosticTest($request, (int) $id);
+        $message = "Diagnostic test \"{$result['assignment']->title}\" saved and attached to {$result['subject']->display_name}.";
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => $message,
+                'assignment_id' => $result['assignment']->id,
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')->with('success', $message);
+    }
+
+    public function detachSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
+    {
+        $result = $curriculum->detachSubjectDiagnosticTest((int) $id);
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
+            ->with('success', "Diagnostic test \"{$result['testTitle']}\" detached from {$result['subject']->display_name}.");
+    }
+
     // ── TOPIC & SUBTOPIC CRUD (CURRICULUM SYLLABUS BUILDER) ───────────────────
 
     public function storeTopic(Request $request, CurriculumService $curriculum)
