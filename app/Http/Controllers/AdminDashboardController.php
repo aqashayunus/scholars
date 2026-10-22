@@ -80,10 +80,37 @@ class AdminDashboardController extends Controller
             ->with('success', "User '{$user->name}' created successfully. Welcome email dispatched to {$user->email}.");
     }
 
+    public function showUser($id, UserManagementService $users)
+    {
+        $user = $users->findUserForJson((int) $id);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+            return response()->json($user);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#users');
+    }
+
     public function updateUser(UpdateUserRequest $request, $id, UserManagementService $users)
     {
+        // Fallback if a client/proxy sent _method=DELETE via POST/PUT to this endpoint
+        if ($request->input('_method') === 'DELETE' || $request->input('action') === 'delete') {
+            return $this->destroyUser($id, $users);
+        }
+
         $user = User::findOrFail($id);
         $user = $users->updateUser($user, $request->validated());
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$user->name}' updated successfully.",
+                'user'    => $user,
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$user->name}' updated successfully.");
@@ -92,11 +119,21 @@ class AdminDashboardController extends Controller
     public function destroyUser($id, UserManagementService $users)
     {
         if (auth()->id() == $id) {
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json(['error' => 'Cannot delete your own active administrator account.'], 403);
+            }
             return redirect()->to(route('admin.dashboard') . '#users')
                 ->with('error', 'Cannot delete your own active administrator account.');
         }
 
         $userName = $users->deleteUser($id);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$userName}' deleted successfully.",
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$userName}' deleted successfully.");
@@ -106,6 +143,13 @@ class AdminDashboardController extends Controller
     {
         $user = User::findOrFail($id);
         $users->resetPassword($user, $request->validated()['password'] ?? null);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.",
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");

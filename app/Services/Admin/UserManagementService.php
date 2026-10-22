@@ -79,6 +79,11 @@ class UserManagementService
         return $user;
     }
 
+    public function findUserForJson(int $id): ?User
+    {
+        return User::with(['studentProfile', 'teacherProfile'])->find($id);
+    }
+
     public function updateUser(User $user, array $validated): User
     {
         $user->name = $validated['name'];
