@@ -82,7 +82,7 @@ class DashboardMetricsService
 
         // ── 3. Full Database Collections ─────────────────────────────────────
         $allPayments          = Payment::with(['user', 'course.subject', 'student.user', 'payer', 'invoice'])->latest('id')->get();
-        $allFeeStructures     = FeeStructure::with('student.user')->latest('id')->get();
+        $allFeeStructures     = FeeStructure::with(['student.user', 'subjects'])->latest('id')->get();
         $allInvoices          = Invoice::with(['student.user', 'student.parents', 'student.parent', 'feeStructure', 'items', 'reminders', 'paymentTransactions.payer', 'paymentTransactions.user'])->latest('id')->get();
         $allStudentsList      = Student::whereHas('user', function ($q) {
             $q->where('role', 'student');
@@ -129,7 +129,8 @@ class DashboardMetricsService
         $allUsers             = User::latest('id')->get();
         $allGigs              = TeachingGig::with(['teacher.user', 'subject'])->latest('id')->get();
         $allMasteries         = StudentTopicMastery::with(['student.user', 'subject'])->latest('id')->take(40)->get();
-        $allSubjects          = Subject::with(['topics.subtopics'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
+        $allSubjects          = Subject::with(['topics.subtopics', 'diagnosticTest'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
+        $missingSubjectDiagnosticCount = $allSubjects->where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
         $allTopics            = SubjectTopic::with(['subject', 'subtopics'])->orderBy('subject_id')->orderBy('chapter_number')->get();
         $allLiveClasses       = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user'])->latest('id')->get();
         $allRecordedClasses   = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
@@ -137,7 +138,7 @@ class DashboardMetricsService
         $teacherApplications  = TeacherApplication::with('user')->latest('id')->get();
 
         // ── 3c. Student Diagnostic Test Insights ─────────────────────────────
-        $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->latest('id')->get();
+        $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->with('subject')->latest('id')->get();
         $activeDiagnostic = $selectedDiagnosticId ? $diagnosticTests->firstWhere('id', $selectedDiagnosticId) : $diagnosticTests->first();
         $activeDiagId    = $activeDiagnostic?->id;
 
@@ -427,6 +428,87 @@ class DashboardMetricsService
             ->latest('id')
             ->get();
 
+        // ── Email Management & Blast System ───────────────────────────────
+        $emailStats = [
+            'total_sent'          => \App\Models\EmailLog::whereIn('status', [\App\Models\EmailLog::STATUS_SENT, \App\Models\EmailLog::STATUS_DELIVERED])->count(),
+            'processed'           => \App\Models\EmailLog::count(),
+            'failed'              => \App\Models\EmailLog::where('status', \App\Models\EmailLog::STATUS_FAILED)->count(),
+            'pending'             => \App\Models\EmailLog::where('status', \App\Models\EmailLog::STATUS_QUEUED)->count(),
+            'scheduled_campaigns' => \App\Models\EmailCampaign::where('status', \App\Models\EmailCampaign::STATUS_SCHEDULED)->count(),
+            'active_automations'  => \App\Models\EmailAutomation::where('is_enabled', true)->count(),
+        ];
+
+        $emailTemplates     = \App\Models\EmailTemplate::with('creator')->notArchived()->orderBy('category')->orderBy('name')->get();
+        $emailCampaigns     = \App\Models\EmailCampaign::with(['template', 'creator'])->latest('id')->take(30)->get();
+        $emailAutomations   = \App\Models\EmailAutomation::with('template')->get();
+        $emailLogs          = \App\Models\EmailLog::with(['template', 'user'])->latest('id')->take(60)->get();
+        $emailCategories    = \App\Models\EmailTemplate::categories();
+        $availableVariables = \App\Services\Email\EmailVariableRegistry::flatList();
+        $supportedAudiences = \App\Services\Email\AudienceResolverService::supportedAudiences();
+
+        $emailSettings = [
+            'sender_display_name'    => Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars')),
+            'sender_email_address'   => Setting::get('sender_email_address', config('mail.from.address', 'noreply@olympiascholars.edu.my')),
+            'reply_to_email'         => Setting::get('reply_to_email', config('mail.from.address', 'support@olympiascholars.edu.my')),
+            'official_support_email' => Setting::get('official_support_email', 'support@olympiascholars.edu.my'),
+            'official_website_url'   => Setting::get('official_website_url', config('app.url', 'https://olympiascholars.edu.my')),
+            'official_email_footer'  => Setting::get('official_email_footer', 'Olympia Scholars • Dedicated to Educational Excellence • Kuala Lumpur, Malaysia'),
+            'email_banner_url'       => Setting::get('email_banner_url', asset('images/email-banner.png')),
+            'mail_mailer'            => config('mail.default', 'smtp'),
+            'mail_host'              => config('mail.mailers.smtp.host', 'smtp.gmail.com'),
+            'mail_port'              => config('mail.mailers.smtp.port', 587),
+            'mail_encryption'        => config('mail.mailers.smtp.encryption', 'tls'),
+        ];
+
+        // 7-day sending trend data
+        $emailTrendsLabels = [];
+        $emailTrendsSent   = [];
+        $emailTrendsFailed = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $dayStr = $day->format('Y-m-d');
+            $emailTrendsLabels[] = $day->format('d M');
+            $emailTrendsSent[]   = \App\Models\EmailLog::whereDate('created_at', $dayStr)->whereIn('status', [\App\Models\EmailLog::STATUS_SENT, \App\Models\EmailLog::STATUS_DELIVERED])->count();
+            $emailTrendsFailed[] = \App\Models\EmailLog::whereDate('created_at', $dayStr)->where('status', \App\Models\EmailLog::STATUS_FAILED)->count();
+        }
+
+        // Category breakdown
+        $catCounts = \App\Models\EmailLog::select('category', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->toArray();
+        $emailCategoryLabels = [];
+        $emailCategoryData   = [];
+        foreach ($emailCategories as $ckey => $clabel) {
+            $emailCategoryLabels[] = $clabel;
+            $emailCategoryData[]   = $catCounts[$ckey] ?? 0;
+        }
+
+        // ── Attendance Hub Data ─────────────────────────────────────────────
+        $allAttendances = \App\Models\StudentAttendance::with([
+            'student.user',
+            'liveClass.course.subject',
+            'liveClass.teacher.user',
+            'verifier',
+        ])->latest('id')->take(500)->get();
+
+        $attendanceTotalRecords  = \App\Models\StudentAttendance::count();
+        $attendanceAttendedCount = \App\Models\StudentAttendance::where('status', 'attended')->count();
+        $attendanceLateCount     = \App\Models\StudentAttendance::where('status', 'late')->count();
+        $attendanceAbsentCount   = \App\Models\StudentAttendance::where('status', 'absent')->count();
+        $attendanceExcusedCount  = \App\Models\StudentAttendance::where('status', 'excused')->count();
+        $attendancePendingCount  = \App\Models\StudentAttendance::where('status', 'pending_verification')->count();
+
+        $pendingAttendanceCorrections = \App\Models\AttendanceCorrectionRequest::where('status', 'pending')
+            ->with(['student.user', 'liveClass.course.subject'])
+            ->latest()
+            ->take(10)
+            ->get();
+
+        $attendanceLateThreshold        = (int) Setting::get('attendance.late_threshold_minutes', 15);
+        $attendanceEarlyJoinWindow      = (int) Setting::get('attendance.early_join_window_minutes', 15);
+        $attendanceExcusedInDenominator = (bool) Setting::get('attendance.excused_in_denominator', 0);
+
         return [
             'totalUsers' => $totalUsers, 'totalStudents' => $totalStudents, 'totalTeachers' => $totalTeachers, 'totalParents' => $totalParents, 'totalAdmins' => $totalAdmins,
             'totalCourses' => $totalCourses, 'publishedCourses' => $publishedCourses, 'draftCourses' => $draftCourses, 'archivedCourses' => $archivedCourses,
@@ -437,7 +519,7 @@ class DashboardMetricsService
             'teacherCutPct' => $teacherCutPct, 'currencySymbol' => $currencySymbol,
             'allPayments' => $allPayments, 'allFeeStructures' => $allFeeStructures, 'allInvoices' => $allInvoices, 'allStudentsList' => $allStudentsList, 'allCertificates' => $allCertificates, 'financialLogs' => $financialLogs, 'pendingProofPayments' => $pendingProofPayments, 'allVerificationPayments' => $allVerificationPayments,
             'allEnrollments' => $allEnrollments, 'allTeachers' => $allTeachers, 'allCourses' => $allCourses, 'allUsers' => $allUsers, 'allGigs' => $allGigs, 'allMasteries' => $allMasteries,
-            'allSubjects' => $allSubjects, 'allTopics' => $allTopics, 'allLiveClasses' => $allLiveClasses, 'allRecordedClasses' => $allRecordedClasses, 'teacherApplications' => $teacherApplications, 'allQuizzes' => $allQuizzes, 'allTasks' => $allTasks,
+            'allSubjects' => $allSubjects, 'missingSubjectDiagnosticCount' => $missingSubjectDiagnosticCount, 'allTopics' => $allTopics, 'allLiveClasses' => $allLiveClasses, 'allRecordedClasses' => $allRecordedClasses, 'teacherApplications' => $teacherApplications, 'allQuizzes' => $allQuizzes, 'allTasks' => $allTasks,
             'revenueLabels' => $revenueLabels, 'revenueData' => $revenueData,
             'subjectEnrollments' => $subjectEnrollments, 'subjectLabels' => $subjectLabels, 'subjectData' => $subjectData,
             'recentLogs' => $recentLogs, 'restrictedStudentsCount' => $restrictedStudentsCount,
@@ -448,6 +530,13 @@ class DashboardMetricsService
             'diagnosticCompletionRate' => $diagnosticCompletionRate, 'diagnosticAvgScore' => $diagnosticAvgScore, 'diagnosticCemerlangCount' => $diagnosticCemerlangCount, 'diagnosticBaikCount' => $diagnosticBaikCount,
             'diagnosticSederhanaCount' => $diagnosticSederhanaCount, 'diagnosticPerluBimbinganCount' => $diagnosticPerluBimbinganCount,
             'diagnosticTests' => $diagnosticTests, 'activeDiagnostic' => $activeDiagnostic,
+            'emailStats' => $emailStats, 'emailTemplates' => $emailTemplates, 'emailCampaigns' => $emailCampaigns, 'emailAutomations' => $emailAutomations, 'emailLogs' => $emailLogs,
+            'emailCategories' => $emailCategories, 'availableVariables' => $availableVariables, 'supportedAudiences' => $supportedAudiences, 'emailSettings' => $emailSettings,
+            'emailTrendsLabels' => $emailTrendsLabels, 'emailTrendsSent' => $emailTrendsSent, 'emailTrendsFailed' => $emailTrendsFailed,
+            'emailCategoryLabels' => $emailCategoryLabels, 'emailCategoryData' => $emailCategoryData,
+            'allAttendances' => $allAttendances, 'attendanceTotalRecords' => $attendanceTotalRecords, 'attendanceAttendedCount' => $attendanceAttendedCount, 'attendanceLateCount' => $attendanceLateCount,
+            'attendanceAbsentCount' => $attendanceAbsentCount, 'attendanceExcusedCount' => $attendanceExcusedCount, 'attendancePendingCount' => $attendancePendingCount,
+            'pendingAttendanceCorrections' => $pendingAttendanceCorrections, 'attendanceLateThreshold' => $attendanceLateThreshold, 'attendanceEarlyJoinWindow' => $attendanceEarlyJoinWindow, 'attendanceExcusedInDenominator' => $attendanceExcusedInDenominator,
         ];
     }
 }
