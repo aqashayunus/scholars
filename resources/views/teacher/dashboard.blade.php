@@ -75,43 +75,126 @@
                             </div>
                             <h3 class="font-heading font-extrabold text-base text-gray-900">Today's Classes</h3>
                         </div>
-                        <a href="#" class="text-xs font-extrabold text-blue-600 hover:underline">View All</a>
+                        <a href="{{ route('teacher.classes') }}" class="text-xs font-extrabold text-blue-600 hover:underline">View All</a>
                     </div>
 
                     <div class="space-y-3">
-                        @forelse($teacher->courses->take(3) as $course)
-                        <div class="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                            @php
-                                $subjectName = strtolower($course->subject->name ?? 'general');
-                                $iconColor = 'bg-gray-500'; 
+                        @forelse($dashboardClasses ?? [] as $item)
+                        @php
+                            $subjectName = $item['subject_name'] ?? 'general';
+                            $iconColor = 'bg-gray-500'; 
+                            $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>';
+                            
+                            if (str_contains($subjectName, 'math')) { 
+                                $iconColor = 'bg-blue-600'; 
+                                $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>';
+                            }
+                            elseif (str_contains($subjectName, 'physics') || str_contains($subjectName, 'science')) { 
+                                $iconColor = 'bg-purple-600'; 
+                                $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L5.6 15.12a2 2 0 01-1.077-1.636l-.32-3.2A2 2 0 015.2 8.243l2.387.477a6 6 0 003.86-.517l.318-.158a6 6 0 013.86-.517l2.387.477a2 2 0 011.636 1.077l.32 3.2a2 2 0 01-1.066 2.052z"/></svg>';
+                            }
+                            elseif (str_contains($subjectName, 'chemistry')) { 
+                                $iconColor = 'bg-slate-600'; 
                                 $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>';
-                                
-                                if (str_contains($subjectName, 'math')) { 
-                                    $iconColor = 'bg-blue-600'; 
-                                    $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>';
+                            }
+                            elseif (str_contains($subjectName, 'english')) { 
+                                $iconColor = 'bg-emerald-500'; 
+                                $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 3l8.5 9-8.5 9-8.5-9L12 3z"/></svg>';
+                            }
+                        @endphp
+                        <div x-data="{
+                                canJoin: {{ $item['can_join'] ? 'true' : 'false' }},
+                                isLive: {{ $item['is_live'] ? 'true' : 'false' }},
+                                isStartingSoon: {{ $item['is_starting_soon'] ? 'true' : 'false' }},
+                                joinWindowMs: {{ $item['join_window_ms'] ?? 0 }},
+                                startMs: {{ $item['start_ms'] ?? 0 }},
+                                endMs: {{ $item['end_ms'] ?? 0 }},
+                                isPast: false
+                            }"
+                            x-init="
+                                if (endMs > 0) {
+                                    let timer = setInterval(() => {
+                                        let now = Date.now();
+                                        if (now >= endMs) {
+                                            canJoin = false;
+                                            isLive = false;
+                                            isStartingSoon = false;
+                                            isPast = true;
+                                            clearInterval(timer);
+                                        } else if (now >= startMs) {
+                                            canJoin = true;
+                                            isLive = true;
+                                            isStartingSoon = false;
+                                        } else if (now >= joinWindowMs) {
+                                            canJoin = true;
+                                            isLive = false;
+                                            isStartingSoon = true;
+                                        } else {
+                                            canJoin = false;
+                                            isLive = false;
+                                            isStartingSoon = false;
+                                        }
+                                    }, 1000);
                                 }
-                                elseif (str_contains($subjectName, 'physics') || str_contains($subjectName, 'science')) { 
-                                    $iconColor = 'bg-purple-600'; 
-                                    $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L5.6 15.12a2 2 0 01-1.077-1.636l-.32-3.2A2 2 0 015.2 8.243l2.387.477a6 6 0 003.86-.517l.318-.158a6 6 0 013.86-.517l2.387.477a2 2 0 011.636 1.077l.32 3.2a2 2 0 01-1.066 2.052z"/></svg>';
-                                }
-                                elseif (str_contains($subjectName, 'english')) { 
-                                    $iconColor = 'bg-emerald-500'; 
-                                    $icon = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 3l8.5 9-8.5 9-8.5-9L12 3z"/></svg>';
-                                }
-                            @endphp
+                            "
+                            x-show="!isPast"
+                            class="p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3 transition-all hover:bg-gray-100/50"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
                                 <div class="w-8 h-8 rounded-lg {{ $iconColor }} text-white font-black text-xs flex items-center justify-center shrink-0">
                                     {!! $icon !!}
                                 </div>
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-900">{{ $course->level }} {{ $course->subject->name ?? '' }}</h4>
-                                    <p class="text-[11px] text-gray-400 font-medium">{{ $course->title }}</p>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="text-xs font-bold text-gray-900 truncate">{{ $item['title'] }}</h4>
+                                        <template x-if="isLive">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                                                <span class="relative flex h-1.5 w-1.5">
+                                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                                </span>
+                                                Live
+                                            </span>
+                                        </template>
+                                        <template x-if="isStartingSoon && !isLive">
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800">
+                                                {{ $item['badge_text'] ?? 'Starts Soon' }}
+                                            </span>
+                                        </template>
+                                    </div>
+                                    <p class="text-[11px] text-gray-400 font-medium truncate">{{ $item['subtitle'] }}</p>
                                 </div>
                             </div>
-                            <span class="text-xs font-extrabold text-blue-600">{{ $course->schedule ?? 'TBA' }}</span>
+
+                            <div class="shrink-0 flex items-center gap-2">
+                                <template x-if="canJoin">
+                                    <a href="{{ $item['course_id'] ? route('teacher.classes.show', $item['course_id']) : $item['meeting_url'] }}" 
+                                       class="inline-flex items-center gap-1.5 py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs hover:shadow transition-all cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                        <span>Join class</span>
+                                    </a>
+                                </template>
+                                <template x-if="!canJoin">
+                                    <span class="text-xs font-extrabold text-blue-600">{{ $item['schedule_text'] }}</span>
+                                </template>
+                            </div>
                         </div>
                         @empty
-                        <div class="p-3 text-center text-xs text-gray-500 font-bold">No classes today</div>
+                        <div class="p-6 text-center bg-gray-50/70 rounded-2xl border border-dashed border-gray-200 space-y-2">
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-gray-800">No Running or Upcoming Classes</h4>
+                                <p class="text-[11px] text-gray-400 font-medium">All sessions for today have concluded or no new classes are scheduled.</p>
+                            </div>
+                            <div class="pt-1">
+                                <a href="{{ route('teacher.classes') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                    <span>Schedule Live Class</span>
+                                </a>
+                            </div>
+                        </div>
                         @endforelse
                     </div>
                 </div>
@@ -293,7 +376,7 @@
                             <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-black text-xs flex items-center justify-center shrink-0">{{ $cInit }}</div>
                             <div>
                                 <h4 class="font-extrabold text-gray-900">{{ $cName }}</h4>
-                                <p class="text-[11px] text-gray-400 font-medium">Missed: {{ $abs->liveClass->scheduled_at->format('d M Y') }} ({{ $abs->liveClass->course->subject->name ?? 'N/A' }})</p>
+                                <p class="text-[11px] text-gray-400 font-medium">Missed: {{ $abs->liveClass->scheduled_at->format('d M Y') }} ({{ $abs->liveClass->course->subject->display_name ?? $abs->liveClass->course->subject->name ?? 'N/A' }})</p>
                             </div>
                         </div>
                         <span class="py-1.5 px-3.5 bg-white text-blue-700 font-extrabold text-xs rounded-xl border border-blue-200/80">Absent</span>

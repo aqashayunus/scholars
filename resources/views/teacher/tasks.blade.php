@@ -27,8 +27,98 @@
             toastMessage: '',
             showToastNotification: false,
             isDeletingId: null,
+            createModalError: '',
+            isSubmitting: false,
+            quizDraftRestored: false,
 
             tasks: JSON.parse(document.getElementById('tasks-data')?.textContent || '[]'),
+
+            init() {
+                this.restoreQuizDraft();
+            },
+
+            saveQuizDraft() {
+                try {
+                    const draft = {
+                        questions: this.quizQuestions,
+                        updatedAt: new Date().toISOString()
+                    };
+                    localStorage.setItem('teacher_quiz_draft_data', JSON.stringify(draft));
+                } catch (e) {
+                    console.warn('Failed to save quiz draft', e);
+                }
+            },
+
+            restoreQuizDraft() {
+                try {
+                    const raw = localStorage.getItem('teacher_quiz_draft_data');
+                    if (!raw) return;
+                    const draft = JSON.parse(raw);
+                    if (draft && Array.isArray(draft.questions) && draft.questions.length > 0) {
+                        const hasContent = draft.questions.some(q => (q.question_text || '').trim() !== '');
+                        if (hasContent) {
+                            this.quizQuestions = draft.questions;
+                            this.quizDraftRestored = true;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Failed to restore quiz draft', e);
+                }
+            },
+
+            clearQuizDraft() {
+                localStorage.removeItem('teacher_quiz_draft_data');
+                this.quizQuestions = [
+                    { question_text: '', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'A', explanation: '' }
+                ];
+                this.quizDraftRestored = false;
+            },
+
+            async submitTaskForm(event, isQuiz = false) {
+                event.preventDefault();
+                const form = event.target;
+                this.isSubmitting = true;
+                this.createModalError = '';
+
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+
+                    if (response.ok) {
+                        if (isQuiz) {
+                            this.clearQuizDraft();
+                        }
+                        this.showToast(data.message || 'Item created and assigned successfully!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 600);
+                    } else {
+                        let errorMsg = data.message || 'Validation error occurred.';
+                        if (data.errors) {
+                            const errorList = Object.values(data.errors).flat();
+                            if (errorList.length > 0) {
+                                errorMsg = errorList.join(' • ');
+                            }
+                        }
+                        this.createModalError = errorMsg;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    this.createModalError = 'Network or server error while uploading. Your entered progress and questions remain safely intact on screen.';
+                } finally {
+                    this.isSubmitting = false;
+                }
+            },
 
             addQuizQuestion() {
                 this.quizQuestions.push({
@@ -40,10 +130,12 @@
                     correct_option: 'A',
                     explanation: ''
                 });
+                this.saveQuizDraft();
             },
             removeQuizQuestion(index) {
                 if (this.quizQuestions.length > 1) {
                     this.quizQuestions.splice(index, 1);
+                    this.saveQuizDraft();
                 }
             },
             openGradingModal(st) {
@@ -56,9 +148,12 @@
                     notes: st.notes || '',
                     fileName: st.fileName || '',
                     fileUrl: st.fileUrl || '',
+                    interactiveReviewUrl: st.interactiveReviewUrl || '',
                     rawMarks: st.rawMarks !== null && st.rawMarks !== undefined ? st.rawMarks : '',
                     rawStatus: st.rawStatus || (st.status === 'Reviewed' ? 'graded' : 'graded'),
                     teacherFeedback: st.teacherFeedback || '',
+                    gradedFileName: st.gradedFileName || '',
+                    gradedFileUrl: st.gradedFileUrl || '',
                     hasSubmission: st.hasSubmission || false
                 };
                 this.showGradingModal = true;
@@ -282,21 +377,21 @@
                 <div class="flex flex-wrap items-center gap-2">
                     <input type="text" x-model="searchQuery" placeholder="Search tasks or topics..." class="bg-gray-50 border border-gray-200/80 rounded-2xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     
-                    <select x-model="selectedClass" class="bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                    <select x-model="selectedClass" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[130px]">
                         <option value="all">All Classes</option>
                         @foreach($courses->pluck('level')->unique() as $lvl)
                             <option value="{{ $lvl }}">{{ $lvl }}</option>
                         @endforeach
                     </select>
 
-                    <select x-model="selectedSubject" class="bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                    <select x-model="selectedSubject" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[140px]">
                         <option value="all">All Subjects</option>
-                        @foreach($courses->map(fn($c) => $c->subject->name ?? null)->filter()->unique() as $sName)
+                        @foreach($courses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? null)->filter()->unique() as $sName)
                             <option value="{{ $sName }}">{{ $sName }}</option>
                         @endforeach
                     </select>
 
-                    <select x-model="selectedStatus" class="bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                    <select x-model="selectedStatus" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[130px]">
                         <option value="all">All Status</option>
                         <option value="Active">Active</option>
                         <option value="Completed">Completed</option>
@@ -412,9 +507,9 @@
             </div>
         </div>
 
-        {{-- ── 4. CREATE NEW TASK / ASSESSMENT SIDE DRAWER FORM MODAL ── --}}
-        <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showCreateModal = false" class="w-full max-w-2xl bg-white h-full p-6 space-y-5 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 4. CREATE NEW TASK / ASSESSMENT MODAL ── --}}
+        <div x-show="showCreateModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showCreateModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-5 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div>
@@ -432,18 +527,36 @@
                     <button type="button" @click="createTab = 'exam'" :class="createTab === 'exam' ? 'bg-white text-gray-900 shadow-2xs' : 'text-gray-500'" class="flex-1 py-2 rounded-xl transition-all cursor-pointer text-center">Exam</button>
                 </div>
 
+                {{-- Form Error Banner --}}
+                <div x-show="createModalError" x-cloak class="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-semibold flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span x-text="createModalError"></span>
+                    </div>
+                    <button type="button" @click="createModalError = ''" class="text-red-500 hover:text-red-700 font-bold">✕</button>
+                </div>
+
+                {{-- Quiz Draft Restored Banner --}}
+                <div x-show="createTab === 'quiz' && quizDraftRestored" x-cloak class="p-2.5 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Restored unsaved quiz questions from your draft.</span>
+                    </div>
+                    <button type="button" @click="clearQuizDraft()" class="text-blue-600 hover:text-blue-800 underline font-bold cursor-pointer text-[11px]">Clear draft</button>
+                </div>
+
                 {{-- ── FORM 1: ASSIGNMENT ── --}}
-                <form x-show="createTab === 'assignment'" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form x-show="createTab === 'assignment'" @submit="submitTaskForm($event, false)" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
                     <input type="hidden" name="type" value="Assignment">
 
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
-                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -470,6 +583,16 @@
                             <input type="file" name="file" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                             <p class="text-[10px] text-gray-400 mt-0.5">Supports PDF, Word, Slides, Images, ZIP (Max: 50MB)</p>
                         </div>
+                        <div class="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between">
+                            <div>
+                                <label class="font-extrabold text-blue-950 block text-xs">Enable Interactive PDF Answering</label>
+                                <p class="text-[10px] text-blue-700 font-medium">Students write & draw answers directly on this PDF using Apple Pencil or Touch (PDF only)</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="is_interactive_pdf" value="1" checked class="sr-only peer">
+                                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Due Date *</label>
@@ -484,21 +607,23 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md">Publish Assignment</button>
+                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                            <span x-text="isSubmitting ? 'Publishing...' : 'Publish Assignment'"></span>
+                        </button>
                     </div>
                 </form>
 
                 {{-- ── FORM 2: QUIZ (WITH INTERACTIVE MCQ QUESTION BUILDER) ── --}}
-                <form x-show="createTab === 'quiz'" action="{{ route('teacher.quizzes.store') }}" method="POST" class="space-y-4">
+                <form x-show="createTab === 'quiz'" @submit="submitTaskForm($event, true)" action="{{ route('teacher.quizzes.store') }}" method="POST" class="space-y-4">
                     @csrf
 
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
-                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -545,32 +670,32 @@
 
                                     <div>
                                         <label class="font-bold text-gray-700 text-[11px] block mb-1">Question Prompt *</label>
-                                        <textarea :name="`questions[${qIndex}][question_text]`" x-model="q.question_text" required rows="2" placeholder="Enter question or problem statement..." class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                                        <textarea :name="`questions[${qIndex}][question_text]`" x-model="q.question_text" @input="saveQuizDraft()" required rows="2" placeholder="Enter question or problem statement..." class="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500"></textarea>
                                     </div>
 
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="font-bold text-gray-600 text-[10px] block mb-0.5">Option A *</label>
-                                            <input type="text" :name="`questions[${qIndex}][option_a]`" x-model="q.option_a" required placeholder="Option A" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                                            <input type="text" :name="`questions[${qIndex}][option_a]`" x-model="q.option_a" @input="saveQuizDraft()" required placeholder="Option A" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
                                         </div>
                                         <div>
                                             <label class="font-bold text-gray-600 text-[10px] block mb-0.5">Option B *</label>
-                                            <input type="text" :name="`questions[${qIndex}][option_b]`" x-model="q.option_b" required placeholder="Option B" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                                            <input type="text" :name="`questions[${qIndex}][option_b]`" x-model="q.option_b" @input="saveQuizDraft()" required placeholder="Option B" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
                                         </div>
                                         <div>
                                             <label class="font-bold text-gray-600 text-[10px] block mb-0.5">Option C *</label>
-                                            <input type="text" :name="`questions[${qIndex}][option_c]`" x-model="q.option_c" required placeholder="Option C" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                                            <input type="text" :name="`questions[${qIndex}][option_c]`" x-model="q.option_c" @input="saveQuizDraft()" required placeholder="Option C" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
                                         </div>
                                         <div>
                                             <label class="font-bold text-gray-600 text-[10px] block mb-0.5">Option D *</label>
-                                            <input type="text" :name="`questions[${qIndex}][option_d]`" x-model="q.option_d" required placeholder="Option D" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                                            <input type="text" :name="`questions[${qIndex}][option_d]`" x-model="q.option_d" @input="saveQuizDraft()" required placeholder="Option D" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
                                         </div>
                                     </div>
 
                                     <div class="grid grid-cols-3 gap-2 pt-1">
                                         <div>
                                             <label class="font-bold text-gray-900 text-[11px] block mb-1">Correct Answer *</label>
-                                            <select :name="`questions[${qIndex}][correct_option]`" x-model="q.correct_option" required class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-gray-900 outline-none cursor-pointer">
+                                            <select :name="`questions[${qIndex}][correct_option]`" x-model="q.correct_option" @change="saveQuizDraft()" required class="w-full bg-white border border-gray-200 rounded-xl pl-2.5 pr-8 py-1.5 text-xs font-bold text-gray-900 outline-none cursor-pointer">
                                                 <option value="A">A</option>
                                                 <option value="B">B</option>
                                                 <option value="C">C</option>
@@ -579,7 +704,7 @@
                                         </div>
                                         <div class="col-span-2">
                                             <label class="font-bold text-gray-700 text-[11px] block mb-1">Explanation / Solution Hint</label>
-                                            <input type="text" :name="`questions[${qIndex}][explanation]`" x-model="q.explanation" placeholder="Optional explanation displayed after submission" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
+                                            <input type="text" :name="`questions[${qIndex}][explanation]`" x-model="q.explanation" @input="saveQuizDraft()" placeholder="Optional explanation displayed after submission" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs outline-none">
                                         </div>
                                     </div>
                                 </div>
@@ -589,22 +714,24 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md">Publish Quiz</button>
+                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                            <span x-text="isSubmitting ? 'Publishing...' : 'Publish Quiz'"></span>
+                        </button>
                     </div>
                 </form>
 
                 {{-- ── FORM 3: ASSESSMENT (TOPICAL / DIAGNOSTIC) ── --}}
-                <form x-show="createTab === 'assessment'" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form x-show="createTab === 'assessment'" @submit="submitTaskForm($event, false)" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
                     <input type="hidden" name="type" value="Assessment">
 
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
-                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -645,22 +772,24 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md">Publish Assessment</button>
+                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                            <span x-text="isSubmitting ? 'Publishing...' : 'Publish Assessment'"></span>
+                        </button>
                     </div>
                 </form>
 
                 {{-- ── FORM 4: EXAM ── --}}
-                <form x-show="createTab === 'exam'" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form x-show="createTab === 'exam'" @submit="submitTaskForm($event, false)" action="{{ route('teacher.tasks.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                     @csrf
                     <input type="hidden" name="type" value="Exam">
 
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
-                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                 @endforeach
                             </select>
                         </div>
@@ -701,7 +830,9 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md">Schedule & Publish Exam</button>
+                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                            <span x-text="isSubmitting ? 'Publishing...' : 'Schedule & Publish Exam'"></span>
+                        </button>
                     </div>
                 </form>
 
@@ -795,6 +926,12 @@
                                                             <span x-text="st.fileName || 'Download Attachment'"></span>
                                                         </a>
                                                     </template>
+                                                    <template x-if="st.gradedFileUrl">
+                                                        <a :href="st.gradedFileUrl" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-emerald-600 font-bold hover:underline">
+                                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                            <span x-text="`Graded Task: ${st.gradedFileName || 'Download'}`"></span>
+                                                        </a>
+                                                    </template>
                                                 </div>
                                             </template>
                                             <template x-if="!st.hasSubmission">
@@ -859,10 +996,19 @@
                                 </a>
                             </div>
                         </template>
+
+                        <template x-if="selectedSubmission?.interactiveReviewUrl">
+                            <div class="pt-2">
+                                <a :href="selectedSubmission.interactiveReviewUrl" target="_blank" class="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                                    <span>Open Student Handwritten Work & Annotations →</span>
+                                </a>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Teacher Grade & Feedback Form --}}
-                    <form :action="'/teacher/tasks-and-assessments/' + (selectedTask?.id || '') + '/grade/' + (selectedSubmission?.student_id || '')" method="POST" class="space-y-4 text-xs">
+                    <form :action="'/teacher/tasks-and-assessments/' + (selectedTask?.id || '') + '/grade/' + (selectedSubmission?.student_id || '')" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs">
                         @csrf
 
                         <div class="grid grid-cols-2 gap-3">
@@ -873,7 +1019,7 @@
 
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Marking Status *</label>
-                                <select name="status" required x-model="selectedSubmission.rawStatus" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="status" required x-model="selectedSubmission.rawStatus" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     <option value="graded">Graded & Reviewed</option>
                                     <option value="submitted">Needs Revision</option>
                                     <option value="late">Late Submission</option>
@@ -886,6 +1032,24 @@
                             <textarea name="teacher_feedback" rows="3" placeholder="Provide constructive feedback, corrections, or praise for this student..." x-model="selectedSubmission.teacherFeedback" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium"></textarea>
                         </div>
 
+                        <div>
+                            <label class="font-extrabold text-gray-900 block mb-1">Upload Graded Student Task (Annotated PDF, Marked Worksheet, etc.)</label>
+                            <template x-if="selectedSubmission?.gradedFileUrl">
+                                <div class="mb-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                                    <div class="flex items-center gap-2 overflow-hidden">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <div class="truncate">
+                                            <span class="text-[10px] text-emerald-700 font-extrabold uppercase tracking-wider block">Graded Task Attached</span>
+                                            <a :href="selectedSubmission.gradedFileUrl" target="_blank" class="text-xs font-bold text-emerald-800 hover:underline truncate" x-text="selectedSubmission.gradedFileName || 'Download Graded File'"></a>
+                                        </div>
+                                    </div>
+                                    <span class="text-[10px] bg-emerald-200/60 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">Attached</span>
+                                </div>
+                            </template>
+                            <input type="file" name="graded_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.png,.jpg,.jpeg" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-gray-200 rounded-xl bg-gray-50">
+                            <p class="text-[10px] text-gray-400 font-medium mt-1">Upload an annotated PDF, marked worksheet, or rubric document (PDF, Word, Images, ZIP up to 50MB). Re-uploading replaces the previous graded file.</p>
+                        </div>
+
                         <div class="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 font-extrabold">
                             <button type="button" @click="showGradingModal = false" class="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
                             <button type="submit" class="py-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md">Save & Publish Grade</button>
@@ -896,9 +1060,9 @@
             </template>
         </div>
 
-        {{-- ── 6. EDIT TASK / ASSESSMENT SIDE DRAWER FORM MODAL ── --}}
-        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showEditModal = false" class="w-full max-w-xl bg-white h-full p-6 space-y-6 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 6. EDIT TASK / ASSESSMENT MODAL ── --}}
+        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showEditModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-6 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <div>
@@ -915,7 +1079,7 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Academic Type *</label>
-                            <select name="type" x-model="editingTask.type" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="type" x-model="editingTask.type" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="Assignment">Assignment</option>
                                 <option value="Assessment">Assessment</option>
                                 <option value="Exam">Exam</option>
@@ -956,9 +1120,9 @@
 
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required x-model="editingTask.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required x-model="editingTask.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 @foreach($courses as $c)
-                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                    <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                 @endforeach
                             </select>
                         </div>
