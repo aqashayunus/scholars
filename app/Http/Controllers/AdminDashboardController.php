@@ -752,6 +752,11 @@ class AdminDashboardController extends Controller
         return response()->json($billing->revealGatewayCredentials($request));
     }
 
+    public function testBillplzConnection(Request $request, BillingAdminService $billing)
+    {
+        return response()->json($billing->testBillplzConnection($request));
+    }
+
     public function clearSystemCache()
     {
         Artisan::call('cache:clear');

@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\StudentRegistrationController;
 use App\Http\Controllers\Auth\TeacherApplicationController;
+use App\Http\Controllers\Billing\BillplzController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Admin\BillingController;
@@ -344,6 +345,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     Route::post('/settings/finance', [AdminDashboardController::class, 'updateFinanceSettings'])->name('settings.finance');
     Route::post('/settings/finance/reveal', [AdminDashboardController::class, 'revealGatewayCredentials'])->name('settings.finance.reveal');
+    Route::post('/settings/billplz/test-connection', [AdminDashboardController::class, 'testBillplzConnection'])->name('settings.billplz.test');
     Route::post('/invoices/{id}/status', function (\Illuminate\Http\Request $request, $id) {
         $request->validate([
             'status'      => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled',
@@ -623,6 +625,16 @@ Route::middleware('auth')->group(function () {
 // ──────────────────────────────────────────────────
 Route::post('/webhooks/payment-gateway', [PaymentController::class, 'gatewayWebhook'])
     ->name('webhooks.payment-gateway');
+
+// ──────────────────────────────────────────────────
+// BILLPLZ PAYMENT GATEWAY (FPX ONLINE BANKING)
+// ──────────────────────────────────────────────────
+Route::prefix('billing/billplz')->name('billing.billplz.')->group(function () {
+    Route::post('/checkout/{invoice}', [BillplzController::class, 'checkout'])->middleware(['auth'])->name('checkout');
+    Route::post('/checkout-multi', [BillplzController::class, 'checkoutMulti'])->middleware(['auth'])->name('checkout-multi');
+    Route::match(['get', 'post'], '/return', [BillplzController::class, 'handleReturn'])->name('return');
+    Route::post('/webhook', [BillplzController::class, 'handleWebhook'])->name('webhook');
+});
 
 // ──────────────────────────────────────────────────
 // TIMETABLE & CALENDAR API (Authenticated)

@@ -677,4 +677,17 @@ class BillingAdminService
             'provider'    => Setting::get('gateway_provider', 'mock_fpx'),
         ];
     }
+
+    /**
+     * Test connection to the Billplz API with provided or configured credentials.
+     */
+    public function testBillplzConnection(Request $request): array
+    {
+        $billplzService = new \App\Services\Billplz\BillplzService();
+        $apiKey       = $request->filled('api_key') ? trim($request->input('api_key')) : null;
+        $collectionId = $request->filled('collection_id') ? trim($request->input('collection_id')) : null;
+        $isSandbox    = $request->has('sandbox') ? $request->boolean('sandbox') : null;
+
+        return $billplzService->testConnection($apiKey, $collectionId, $isSandbox);
+    }
 }
