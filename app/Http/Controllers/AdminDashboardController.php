@@ -367,7 +367,7 @@ class AdminDashboardController extends Controller
 
     public function storeRecordedClass(StoreRecordedClassRequest $request, ClassSchedulingService $scheduling)
     {
-        $recordedClass = $scheduling->createRecordedClass($request->validated());
+        $recordedClass = $scheduling->createRecordedClass($request->validated(), $request);
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' added to vault.");
@@ -376,7 +376,7 @@ class AdminDashboardController extends Controller
     public function updateRecordedClass(UpdateRecordedClassRequest $request, $id, ClassSchedulingService $scheduling)
     {
         $recordedClass = RecordedClass::findOrFail($id);
-        $recordedClass = $scheduling->updateRecordedClass($recordedClass, $request->validated());
+        $recordedClass = $scheduling->updateRecordedClass($recordedClass, $request->validated(), $request);
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' updated successfully.");

@@ -14,15 +14,13 @@ class StoreRecordedClassRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'course_id'        => 'nullable|exists:courses,id',
-            'subject_id'       => 'nullable|exists:subjects,id',
-            'title'            => 'required|string|max:255',
-            'topic_name'       => 'required|string|max:255',
-            'video_url'        => 'required|url|max:255',
-            'thumbnail'        => 'nullable|string|max:255',
-            'duration_minutes' => 'required|integer|min:1|max:480',
-            'views_count'      => 'nullable|integer|min:0',
-            'summary'          => 'nullable|string',
+            'course_id'   => 'nullable|exists:courses,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'title'       => 'required|string|max:255',
+            'topic_name'  => 'required|string|max:255',
+            'video_url'   => 'nullable|string|max:1000',
+            'video_file'  => 'nullable|file|max:512000|mimes:mp4,mov,avi,mkv,webm,ogg',
+            'summary'     => 'nullable|string',
         ];
     }
 }

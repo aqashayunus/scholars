@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\LiveClass;
 use App\Models\RecordedClass;
 use App\Models\UserNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class ClassSchedulingService
@@ -119,11 +120,46 @@ class ClassSchedulingService
 
     // ── Recorded Class ───────────────────────────────────────────────────────
 
-    public function createRecordedClass(array $validated): RecordedClass
+    public function createRecordedClass(array $validated, Request $request): RecordedClass
     {
-        $validated['views_count'] = $validated['views_count'] ?? 0;
+        $videoUrl = $validated['video_url'] ?? null;
 
-        $recordedClass = RecordedClass::create($validated);
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('recordings', 'public');
+            $videoUrl = asset('storage/' . $path);
+        }
+
+        if (empty($videoUrl)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'video_file' => 'Please provide either a video file (MP4, etc.) or a video playback URL.',
+            ]);
+        }
+
+        // Auto-resolve subject_id from course if course is chosen
+        if (!empty($validated['course_id'])) {
+            $course = Course::find($validated['course_id']);
+            if ($course && $course->subject_id) {
+                $validated['subject_id'] = $course->subject_id;
+            }
+        }
+
+        if (empty($validated['subject_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'subject_id' => 'Please select a Subject for this recording.',
+            ]);
+        }
+
+        $recordedClass = RecordedClass::create([
+            'course_id'        => $validated['course_id'] ?? null,
+            'subject_id'       => $validated['subject_id'] ?? null,
+            'title'            => $validated['title'],
+            'topic_name'       => $validated['topic_name'],
+            'video_url'        => $videoUrl,
+            'thumbnail'        => null,
+            'duration_minutes' => 45,
+            'views_count'      => 0,
+            'summary'          => $validated['summary'] ?? null,
+        ]);
 
         try {
             if ($recordedClass->course) {
@@ -145,9 +181,30 @@ class ClassSchedulingService
         return $recordedClass;
     }
 
-    public function updateRecordedClass(RecordedClass $recordedClass, array $validated): RecordedClass
+    public function updateRecordedClass(RecordedClass $recordedClass, array $validated, Request $request): RecordedClass
     {
-        $recordedClass->update($validated);
+        $videoUrl = $validated['video_url'] ?? $recordedClass->video_url;
+
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('recordings', 'public');
+            $videoUrl = asset('storage/' . $path);
+        }
+
+        if (!empty($validated['course_id'])) {
+            $course = Course::find($validated['course_id']);
+            if ($course && $course->subject_id) {
+                $validated['subject_id'] = $course->subject_id;
+            }
+        }
+
+        $recordedClass->update([
+            'course_id'   => $validated['course_id'] ?? null,
+            'subject_id'  => $validated['subject_id'] ?? $recordedClass->subject_id,
+            'title'       => $validated['title'],
+            'topic_name'  => $validated['topic_name'],
+            'video_url'   => $videoUrl,
+            'summary'     => $validated['summary'] ?? null,
+        ]);
 
         return $recordedClass;
     }
