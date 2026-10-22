@@ -30,7 +30,9 @@ class ParentRegistrationController extends Controller
             ->orderBy('name', 'asc')
             ->get();
 
-        $feeStructures = FeeStructure::where('is_active', true)
+        $feeStructures = FeeStructure::with('subjects')
+            ->availableForRegistration()
+            ->whereNull('student_id')
             ->orderBy('amount', 'desc')
             ->get();
 
@@ -283,7 +285,7 @@ class ParentRegistrationController extends Controller
                         'level'          => $validated['level'] ?? 'Form 5',
                         'school_name'    => $validated['school_name'] ?? null,
                         'total_points'   => 0,
-                        'streak_days'    => 0,
+                        'streak_days'    => 1,
                     ]);
 
                     DB::table('parent_student')->insert([
@@ -308,9 +310,45 @@ class ParentRegistrationController extends Controller
 
             // A 'pending' link (existing student already has another guardian on
             // file) grants no access yet — do not expose that child's billing
-            // details on the success page until the existing guardian approves.
+            // details on the success page until the existing guardian approves,
+            // and do not send a "linked" email for a link that isn't active yet.
             $linkIsActive = $result['isNew'] || ($result['linkStatus'] ?? 'active') === 'active';
             $latestInvoice = $linkIsActive ? $result['student']->invoices()->latest('id')->first() : null;
+
+            // Trigger automated email communication (sent synchronously for immediate greeting delivery)
+            if ($linkIsActive) {
+                try {
+                    if ($result['isNew']) {
+                        \App\Services\Email\EmailAutomationService::trigger(
+                            'registration_received',
+                            [
+                                'user'         => $result['parent'],
+                                'parent'       => $result['parent'],
+                                'student'      => $result['student'],
+                                'parent_name'  => $result['parent']->name,
+                                'student_name' => $result['student']->user?->name ?? 'Student',
+                            ],
+                            "parent_reg_{$result['parent']->id}",
+                            true
+                        );
+                    } else {
+                        \App\Services\Email\EmailAutomationService::trigger(
+                            'parent_student_linked',
+                            [
+                                'user'         => $result['parent'],
+                                'parent'       => $result['parent'],
+                                'student'      => $result['student'],
+                                'parent_name'  => $result['parent']->name,
+                                'student_name' => $result['student']->user?->name ?? 'Student',
+                            ],
+                            "parent_link_{$result['parent']->id}_{$result['student']->id}",
+                            true
+                        );
+                    }
+                } catch (\Throwable $emailErr) {
+                    \Illuminate\Support\Facades\Log::warning('[ParentRegistration] Email trigger failed: ' . $emailErr->getMessage());
+                }
+            }
 
             session()->flash('reg_success', [
                 'parent_name'    => $result['parent']->name,

@@ -96,4 +96,62 @@ class LiveClass extends Model
     {
         return $this->teacher ?? $this->course?->teacher;
     }
+
+    /**
+     * Scope a query to only include classes that are currently live or upcoming.
+     */
+    public function scopeActiveOrUpcoming($query)
+    {
+        $now = now();
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $endExpr = $isSqlite
+            ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
+            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+
+        return $query->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($now, $endExpr) {
+                $q->where('status', 'live')
+                  ->orWhere('scheduled_at', '>=', $now)
+                  ->orWhereRaw("{$endExpr} >= ?", [$now]);
+            });
+    }
+
+    /**
+     * Scope a query to only include classes that are completed or whose scheduled duration has passed.
+     */
+    public function scopeCompletedOrPast($query)
+    {
+        $now = now();
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $endExpr = $isSqlite
+            ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
+            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+
+        return $query->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($now, $endExpr) {
+                $q->where('status', 'completed')
+                  ->orWhere(function ($sub) use ($now, $endExpr) {
+                      $sub->where('status', '!=', 'live')
+                          ->whereRaw("{$endExpr} < ?", [$now]);
+                  });
+            });
+    }
+
+    public function isOngoingOrUpcoming(): bool
+    {
+        if ($this->status === LiveClassStatus::Cancelled) return false;
+        if ($this->status === LiveClassStatus::Live) return true;
+        if (!$this->scheduled_at) return true;
+        $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+        return $end->gte(now());
+    }
+
+    public function isPastOrCompleted(): bool
+    {
+        if ($this->status === LiveClassStatus::Completed) return true;
+        if ($this->status === LiveClassStatus::Live) return false;
+        if (!$this->scheduled_at) return false;
+        $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+        return $end->lt(now());
+    }
 }

@@ -48,7 +48,7 @@
                         <li class="flex items-center gap-2 text-sm"><svg class="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>{{ $f }}</li>
                         @endforeach
                     </ul>
-                    <a href="{{ route('free-trial') }}" class="{{ $plan['popular'] ? 'btn-primary w-full justify-center' : 'btn-secondary w-full justify-center' }}">Get Started</a>
+                    <a href="{{ route('register') }}" class="{{ $plan['popular'] ? 'btn-primary w-full justify-center' : 'btn-secondary w-full justify-center' }}">Get Started</a>
                 </div>
                 @endforeach
             </div>

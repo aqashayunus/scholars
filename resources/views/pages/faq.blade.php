@@ -40,7 +40,7 @@
             </div>
             <div class="text-center mt-10">
                 <p class="text-muted mb-4">Still have questions?</p>
-                <a href="{{ route('free-trial') }}" class="btn-primary">Contact Us</a>
+                <a href="{{ route('register') }}" class="btn-primary">Contact Us</a>
             </div>
         </div>
     </section>
