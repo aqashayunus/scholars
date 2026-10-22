@@ -5,9 +5,47 @@ namespace App\Services\Student;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentAttendance;
+use Illuminate\Support\Facades\DB;
 
 class ClassScheduleService
 {
+    /**
+     * Query builder for all live classes a student is eligible to see:
+     * direct course enrollment, plus a dual-layer match on courses that
+     * share the same subject as one the student is enrolled in.
+     *
+     * Used wherever a single source of truth for "this student's classes"
+     * is needed outside this service's own view-model builders (e.g.
+     * AttendanceService's stats and join-tracking).
+     */
+    public static function getStudentLiveClassesQuery(Student $student)
+    {
+        return LiveClass::where(function ($q) use ($student) {
+            // 1. Direct course enrollment
+            $q->whereHas('course.enrollments', function ($eq) use ($student) {
+                $eq->where('student_id', $student->id);
+            });
+
+            // 2. Dual-layer: match courses with the same subject
+            $enrolledSubjectIds = DB::table('enrollments')
+                ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                ->where('enrollments.student_id', $student->id)
+                ->pluck('courses.subject_id')
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            if (!empty($enrolledSubjectIds)) {
+                $subjectNames = DB::table('subjects')->whereIn('id', $enrolledSubjectIds)->pluck('name')->toArray();
+                $allMatchingSubjectIds = DB::table('subjects')->whereIn('name', $subjectNames)->pluck('id')->toArray();
+
+                $q->orWhereHas('course', function ($cq) use ($allMatchingSubjectIds) {
+                    $cq->whereIn('subject_id', $allMatchingSubjectIds);
+                });
+            }
+        });
+    }
+
     /**
      * Builds the full view-model for the student's Classes/Timetable page.
      */

@@ -757,6 +757,26 @@ class AdminDashboardController extends Controller
         return response()->json($billing->testBillplzConnection($request));
     }
 
+    /**
+     * Admin Attendance Hub: redirect to the unified dashboard Attendance tab.
+     */
+    public function attendance(Request $request)
+    {
+        return redirect('/admin/dashboard#attendance');
+    }
+
+    public function updateAttendanceSettings(Request $request, \App\Services\Admin\AttendanceService $attendance)
+    {
+        $attendance->updateAttendanceSettings($request);
+
+        return back()->with('success', 'Attendance policies updated successfully.');
+    }
+
+    public function exportAttendanceCsv(Request $request, \App\Services\Admin\AttendanceService $attendance)
+    {
+        return $attendance->exportAttendanceCsv($request);
+    }
+
     public function clearSystemCache()
     {
         Artisan::call('cache:clear');

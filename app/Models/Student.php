@@ -130,6 +130,8 @@ class Student extends Model
     public function studentAssignments() { return $this->hasMany(StudentAssignment::class); }
     public function quizResults() { return $this->hasMany(StudentQuiz::class); }
     public function attendances() { return $this->hasMany(StudentAttendance::class); }
+    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
+    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
     public function certificates() { return $this->hasMany(Certificate::class); }
     public function invoices()     { return $this->hasMany(Invoice::class); }
     public function payments()     { return $this->hasMany(Payment::class); }

@@ -83,6 +83,8 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
         Route::get('/learning', [StudentDashboardController::class, 'learning'])->name('learning');
         Route::get('/courses', [StudentDashboardController::class, 'learning'])->name('courses'); // Alias for My Learning
         Route::get('/classes', [StudentDashboardController::class, 'classes'])->name('classes');
+        Route::match(['get', 'post'], '/classes/{liveClass}/join', [StudentDashboardController::class, 'joinClass'])->name('classes.join');
+        Route::post('/attendance/correction-request', [StudentDashboardController::class, 'submitCorrectionRequest'])->name('attendance.correction.submit');
         Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'studentIndex'])->name('timetable');
         Route::get('/tasks', [StudentDashboardController::class, 'tasks'])->name('tasks');
         Route::post('/tasks/{id}/submit', [StudentDashboardController::class, 'submitTask'])->name('tasks.submit');
@@ -171,6 +173,9 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::post('/classes/{id}/request-cancel', [TeacherDashboardController::class, 'requestCancel'])->name('classes.cancel');
     Route::post('/classes/{id}/request-reschedule', [TeacherDashboardController::class, 'requestReschedule'])->name('classes.reschedule');
     Route::post('/classes/{id}/reschedule-direct', [\App\Http\Controllers\TimetableController::class, 'teacherReschedule'])->name('classes.reschedule-direct');
+    Route::post('/classes/{id}/meeting-url', [TeacherDashboardController::class, 'updateMeetingUrl'])->name('classes.meeting-url');
+    Route::post('/classes/{liveClass}/attendance', [TeacherDashboardController::class, 'saveAttendance'])->name('classes.attendance.save');
+    Route::post('/attendance/corrections/{correctionRequest}/review', [TeacherDashboardController::class, 'reviewCorrection'])->name('attendance.corrections.review');
     Route::post('/classes/{id}/tasks', [TeacherDashboardController::class, 'storeTask'])->name('classes.tasks.store');
     Route::get('/classes/{id}', [TeacherDashboardController::class, 'manageClass'])->name('classes.show');
     Route::get('/students', [TeacherDashboardController::class, 'students'])->name('students');
@@ -346,6 +351,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/settings/finance', [AdminDashboardController::class, 'updateFinanceSettings'])->name('settings.finance');
     Route::post('/settings/finance/reveal', [AdminDashboardController::class, 'revealGatewayCredentials'])->name('settings.finance.reveal');
     Route::post('/settings/billplz/test-connection', [AdminDashboardController::class, 'testBillplzConnection'])->name('settings.billplz.test');
+    Route::post('/settings/attendance', [AdminDashboardController::class, 'updateAttendanceSettings'])->name('settings.attendance');
+    Route::get('/attendance', [AdminDashboardController::class, 'attendance'])->name('attendance');
+    Route::get('/export/attendance', [AdminDashboardController::class, 'exportAttendanceCsv'])->name('export.attendance');
     Route::post('/invoices/{id}/status', function (\Illuminate\Http\Request $request, $id) {
         $request->validate([
             'status'      => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled',

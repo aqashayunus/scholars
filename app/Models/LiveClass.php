@@ -40,6 +40,17 @@ class LiveClass extends Model
 
     public function getComputedStatusAttribute(): string
     {
+        // Manual overrides ('live' via updateMeetingUrl; 'cancelled') must
+        // survive the saving() hook's recomputation below, or the next save
+        // silently discards them back to a time-based value.
+        $current = $this->attributes['status'] ?? null;
+        if ($current === 'cancelled') {
+            return 'cancelled';
+        }
+        if ($current === 'live') {
+            return 'live';
+        }
+
         if (!$this->scheduled_at) {
             return 'upcoming';
         }
@@ -78,6 +89,8 @@ class LiveClass extends Model
     public function teacher()     { return $this->belongsTo(Teacher::class); }
     public function rescheduler() { return $this->belongsTo(User::class, 'rescheduled_by'); }
     public function attendances() { return $this->hasMany(StudentAttendance::class); }
+    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
+    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
 
     public function getAssignedTeacherAttribute()
     {

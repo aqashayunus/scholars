@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Assignment;
+use App\Models\AttendanceCorrectionRequest;
+use App\Models\LiveClass;
 use App\Models\UserNotification;
+use App\Services\AttendanceService;
 use App\Services\Teacher\AssignmentService;
 use App\Services\Teacher\ClassScheduleService;
 use App\Services\Teacher\GigService;
@@ -115,6 +118,37 @@ class TeacherDashboardController extends Controller
         $schedule->requestReschedule((int) $id, $request);
 
         return redirect()->back()->with('success', 'Reschedule request submitted to Administrator for approval.');
+    }
+
+    public function updateMeetingUrl(Request $request, $id, ClassScheduleService $schedule)
+    {
+        $liveClass = $schedule->updateMeetingUrl($request, $id);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'     => true,
+                'meeting_url' => $liveClass->meeting_url,
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Meeting link updated and class marked live.');
+    }
+
+    public function saveAttendance(LiveClass $liveClass, Request $request, ClassScheduleService $schedule, AttendanceService $attendanceService)
+    {
+        $result = $schedule->saveAttendance($liveClass, $request, $attendanceService);
+
+        return response()->json($result);
+    }
+
+    public function reviewCorrection(AttendanceCorrectionRequest $correctionRequest, Request $request, ClassScheduleService $schedule, AttendanceService $attendanceService)
+    {
+        $action = $schedule->reviewCorrection($correctionRequest, $request, $attendanceService);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Attendance correction request {$action} successfully.",
+        ]);
     }
 
     public function storeTask(Request $request, $id, AssignmentService $assignments)
