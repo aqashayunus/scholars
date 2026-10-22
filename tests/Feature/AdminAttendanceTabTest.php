@@ -20,12 +20,14 @@ class AdminAttendanceTabTest extends TestCase
 
     public function test_admin_dashboard_renders_attendance_tab(): void
     {
-        $this->markTestSkipped(
-            'Depends on the admin/dashboard.blade.php #tab-attendance markup, ' .
-            'which lands with Stage E of the upstream reconciliation (the admin ' .
-            'dashboard view rewrite). The backend (route, settings, CSV export) ' .
-            'is already live and covered by the other two tests in this file.'
-        );
+        $admin = User::where('role', 'admin')->first() ?? User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->get('/admin/dashboard');
+
+        $response->assertStatus(200);
+        $response->assertSee('id="tab-attendance"', false);
+        $response->assertSee('id="attendanceTable"', false);
+        $response->assertSee('Institutional Attendance Hub');
     }
 
     public function test_admin_can_update_attendance_policies(): void

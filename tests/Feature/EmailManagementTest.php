@@ -72,13 +72,13 @@ class EmailManagementTest extends TestCase
      */
     public function test_admin_can_access_email_management_dashboard(): void
     {
-        $this->markTestSkipped(
-            'Depends on the admin/dashboard.blade.php #tab-emailsettings markup, ' .
-            'which lands with Stage E of the upstream reconciliation (the admin ' .
-            'dashboard view rewrite). The backend (templates, campaigns, ' .
-            'automations, logs, settings) is already live and covered by the ' .
-            'other tests in this file.'
-        );
+        $response = $this->actingAs($this->admin)->get(route('admin.dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertSee('tab-emailsettings');
+        $response->assertSee('Email Settings');
+        $response->assertSee('Email Templates');
+        $response->assertSee('Email Blast / Campaigns');
     }
 
     /**
