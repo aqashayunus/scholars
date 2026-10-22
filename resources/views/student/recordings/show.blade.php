@@ -5,9 +5,13 @@
         @include('student.partials.sidebar')
     </x-slot>
 
-    <div class="mb-4">
-        <a href="{{ route('student.recordings') }}" class="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-            <span>&larr; Back to Recorded Vault</span>
+    <div class="mb-4 flex items-center gap-3">
+        <a href="{{ route('student.learning') }}" class="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+            <span>&larr; Back to My Learning</span>
+        </a>
+        <span class="text-gray-300">•</span>
+        <a href="{{ route('student.recordings') }}" class="text-xs font-medium text-gray-500 hover:text-gray-800 flex items-center gap-1">
+            <span>All Vault Replays</span>
         </a>
     </div>
 

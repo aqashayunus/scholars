@@ -26,6 +26,9 @@ class Payment extends Model
         'payment_proof_notes',
         'reference_no',
         'gateway_transaction_id',
+        'billplz_bill_id',
+        'billplz_url',
+        'gateway_payload',
         'status',
         'receipt_number',
         'verified_by',
@@ -33,8 +36,9 @@ class Payment extends Model
     ];
 
     protected $casts = [
-        'amount'  => 'decimal:2',
-        'paid_at' => 'datetime',
+        'amount'          => 'decimal:2',
+        'gateway_payload' => 'array',
+        'paid_at'         => 'datetime',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────

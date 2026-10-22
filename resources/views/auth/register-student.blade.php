@@ -13,10 +13,21 @@
         $initialStep = 4;
     } elseif ($errors->hasAny(['subjects', 'subjects.*'])) {
         $initialStep = 3;
-    } elseif ($errors->hasAny(['programme', 'level', 'school_name'])) {
+    } elseif ($errors->hasAny(['programme', 'level', 'levels', 'levels.*', 'school_name'])) {
         $initialStep = 2;
     } elseif ($errors->any()) {
         $initialStep = 1;
+    }
+
+    $oldLevels = old('levels');
+    if (!$oldLevels && old('level')) {
+        $oldLevels = array_filter(array_map('trim', explode(',', old('level'))));
+    }
+    if (!is_array($oldLevels)) {
+        $oldLevels = [];
+    }
+    if (empty($oldLevels)) {
+        $oldLevels = ($selectedProgramme ?? 'secondary') === 'primary' ? ['Year 4'] : ['Form 1'];
     }
 @endphp
 <body class="bg-surface min-h-screen py-10 px-4" x-data="studentRegData()">
@@ -27,7 +38,8 @@ function studentRegData() {
         step: {{ $initialStep }},
         totalSteps: 4,
         selectedEducationType: '{{ old('programme', $selectedProgramme ?? 'secondary') }}',
-        selectedLevel: '{{ old('level', '') }}',
+        selectedLevels: {!! json_encode(array_values($oldLevels)) !!},
+        selectedLevel: '{{ implode(', ', $oldLevels) }}',
         selectedSubjects: {!! json_encode(old('subjects', [])) !!},
         allSubjects: {!! json_encode($subjects->map(function($s) {
             return [
@@ -43,12 +55,17 @@ function studentRegData() {
         })) !!},
         allFeeStructures: {!! json_encode($feeStructures->map(function($f) {
             return [
-                'id'              => $f->id,
-                'name'            => $f->name,
-                'description'     => $f->description,
-                'amount'          => (float) $f->amount,
-                'education_level' => $f->education_level,
-                'frequency'       => $f->frequency,
+                'id'               => $f->id,
+                'name'             => $f->name,
+                'description'      => $f->description,
+                'amount'           => (float) $f->amount,
+                'education_level'  => $f->education_level,
+                'frequency'        => $f->frequency,
+                'package_type'     => $f->package_type ?? 'individual',
+                'minimum_subjects' => $f->minimum_subjects,
+                'maximum_subjects' => $f->maximum_subjects,
+                'subject_names'    => $f->subjects->pluck('name')->unique()->values()->toArray(),
+                'subject_ids'      => $f->subjects->pluck('id')->unique()->values()->toArray(),
             ];
         })) !!},
         bundleDiscountPct: {{ $bundleElectiveDiscountPct }},
@@ -69,28 +86,42 @@ function studentRegData() {
             if (this.icRaw) {
                 this.parseIC(this.icRaw);
             }
-            const initialLevel = '{{ old('level', '') }}';
             this.$nextTick(() => {
-                if (initialLevel && this.levelsForType().includes(initialLevel)) {
-                    this.selectedLevel = initialLevel;
-                }
                 const available = this.availableFeeStructures();
                 if (available.length > 0 && !this.selectedFeeStructureId && this.selectedPlanType === 'package') {
                     this.selectFeeStructure(available[0]);
                 }
             });
 
-            this.$watch('selectedEducationType', () => {
-                if (!this.levelsForType().includes(this.selectedLevel)) {
-                    this.selectedLevel = '';
+            this.$watch('selectedEducationType', (newVal, oldVal) => {
+                if (oldVal !== undefined && newVal !== oldVal) {
+                    const validLevels = this.levelsForType();
+                    this.selectedLevels = this.selectedLevels.filter(lvl => validLevels.includes(lvl));
+                    if (this.selectedLevels.length === 0 && validLevels.length > 0) {
+                        this.selectedLevels = [validLevels[0]];
+                    }
+                    this.selectedLevel = this.selectedLevels.join(', ');
+                    this.selectedSubjects = [];
+                    this.syncFeeStructureForLevel();
                 }
-                this.pruneSelectedSubjects();
-                this.syncFeeStructureForLevel();
             });
-            this.$watch('selectedLevel', () => {
-                this.pruneSelectedSubjects();
-                this.syncFeeStructureForLevel();
-            });
+        },
+
+        toggleLevel(lvl) {
+            if (this.selectedLevels.includes(lvl)) {
+                this.selectedLevels = this.selectedLevels.filter(l => l !== lvl);
+            } else {
+                this.selectedLevels.push(lvl);
+            }
+            this.selectedLevel = this.selectedLevels.join(', ');
+            this.pruneSelectedSubjects();
+            this.syncFeeStructureForLevel();
+            if (this.selectedPlanType === 'package' && this.selectedSubjects.length === 0) {
+                const fs = this.getCurrentFeeStructure();
+                if (fs) {
+                    this.selectFeeStructure(fs);
+                }
+            }
         },
 
         syncFeeStructureForLevel() {
@@ -104,30 +135,43 @@ function studentRegData() {
         },
 
         availableFeeStructures() {
-            if (!this.selectedLevel && !this.selectedEducationType) {
+            if (this.selectedLevels.length === 0 && !this.selectedEducationType) {
                 return this.allFeeStructures;
             }
-            const lvl = (this.selectedLevel || '').toLowerCase();
+            const levels = this.selectedLevels.map(l => (l || '').toLowerCase());
             const edu = (this.selectedEducationType || '').toLowerCase();
 
             return this.allFeeStructures.filter(fs => {
                 const target = (fs.education_level || '').toLowerCase();
                 if (target === 'all') return true;
 
-                if (lvl && target.includes(lvl)) return true;
-                if (edu === 'secondary' && (target.includes('form') || target.includes('secondary') || target.includes('spm') || target.includes('pt3'))) {
-                    if (lvl.includes('form 1') || lvl.includes('form 2') || lvl.includes('form 3')) {
-                        return target.includes('1–3') || target.includes('1-3') || target.includes('pt3') || target.includes('lower');
+                if (levels.length === 0) {
+                    if (edu === 'secondary') {
+                        return target.includes('form') || target.includes('secondary') || target.includes('spm') || target.includes('pt3');
                     }
-                    if (lvl.includes('form 4') || lvl.includes('form 5')) {
-                        return target.includes('4–5') || target.includes('4-5') || target.includes('spm') || target.includes('upper');
+                    if (edu === 'primary') {
+                        return target.includes('year') || target.includes('primary') || target.includes('upsr');
                     }
                     return true;
                 }
-                if (edu === 'primary' && (target.includes('year') || target.includes('primary') || target.includes('upsr'))) {
-                    return true;
-                }
-                return false;
+
+                return levels.some(lvl => {
+                    if (lvl && target.includes(lvl)) return true;
+                    if (edu === 'secondary' && (target.includes('form') || target.includes('secondary') || target.includes('spm') || target.includes('pt3'))) {
+                        if ((lvl.includes('form 1') || lvl.includes('form 2') || lvl.includes('form 3')) &&
+                            (target.includes('1–3') || target.includes('1-3') || target.includes('pt3') || target.includes('lower'))) {
+                            return true;
+                        }
+                        if ((lvl.includes('form 4') || lvl.includes('form 5')) &&
+                            (target.includes('4–5') || target.includes('4-5') || target.includes('spm') || target.includes('upper'))) {
+                            return true;
+                        }
+                    }
+                    if (edu === 'primary' && (target.includes('year') || target.includes('primary') || target.includes('upsr'))) {
+                        return true;
+                    }
+                    return false;
+                });
             });
         },
 
@@ -145,15 +189,38 @@ function studentRegData() {
             this.selectedFeeStructureId = fs.id;
             this.selectedPlanType = 'package';
 
-            // Auto-select Core subjects for this level dynamically
-            const coreList = this.coreSubjects();
-            if (coreList.length > 0) {
-                coreList.forEach(s => {
-                    if (!this.selectedSubjects.includes(s.name)) {
-                        this.selectedSubjects.push(s.name);
-                    }
-                });
+            const validIdentifiers = this.filteredSubjects().map(s => this.subjectIdentifier(s));
+
+            if (fs.package_type === 'fixed_bundle' && fs.subject_names && fs.subject_names.length > 0) {
+                // Fixed bundle: admin fixed the subjects, select those matching current student level
+                const bundleForLevel = this.filteredSubjects()
+                    .filter(s => fs.subject_names.includes(s.name))
+                    .map(s => this.subjectIdentifier(s));
+                this.selectedSubjects = bundleForLevel.length > 0
+                    ? [...new Set(bundleForLevel)]
+                    : [...new Set(this.coreSubjects().map(s => this.subjectIdentifier(s)))];
+            } else if (fs.package_type === 'pick_n') {
+                // Pick-N: if nothing selected yet or selected more than max, pick top subjects
+                const pool = (fs.subject_names && fs.subject_names.length > 0)
+                    ? this.filteredSubjects().filter(s => fs.subject_names.includes(s.name))
+                    : this.filteredSubjects();
+                const max = fs.maximum_subjects || 4;
+                const currentValid = this.selectedSubjects.filter(id => validIdentifiers.includes(id));
+                if (currentValid.length === 0 || currentValid.length > max) {
+                    this.selectedSubjects = pool.slice(0, max).map(s => this.subjectIdentifier(s));
+                } else {
+                    this.selectedSubjects = [...new Set(currentValid)];
+                }
+            } else {
+                // Standard package or individual: auto-select core subjects for current level
+                const coreList = this.coreSubjects().map(s => this.subjectIdentifier(s));
+                const currentValid = this.selectedSubjects.filter(id => validIdentifiers.includes(id));
+                this.selectedSubjects = [...new Set([...currentValid, ...coreList])];
             }
+        },
+
+        enrolledCount() {
+            return this.filteredSubjects().filter(s => this.selectedSubjects.includes(this.subjectIdentifier(s))).length;
         },
 
         coreSubjects() {
@@ -166,7 +233,7 @@ function studentRegData() {
 
         calculatedPricing() {
             const fs = this.getCurrentFeeStructure();
-            const selectedList = this.filteredSubjects().filter(s => this.selectedSubjects.includes(s.name));
+            const selectedList = this.filteredSubjects().filter(s => this.selectedSubjects.includes(this.subjectIdentifier(s)));
 
             if (!fs || this.selectedPlanType === 'custom') {
                 const regularTotal = selectedList.reduce((sum, s) => sum + (s.monthly_fee || 0), 0);
@@ -178,7 +245,36 @@ function studentRegData() {
                     electiveCount: 0,
                     regularTotal: regularTotal,
                     savings: 0,
-                    finalTotal: regularTotal
+                    finalTotal: regularTotal,
+                    totalCount: selectedList.length
+                };
+            }
+
+            const effectivePackageBase = fs.amount;
+
+            if (fs.package_type === 'fixed_bundle' || fs.package_type === 'pick_n') {
+                const regularTotal = selectedList.reduce((sum, s) => sum + (s.monthly_fee || 0), 0);
+                const max = fs.maximum_subjects || (fs.subject_names && fs.subject_names.length > 0 ? fs.subject_names.length : 4);
+                const extraCount = Math.max(0, selectedList.length - max);
+                let extraCost = 0;
+                if (extraCount > 0) {
+                    const discountFactor = 1 - (this.bundleDiscountPct / 100);
+                    const extras = selectedList.slice(max);
+                    extraCost = extras.reduce((sum, s) => sum + Math.round((s.monthly_fee || 0) * discountFactor * 100) / 100, 0);
+                }
+                const finalTotal = effectivePackageBase + extraCost;
+                const savings = Math.max(0, regularTotal - finalTotal);
+
+                return {
+                    isPackage: true,
+                    packageName: fs.name,
+                    basePrice: effectivePackageBase,
+                    coreCount: Math.min(selectedList.length, max),
+                    electiveCount: extraCount,
+                    regularTotal: regularTotal,
+                    savings: savings,
+                    finalTotal: finalTotal,
+                    totalCount: selectedList.length
                 };
             }
 
@@ -190,7 +286,6 @@ function studentRegData() {
             const discountFactor = 1 - (this.bundleDiscountPct / 100);
             const electiveDiscounted = electiveSelected.reduce((sum, s) => sum + Math.round((s.monthly_fee || 0) * discountFactor * 100) / 100, 0);
 
-            const effectivePackageBase = fs.amount;
             const finalTotal = effectivePackageBase + electiveDiscounted;
             const subtotal = coreRegular + electiveRegular;
             const savings = Math.max(0, subtotal - finalTotal);
@@ -203,7 +298,8 @@ function studentRegData() {
                 electiveCount: electiveSelected.length,
                 regularTotal: subtotal,
                 savings: savings,
-                finalTotal: finalTotal
+                finalTotal: finalTotal,
+                totalCount: selectedList.length
             };
         },
 
@@ -248,37 +344,45 @@ function studentRegData() {
             return ['Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5'];
         },
 
+        subjectIdentifier(s) {
+            if (this.selectedLevels.length > 1 && s.form_year) {
+                return s.display_name || `${s.name} - ${s.form_year}`;
+            }
+            return s.name;
+        },
+
         filteredSubjects() {
             let list = this.allSubjects;
             if (this.selectedEducationType) {
                 list = list.filter(s => !s.education_type || s.education_type === this.selectedEducationType);
             }
 
-            if (this.selectedLevel) {
-                list = list.filter(s => s.form_year === this.selectedLevel);
+            if (this.selectedLevels && this.selectedLevels.length > 0) {
+                list = list.filter(s => !s.form_year || this.selectedLevels.includes(s.form_year));
             }
 
-            // Deduplicate by name so each subject appears only once
+            // Deduplicate: if multiple levels selected, keep per-level subjects; otherwise keep unique by name
             const seen = new Set();
             return list.filter(s => {
-                if (seen.has(s.name)) {
+                const key = this.subjectIdentifier(s);
+                if (seen.has(key)) {
                     return false;
                 }
-                seen.add(s.name);
+                seen.add(key);
                 return true;
             });
         },
 
         pruneSelectedSubjects() {
-            const availableNames = new Set(this.filteredSubjects().map(s => s.name));
-            this.selectedSubjects = this.selectedSubjects.filter(name => availableNames.has(name));
+            const availableNames = new Set(this.filteredSubjects().map(s => this.subjectIdentifier(s)));
+            this.selectedSubjects = [...new Set(this.selectedSubjects.filter(name => availableNames.has(name)))];
         },
 
         toggleSubject(name) {
             if (this.selectedSubjects.includes(name)) {
                 this.selectedSubjects = this.selectedSubjects.filter(s => s !== name);
             } else {
-                this.selectedSubjects.push(name);
+                this.selectedSubjects = [...new Set([...this.selectedSubjects, name])];
             }
         },
 
@@ -326,6 +430,12 @@ function studentRegData() {
                     return;
                 }
             }
+            if (this.step === 2) {
+                if (!this.selectedLevels || this.selectedLevels.length === 0) {
+                    alert('Please select at least one Form / Year before continuing.');
+                    return;
+                }
+            }
             if (this.step < this.totalSteps) this.step++;
             window.scrollTo({ top: 0, behavior: 'smooth' });
         },
@@ -342,7 +452,7 @@ function studentRegData() {
         {{-- Logo --}}
         <div class="text-center mb-8">
             <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-2 group">
-                <img src="{{ asset('images/logo.png') }}" alt="Olympian Scholars" class="h-16 w-auto object-contain transition-transform group-hover:scale-105">
+                <img src="{{ asset('images/logo-vertical.png') }}" alt="Olympian Scholars" class="h-24 w-auto object-contain transition-transform group-hover:scale-105">
             </a>
         </div>
 
@@ -459,7 +569,7 @@ function studentRegData() {
                 <div>
                     <label for="nationality" class="block text-sm font-semibold text-charcoal mb-1.5">Nationality <span class="text-red-500">*</span></label>
                     <select id="nationality" name="nationality" required
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                            class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                         <option value="">-- Select Nationality --</option>
                         <option value="Malaysian" {{ old('nationality') === 'Malaysian' ? 'selected' : '' }}>Malaysian</option>
                         <option value="International" {{ old('nationality') === 'International' ? 'selected' : '' }}>International Student</option>
@@ -471,7 +581,7 @@ function studentRegData() {
                 <div>
                     <label for="state" class="block text-sm font-semibold text-charcoal mb-1.5">State <span class="text-red-500">*</span></label>
                     <select id="state" name="state" required
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                            class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                         <option value="">-- Select State --</option>
                         @foreach($malaysianStates as $state)
                             <option value="{{ $state }}" {{ old('state') === $state ? 'selected' : '' }}>{{ $state }}</option>
@@ -534,17 +644,49 @@ function studentRegData() {
                 </div>
 
                 <div>
-                    <label for="level" class="block text-sm font-semibold text-charcoal mb-1.5">Form / Year</label>
-                    <select id="level" name="level" x-model="selectedLevel"
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
-                        <option value="">-- Select Form / Year --</option>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-sm font-semibold text-charcoal">
+                            Form / Year <span class="text-red-500">*</span>
+                        </label>
+                        <span class="text-xs font-semibold text-primary"
+                              x-show="selectedLevels.length > 0"
+                              x-text="selectedLevels.length + ' selected'"></span>
+                    </div>
+                    <p class="text-xs text-muted mb-2.5">
+                        Select one or more forms/years you wish to access (e.g. Form 4 &amp; Form 5).
+                    </p>
+
+                    {{-- Hidden input for backward compatibility --}}
+                    <input type="hidden" name="level" :value="selectedLevels.join(', ')">
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                         <template x-for="lvl in levelsForType()" :key="lvl">
-                            <option :value="lvl" x-text="lvl"></option>
+                            <label class="relative cursor-pointer select-none group">
+                                <input type="checkbox" name="levels[]" :value="lvl"
+                                       :checked="selectedLevels.includes(lvl)"
+                                       @change="toggleLevel(lvl)"
+                                       class="sr-only peer">
+                                <div class="p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-2"
+                                     :class="selectedLevels.includes(lvl)
+                                         ? 'border-primary bg-primary-50/70 text-primary font-bold shadow-xs'
+                                         : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50/50'">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors"
+                                             :class="selectedLevels.includes(lvl) ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white group-hover:border-gray-400'">
+                                            <svg x-show="selectedLevels.includes(lvl)" class="w-3 h-3 stroke-current" fill="none" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                            </svg>
+                                        </div>
+                                        <span class="text-xs sm:text-sm font-semibold truncate" x-text="lvl"></span>
+                                    </div>
+                                </div>
+                            </label>
                         </template>
-                        @if(old('level'))
-                            <option value="{{ old('level') }}" x-show="false" selected>{{ old('level') }}</option>
-                        @endif
-                    </select>
+                    </div>
+
+                    <div x-show="selectedLevels.length === 0" x-cloak class="mt-2 text-xs text-red-500 font-medium">
+                        * Please select at least one Form / Year.
+                    </div>
                 </div>
 
                 <div>
@@ -579,7 +721,15 @@ function studentRegData() {
                                  class="p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2">
                                 <div>
                                     <div class="flex items-center justify-between gap-1 mb-1">
-                                        <span class="px-2 py-0.5 rounded-md bg-blue-100 text-primary text-[10px] font-bold uppercase tracking-wider">Bundle Plan</span>
+                                        <div class="flex items-center gap-1">
+                                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                                                  :class="fs.package_type === 'fixed_bundle' ? 'bg-amber-100 text-amber-800' : (fs.package_type === 'pick_n' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-primary')"
+                                                  x-text="fs.package_type === 'fixed_bundle' ? '📦 Fixed Bundle' : (fs.package_type === 'pick_n' ? ('🎯 Pilih ' + (fs.maximum_subjects || 4) + ' Subjek') : 'Bundle Plan')">
+                                            </span>
+                                            <template x-if="fs.frequency === 'yearly'">
+                                                <span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase tracking-wider">Tahunan</span>
+                                            </template>
+                                        </div>
                                         <span class="text-[10px] font-semibold text-gray-400" x-text="fs.education_level"></span>
                                     </div>
                                     <h4 class="font-heading font-bold text-sm text-charcoal leading-tight" x-text="fs.name"></h4>
@@ -610,6 +760,41 @@ function studentRegData() {
                             </div>
                         </div>
                     </div>
+
+                    {{-- Package Guidance Callout --}}
+                    <template x-if="selectedPlanType === 'package' && getCurrentFeeStructure()">
+                        <div class="p-3.5 rounded-2xl border text-xs transition-all"
+                             :class="getCurrentFeeStructure().package_type === 'fixed_bundle' ? 'bg-amber-50/80 border-amber-200 text-amber-900' : (getCurrentFeeStructure().package_type === 'pick_n' ? 'bg-indigo-50/80 border-indigo-200 text-indigo-900' : 'bg-blue-50/80 border-blue-200 text-blue-900')">
+                            <template x-if="getCurrentFeeStructure().package_type === 'fixed_bundle'">
+                                <div class="flex items-start gap-2.5">
+                                    <span class="text-base shrink-0">📦</span>
+                                    <div>
+                                        <p class="font-bold">Pakej Subjek Tetap (Fixed Bundle):</p>
+                                        <p class="mt-0.5 text-[11px] text-amber-800 leading-relaxed">
+                                            Pakej ini telah menetapkan <strong x-text="(getCurrentFeeStructure().subject_names || []).length"></strong> subjek yang telah dipilih secara automatik. Semua subjek ini disertakan dalam harga pakej.
+                                        </p>
+                                    </div>
+                                </div>
+                            </template>
+                            <template x-if="getCurrentFeeStructure().package_type === 'pick_n'">
+                                <div class="flex items-center justify-between gap-3 flex-wrap">
+                                    <div class="flex items-start gap-2.5">
+                                        <span class="text-base shrink-0">🎯</span>
+                                        <div>
+                                            <p class="font-bold">Pakej Pilihan Pelajar (Pick-N):</p>
+                                            <p class="mt-0.5 text-[11px] text-indigo-800 leading-relaxed">
+                                                Pilih mana-mana subjek di bawah sehingga had <strong x-text="getCurrentFeeStructure().maximum_subjects || 4"></strong> subjek.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-full font-bold text-xs shadow-2xs"
+                                          :class="enrolledCount() === (getCurrentFeeStructure().maximum_subjects || 4) ? 'bg-emerald-600 text-white' : 'bg-indigo-200 text-indigo-900'"
+                                          x-text="`${enrolledCount()}/${getCurrentFeeStructure().maximum_subjects || 4} Subjek Dipilih`">
+                                    </span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
 
                 {{-- 2. Core Subjects (Included in Package) --}}
@@ -619,21 +804,23 @@ function studentRegData() {
                             Core Curriculum Subjects
                             <span class="text-primary font-normal text-[11px]" x-show="selectedPlanType === 'package'">(Included in Bundle)</span>
                         </label>
-                        <span class="text-[11px] text-muted" x-text="coreSubjects().filter(s => selectedSubjects.includes(s.name)).length + '/' + coreSubjects().length + ' selected'"></span>
+                        <span class="text-[11px] text-muted" x-text="coreSubjects().filter(s => selectedSubjects.includes(subjectIdentifier(s))).length + '/' + coreSubjects().length + ' selected'"></span>
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                        <template x-for="subject in coreSubjects()" :key="subject.name">
+                        <template x-for="subject in coreSubjects()" :key="subjectIdentifier(subject)">
                             <label class="relative cursor-pointer">
-                                <input type="checkbox" name="subjects[]" :value="subject.name"
-                                       :checked="selectedSubjects.includes(subject.name)"
-                                       @change="toggleSubject(subject.name)"
+                                <input type="checkbox" name="subjects[]" :value="subjectIdentifier(subject)"
+                                       :checked="selectedSubjects.includes(subjectIdentifier(subject))"
+                                       @change="toggleSubject(subjectIdentifier(subject))"
                                        class="sr-only peer">
                                 <div class="p-2.5 rounded-xl border-2 transition-all flex items-center justify-between gap-2"
-                                     :class="selectedSubjects.includes(subject.name)
+                                     :class="selectedSubjects.includes(subjectIdentifier(subject))
                                          ? 'border-primary text-primary bg-primary-50 font-semibold shadow-xs'
                                          : 'border-gray-200 text-muted hover:border-gray-300'">
-                                    <span class="text-xs truncate font-medium" x-text="subject.name"></span>
+                                    <span class="text-xs truncate font-medium"
+                                          x-text="selectedLevels.length > 1 ? (subject.display_name || `${subject.name} - ${subject.form_year}`) : (subject.display_name ? subject.name : subject.name)">
+                                    </span>
                                     <span class="text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0"
                                           :class="selectedPlanType === 'package' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'"
                                           x-text="selectedPlanType === 'package' ? 'Included' : ('RM ' + Number(subject.monthly_fee).toFixed(0))">
@@ -658,17 +845,19 @@ function studentRegData() {
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                            <template x-for="subject in electiveSubjects()" :key="subject.name">
+                            <template x-for="subject in electiveSubjects()" :key="subjectIdentifier(subject)">
                                 <label class="relative cursor-pointer">
-                                    <input type="checkbox" name="subjects[]" :value="subject.name"
-                                           :checked="selectedSubjects.includes(subject.name)"
-                                           @change="toggleSubject(subject.name)"
+                                    <input type="checkbox" name="subjects[]" :value="subjectIdentifier(subject)"
+                                           :checked="selectedSubjects.includes(subjectIdentifier(subject))"
+                                           @change="toggleSubject(subjectIdentifier(subject))"
                                            class="sr-only peer">
                                     <div class="p-2.5 rounded-xl border-2 transition-all flex items-center justify-between gap-2"
-                                         :class="selectedSubjects.includes(subject.name)
+                                         :class="selectedSubjects.includes(subjectIdentifier(subject))
                                              ? 'border-primary text-primary bg-primary-50 font-semibold shadow-xs'
                                              : 'border-gray-200 text-muted hover:border-gray-300'">
-                                        <span class="text-xs truncate font-medium" x-text="subject.name"></span>
+                                        <span class="text-xs truncate font-medium"
+                                              x-text="selectedLevels.length > 1 ? (subject.display_name || `${subject.name} - ${subject.form_year}`) : (subject.display_name ? subject.name : subject.name)">
+                                        </span>
                                         <span class="text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 bg-gray-100 text-gray-700"
                                               x-text="'RM ' + Number(selectedPlanType === 'package' ? subject.monthly_fee * (1 - bundleDiscountPct/100) : subject.monthly_fee).toFixed(0)">
                                         </span>
@@ -688,7 +877,7 @@ function studentRegData() {
 
                     <div class="flex items-center justify-between text-xs">
                         <span class="text-gray-500">Subjects Enrolled:</span>
-                        <span class="font-semibold text-gray-800" x-text="selectedSubjects.length + ' Subject(s)'"></span>
+                        <span class="font-semibold text-gray-800" x-text="enrolledCount() + ' Subject(s)'"></span>
                     </div>
 
                     <template x-if="calculatedPricing().savings > 0">
@@ -741,21 +930,49 @@ function studentRegData() {
 
                 <div>
                     <label for="password" class="block text-sm font-semibold text-charcoal mb-1.5">Password <span class="text-red-500">*</span></label>
-                    <input id="password" name="password" type="password" required autocomplete="new-password"
-                           x-model="password"
-                           @input="if (passwordError) validatePassword()"
-                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
-                           placeholder="Min 8 characters">
+                    <div class="relative" x-data="{ show: false }">
+                        <input id="password" name="password" :type="show ? 'text' : 'password'" required autocomplete="new-password"
+                               x-model="password"
+                               @input="if (passwordError) validatePassword()"
+                               class="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                               placeholder="Min 8 characters">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-charcoal focus:outline-none transition-colors"
+                                :title="show ? 'Hide password' : 'Show password'"
+                                aria-label="Toggle password visibility">
+                            <svg x-show="!show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="show" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-muted mt-1">Must contain uppercase, number, and special character.</p>
                 </div>
 
                 <div>
                     <label for="password_confirmation" class="block text-sm font-semibold text-charcoal mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
-                    <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password"
-                           x-model="passwordConfirmation"
-                           @input="if (passwordError) validatePassword()"
-                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
-                           placeholder="Re-enter your password">
+                    <div class="relative" x-data="{ show: false }">
+                        <input id="password_confirmation" name="password_confirmation" :type="show ? 'text' : 'password'" required autocomplete="new-password"
+                               x-model="passwordConfirmation"
+                               @input="if (passwordError) validatePassword()"
+                               class="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                               placeholder="Re-enter your password">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-charcoal focus:outline-none transition-colors"
+                                :title="show ? 'Hide password' : 'Show password'"
+                                aria-label="Toggle password visibility">
+                            <svg x-show="!show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="show" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
 

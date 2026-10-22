@@ -17,13 +17,51 @@ use App\Models\StudentTopicMastery;
 use App\Models\Quiz;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules\Password;
+use App\Models\AttendanceCorrectionRequest;
+use App\Models\AttendanceEvent;
+use App\Services\AttendanceService;
+use App\Services\StudentAccessRestrictionService;
 
 class StudentDashboardController extends Controller
 {
+    /**
+     * Resilient live classes query builder for a student.
+     * Matches via:
+     *  1. Direct course enrollment
+     *  2. Subject-matching courses (handles parallel course records for the same subject/curriculum)
+     */
+    public static function getStudentLiveClassesQuery(Student $student)
+    {
+        return LiveClass::where(function ($q) use ($student) {
+            // 1. Direct course enrollment
+            $q->whereHas('course.enrollments', function ($eq) use ($student) {
+                $eq->where('student_id', $student->id);
+            });
+
+            // 2. Dual-layer: match courses with the same subject
+            $enrolledSubjectIds = DB::table('enrollments')
+                ->join('courses', 'courses.id', '=', 'enrollments.course_id')
+                ->where('enrollments.student_id', $student->id)
+                ->pluck('courses.subject_id')
+                ->filter()
+                ->unique()
+                ->toArray();
+
+            if (!empty($enrolledSubjectIds)) {
+                $subjectNames = DB::table('subjects')->whereIn('id', $enrolledSubjectIds)->pluck('name')->toArray();
+                $allMatchingSubjectIds = DB::table('subjects')->whereIn('name', $subjectNames)->pluck('id')->toArray();
+
+                $q->orWhereHas('course', function ($cq) use ($allMatchingSubjectIds) {
+                    $cq->whereIn('subject_id', $allMatchingSubjectIds);
+                });
+            }
+        });
+    }
     public function dashboard()
     {
         $user = auth()->user();
@@ -64,15 +102,13 @@ class StudentDashboardController extends Controller
                                         ->latest()->take(6)->get();
 
         // Real-time live class: fetch next upcoming or ongoing live session
-        $upcomingClass = LiveClass::whereHas('course', function ($q) use ($student) {
-            $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-        })
-        ->with('course.teacher.user', 'course.subject')
-        ->where(function($q) {
-            $q->where('scheduled_at', '>=', now()->subMinutes(120));
-        })
-        ->orderBy('scheduled_at', 'asc')
-        ->first();
+        $upcomingClass = self::getStudentLiveClassesQuery($student)
+            ->with('course.teacher.user', 'course.subject')
+            ->where(function($q) {
+                $q->where('scheduled_at', '>=', now()->subMinutes(120));
+            })
+            ->orderBy('scheduled_at', 'asc')
+            ->first();
 
         // Check & create real-time class notifications (10 min before & Live now)
         $this->checkLiveClassNotifications($user, $student);
@@ -108,13 +144,11 @@ class StudentDashboardController extends Controller
 
         // Generate dynamic 7-day calendar schedule (Monday to Sunday)
         $startOfWeek = now()->startOfWeek();
-        $weeklyLiveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
-            $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-        })
-        ->with('course.subject', 'course.teacher.user')
-        ->whereBetween('scheduled_at', [$startOfWeek->copy()->startOfDay(), $startOfWeek->copy()->addDays(6)->endOfDay()])
-        ->orderBy('scheduled_at')
-        ->get();
+        $weeklyLiveClasses = self::getStudentLiveClassesQuery($student)
+            ->with('course.subject', 'course.teacher.user')
+            ->whereBetween('scheduled_at', [$startOfWeek->copy()->startOfDay(), $startOfWeek->copy()->addDays(6)->endOfDay()])
+            ->orderBy('scheduled_at')
+            ->get();
 
         $weekSchedule = [];
         for ($i = 0; $i < 7; $i++) {
@@ -150,11 +184,12 @@ class StudentDashboardController extends Controller
         $restrictionDetails = $isRestricted ? $restrictionService->getRestrictionDetails($student) : null;
 
         // Diagnostic Assessment Status
-        $pendingDiagnostic = StudentAssignment::where('student_id', $student->id)
+        $pendingDiagnostics = StudentAssignment::where('student_id', $student->id)
             ->whereHas('assignment', fn($q) => $q->where('type', 'Diagnostic Test'))
             ->whereIn('status', ['pending', 'overdue'])
-            ->with('assignment')
-            ->first();
+            ->with(['assignment.subject', 'assignment'])
+            ->get();
+        $pendingDiagnostic = $pendingDiagnostics->first();
 
         return view('student.dashboard', compact(
             'student', 'enrollments', 'enrolledCourses', 'completedLessons',
@@ -162,7 +197,7 @@ class StudentDashboardController extends Controller
             'upcomingClass', 'studyStreakDays', 'totalQuestionsPracticed',
             'performanceLabels', 'performanceData',
             'overallProgress', 'attendanceRate', 'tasksDueCount', 'weekSchedule',
-            'isRestricted', 'restrictionDetails', 'pendingDiagnostic'
+            'isRestricted', 'restrictionDetails', 'pendingDiagnostic', 'pendingDiagnostics'
         ));
     }
 
@@ -173,13 +208,11 @@ class StudentDashboardController extends Controller
     {
         $now = now();
         
-        $enrolledClasses = LiveClass::whereHas('course', function ($q) use ($student) {
-            $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-        })
-        ->with('course.teacher.user')
-        ->where('scheduled_at', '>=', $now->copy()->subMinutes(180))
-        ->where('scheduled_at', '<=', $now->copy()->addMinutes(60))
-        ->get();
+        $enrolledClasses = self::getStudentLiveClassesQuery($student)
+            ->with('course.teacher.user')
+            ->where('scheduled_at', '>=', $now->copy()->subMinutes(180))
+            ->where('scheduled_at', '<=', $now->copy()->addMinutes(60))
+            ->get();
 
         foreach ($enrolledClasses as $liveClass) {
             $startTime = $liveClass->scheduled_at;
@@ -226,7 +259,7 @@ class StudentDashboardController extends Controller
     {
         $student = $this->getStudent();
         $enrollments = $student->enrollments()->with('course.subject.topics.subtopics', 'course.teacher.user')->get();
-        $recordings = RecordedClass::latest()->get();
+        $recordings = RecordedClass::with(['subject', 'course'])->latest()->get();
 
         // Build dynamic subjects array from database
         $studentProgress = \App\Models\StudentSubtopicProgress::where('student_id', $student->id)->get()->keyBy('subtopic_id');
@@ -296,13 +329,17 @@ class StudentDashboardController extends Controller
 
             // Dynamic tab counts from database
             $practiceCount = \App\Models\Quiz::where('course_id', $course->id)->has('questions')->count();
-            $videoCount = $recordings->where('subject_id', $subject->id)->count();
+            $videoCount = $recordings->filter(function($r) use ($subject, $course) {
+                return ($r->subject_id && $r->subject_id == $subject->id) || ($r->course_id && $r->course_id == $course->id);
+            })->count();
             $courseMaterialsCount = \App\Models\LearningMaterial::where('course_id', $course->id)->where('status', 'Published')->count();
             $notesCount = $courseMaterialsCount > 0 ? $courseMaterialsCount : 0;
 
             $subjectsData[] = [
                 'id'             => $subject->slug,
-                'name'           => $subject->name,
+                'subject_id'     => $subject->id,
+                'course_id'      => $course->id,
+                'name'           => $subject->display_name ?? $subject->name,
                 'code'           => $subject->code ?? 'KPM-' . $subject->id,
                 'education_type' => $subject->education_type ?? 'secondary',
                 'stage'          => $subject->stage ?? 'Upper Secondary',
@@ -338,15 +375,43 @@ class StudentDashboardController extends Controller
 
     public function classes()
     {
-        $student = $this->getStudent();
-        $liveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
-                $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-            })
+        $student    = $this->getStudent();
+        $now        = now();
+
+        $liveClasses = self::getStudentLiveClassesQuery($student)
             ->with('course.subject', 'course.teacher.user')
             ->orderBy('scheduled_at')
             ->get();
 
-        $now = now();
+        // ── Hero card logic (done in controller, not in blade) ─────────────
+        // Number of minutes before a class is considered "starting soon".
+        // Configurable via Admin Settings: live_class_starting_soon_minutes (default 15).
+        $startingSoonWindow = (int) Setting::get('live_class_starting_soon_minutes', 15);
+
+        // 1. A class is "live now" when now() falls between its start and end time.
+        $currentlyLiveClass = $liveClasses->first(function ($lc) use ($now) {
+            $start = $lc->scheduled_at;
+            $end   = $start->copy()->addMinutes($lc->duration_minutes ?: 60);
+            return $now->gte($start) && $now->lte($end);
+        });
+
+        // 2. "Starting soon" = not yet started, starts within the configured window.
+        $startingSoonClass = $currentlyLiveClass
+            ? null
+            : $liveClasses->first(function ($lc) use ($now, $startingSoonWindow) {
+                $start = $lc->scheduled_at;
+                return $now->lt($start) && $now->diffInMinutes($start, false) <= $startingSoonWindow;
+            });
+
+        // 3. Hero class: running class first, then starting-soon, else null.
+        $heroClass       = $currentlyLiveClass ?? $startingSoonClass;
+        $isLiveNow       = $currentlyLiveClass !== null;
+        $minutesUntilHero = ($heroClass && !$isLiveNow)
+            ? (int) $now->diffInMinutes($heroClass->scheduled_at, false)
+            : 0;
+        // ───────────────────────────────────────────────────────────────────
+
+        // 7-day week view
         $weekDays = collect();
         for ($i = 0; $i < 7; $i++) {
             $day = $now->copy()->addDays($i);
@@ -356,23 +421,43 @@ class StudentDashboardController extends Controller
                 'full'    => $day->format('l'),
                 'dateStr' => $day->format('d M'),
                 'isToday' => $day->isToday(),
-                'classes' => $liveClasses->filter(fn($lc) =>
-                    $lc->scheduled_at->format('Y-m-d') === $day->format('Y-m-d')
+                'classes' => $liveClasses->filter(
+                    fn($lc) => $lc->scheduled_at->format('Y-m-d') === $day->format('Y-m-d')
                 )->values(),
             ]);
         }
 
-        $upcomingClasses = $liveClasses->filter(fn($lc) => $lc->scheduled_at->gte($now))->values();
-        $pastClasses     = $liveClasses->filter(fn($lc) => $lc->scheduled_at->lt($now))->sortByDesc('scheduled_at')->values();
+        // All classes that are currently ongoing or scheduled for the future
+        $upcomingClasses = $liveClasses->filter(fn($lc) => $lc->isOngoingOrUpcoming())->values();
+        $pastClasses     = $liveClasses->filter(fn($lc) => $lc->isPastOrCompleted())->sortByDesc('scheduled_at')->values();
 
-        // Student's recorded attendances for live classes
-        $attendanceMap = \App\Models\StudentAttendance::where('student_id', $student->id)
+        // Attendance records
+        $attendanceMap   = \App\Models\StudentAttendance::where('student_id', $student->id)
             ->pluck('status', 'live_class_id');
 
-        // Dynamic Month Attendance Analytics from unified helper
         $attendanceStats = $this->getStudentAttendanceStats($student);
 
-        return view('student.classes', compact('student', 'weekDays', 'upcomingClasses', 'pastClasses', 'liveClasses', 'attendanceStats', 'attendanceMap'));
+        // Attendance correction requests history
+        $correctionRequests = AttendanceCorrectionRequest::where('student_id', $student->id)
+            ->with(['liveClass.course.subject', 'reviewer'])
+            ->latest()
+            ->get();
+
+        return view('student.classes', compact(
+            'student',
+            'weekDays',
+            'upcomingClasses',
+            'pastClasses',
+            'liveClasses',
+            'attendanceStats',
+            'attendanceMap',
+            'correctionRequests',
+            // hero-card variables (no business logic needed in blade)
+            'heroClass',
+            'isLiveNow',
+            'minutesUntilHero',
+            'startingSoonWindow'
+        ));
     }
 
     public function tasks()
@@ -437,17 +522,18 @@ class StudentDashboardController extends Controller
             return $sa->status === 'pending' && !$sa->is_catch_up && $sa->assignment && $sa->assignment->due_date;
         })->sortBy(fn($sa) => $sa->assignment->due_date)->take(5);
 
-        $enrolledSubjects = $assignments->map(fn($sa) => $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General'))->filter()->unique()->values();
+        $enrolledSubjects = $assignments->map(fn($sa) => $sa->assignment?->course?->subject?->display_name ?? $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General'))->filter()->unique()->values();
 
-        $diagnosticTask = StudentAssignment::where('student_id', $student->id)
+        $diagnosticTasks = StudentAssignment::where('student_id', $student->id)
             ->whereHas('assignment', fn($q) => $q->where('type', 'Diagnostic Test'))
-            ->with('assignment')
-            ->first();
+            ->with(['assignment.subject', 'assignment'])
+            ->get();
+        $diagnosticTask = $diagnosticTasks->first();
 
         return view('student.tasks', compact(
             'student', 'assignments', 'pendingCount', 'dueThisWeekCount', 'catchUpCount',
             'completedCount', 'overdueCount', 'completionRate', 'upcomingDeadlines', 'enrolledSubjects',
-            'diagnosticTask'
+            'diagnosticTask', 'diagnosticTasks'
         ));
     }
 
@@ -503,6 +589,13 @@ class StudentDashboardController extends Controller
             'title'   => 'Assignment Submitted',
             'message' => "You successfully submitted '{$assignmentTitle}'. Your teacher will review and grade your work.",
         ]);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Assignment submitted successfully! Your teacher will review and grade your work.'
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Assignment submitted successfully! Your teacher will review and grade your work.');
     }
@@ -766,8 +859,8 @@ class StudentDashboardController extends Controller
             return [
                 'id'           => $cert->id,
                 'title'        => $cert->title,
-                'subtitle'     => $cert->subtitle ?? ($cert->course?->subject?->name ? ($cert->course->subject->name . ' – ' . ($student->level ?? 'Academic')) : 'Olympian Scholars Academy'),
-                'subject'      => $cert->course?->subject?->name ?? 'Academic Achievement',
+                'subtitle'     => $cert->subtitle ?? ($cert->course?->subject?->display_name ?? ($cert->course?->subject?->name ? ($cert->course->subject->name . ' – ' . ($student->level ?? 'Academic')) : 'Olympian Scholars Academy')),
+                'subject'      => $cert->course?->subject?->display_name ?? $cert->course?->subject?->name ?? 'Academic Achievement',
                 'teacher'      => $cert->issued_by ?? 'Olympian Scholars Administration',
                 'date'         => $cert->issued_at ? $cert->issued_at->format('d M Y') : $cert->created_at->format('d M Y'),
                 'is_unlocked'  => true,
@@ -888,7 +981,7 @@ class StudentDashboardController extends Controller
         
         $user = auth()->user();
         $parent = $student?->parent ?? $student?->parents?->first();
-        $enrolledSubjects = $student ? $student->enrollments->map(fn($e) => $e->course->subject->name ?? null)->filter()->unique()->values() : collect();
+        $enrolledSubjects = $student ? $student->enrollments->map(fn($e) => $e->course->subject->display_name ?? $e->course->subject->name ?? null)->filter()->unique()->values() : collect();
 
         $activeTab = $request->query('tab', 'profile');
 
@@ -956,6 +1049,21 @@ class StudentDashboardController extends Controller
         // Backfill legacy column if empty
         if (!$student->parent_user_id) {
             $student->update(['parent_user_id' => $parentUser->id]);
+        }
+
+        // Trigger automated official communication
+        try {
+            \App\Services\Email\EmailAutomationService::trigger(
+                'parent_student_linked',
+                [
+                    'user'    => $parentUser,
+                    'parent'  => $parentUser,
+                    'student' => $student,
+                ],
+                "parent_link_{$parentUser->id}_{$student->id}"
+            );
+        } catch (\Throwable $emailErr) {
+            \Illuminate\Support\Facades\Log::warning('[StudentDashboard] Parent linked email trigger failed: ' . $emailErr->getMessage());
         }
 
         return redirect()->route('student.profile', ['tab' => 'profile'])
@@ -1041,7 +1149,7 @@ class StudentDashboardController extends Controller
     {
         $user    = auth()->user();
         $student = Student::where('user_id', $user->id)->first();
-        $isParentManaged = $student && $student->parent_user_id;
+        $isParentManaged = $student && ($student->parent_user_id || ($student->parents && $student->parents->isNotEmpty()));
 
         $rules = [
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
@@ -1074,40 +1182,129 @@ class StudentDashboardController extends Controller
 
     private function getStudentAttendanceStats(Student $student): array
     {
-        $startOfMonth = now()->startOfMonth();
-        $endOfMonth   = now()->endOfMonth();
-
-        // All live classes this month for student's enrolled courses
-        $monthLiveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
-            $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-        })
-        ->whereBetween('scheduled_at', [$startOfMonth, $endOfMonth])
-        ->get();
-
-        $totalClasses = $monthLiveClasses->count();
-
-        // Past classes this month
-        $pastClassIds = $monthLiveClasses->where('scheduled_at', '<', now())->pluck('id');
-
-        $attendanceRecords = \App\Models\StudentAttendance::where('student_id', $student->id)
-            ->whereIn('live_class_id', $pastClassIds)
-            ->get();
-
-        $attended = $attendanceRecords->whereIn('status', ['attended', 'late'])->count();
-        $absent   = $attendanceRecords->where('status', 'absent')->count();
-        $late     = $attendanceRecords->where('status', 'late')->count();
-
-        $totalPast = $pastClassIds->count();
-        $rate = $totalPast > 0 ? (int) round(($attended / $totalPast) * 100) : 0;
-
-        return [
-            'total'    => $totalClasses,
-            'attended' => $attended,
-            'absent'   => $absent,
-            'late'     => $late,
-            'pct'      => $rate,
-        ];
+        return app(AttendanceService::class)->getStudentAttendanceStats($student);
     }
+
+    /**
+     * Secure Join Class Gateway.
+     * Records initiated join attempt, calculates attendance status, logs event,
+     * and redirects to authorized meeting link.
+     */
+    public function joinClass(LiveClass $liveClass, Request $request, AttendanceService $attendanceService)
+    {
+        $user = auth()->user();
+        if ($user->role !== 'student') {
+            abort(403, 'Unauthorized.');
+        }
+
+        $student = Student::where('user_id', $user->id)->firstOrFail();
+
+        // 1. Enforce student billing restriction
+        $restrictionService = app(StudentAccessRestrictionService::class);
+        if ($restrictionService->isStudentRestricted($student)) {
+            $details = $restrictionService->getRestrictionDetails($student);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'payment_restricted',
+                    'message' => 'Your academic access is temporarily on hold due to an overdue payment balance.',
+                    'details' => $details,
+                ], 403);
+            }
+            return redirect()->route('student.fees')->with('error', 'Your academic access is temporarily on hold due to an overdue payment balance. Please settle your invoice to access live classes.');
+        }
+
+        // 2. Validate enrollment (direct or matching subject)
+        $isEnrolled = self::getStudentLiveClassesQuery($student)
+            ->where('live_classes.id', $liveClass->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'not_enrolled',
+                    'message' => 'You are not enrolled in this live class.',
+                ], 403);
+            }
+            return redirect()->route('student.classes')->with('error', 'You are not enrolled in this live class.');
+        }
+
+        // 3. Delegate to AttendanceService to record join attempt idempotently
+        $result = $attendanceService->recordStudentJoin($student, $liveClass, $request);
+
+        if (!$result['success']) {
+            if ($request->wantsJson()) {
+                return response()->json($result, 422);
+            }
+            return redirect()->route('student.classes')->with('error', $result['message']);
+        }
+
+        $meetingUrl = $result['meeting_url'] ?: $liveClass->meeting_url;
+
+        if (empty($meetingUrl)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error'   => 'missing_url',
+                    'message' => 'The instructor has not provided a live meeting link for this session yet.',
+                ], 422);
+            }
+            return redirect()->route('student.classes')->with('error', 'The instructor has not provided a live meeting link for this session yet.');
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'      => true,
+                'redirect_url' => $meetingUrl,
+                'is_rejoin'    => $result['is_rejoin'] ?? false,
+            ]);
+        }
+
+        return redirect()->away($meetingUrl);
+    }
+
+    /**
+     * Submit an attendance correction request.
+     */
+    public function submitCorrectionRequest(Request $request, AttendanceService $attendanceService)
+    {
+        $user = auth()->user();
+        if ($user->role !== 'student') {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'live_class_id'    => 'required|exists:live_classes,id',
+            'reason'           => 'required|string|max:1000',
+            'requested_status' => 'nullable|string|in:attended,excused',
+        ]);
+
+        $student = Student::where('user_id', $user->id)->firstOrFail();
+        $liveClass = LiveClass::findOrFail($validated['live_class_id']);
+
+        $isEnrolled = self::getStudentLiveClassesQuery($student)
+            ->where('live_classes.id', $liveClass->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            return response()->json(['success' => false, 'message' => 'You are not enrolled in this class.'], 403);
+        }
+
+        $req = $attendanceService->submitCorrectionRequest(
+            $student,
+            $liveClass,
+            $validated['reason'],
+            $validated['requested_status'] ?? 'attended'
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance correction request submitted for teacher review.',
+            'request' => $req,
+        ]);
+    }
+
 
     /**
      * Display Student "My Fees" portal.

@@ -223,7 +223,7 @@
 
                         {{-- Action Buttons: Register & Log in --}}
                         <div class="grid grid-cols-2 gap-3 mb-3">
-                            <a href="{{ route('free-trial') }}" class="w-full text-center font-extrabold py-3 px-4 rounded-xl text-xs sm:text-sm bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 block hover:bg-emerald-600 hover:scale-[1.02] transition-all">
+                            <a href="{{ route('register') }}" class="w-full text-center font-extrabold py-3 px-4 rounded-xl text-xs sm:text-sm bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 block hover:bg-emerald-600 hover:scale-[1.02] transition-all">
                                 Register Now
                             </a>
                             <a href="{{ route('login') }}" class="w-full text-center font-extrabold py-3 px-4 rounded-xl text-xs sm:text-sm bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 transition-all block">
@@ -233,9 +233,9 @@
 
                         {{-- Quick Link Grid: FAQ & Support --}}
                         <div class="grid grid-cols-2 gap-3">
-                            <a href="{{ route('free-trial') }}" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-bold text-slate-200 hover:bg-slate-700 transition-all">
+                            <a href="{{ route('faq') }}" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-bold text-slate-200 hover:bg-slate-700 transition-all">
                                 <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                FAQ & Trial
+                                FAQ & Help
                             </a>
                             <a href="https://wa.me/60123456789" target="_blank" class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-bold text-slate-200 hover:bg-slate-700 transition-all">
                                 <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -372,7 +372,7 @@
 
                 {{-- Action Button --}}
                 <div class="pt-3">
-                    <a href="{{ route('free-trial') }}" class="w-full text-center font-extrabold py-3.5 px-6 rounded-2xl text-sm bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 block hover:bg-emerald-600 hover:scale-[1.02] transition-all">
+                    <a href="{{ route('register') }}" class="w-full text-center font-extrabold py-3.5 px-6 rounded-2xl text-sm bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 block hover:bg-emerald-600 hover:scale-[1.02] transition-all">
                         Register for Class &rarr;
                     </a>
                 </div>
@@ -403,7 +403,7 @@
                 teacher_key: 'siti_rahimah',
                 poster: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80',
                 video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                trial_url: '{{ route("free-trial") }}',
+                trial_url: '{{ route("register") }}',
                 detail_url: '{{ route("subjects") }}'
             },
             activeTeacher: {
@@ -489,7 +489,7 @@
                     teacher_key: 'siti_rahimah',
                     poster: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/science") }}'
                 },
                 'mathematics': {
@@ -503,7 +503,7 @@
                     teacher_key: 'ahmad_farid',
                     poster: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/mathematics") }}'
                 },
                 'additional mathematics': {
@@ -517,7 +517,7 @@
                     teacher_key: 'daniel_wong',
                     poster: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/additional-mathematics") }}'
                 },
                 'physics': {
@@ -531,7 +531,7 @@
                     teacher_key: 'rajesh_kumar',
                     poster: 'https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/physics") }}'
                 },
                 'chemistry': {
@@ -545,7 +545,7 @@
                     teacher_key: 'siti_rahimah',
                     poster: 'https://images.unsplash.com/photo-1603126857599-f6e157fa2fe6?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/chemistry") }}'
                 },
                 'biology': {
@@ -558,7 +558,7 @@
                     teacher_key: 'siti_rahimah',
                     poster: 'https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/biology") }}'
                 },
                 'bahasa melayu': {
@@ -572,7 +572,7 @@
                     teacher_key: 'nurul_ain',
                     poster: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/bahasa-melayu") }}'
                 },
                 'english': {
@@ -586,7 +586,7 @@
                     teacher_key: 'nurul_ain',
                     poster: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/english") }}'
                 },
                 'prinsip perakaunan': {
@@ -600,7 +600,7 @@
                     teacher_key: 'ahmad_farid',
                     poster: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/prinsip-perakaunan") }}'
                 },
                 'perniagaan': {
@@ -614,7 +614,7 @@
                     teacher_key: 'ahmad_farid',
                     poster: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/perniagaan") }}'
                 },
                 'ekonomi': {
@@ -628,7 +628,7 @@
                     teacher_key: 'ahmad_farid',
                     poster: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/ekonomi") }}'
                 },
                 'sains komputer': {
@@ -642,7 +642,7 @@
                     teacher_key: 'daniel_wong',
                     poster: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
                     video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                    trial_url: '{{ route("free-trial") }}',
+                    trial_url: '{{ route("register") }}',
                     detail_url: '{{ url("/subjects/sains-komputer") }}'
                 }
             },
@@ -670,7 +670,7 @@
                 this.modalTab = 'overview';
                 let rawName = typeof data === 'string' ? data : (data.name || data.title || '');
                 let key = rawName.toLowerCase().trim();
-                let cleanKey = key.replace(/\(.*\)/, '').trim();
+                let cleanKey = key.replace(/\(.*\)/, '').replace(/ - .*/, '').trim();
                 let track = typeof data === 'object' && data !== null ? (data.education_type || data.track || '') : '';
 
                 if (this.subjectsDatabase[key]) {
@@ -693,7 +693,7 @@
                         teacher_key: 'ahmad_farid',
                         poster: data.poster || 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=800&q=80',
                         video_embed: data.video_embed || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                        trial_url: data.trial_url || '{{ route("free-trial") }}',
+                        trial_url: data.trial_url || '{{ route("register") }}',
                         detail_url: data.detail_url || ('/subjects/' + (data.slug || ''))
                     };
                 } else {
@@ -709,7 +709,7 @@
                         teacher_key: 'ahmad_farid',
                         poster: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=800&q=80',
                         video_embed: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-                        trial_url: '{{ route("free-trial") }}',
+                        trial_url: '{{ route("register") }}',
                         detail_url: '{{ route("subjects") }}'
                     };
                 }

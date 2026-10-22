@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Dashboard' }} | Olympian Scholars</title>
-    <style>[x-cloak] { display: none !important; }</style>
+    
+    {{-- Favicon --}}
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}?v={{ time() }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}?v={{ time() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo-icon.png') }}?v={{ time() }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v={{ time() }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}?v={{ time() }}">
+
+    <style>
+        [x-cloak] { display: none !important; }
+        select.appearance-none, select[class*="appearance-none"] { background-image: none !important; }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
@@ -35,15 +46,13 @@
            }"
            class="fixed inset-y-0 left-0 z-50 lg:z-30 flex flex-col bg-white border-r border-gray-100 shadow-card transition-all duration-300 ease-in-out overflow-x-hidden no-scrollbar">
         {{-- Logo --}}
-        <div class="flex items-center justify-between px-5 py-5 border-b border-gray-100 min-h-[73px]">
-            <div class="flex items-center gap-3">
-                <img src="{{ asset('images/logo.png') }}" alt="Olympian Scholars" class="h-10 w-auto flex-shrink-0 object-contain">
-                <span x-show="sidebarOpen || mobileMenuOpen" class="font-heading font-bold text-primary text-base leading-tight whitespace-nowrap">
-                    Olympian<br><span class="text-accent">Scholars</span>
-                </span>
-            </div>
+        <div class="relative flex items-center justify-center px-4 py-4 border-b border-gray-100 min-h-[73px]">
+            <a href="{{ route('home') }}" class="flex items-center justify-center w-full group">
+                <img x-show="sidebarOpen || mobileMenuOpen" src="{{ asset('images/logo-horizontal.png') }}" alt="Olympian Scholars" class="h-12 w-auto max-w-[210px] object-contain transition-transform group-hover:scale-105">
+                <img x-show="!sidebarOpen && !mobileMenuOpen" src="{{ asset('images/logo-icon.png') }}" alt="Olympian Scholars" class="h-11 w-11 object-contain transition-transform group-hover:scale-105 mx-auto">
+            </a>
             {{-- Mobile close button --}}
-            <button @click="mobileMenuOpen = false" class="lg:hidden p-1.5 text-muted hover:text-charcoal rounded-lg focus:outline-none">
+            <button @click="mobileMenuOpen = false" class="lg:hidden absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted hover:text-charcoal rounded-lg focus:outline-none">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>

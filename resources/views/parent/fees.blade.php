@@ -32,7 +32,7 @@
             <div class="bg-white rounded-2xl p-4 border border-gray-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5">
                     <label for="childSelect" class="text-xs font-bold text-gray-700 whitespace-nowrap">Select Child:</label>
-                    <select id="childSelect" onchange="window.location.href='{{ route('parent.fees') }}?child_id=' + this.value" class="bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-900 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[240px]">
+                    <select id="childSelect" onchange="window.location.href='{{ route('parent.fees') }}?child_id=' + this.value" class="bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-900 rounded-xl pl-3.5 pr-9 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[250px]">
                         @foreach($children as $child)
                             <option value="{{ $child->id }}" {{ $selectedChild && $selectedChild->id === $child->id ? 'selected' : '' }}>
                                 {{ $child->user->name ?? 'Child' }} ({{ $child->level ?? 'Student' }})

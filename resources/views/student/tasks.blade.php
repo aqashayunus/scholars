@@ -133,7 +133,7 @@
 
                         {{-- Subject Dropdown Filter --}}
                         <div class="flex items-center gap-2 shrink-0">
-                            <select x-model="selectedSubject" class="bg-gray-50 border border-gray-200/80 text-gray-900 text-xs font-extrabold rounded-xl px-3 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500">
+                            <select x-model="selectedSubject" class="bg-gray-50 border border-gray-200/80 text-gray-900 text-xs font-extrabold rounded-xl pl-3.5 pr-8 py-2 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 min-w-[140px]">
                                 <option value="all">All Subjects</option>
                                 @foreach($enrolledSubjects ?? [] as $subj)
                                     <option value="{{ $subj }}">{{ $subj }}</option>
@@ -142,45 +142,67 @@
                         </div>
                     </div>
 
-                    {{-- PINNED DIAGNOSTIC TEST CARD --}}
-                    @if(isset($diagnosticTask) && $diagnosticTask->assignment)
+                    {{-- PINNED DIAGNOSTIC TEST CARDS (MULTI-SUBJECT SUPPORT) --}}
                     @php
-                        $isDiagDone = in_array($diagnosticTask->status, ['submitted', 'graded', 'completed']);
+                        $diagItems = isset($diagnosticTasks) && $diagnosticTasks->isNotEmpty()
+                            ? $diagnosticTasks
+                            : (isset($diagnosticTask) && $diagnosticTask?->assignment ? collect([$diagnosticTask]) : collect());
                     @endphp
-                    <div class="mb-4 p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 {{ $isDiagDone ? 'bg-emerald-50/40 border-emerald-200' : 'bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-blue-200 shadow-2xs' }}">
-                        <div class="flex items-center gap-3.5">
-                            <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 {{ $isDiagDone ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white shadow-xs' }}">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    @if($isDiagDone)
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                                        Completed
-                                    </span>
-                                    @endif
-                                    <h4 class="font-heading font-black text-sm text-gray-900">{{ $diagnosticTask->assignment->title }}</h4>
-                                </div>
-                                <p class="text-xs text-gray-500 font-medium mt-0.5">
-                                    {{ $isDiagDone ? 'Your score: ' . ($diagnosticTask->score ?? 0) . '% (Automatically graded)' : 'Diagnostic entry assessment to evaluate your academic level.' }}
-                                </p>
-                            </div>
+                    @if($diagItems->isNotEmpty())
+                    <div class="mb-5 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500">
+                                Subject Diagnostic Assessments ({{ $diagItems->count() }})
+                            </h3>
+                            <span class="text-[11px] text-gray-400">Entry level evaluation per subject</span>
                         </div>
+                        <div class="space-y-2.5">
+                            @foreach($diagItems as $dt)
+                                @php
+                                    $isDone = in_array($dt->status, ['submitted', 'graded', 'completed']);
+                                @endphp
+                                <div class="p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 {{ $isDone ? 'bg-emerald-50/40 border-emerald-200' : 'bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-blue-200 shadow-2xs' }}">
+                                    <div class="flex items-center gap-3.5">
+                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 {{ $isDone ? 'bg-emerald-600 text-white' : 'bg-blue-600 text-white shadow-xs' }}">
+                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        </div>
+                                        <div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                @if($dt->assignment?->subject)
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold {{ $isDone ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800' }}">
+                                                    {{ $dt->assignment->subject->display_name }}
+                                                </span>
+                                                @endif
+                                                @if($isDone)
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                                                    Completed
+                                                </span>
+                                                @endif
+                                                <h4 class="font-heading font-black text-sm text-gray-900">{{ $dt->assignment->title }}</h4>
+                                            </div>
+                                            <p class="text-xs text-gray-500 font-medium mt-0.5">
+                                                {{ $isDone ? 'Your score: ' . ($dt->score ?? 0) . '% (Automatically graded)' : 'Diagnostic entry assessment • ' . ($dt->assignment?->subject?->diagnostic_duration ?? ($dt->assignment?->time_limit_minutes ?: 20)) . ' mins' }}
+                                            </p>
+                                        </div>
+                                    </div>
 
-                        <div class="shrink-0 flex items-center gap-2">
-                            @if($isDiagDone)
-                            <span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">
-                                Score: {{ $diagnosticTask->score }}%
-                            </span>
-                            <a href="{{ route('student.diagnostic.take', $diagnosticTask->assignment_id) }}" class="py-2 px-3.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-bold transition">
-                                Review
-                            </a>
-                            @else
-                            <a href="{{ route('student.diagnostic.take', $diagnosticTask->assignment_id) }}" class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-sm transition inline-flex items-center gap-1.5 cursor-pointer">
-                                <span>Take Test</span>
-                                <span>→</span>
-                            </a>
-                            @endif
+                                    <div class="shrink-0 flex items-center gap-2">
+                                        @if($isDone)
+                                        <span class="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs">
+                                            Score: {{ $dt->score }}%
+                                        </span>
+                                        <a href="{{ route('student.diagnostic.take', $dt->assignment_id) }}" class="py-2 px-3.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-100 text-xs font-bold transition">
+                                            Review
+                                        </a>
+                                        @else
+                                        <a href="{{ route('student.diagnostic.take', $dt->assignment_id) }}" class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow-sm transition inline-flex items-center gap-1.5 cursor-pointer">
+                                            <span>Take Test</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                                        </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
                         </div>
                     </div>
                     @endif
@@ -202,7 +224,19 @@
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     </div>
                                     <div>
-                                        <h5 class="font-heading font-extrabold text-sm text-gray-900 group-hover:text-blue-600 transition-colors" x-text="task.title"></h5>
+                                        <div class="flex items-center gap-2">
+                                            <h5 class="font-heading font-extrabold text-sm text-gray-900 group-hover:text-blue-600 transition-colors" x-text="task.title"></h5>
+                                            <template x-if="task.isInteractivePdf">
+                                                <span class="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-blue-100 text-blue-700">
+                                                    ✏️ Interactive
+                                                </span>
+                                            </template>
+                                            <template x-if="task.gradedFileUrl">
+                                                <span class="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800">
+                                                    📎 Graded File
+                                                </span>
+                                            </template>
+                                        </div>
                                         <p class="text-xs text-gray-400 font-medium" x-text="`${task.subject} • ${task.classLevel || 'Course'}`"></p>
                                     </div>
                                 </div>
@@ -258,7 +292,7 @@
                                 <div>
                                     <h5 class="text-xs font-bold text-gray-900 leading-tight">{{ $sa->assignment?->title ?? 'Assignment' }}</h5>
                                     <p class="text-[11px] text-gray-400 font-medium">
-                                        {{ $sa->assignment?->course?->subject?->name ?? 'Subject' }} • {{ $sa->assignment?->due_date ? \Carbon\Carbon::parse($sa->assignment?->due_date)->format('d M Y') : 'No Due Date' }}
+                                        {{ $sa->assignment?->course?->subject?->display_name ?? $sa->assignment?->course?->subject?->name ?? 'Subject' }} • {{ $sa->assignment?->due_date ? \Carbon\Carbon::parse($sa->assignment?->due_date)->format('d M Y') : 'No Due Date' }}
                                     </p>
                                 </div>
                             </div>
@@ -315,8 +349,29 @@
                     <p class="text-xs text-gray-800 leading-relaxed whitespace-pre-line" x-text="selectedTask?.description || 'Please complete the assigned exercise and submit your answer or file attachment.'"></p>
                 </div>
 
-                {{-- Teacher Attached Material / Worksheet File --}}
-                <template x-if="selectedTask?.attachmentUrl">
+                {{-- Interactive PDF Workspace Launcher Banner --}}
+                <template x-if="selectedTask?.isInteractivePdf">
+                    <div class="p-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-blue-500/20 border border-blue-400/30">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center font-bold text-xl shrink-0">
+                                ✏️
+                            </div>
+                            <div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 text-white">
+                                    Digital PDF Worksheet
+                                </span>
+                                <h4 class="font-heading font-extrabold text-sm sm:text-base text-white mt-1">Answer with Apple Pencil or Touch</h4>
+                                <p class="text-xs text-blue-100 font-medium">Write directly on the PDF, draw diagrams, erase, and autosave without downloading files.</p>
+                            </div>
+                        </div>
+                        <a :href="selectedTask?.interactiveUrl" class="py-2.5 px-5 rounded-2xl bg-white text-blue-700 hover:bg-blue-50 font-black text-xs transition shadow-md shrink-0 inline-flex items-center justify-center gap-1.5 cursor-pointer">
+                            <span x-text="selectedTask?.status === 'submitted' || selectedTask?.status === 'graded' ? 'View Your Work →' : 'Open Assignment →'"></span>
+                        </a>
+                    </div>
+                </template>
+
+                {{-- Teacher Attached Material / Worksheet File (Legacy/Standard Mode) --}}
+                <template x-if="selectedTask?.attachmentUrl && !selectedTask?.isInteractivePdf">
                     <div class="p-4 bg-blue-50/80 border border-blue-200 rounded-2xl flex items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
@@ -372,6 +427,24 @@
                                     </a>
                                 </div>
                             </template>
+
+                            <template x-if="selectedTask?.gradedFileUrl">
+                                <div class="mt-3 p-3.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2.5 overflow-hidden">
+                                        <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        </div>
+                                        <div class="truncate">
+                                            <span class="text-[10px] text-blue-700 font-extrabold uppercase tracking-wider block">Graded Task by Educator</span>
+                                            <span class="text-xs font-black text-gray-900 truncate block" x-text="selectedTask?.gradedFileName || 'Download Graded Task'"></span>
+                                        </div>
+                                    </div>
+                                    <a :href="selectedTask?.gradedFileUrl" target="_blank" class="shrink-0 py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs transition cursor-pointer">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        <span>Download</span>
+                                    </a>
+                                </div>
+                            </template>
                         </div>
 
                         <div class="text-right">
@@ -384,12 +457,30 @@
 
                 {{-- Submission Form (Shown when pending, catch-up, overdue, or when editing) --}}
                 <div x-show="selectedTask?.status === 'pending' || selectedTask?.status === 'overdue' || selectedTask?.status === 'catch-up' || isEditingSubmission" class="space-y-4">
-                    <form :action="selectedTask?.submitUrl" method="POST" enctype="multipart/form-data" class="space-y-4">
+                    {{-- Draft Restored Notice --}}
+                    <div x-show="hasDraftNotice" x-cloak class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900 font-medium">
+                        <span class="flex items-center gap-1.5">
+                            <span class="text-blue-600 font-bold">✓</span>
+                            <span>Restored your auto-saved written answer draft.</span>
+                        </span>
+                        <button type="button" @click="clearDraftNotes()" class="text-rose-600 hover:text-rose-800 text-[11px] font-bold cursor-pointer">Discard</button>
+                    </div>
+
+                    {{-- Submission Error Banner --}}
+                    <div x-show="submitError" x-cloak class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-semibold flex items-center justify-between gap-2">
+                        <span x-text="submitError"></span>
+                        <button type="button" @click="submitError = ''" class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer">✕</button>
+                    </div>
+
+                    <form :action="selectedTask?.submitUrl" method="POST" enctype="multipart/form-data" @submit.prevent="submitTaskForm($event)" class="space-y-4">
                         @csrf
 
                         <div>
-                            <label class="font-extrabold text-xs text-gray-900 block mb-1">Your Solution / Written Answer</label>
-                            <textarea name="submission_notes" rows="4" placeholder="Type your answers, explanation or comments here..." class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-xs outline-none focus:ring-2 focus:ring-blue-500" x-text="selectedTask?.submissionNotes || ''"></textarea>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="font-extrabold text-xs text-gray-900 block">Your Solution / Written Answer</label>
+                                <span class="text-[10px] text-gray-400 font-medium">Auto-saves as you type</span>
+                            </div>
+                            <textarea name="submission_notes" x-model="submissionNotesDraft" @input="saveDraftNotes()" rows="4" placeholder="Type your answers, explanation or comments here..." class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-xs outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                         </div>
 
                         <div>
@@ -402,8 +493,9 @@
                             <template x-if="isEditingSubmission">
                                 <button type="button" @click="isEditingSubmission = false" class="py-2.5 px-4 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
                             </template>
-                            <button type="submit" class="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all hover:shadow-md cursor-pointer">
-                                Submit Task
+                            <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white shadow-sm transition-all hover:shadow-md cursor-pointer flex items-center gap-1.5">
+                                <svg x-show="isSubmitting" class="w-3.5 h-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                <span x-text="isSubmitting ? 'Submitting...' : 'Submit Task'"></span>
                             </button>
                         </div>
                     </form>
@@ -422,10 +514,82 @@
                 showTaskModal: false,
                 selectedTask: null,
                 isEditingSubmission: false,
+                submissionNotesDraft: '',
+                submitError: '',
+                isSubmitting: false,
+                hasDraftNotice: false,
                 openTaskModal(task) {
                     this.selectedTask = task;
                     this.isEditingSubmission = false;
+                    this.submitError = '';
+                    this.hasDraftNotice = false;
+
+                    // Check for saved draft in localStorage
+                    try {
+                        const savedDraft = localStorage.getItem('task_notes_draft_' + task.id);
+                        if (savedDraft && savedDraft.trim() !== '' && savedDraft !== (task.submissionNotes || '')) {
+                            this.submissionNotesDraft = savedDraft;
+                            this.hasDraftNotice = true;
+                        } else {
+                            this.submissionNotesDraft = task.submissionNotes || '';
+                        }
+                    } catch (e) {
+                        this.submissionNotesDraft = task.submissionNotes || '';
+                    }
+
                     this.showTaskModal = true;
+                },
+                saveDraftNotes() {
+                    if (!this.selectedTask) return;
+                    try {
+                        localStorage.setItem('task_notes_draft_' + this.selectedTask.id, this.submissionNotesDraft);
+                    } catch (e) {}
+                },
+                clearDraftNotes() {
+                    if (!this.selectedTask) return;
+                    try {
+                        localStorage.removeItem('task_notes_draft_' + this.selectedTask.id);
+                    } catch (e) {}
+                    this.submissionNotesDraft = this.selectedTask.submissionNotes || '';
+                    this.hasDraftNotice = false;
+                },
+                async submitTaskForm(e) {
+                    if (!this.selectedTask) return;
+                    this.isSubmitting = true;
+                    this.submitError = '';
+
+                    const form = e.target;
+                    const formData = new FormData(form);
+
+                    try {
+                        const res = await fetch(this.selectedTask.submitUrl, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
+                        });
+
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            try {
+                                localStorage.removeItem('task_notes_draft_' + this.selectedTask.id);
+                            } catch (err) {}
+                            window.location.reload();
+                        } else {
+                            let msg = data.message || 'Submission failed. Please check your inputs.';
+                            if (data.errors) {
+                                msg = Object.values(data.errors).flat().join(' ');
+                            }
+                            this.submitError = msg;
+                        }
+                    } catch (err) {
+                        // If json parsing fails, fallback to traditional submit
+                        this.submitError = 'Could not submit task. Please verify your internet connection or file format.';
+                    } finally {
+                        this.isSubmitting = false;
+                    }
                 },
                 tasks: [
                     @foreach($assignments as $sa)
@@ -448,7 +612,7 @@
                         description: {!! json_encode($sa->assignment?->instructions ?: ($sa->assignment?->description ?? '')) !!},
                         instructions: {!! json_encode($sa->assignment?->instructions ?? '') !!},
                         type: {!! json_encode($sa->assignment?->type ?? 'Assignment') !!},
-                        subject: {!! json_encode($sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General')) !!},
+                        subject: {!! json_encode($sa->assignment?->course?->subject?->display_name ?? $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General')) !!},
                         classLevel: {!! json_encode($sa->assignment?->course?->level ?? ($sa->assignment?->target_level ?: 'Platform-wide')) !!},
                         due: "{{ $sa->assignment?->due_date ? \Carbon\Carbon::parse($sa->assignment->due_date)->format('d M Y') : 'No Due Date' }}",
                         time: '11:59 PM',
@@ -462,6 +626,10 @@
                         teacherFeedback: {!! json_encode($sa->teacher_feedback ?? '') !!},
                         fileName: {!! json_encode($sa->file_name ?? '') !!},
                         fileUrl: {!! json_encode($sa->file_url ?? '') !!},
+                        gradedFileName: {!! json_encode($sa->graded_file_name ?? '') !!},
+                        gradedFileUrl: {!! json_encode($sa->graded_file_url ?? '') !!},
+                        isInteractivePdf: {{ (bool) ($sa->assignment?->is_interactive_pdf ?? false) ? 'true' : 'false' }},
+                        interactiveUrl: "{{ route('student.assignments.interactive', $sa->assignment_id) }}",
                         submittedAt: "{{ $sa->submitted_at ? $sa->submitted_at->format('d M Y, h:i A') : '' }}",
                         submitUrl: "{{ route('student.tasks.submit', $sa->id) }}",
                         updatedTimestamp: {{ $updatedTs }}

@@ -33,7 +33,7 @@
                 @foreach($typeSubjects->sortBy('name') as $subject)
                 <div class="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
                     <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-sm text-gray-900">{{ $subject->name }}</p>
+                        <p class="font-semibold text-sm text-gray-900">{{ $subject->display_name ?? $subject->name }}</p>
                         <p class="text-xs text-gray-400 mt-0.5">
                             {{ $subject->form_year ?? $subject->stage ?? '—' }}
                             @if($subject->category) · {{ $subject->category }} @endif

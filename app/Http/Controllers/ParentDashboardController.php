@@ -89,22 +89,7 @@ class ParentDashboardController extends Controller
      */
     private function getAttendanceStats(Student $student): array
     {
-        $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
-
-        $records = $student->attendances()
-            ->whereHas('liveClass', fn ($q) =>
-                $q->whereBetween('scheduled_at', [$start, $end])
-            )
-            ->get();
-
-        $total    = $records->count();
-        $attended = $records->whereIn('status', ['attended', 'late'])->count();
-        $absent   = $records->where('status', 'absent')->count();
-        $late     = $records->where('status', 'late')->count();
-        $pct      = $total > 0 ? round($attended / $total * 100) : 0;
-
-        return compact('total', 'attended', 'absent', 'late', 'pct');
+        return app(\App\Services\AttendanceService::class)->getStudentAttendanceStats($student);
     }
 
     /**
@@ -131,8 +116,9 @@ class ParentDashboardController extends Controller
 
         $progress = [];
         foreach ($student->enrollments as $en) {
-            $name = $en->course->subject->name ?? 'N/A';
-            $color = $colorMap[$name] ?? 'blue';
+            $rawName = $en->course->subject->name ?? 'N/A';
+            $displayName = $en->course->subject->display_name ?? $rawName;
+            $color = $colorMap[$rawName] ?? 'blue';
             $pct = (int) ($en->progress_pct ?? 0);
 
             // Check if student has taken quizzes in this course
@@ -140,7 +126,7 @@ class ParentDashboardController extends Controller
             $quizAvg = $quizzes->isNotEmpty() ? (int) round($quizzes->avg('score')) : null;
 
             $progress[] = [
-                'subject'           => $name,
+                'subject'           => $displayName,
                 'emoji'             => '',
                 'color'             => $color,
                 'pct'               => $pct,
@@ -156,11 +142,9 @@ class ParentDashboardController extends Controller
      */
     private function getUpcomingClasses(Student $student, int $limit = 5): Collection
     {
-        $courseIds = $student->enrollments->pluck('course_id');
-
-        return LiveClass::with('course.subject', 'course.teacher.user')
-            ->whereIn('course_id', $courseIds)
-            ->where('scheduled_at', '>=', now())
+        return StudentDashboardController::getStudentLiveClassesQuery($student)
+            ->with('course.subject', 'course.teacher.user')
+            ->activeOrUpcoming()
             ->orderBy('scheduled_at')
             ->take($limit)
             ->get();
@@ -171,11 +155,9 @@ class ParentDashboardController extends Controller
      */
     private function getPastClasses(Student $student, int $limit = 10): Collection
     {
-        $courseIds = $student->enrollments->pluck('course_id');
-
-        return LiveClass::with('course.subject', 'attendances')
-            ->whereIn('course_id', $courseIds)
-            ->where('scheduled_at', '<', now())
+        return StudentDashboardController::getStudentLiveClassesQuery($student)
+            ->with('course.subject', 'attendances')
+            ->completedOrPast()
             ->orderByDesc('scheduled_at')
             ->take($limit)
             ->get();
@@ -376,7 +358,7 @@ class ParentDashboardController extends Controller
         $attStats        = $child ? $this->getAttendanceStats($child) : ['total'=>0,'attended'=>0,'absent'=>0,'late'=>0,'pct'=>0];
 
         $classesThisWeek = $child
-            ? LiveClass::whereIn('course_id', $child->enrollments->pluck('course_id'))
+            ? StudentDashboardController::getStudentLiveClassesQuery($child)
                 ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])
                 ->count()
             : 0;
@@ -570,7 +552,7 @@ class ParentDashboardController extends Controller
                     'level'          => $validated['level'],
                     'school_name'    => $validated['school_name'] ?? null,
                     'total_points'   => 0,
-                    'streak_days'    => 0,
+                    'streak_days'    => 1,
                 ]);
 
                 // Link via pivot table
@@ -668,6 +650,21 @@ class ParentDashboardController extends Controller
 
         if (!$student->parent_user_id) {
             $student->update(['parent_user_id' => $parent->id]);
+        }
+
+        // Trigger automated official communication
+        try {
+            \App\Services\Email\EmailAutomationService::trigger(
+                'parent_student_linked',
+                [
+                    'user'    => $parent,
+                    'parent'  => $parent,
+                    'student' => $student,
+                ],
+                "parent_link_{$parent->id}_{$student->id}"
+            );
+        } catch (\Throwable $emailErr) {
+            \Illuminate\Support\Facades\Log::warning('[ParentDashboard] Child linked email trigger failed: ' . $emailErr->getMessage());
         }
 
         return redirect()->route('parent.dashboard', ['child_id' => $student->id])
@@ -947,6 +944,21 @@ class ParentDashboardController extends Controller
 
             return back()->with('success', "Payment proof for {$invoice->student->user->name} submitted! Your payment is pending verification.");
         } else {
+            // Billplz Online Banking Gateway
+            $billplzService = new \App\Services\Billplz\BillplzService();
+            if ($billplzService->getApiKey()) {
+                try {
+                    /** @var \App\Services\PaymentService $paymentService */
+                    $paymentService = app(\App\Services\PaymentService::class);
+                    $result = $paymentService->initiateBillplzPayment([$invoice->id], $parent);
+                    return redirect()->away($result['bill_url']);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('[ParentDashboardController] Billplz checkout error: ' . $e->getMessage());
+                    return back()->with('error', 'Online payment gateway error: ' . $e->getMessage());
+                }
+            }
+
+            // Mock fallback if gateway credentials not set
             $refNo = 'TXN-FPX-' . strtoupper(substr(md5(uniqid()), 0, 8));
             $receiptNo = 'RCP-' . date('Y') . '-' . str_pad($invoice->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
 
@@ -961,7 +973,7 @@ class ParentDashboardController extends Controller
                 'payment_method' => $paymentMethod,
                 'reference_no'   => $refNo,
                 'receipt_number' => $receiptNo,
-                'status'         => 'paid',
+                'status'         => 'successful',
                 'paid_at'        => now(),
             ]);
 

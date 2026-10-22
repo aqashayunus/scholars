@@ -128,6 +128,8 @@ class Student extends Model
     public function studentAssignments() { return $this->hasMany(StudentAssignment::class); }
     public function quizResults() { return $this->hasMany(StudentQuiz::class); }
     public function attendances() { return $this->hasMany(StudentAttendance::class); }
+    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
+    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
     public function certificates() { return $this->hasMany(Certificate::class); }
     public function invoices()     { return $this->hasMany(Invoice::class); }
     public function payments()     { return $this->hasMany(Payment::class); }
@@ -164,28 +166,43 @@ class Student extends Model
     public function getEmailAttribute() { return $this->user->email; }
 
     /**
-     * Update the student's study streak on login or activity.
+     * Get the student's study streak days (increases daily since registration day).
+     */
+    public function getStreakDaysAttribute($value): int
+    {
+        $registrationDate = $this->created_at ?? $this->user?->created_at;
+        if ($registrationDate) {
+            $regDay = \Carbon\Carbon::parse($registrationDate)->startOfDay();
+            $today = now()->startOfDay();
+            if ($regDay->lte($today)) {
+                return max(1, (int) $regDay->diffInDays($today) + 1);
+            }
+            return 1;
+        }
+
+        return max(1, (int) ($value ?? 1));
+    }
+
+    /**
+     * Update the student's study streak and last active timestamp.
+     * Streak increases every day since registration day.
      */
     public function recordLoginStreak(): void
     {
-        $today = now()->startOfDay();
+        $registrationDate = $this->created_at ?? $this->user?->created_at;
+        $days = 1;
 
-        if (!$this->last_active_at) {
-            $this->streak_days = 1;
-        } else {
-            $lastActiveDay = $this->last_active_at->copy()->startOfDay();
-            $diffInDays = $lastActiveDay->diffInDays($today);
-
-            if ($diffInDays === 1) {
-                // Logged in the consecutive next day: increment streak
-                $this->streak_days = max(1, ($this->streak_days ?? 0) + 1);
-            } elseif ($diffInDays > 1) {
-                // Missed a day: reset streak to 1
-                $this->streak_days = 1;
+        if ($registrationDate) {
+            $regDay = \Carbon\Carbon::parse($registrationDate)->startOfDay();
+            $today = now()->startOfDay();
+            if ($regDay->lte($today)) {
+                $days = max(1, (int) $regDay->diffInDays($today) + 1);
             }
-            // If diffInDays === 0 (same day), keep existing streak
+        } elseif (!empty($this->attributes['streak_days'])) {
+            $days = max(1, (int) $this->attributes['streak_days']);
         }
 
+        $this->attributes['streak_days'] = $days;
         $this->last_active_at = now();
         $this->save();
     }
@@ -230,6 +247,25 @@ class Student extends Model
                 StudentAssignment::firstOrCreate([
                     'student_id'    => $this->id,
                     'assignment_id' => $ca->id,
+                ], [
+                    'status' => 'pending',
+                ]);
+            }
+        }
+
+        // 3. Subject-specific diagnostic tests for all enrolled subjects
+        if (!empty($courseIds)) {
+            $subjectIds = \App\Models\Course::whereIn('id', $courseIds)
+                ->whereNotNull('subject_id')
+                ->pluck('subject_id')
+                ->unique();
+            $subjectDiagnostics = \App\Models\Subject::whereIn('id', $subjectIds)
+                ->whereNotNull('diagnostic_assignment_id')
+                ->pluck('diagnostic_assignment_id');
+            foreach ($subjectDiagnostics as $diagId) {
+                StudentAssignment::firstOrCreate([
+                    'student_id'    => $this->id,
+                    'assignment_id' => $diagId,
                 ], [
                     'status' => 'pending',
                 ]);

@@ -55,57 +55,62 @@ class ChatController extends Controller
         $me   = auth()->user();
         $myId = $me->id;
 
-        $participantRows = ConversationParticipant::where('user_id', $myId)
-            ->whereNull('archived_at')
-            ->with([
-                'conversation.participants.user',
-                'conversation.lastMessage.sender',
-            ])
-            ->get();
+        try {
+            $participantRows = ConversationParticipant::where('user_id', $myId)
+                ->whereNull('archived_at')
+                ->with([
+                    'conversation.participants.user',
+                    'conversation.lastMessage.sender',
+                ])
+                ->get();
 
-        $contacts = $participantRows->map(function ($p) use ($myId) {
-            $conv = $p->conversation;
-            if (!$conv || $conv->deleted_at !== null) return null;
+            $contacts = $participantRows->map(function ($p) use ($myId) {
+                $conv = $p->conversation;
+                if (!$conv || $conv->deleted_at !== null) return null;
 
-            $other   = $conv->otherParticipant($myId);
-            $lastMsg = $conv->lastMessage;
+                $other   = $conv->otherParticipant($myId);
+                $lastMsg = $conv->lastMessage;
 
-            $unread = ChatMessage::where('conversation_id', $conv->id)
-                ->where('sender_id', '!=', $myId)
-                ->where('id', '>', (int)($p->last_read_message_id ?? 0))
-                ->count();
+                $unread = ChatMessage::where('conversation_id', $conv->id)
+                    ->where('sender_id', '!=', $myId)
+                    ->where('id', '>', (int)($p->last_read_message_id ?? 0))
+                    ->count();
 
-            // Educational context preview if available
-            $contextLabel = null;
-            if ($conv->context_type === 'App\Models\Course' && $conv->context_id) {
-                $course = Course::find($conv->context_id);
-                $contextLabel = $course ? $course->title : null;
-            }
+                // Educational context preview if available
+                $contextLabel = null;
+                if ($conv->context_type === 'App\Models\Course' && $conv->context_id) {
+                    $course = Course::find($conv->context_id);
+                    $contextLabel = $course ? $course->title : null;
+                }
 
-            return [
-                'conversation_id'  => $conv->id,
-                'contact_id'       => $other?->id,
-                'contact_name'     => $other?->name ?? $conv->title ?? 'Support Desk',
-                'contact_role'     => $other?->role ?? 'support',
-                'contact_initials' => $this->initials($other?->name ?? ($conv->title ?? 'S')),
-                'conversation_type'=> $conv->type,
-                'context_label'    => $contextLabel,
-                'last_message'     => $lastMsg
-                    ? ($lastMsg->type === 'attachment'
-                        ? '[Attachment: ' . ($lastMsg->attachments->first()?->original_name ?? 'File') . ']'
-                        : Str::limit($lastMsg->body ?? '', 50))
-                    : 'No messages yet',
-                'last_time'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
-                'last_date'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
-                'unread'           => $unread,
-                'status'           => $conv->status,
-                'is_muted'         => $p->muted_at !== null,
-            ];
-        })->filter()->sortByDesc(function ($c) {
-            return ($c['last_date'] ?? '2000-01-01') . ' ' . ($c['last_time'] ?? '00:00 AM');
-        })->values();
+                return [
+                    'conversation_id'  => $conv->id,
+                    'contact_id'       => $other?->id,
+                    'contact_name'     => $other?->name ?? $conv->title ?? 'Support Desk',
+                    'contact_role'     => $other?->role ?? 'support',
+                    'contact_initials' => $this->initials($other?->name ?? ($conv->title ?? 'S')),
+                    'conversation_type'=> $conv->type,
+                    'context_label'    => $contextLabel,
+                    'last_message'     => $lastMsg
+                        ? ($lastMsg->type === 'attachment'
+                            ? '[Attachment: ' . ($lastMsg->attachments->first()?->original_name ?? 'File') . ']'
+                            : Str::limit($lastMsg->body ?? '', 50))
+                        : 'No messages yet',
+                    'last_time'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+                    'last_date'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
+                    'unread'           => $unread,
+                    'status'           => $conv->status,
+                    'is_muted'         => $p->muted_at !== null,
+                ];
+            })->filter()->sortByDesc(function ($c) {
+                return ($c['last_date'] ?? '2000-01-01') . ' ' . ($c['last_time'] ?? '00:00 AM');
+            })->values();
 
-        return response()->json($contacts);
+            return response()->json($contacts);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[ChatController] getContacts error: ' . $e->getMessage());
+            return response()->json([]);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -268,35 +273,66 @@ class ChatController extends Controller
             return response()->json(['error' => $error], 403);
         }
 
-        // Find existing direct 1-to-1 conversation
-        $existing = Conversation::whereHas('participants', fn($q) => $q->where('user_id', $me->id))
-            ->whereHas('participants', fn($q) => $q->where('user_id', $contactId))
-            ->whereNotIn('type', ['system'])
-            ->first();
+        try {
+            // Find existing direct 1-to-1 conversation (including soft-deleted)
+            $existing = Conversation::withTrashed()
+                ->whereHas('participants', fn($q) => $q->where('user_id', $me->id))
+                ->whereHas('participants', fn($q) => $q->where('user_id', $contactId))
+                ->whereNotIn('type', ['system'])
+                ->first();
 
-        if ($existing) {
-            return response()->json(['conversation_id' => $existing->id]);
+            if ($existing) {
+                if ($existing->trashed()) {
+                    $existing->restore();
+                }
+                return response()->json(['conversation_id' => $existing->id]);
+            }
+
+            $contact = User::findOrFail($contactId);
+            $type    = $this->resolveConversationType($me, $contact);
+
+            $conv = DB::transaction(function () use ($me, $contact, $type) {
+                try {
+                    $conv = Conversation::create([
+                        'type'       => $type,
+                        'status'     => 'open',
+                        'created_by' => $me->id,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Fallback to 'direct' if legacy database ENUM lacks specific types (e.g. student_admin)
+                    if (str_contains($e->getMessage(), 'Data truncated for column') || str_contains($e->getMessage(), '1265')) {
+                        $conv = Conversation::create([
+                            'type'       => 'direct',
+                            'status'     => 'open',
+                            'created_by' => $me->id,
+                        ]);
+                    } else {
+                        throw $e;
+                    }
+                }
+
+                ConversationParticipant::insert([
+                    ['conversation_id' => $conv->id, 'user_id' => $me->id,      'role' => 'member', 'joined_at' => now()->toDateTimeString()],
+                    ['conversation_id' => $conv->id, 'user_id' => $contact->id, 'role' => 'member', 'joined_at' => now()->toDateTimeString()],
+                ]);
+
+                return $conv;
+            });
+
+            return response()->json(['conversation_id' => $conv->id], 201);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[ChatController] findOrCreateConversation error: ' . $e->getMessage(), [
+                'user_id'    => $me->id,
+                'contact_id' => $contactId,
+            ]);
+
+            $errorMsg = $e->getMessage();
+            if (str_contains($errorMsg, "doesn't exist") || str_contains($errorMsg, 'Base table or view not found')) {
+                $errorMsg = 'Chat database tables are missing on this server. Please run the chat migration or import the SQL tables in phpMyAdmin.';
+            }
+
+            return response()->json(['error' => $errorMsg], 500);
         }
-
-        $contact = User::findOrFail($contactId);
-        $type    = $this->resolveConversationType($me, $contact);
-
-        $conv = DB::transaction(function () use ($me, $contact, $type) {
-            $conv = Conversation::create([
-                'type'       => $type,
-                'status'     => 'open',
-                'created_by' => $me->id,
-            ]);
-
-            ConversationParticipant::insert([
-                ['conversation_id' => $conv->id, 'user_id' => $me->id,      'role' => 'member', 'joined_at' => now()],
-                ['conversation_id' => $conv->id, 'user_id' => $contact->id, 'role' => 'member', 'joined_at' => now()],
-            ]);
-
-            return $conv;
-        });
-
-        return response()->json(['conversation_id' => $conv->id], 201);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -858,42 +894,47 @@ class ChatController extends Controller
             }
         }
 
-        $convs = $query->latest('updated_at')->limit(60)->get();
+        try {
+            $convs = $query->latest('updated_at')->limit(60)->get();
 
-        $list = $convs->map(function ($conv) {
-            $parts = $conv->participants->map(fn($p) => [
-                'id'       => $p->user?->id,
-                'name'     => $p->user?->name ?? 'Unknown',
-                'role'     => $p->user?->role ?? 'user',
-                'initials' => $this->initials($p->user?->name ?? '?'),
-            ]);
+            $list = $convs->map(function ($conv) {
+                $parts = $conv->participants->map(fn($p) => [
+                    'id'       => $p->user?->id,
+                    'name'     => $p->user?->name ?? 'Unknown',
+                    'role'     => $p->user?->role ?? 'user',
+                    'initials' => $this->initials($p->user?->name ?? '?'),
+                ]);
 
-            $lastMsg = $conv->lastMessage;
+                $lastMsg = $conv->lastMessage;
 
-            // Pick the primary non-admin participant for display title
-            $primaryUser = $conv->participants->firstWhere('user.role', '!=', 'admin')?->user
-                        ?? $conv->participants->first()?->user;
+                // Pick the primary non-admin participant for display title
+                $primaryUser = $conv->participants->firstWhere('user.role', '!=', 'admin')?->user
+                            ?? $conv->participants->first()?->user;
 
-            return [
-                'conversation_id'   => $conv->id,
-                'contact_id'        => $primaryUser?->id,
-                'contact_name'      => $primaryUser?->name ?? ($conv->title ?? 'Conversation #' . $conv->id),
-                'contact_role'      => $primaryUser?->role ?? 'direct',
-                'contact_initials'  => $this->initials($primaryUser?->name ?? 'A'),
-                'type'              => $conv->type,
-                'status'            => $conv->status,
-                'title'             => $conv->title,
-                'participants'      => $parts,
-                'last_message'      => $lastMsg
-                    ? ($lastMsg->type === 'attachment' ? '[Attachment]' : Str::limit($lastMsg->body ?? '', 55))
-                    : 'No messages yet',
-                'last_time'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
-                'last_date'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
-                'unread'            => 0,
-            ];
-        });
+                return [
+                    'conversation_id'   => $conv->id,
+                    'contact_id'        => $primaryUser?->id,
+                    'contact_name'      => $primaryUser?->name ?? ($conv->title ?? 'Conversation #' . $conv->id),
+                    'contact_role'      => $primaryUser?->role ?? 'direct',
+                    'contact_initials'  => $this->initials($primaryUser?->name ?? 'A'),
+                    'type'              => $conv->type,
+                    'status'            => $conv->status,
+                    'title'             => $conv->title,
+                    'participants'      => $parts,
+                    'last_message'      => $lastMsg
+                        ? ($lastMsg->type === 'attachment' ? '[Attachment]' : Str::limit($lastMsg->body ?? '', 55))
+                        : 'No messages yet',
+                    'last_time'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+                    'last_date'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
+                    'unread'            => 0,
+                ];
+            });
 
-        return response()->json($list);
+            return response()->json($list);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[ChatController] adminGetContacts error: ' . $e->getMessage());
+            return response()->json([]);
+        }
     }
 
     public function adminUpdateStatus(Request $request, int $conversationId): JsonResponse
@@ -1039,6 +1080,12 @@ class ChatController extends Controller
     {
         $contact = User::find($contactId);
         if (!$contact) return 'Contact not found.';
+
+        // Admin has full clearance to start conversation with any user
+        if ($me->isAdmin()) {
+            return null;
+        }
+
         if (!$contact->is_active) return 'This account is currently inactive.';
 
         if ($me->isStudent()) {

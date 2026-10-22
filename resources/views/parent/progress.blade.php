@@ -16,7 +16,7 @@
             @if ($children->count() > 1)
                 <div class="flex items-center gap-2 bg-gray-50 px-3.5 py-2.5 rounded-2xl border border-gray-200/70 w-full sm:w-auto min-w-0">
                     <span class="text-xs font-bold text-gray-500 shrink-0">Viewing:</span>
-                    <select onchange="window.location.href='{{ route('parent.progress') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1 pr-6 outline-none truncate w-full sm:max-w-[220px]">
+                    <select onchange="window.location.href='{{ route('parent.progress') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1.5 pr-8 outline-none truncate w-full sm:max-w-[250px]">
                         @foreach ($children as $ch)
                             <option value="{{ $ch->id }}" {{ $child && $child->id === $ch->id ? 'selected' : '' }}>
                                 {{ $ch->user->name ?? 'Student' }} – {{ $ch->level ?? 'N/A' }}

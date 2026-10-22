@@ -19,9 +19,9 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'invoice_id'   => ['required', 'integer', 'exists:invoices,id'],
-            'payment_method' => ['required', 'in:bank_transfer,online'],
-            'reference_no' => ['nullable', 'string', 'max:100'],
+            'invoice_id'     => ['required', 'integer', 'exists:invoices,id'],
+            'payment_method' => ['required', 'in:bank_transfer,online,fpx'],
+            'reference_no'   => ['nullable', 'string', 'max:100'],
         ]);
 
         $invoice = Invoice::findOrFail($request->invoice_id);
@@ -32,6 +32,19 @@ class PaymentController extends Controller
 
         // Authorization: only the student or their parent
         $this->authorizePayment($invoice);
+
+        $paymentMethod = $request->input('payment_method');
+
+        // Online FPX via Billplz
+        if (in_array($paymentMethod, ['online', 'fpx'])) {
+            try {
+                $result = $this->paymentService->initiateBillplzPayment([$invoice->id], Auth::user());
+                return redirect()->away($result['bill_url']);
+            } catch (\Throwable $e) {
+                Log::error('[PaymentController] Billplz checkout error: ' . $e->getMessage());
+                return back()->with('error', 'Failed to connect to online banking: ' . $e->getMessage());
+            }
+        }
 
         try {
             $payment = $this->paymentService->initiateManualTransfer(
@@ -60,6 +73,7 @@ class PaymentController extends Controller
         $request->validate([
             'invoice_ids'    => ['required', 'array', 'min:1'],
             'invoice_ids.*'  => ['integer', 'exists:invoices,id'],
+            'payment_method' => ['nullable', 'in:bank_transfer,online,fpx'],
             'reference_no'   => ['nullable', 'string', 'max:100'],
         ]);
 
@@ -74,6 +88,19 @@ class PaymentController extends Controller
                 if (!in_array($invoice->student_id, $childIds)) {
                     abort(403, 'You do not have access to one or more selected invoices.');
                 }
+            }
+        }
+
+        $paymentMethod = $request->input('payment_method', 'online');
+
+        // Online FPX via Billplz
+        if (in_array($paymentMethod, ['online', 'fpx'])) {
+            try {
+                $result = $this->paymentService->initiateBillplzPayment($request->invoice_ids, $user);
+                return redirect()->away($result['bill_url']);
+            } catch (\Throwable $e) {
+                Log::error('[PaymentController] storeMulti Billplz error: ' . $e->getMessage());
+                return back()->with('error', 'Failed to initiate online banking: ' . $e->getMessage());
             }
         }
 

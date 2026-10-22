@@ -140,7 +140,7 @@
                         <div class="p-4 sm:p-5 flex flex-col justify-between text-left order-2 sm:order-1 bg-white">
                             <div>
                                 <div class="mb-2">
-                                    <img src="{{ asset('images/logo.png') }}" alt="Olympian Scholars" class="h-8 w-auto object-contain">
+                                    <img src="{{ asset('images/logo-horizontal.png') }}" alt="Olympian Scholars" class="h-8 w-auto object-contain">
                                 </div>
                                 <h4 class="font-heading font-black text-sm sm:text-base text-amber-500 leading-tight mb-2 line-clamp-2" x-text="previewTitle"></h4>
                                 <p class="text-[11px] text-gray-600 font-normal leading-relaxed line-clamp-3 mb-3" x-text="previewBody"></p>

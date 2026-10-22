@@ -110,52 +110,57 @@
 
         {{-- ── 2. SEARCH & MULTI-DROPDOWN FILTER BAR ── --}}
         <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+            <div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
                 {{-- Search Bar --}}
-                <div class="lg:col-span-2 relative">
+                <div class="relative flex-1 min-w-[220px]">
                     <input type="text" x-model="searchQuery" placeholder="Search material..." class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
 
-                {{-- Class Dropdown --}}
-                <div>
-                    <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Class: All Classes</option>
-                        @foreach($courses->pluck('level')->unique() as $lvl)
-                            <option value="{{ $lvl }}">{{ $lvl }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                {{-- Filter Dropdowns & Reset Button --}}
+                <div class="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-2.5">
+                    {{-- Class Dropdown --}}
+                    <div class="w-full xl:w-auto xl:min-w-[145px]">
+                        <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Class: All Classes</option>
+                            @foreach($courses->pluck('level')->unique() as $lvl)
+                                <option value="{{ $lvl }}">{{ $lvl }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                {{-- Subject Dropdown --}}
-                <div>
-                    <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Subject: All Subjects</option>
-                        @foreach($courses->map(fn($c) => $c->subject->name ?? null)->filter()->unique() as $sName)
-                            <option value="{{ $sName }}">{{ $sName }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    {{-- Subject Dropdown --}}
+                    <div class="w-full xl:w-auto xl:min-w-[155px]">
+                        <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Subject: All Subjects</option>
+                            @foreach($courses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? null)->filter()->unique() as $sName)
+                                <option value="{{ $sName }}">{{ $sName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                {{-- Topic Dropdown --}}
-                <div>
-                    <select x-model="selectedTopic" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Topic: All Topics</option>
-                        <template x-for="top in [...new Set(materials.map(m => m.topic))]" :key="top">
-                            <option :value="top" x-text="top"></option>
-                        </template>
-                    </select>
-                </div>
+                    {{-- Topic Dropdown --}}
+                    <div class="w-full xl:w-auto xl:min-w-[145px]">
+                        <select x-model="selectedTopic" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Topic: All Topics</option>
+                            <template x-for="top in [...new Set(materials.map(m => m.topic))]" :key="top">
+                                <option :value="top" x-text="top"></option>
+                            </template>
+                        </select>
+                    </div>
 
-                {{-- Status & Reset --}}
-                <div class="flex items-center gap-2">
-                    <select x-model="selectedStatus" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Status: All Status</option>
-                        <option value="Published">Published</option>
-                        <option value="Draft">Draft</option>
-                        <option value="Scheduled">Scheduled</option>
-                    </select>
-                    <button @click="resetFilters()" class="py-2.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1">
+                    {{-- Status Dropdown --}}
+                    <div class="w-full xl:w-auto xl:min-w-[155px]">
+                        <select x-model="selectedStatus" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Status: All Status</option>
+                            <option value="Published">Published</option>
+                            <option value="Draft">Draft</option>
+                            <option value="Scheduled">Scheduled</option>
+                        </select>
+                    </div>
+
+                    {{-- Reset --}}
+                    <button @click="resetFilters()" class="col-span-2 sm:col-span-4 xl:col-auto py-2.5 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1">
                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Reset</span>
                     </button>
@@ -244,9 +249,9 @@
             </div>
         </div>
 
-        {{-- ── 4. UPLOAD NEW MATERIAL SIDE DRAWER FORM MODAL ── --}}
-        <div x-show="showUploadModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showUploadModal = false" class="w-full max-w-xl bg-white h-full p-6 space-y-6 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 4. UPLOAD NEW MATERIAL MODAL ── --}}
+        <div x-show="showUploadModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showUploadModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-6 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h3 class="font-heading font-black text-lg text-gray-900">Upload New Material</h3>
@@ -269,7 +274,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Material Type *</label>
-                                <select name="type" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="type" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     <option value="Notes">Notes / Handout</option>
                                     <option value="Worksheet">Worksheet / Exercises</option>
                                     <option value="Slides">Presentation Slides</option>
@@ -279,10 +284,10 @@
                             </div>
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Assign to Class / Subject *</label>
-                                <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     <option value="">Select class</option>
                                     @foreach($courses as $c)
-                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -358,9 +363,9 @@
             </div>
         </div>
 
-        {{-- ── 5. EDIT MATERIAL SIDE DRAWER FORM MODAL ── --}}
-        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showEditModal = false" class="w-full max-w-xl bg-white h-full p-6 space-y-6 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 5. EDIT MATERIAL MODAL ── --}}
+        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showEditModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-6 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h3 class="font-heading font-black text-lg text-gray-900">Edit Learning Material / Notes</h3>
@@ -383,7 +388,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Material Type *</label>
-                                <select name="type" required x-model="editingMaterial.type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="type" required x-model="editingMaterial.type" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     <option value="Notes">Notes / Handout</option>
                                     <option value="Worksheet">Worksheet / Exercises</option>
                                     <option value="Slides">Presentation Slides</option>
@@ -393,9 +398,9 @@
                             </div>
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Assign to Class / Subject *</label>
-                                <select name="course_id" required x-model="editingMaterial.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="course_id" required x-model="editingMaterial.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     @foreach($courses as $c)
-                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                     @endforeach
                                 </select>
                             </div>

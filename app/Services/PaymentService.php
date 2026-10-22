@@ -12,9 +12,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+use App\Services\Billplz\BillplzService;
+
 class PaymentService
 {
-    public function __construct(private InvoiceService $invoiceService) {}
+    public function __construct(
+        private InvoiceService $invoiceService,
+        private BillplzService $billplzService
+    ) {}
 
     // ── Manual Bank Transfer ──────────────────────────────────────────────────
 
@@ -177,39 +182,215 @@ class PaymentService
         return $path;
     }
 
-    // ── Gateway Webhook (Stub) ────────────────────────────────────────────────
+    // ── Billplz FPX Gateway Integration ──────────────────────────────────────
+
+    /**
+     * Initiate a Billplz FPX online payment for one or more invoices.
+     *
+     * @param  int[] $invoiceIds
+     * @param  User  $payer
+     * @param  array $extra
+     * @return array ['payment' => Payment, 'bill_url' => string]
+     */
+    public function initiateBillplzPayment(array $invoiceIds, User $payer, array $extra = []): array
+    {
+        $invoices = Invoice::whereIn('id', $invoiceIds)
+            ->whereIn('status', Invoice::UNPAID_STATUSES)
+            ->get();
+
+        if ($invoices->isEmpty()) {
+            throw new \RuntimeException('No valid unpaid invoices found to pay.');
+        }
+
+        $totalAmount = $invoices->sum(fn ($inv) => (float) $inv->outstanding_amount);
+
+        if ($totalAmount <= 0) {
+            throw new \RuntimeException('The total payable amount must be greater than zero.');
+        }
+
+        return DB::transaction(function () use ($invoices, $payer, $totalAmount, $extra) {
+            $payerType = $payer->role === 'parent' ? 'parent' : 'student';
+            $primaryStudentId = $invoices->first()->student_id;
+            $refNo = 'TXN-BPZ-' . strtoupper(substr(md5(uniqid()), 0, 8));
+
+            $payment = Payment::create([
+                'user_id'        => $payer->id,
+                'invoice_id'     => $invoices->count() === 1 ? $invoices->first()->id : null,
+                'student_id'     => $primaryStudentId,
+                'payer_id'       => $payer->id,
+                'payer_type'     => $payerType,
+                'description'    => 'FPX Online Payment – ' . $invoices->pluck('invoice_number')->implode(', '),
+                'amount'         => $totalAmount,
+                'payment_method' => 'fpx',
+                'reference_no'   => $refNo,
+                'status'         => Payment::STATUS_PENDING,
+            ]);
+
+            // Create allocations
+            foreach ($invoices as $invoice) {
+                PaymentInvoice::create([
+                    'payment_id'     => $payment->id,
+                    'invoice_id'     => $invoice->id,
+                    'amount_applied' => $invoice->outstanding_amount,
+                ]);
+            }
+
+            // Prepare Billplz creation payload
+            $callbackUrl = route('billing.billplz.webhook');
+            $redirectUrl = route('billing.billplz.return');
+
+            $bill = $this->billplzService->createBill([
+                'email'        => $payer->email,
+                'mobile'       => $payer->phone ?? $payer->mobile ?? null,
+                'name'         => $payer->name,
+                'amount'       => $totalAmount,
+                'callback_url' => $callbackUrl,
+                'redirect_url' => $redirectUrl,
+                'description'  => 'Olympian Scholars Fees: ' . $invoices->pluck('invoice_number')->implode(', '),
+                'reference_1'  => (string) $invoices->first()->id,
+                'reference_2'  => $payment->reference_no,
+            ]);
+
+            $payment->update([
+                'billplz_bill_id'        => $bill['id'] ?? null,
+                'gateway_transaction_id' => $bill['id'] ?? null,
+                'billplz_url'            => $bill['url'] ?? null,
+            ]);
+
+            $this->log('billplz_payment_initiated', 'Payment', $payment->id, $payer->id, [
+                'amount'          => $totalAmount,
+                'billplz_bill_id' => $bill['id'] ?? null,
+                'invoices'        => $invoices->pluck('invoice_number')->all(),
+            ]);
+
+            return [
+                'payment'  => $payment->fresh(['invoices']),
+                'bill_url' => $bill['url'],
+            ];
+        });
+    }
+
+    /**
+     * Mark a Billplz gateway payment as successful and reconcile linked invoices.
+     * Strictly idempotent — safe to call from both Webhook and Return redirect.
+     */
+    public function completeGatewayPayment(string $billplzBillId, array $gatewayData = []): Payment
+    {
+        $payment = Payment::where('billplz_bill_id', $billplzBillId)
+            ->orWhere('gateway_transaction_id', $billplzBillId)
+            ->first();
+
+        if (!$payment) {
+            throw new \RuntimeException("Payment not found for Billplz Bill ID: {$billplzBillId}");
+        }
+
+        // Idempotency: if already successful, skip recalculation
+        if ($payment->status === Payment::STATUS_SUCCESSFUL) {
+            Log::info("[PaymentService] Payment #{$payment->id} already marked successful.");
+            return $payment;
+        }
+
+        DB::transaction(function () use ($payment, $gatewayData) {
+            $receiptNumber = $payment->receipt_number ?: Payment::generateReceiptNumber();
+
+            $payment->update([
+                'status'          => Payment::STATUS_SUCCESSFUL,
+                'receipt_number'  => $receiptNumber,
+                'gateway_payload' => $gatewayData,
+                'paid_at'         => now(),
+            ]);
+
+            // Recalculate each linked invoice
+            $allocations = $payment->paymentInvoices()->with('invoice')->get();
+            if ($allocations->isNotEmpty()) {
+                foreach ($allocations as $allocation) {
+                    if ($allocation->invoice) {
+                        $this->invoiceService->recalculateAmountPaid($allocation->invoice);
+                    }
+                }
+            } elseif ($payment->invoice_id && $payment->invoice) {
+                $this->invoiceService->recalculateAmountPaid($payment->invoice);
+            }
+
+            $this->log('billplz_payment_successful', 'Payment', $payment->id, $payment->user_id, [
+                'receipt_number'  => $receiptNumber,
+                'billplz_bill_id' => $payment->billplz_bill_id,
+                'amount'          => $payment->amount,
+            ]);
+        });
+
+        // Trigger in-app alerts for student & parents
+        try {
+            $freshPayment = $payment->fresh(['invoices.student.user']);
+            $firstInvoice = $freshPayment->invoices->first();
+            if ($firstInvoice) {
+                \App\Services\BillingNotificationService::notifyPaymentVerified($freshPayment, true, 'Paid via Billplz FPX Online Banking');
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[PaymentService] Failed sending payment notification: ' . $e->getMessage());
+        }
+
+        return $payment;
+    }
+
+    /**
+     * Mark a Billplz gateway payment as failed.
+     */
+    public function failGatewayPayment(string $billplzBillId, array $gatewayData = [], ?string $reason = null): Payment
+    {
+        $payment = Payment::where('billplz_bill_id', $billplzBillId)
+            ->orWhere('gateway_transaction_id', $billplzBillId)
+            ->first();
+
+        if (!$payment) {
+            throw new \RuntimeException("Payment not found for Billplz Bill ID: {$billplzBillId}");
+        }
+
+        if ($payment->status === Payment::STATUS_SUCCESSFUL) {
+            return $payment; // Do not fail an already successful payment
+        }
+
+        $payment->update([
+            'status'              => Payment::STATUS_FAILED,
+            'gateway_payload'     => $gatewayData,
+            'payment_proof_notes' => $reason ? "Gateway Failure: {$reason}" : 'Payment cancelled or failed at bank.',
+        ]);
+
+        $this->log('billplz_payment_failed', 'Payment', $payment->id, $payment->user_id, [
+            'reason'          => $reason,
+            'billplz_bill_id' => $billplzBillId,
+        ]);
+
+        return $payment;
+    }
 
     /**
      * Handle payment gateway webhook callback.
      *
-     * STUB for V1 — the architecture is ready to slot in a real gateway.
-     * A real implementation would:
-     *   1. Verify the payload signature from the gateway
-     *   2. Find the Payment by gateway_transaction_id
-     *   3. Mark it successful/failed
-     *   4. Call recalculateAmountPaid() on each linked invoice
-     *
-     * @param  array  $payload  Raw webhook payload from gateway
+     * @param  array  $payload  Raw webhook payload from Billplz
      */
     public function handleGatewayWebhook(array $payload): void
     {
-        Log::info('[PaymentService] Gateway webhook received (stub).', $payload);
+        Log::info('[PaymentService] Gateway webhook received.', $payload);
 
-        // TODO: implement when real payment gateway is configured
-        // Example for future implementation:
-        //
-        // $gatewayRef = $payload['transaction_id'] ?? null;
-        // $payment = Payment::where('gateway_transaction_id', $gatewayRef)->first();
-        // if (!$payment) { throw new \RuntimeException("Payment not found for gateway ref: {$gatewayRef}"); }
-        //
-        // if ($payload['status'] === 'paid') {
-        //     $payment->update(['status' => Payment::STATUS_SUCCESSFUL, 'paid_at' => now()]);
-        //     foreach ($payment->paymentInvoices as $alloc) {
-        //         $this->invoiceService->recalculateAmountPaid($alloc->invoice);
-        //     }
-        // } else {
-        //     $payment->update(['status' => Payment::STATUS_FAILED]);
-        // }
+        $billId = $payload['id'] ?? null;
+        if (empty($billId)) {
+            throw new \InvalidArgumentException('Missing bill ID in webhook payload.');
+        }
+
+        // Verify cryptographic signature if X-Signature key is configured
+        if (!$this->billplzService->verifySignature($payload)) {
+            Log::error('[PaymentService] Invalid Billplz webhook X-Signature.', $payload);
+            throw new \InvalidArgumentException('Invalid webhook signature.');
+        }
+
+        $isPaid = isset($payload['paid']) && ($payload['paid'] === 'true' || $payload['paid'] === true || $payload['state'] === 'paid');
+
+        if ($isPaid) {
+            $this->completeGatewayPayment($billId, $payload);
+        } else {
+            $this->failGatewayPayment($billId, $payload, 'Payment cancelled or failed at FPX checkout.');
+        }
     }
 
     // ── Audit Log ─────────────────────────────────────────────────────────────

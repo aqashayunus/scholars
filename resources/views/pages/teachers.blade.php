@@ -2,47 +2,23 @@
     <x-slot name="title">Our Teachers</x-slot>
 
     {{-- ══════════════════════════════════════════════
-         SECTION 1: HERO HEADER (Synchronized with Programmes)
+         SECTION 1: HERO HEADER
     ══════════════════════════════════════════════ --}}
-    <section class="relative bg-primary-950 text-white py-12 md:py-16 text-center overflow-hidden">
-        <!-- Background Image & Overlay -->
-        <div class="absolute inset-0 z-0">
-            <img src="{{ asset('images/hero-students.jpg') }}" alt="Olympia Scholar Teachers" class="w-full h-full object-cover" />
-            <div class="absolute inset-0 bg-primary-950/60 mix-blend-multiply"></div>
-            <div class="absolute inset-0 bg-gradient-to-br from-primary-950/80 via-primary-900/60 to-primary-800/40"></div>
-        </div>
-
-        <!-- Dynamic Background Pattern Overlay -->
-        <div class="absolute inset-0 z-0 opacity-20 pointer-events-none">
-            <svg class="absolute w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-        </div>
-
-        <div class="relative max-w-4xl mx-auto px-4 z-10 flex flex-col items-center">
-            <h1 class="animate-on-scroll opacity-0 translate-y-12 transition-all duration-1000 ease-out font-heading font-black text-5xl md:text-6xl lg:text-7xl text-white mb-6 drop-shadow-lg leading-tight">Our <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">Teachers</span></h1>
-            <p class="animate-on-scroll opacity-0 translate-y-12 transition-all duration-1000 ease-out delay-200 text-white/80 text-lg md:text-xl max-w-2xl font-light leading-relaxed">
-                Passionate educators dedicated to guiding your child towards academic excellence and personal growth.
-            </p>
-        </div>
-
-        {{-- Smooth Curved Divider --}}
+    <section class="bg-gradient-to-br from-primary-950 via-primary-900 to-navy text-white py-10 md:py-12 text-center relative overflow-hidden">
         <div class="absolute -bottom-1 left-0 right-0 overflow-hidden leading-none pointer-events-none z-10">
-            <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-10 md:h-14 block">
-                <path d="M0,25 Q720,75 1440,25 L1440,80 L0,80 Z" fill="#f8fafc"></path>
+            <svg viewBox="0 0 1440 48" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-8 md:h-10 block">
+                <path d="M0,20 Q720,48 1440,20 L1440,48 L0,48 Z" fill="#f8fafc"/>
             </svg>
+        </div>
+        <div class="relative max-w-3xl mx-auto px-4">
+            <h1 class="font-heading font-bold text-3xl md:text-4xl text-white mb-2">Our Teachers</h1>
         </div>
     </section>
 
     {{-- ══════════════════════════════════════════════
          SECTION 2: TEACHERS DIRECTORY (Staggered Editorial)
     ══════════════════════════════════════════════ --}}
-    <section class="pt-20 pb-12 bg-slate-50 w-full relative -mt-4 overflow-hidden" x-data="{ selectedLevel: 'all', selectedSubject: 'all' }">
+    <section class="pt-12 md:pt-16 pb-12 bg-slate-50 w-full relative overflow-hidden" x-data="{ selectedLevel: 'all', selectedSubject: 'all' }">
         <div class="max-w-[85rem] mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
             
             {{-- Ultra-Sleek Floating Filter Island (Refined) --}}
@@ -304,13 +280,13 @@
                                 </div>
                             </div>
                             
-                            {{-- Buttons Reveal --}}
-                            <div class="mt-5 flex gap-3 transform opacity-0 translate-y-6 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 delay-[150ms]">
+                            {{-- Buttons Reveal (Visible by default on mobile/tablet, hover on desktop) --}}
+                            <div class="mt-5 flex gap-3 transform opacity-100 translate-y-0 lg:opacity-0 lg:translate-y-6 lg:group-hover:opacity-100 lg:group-hover:translate-y-0 transition-all duration-500 delay-[150ms]">
                                 <a href="{{ route('teacher.show', $loop->iteration) }}" class="flex-1 bg-primary-950 text-white text-[13px] font-bold py-3.5 rounded-2xl text-center hover:bg-amber-500 hover:text-amber-950 transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2 group/btn">
                                     View Profile
                                     <svg class="w-4 h-4 transform transition-transform group-hover/btn:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                                 </a>
-                                <a href="{{ route('free-trial') }}" class="w-[52px] flex-shrink-0 flex items-center justify-center bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 hover:text-primary-950 hover:border-slate-300 transition-all shadow-sm group/btn2" title="Book Class">
+                                <a href="{{ route('register') }}" class="w-[52px] flex-shrink-0 flex items-center justify-center bg-white border border-slate-200 text-slate-700 rounded-2xl hover:bg-slate-50 hover:text-primary-950 hover:border-slate-300 transition-all shadow-sm group/btn2" title="Register for Class">
                                     <svg class="w-5 h-5 text-slate-500 group-hover/btn2:text-primary-950 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 </a>
                             </div>
@@ -380,11 +356,11 @@
                     </div>
                     
                     <h3 class="text-white font-bold text-xl mb-1.5 relative z-10">Ready to start?</h3>
-                    <p class="text-white/60 text-sm mb-7 relative z-10 font-medium">Claim your free trial class now</p>
+                    <p class="text-white/60 text-sm mb-7 relative z-10 font-medium">Join Olympian Scholars today</p>
                     
-                    <a href="{{ route('free-trial') }}" class="relative z-10 overflow-hidden inline-flex items-center justify-center w-full font-bold text-sm md:text-base py-3.5 px-8 rounded-full bg-amber-500 text-slate-900 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/40">
+                    <a href="{{ route('register') }}" class="relative z-10 overflow-hidden inline-flex items-center justify-center w-full font-bold text-sm md:text-base py-3.5 px-8 rounded-full bg-amber-500 text-slate-900 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/40">
                         <span class="flex items-center gap-2">
-                            Book Free Trial
+                            Register Now
                             <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                         </span>
                     </a>

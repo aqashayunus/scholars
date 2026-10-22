@@ -132,7 +132,7 @@ return new class extends Migration
             $table->foreignId('viewer_id')->constrained('users')->onDelete('cascade'); // parent
             $table->unsignedBigInteger('child_id');                                    // student (user_id)
             $table->foreign('child_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreignId('conversation_id')->constrained('conversations')->onDelete('cascade');
+            $table->foreignId('conversation_id')->nullable()->constrained('conversations')->onDelete('cascade');
             $table->enum('action', [
                 'conversation_viewed',
                 'message_viewed',

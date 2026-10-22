@@ -141,7 +141,7 @@
                                         @endphp
                                         <tr>
                                             <td class="py-2">{{ $att->liveClass->scheduled_at->format('j M') }}</td>
-                                            <td class="py-2">{{ $att->liveClass->course->subject->name ?? 'N/A' }}</td>
+                                            <td class="py-2">{{ $att->liveClass->course->subject->display_name ?? $att->liveClass->course->subject->name ?? 'N/A' }}</td>
                                             <td class="py-2 text-right font-black {{ $statusColor }}">{{ ucfirst($att->status) }}</td>
                                         </tr>
                                     @empty
@@ -175,7 +175,7 @@
                         @foreach ($attendanceLog->where('status', 'absent') as $att)
                             <div class="p-4 bg-white rounded-2xl border border-amber-200/60 flex items-center justify-between gap-3">
                                 <div>
-                                    <h4 class="text-xs font-extrabold text-gray-900">{{ $att->liveClass->course->subject->name ?? 'N/A' }}</h4>
+                                    <h4 class="text-xs font-extrabold text-gray-900">{{ $att->liveClass->course->subject->display_name ?? $att->liveClass->course->subject->name ?? 'N/A' }}</h4>
                                     <p class="text-[11px] text-gray-500 font-medium">{{ $att->liveClass->scheduled_at->format('l, j M Y • g:i A') }}</p>
                                 </div>
                                 @if ($att->liveClass->meeting_url)

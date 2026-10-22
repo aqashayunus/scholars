@@ -20,6 +20,9 @@ use App\Models\TeacherEarning;
 use App\Models\TeachingGig;
 use App\Models\ClassRequest;
 use App\Models\UserNotification;
+use App\Models\AttendanceCorrectionRequest;
+use App\Models\AttendanceEvent;
+use App\Services\AttendanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -47,8 +50,8 @@ class TeacherDashboardController extends Controller
     }
 
     /**
-     * Compute this-month attendance stats for all students across the given course IDs.
-     * Returns ['total_sessions', 'attended', 'absent', 'late', 'pct']
+     * Compute attendance stats for all students across the given course IDs.
+     * Returns ['total', 'attended', 'absent', 'late', 'pct', 'period_label']
      */
     private function getAttendanceStats(Collection $courseIds): array
     {
@@ -64,89 +67,183 @@ class TeacherDashboardController extends Controller
         $attended = $records->whereIn('status', ['attended', 'late'])->count();
         $absent   = $records->where('status', 'absent')->count();
         $late     = $records->where('status', 'late')->count();
-        $pct      = $total > 0 ? round($attended / $total * 100) : 0;
+        $pct      = $total > 0 ? (int) round($attended / $total * 100) : 0;
+        $period_label = "{$attended}/{$total} this month";
 
-        return compact('total', 'attended', 'absent', 'late', 'pct');
+        // If no records this month yet, check all-time so stats don't display a misleading 0%
+        if ($total === 0) {
+            $allRecords = StudentAttendance::whereHas('liveClass', fn ($q) =>
+                $q->whereIn('course_id', $courseIds)
+            )->get();
+            if ($allRecords->count() > 0) {
+                $allAtt = $allRecords->whereIn('status', ['attended', 'late'])->count();
+                $pct = (int) round($allAtt / $allRecords->count() * 100);
+                $period_label = "{$allAtt}/{$allRecords->count()} all-time";
+                $attended = $allAtt;
+                $total = $allRecords->count();
+            } else {
+                $pct = 100;
+                $period_label = "No sessions recorded yet";
+            }
+        }
+
+        return compact('total', 'attended', 'absent', 'late', 'pct', 'period_label');
     }
 
     /**
-     * Build the student data array from real DB data for the students page.
+     * Build the student data array from real DB data for the students & monitoring pages.
      */
     private function buildStudentData(Teacher $teacher): array
     {
         $studentsData = [];
-        $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
+        $colors = ['bg-blue-600', 'bg-purple-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-indigo-600', 'bg-teal-600'];
 
         foreach ($teacher->courses as $course) {
             foreach ($course->enrollments as $enrollment) {
                 $student = $enrollment->student;
+                if (!$student || !$student->user) continue;
                 $sUser   = $student->user;
                 $sid     = $student->id;
 
                 if (isset($studentsData[$sid])) continue;
 
-                // Real attendance this month
+                // Courses enrolled with this teacher
+                $studentCourses = $teacher->courses->filter(function($c) use ($student) {
+                    return $c->enrollments->contains('student_id', $student->id);
+                });
+
+                $subjectsList = $studentCourses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? $c->title)->filter()->unique()->values()->join(', ');
+                $levelsList   = $studentCourses->pluck('level')->filter()->unique()->values()->join(', ');
+
+                // Attendance across student's enrolled courses with this teacher
+                $pastClasses = LiveClass::whereIn('course_id', $studentCourses->pluck('id'))
+                    ->where('scheduled_at', '<', now())
+                    ->where('status', '!=', 'cancelled')
+                    ->get();
+                
+                $pastClassIds = $pastClasses->pluck('id');
                 $attRecords = StudentAttendance::where('student_id', $sid)
-                    ->whereHas('liveClass', fn($q) =>
-                        $q->where('course_id', $course->id)
-                          ->whereBetween('scheduled_at', [$start, $end])
-                    )->get();
+                    ->whereIn('live_class_id', $pastClassIds)
+                    ->get();
 
-                $attTotal    = $attRecords->count();
                 $attAttended = $attRecords->whereIn('status', ['attended', 'late'])->count();
-                $attPct      = $attTotal > 0 ? round($attAttended / $attTotal * 100) : 0;
+                $attAbsent   = $attRecords->where('status', 'absent')->count();
+                $counted     = $attAttended + $attAbsent;
+                $attPct      = $counted > 0 ? (int) round(($attAttended / $counted) * 100) : 100;
 
-                // Real progress
-                $progressPct = (int) ($enrollment->progress_pct ?? 0);
+                // Real tasks & progress
+                $allCourseAssignments = Assignment::whereIn('course_id', $studentCourses->pluck('id'))->get();
+                $totalCourseTasks     = $allCourseAssignments->count();
 
-                // Real pending tasks
-                $pendingTasks = StudentAssignment::where('student_id', $sid)
-                    ->whereHas('assignment', fn($q) => $q->where('course_id', $course->id))
-                    ->where('status', 'pending')
-                    ->count();
+                $studentAssignments = StudentAssignment::where('student_id', $sid)
+                    ->whereIn('assignment_id', $allCourseAssignments->pluck('id'))
+                    ->get();
 
-                // Latest quiz score
+                $completedTasks = $studentAssignments->whereIn('status', ['submitted', 'graded'])->count();
+                $pendingTasks   = $studentAssignments->where('status', 'pending')->count();
+                $overdueTasks   = $studentAssignments->filter(function($sa) {
+                    return $sa->status === 'pending' && $sa->assignment && $sa->assignment->due_date && $sa->assignment->due_date->lt(now());
+                })->count();
+
+                // Progress: average of enrollment progress or task completion
+                $enrProgressAvg = (int) round($student->enrollments->whereIn('course_id', $studentCourses->pluck('id'))->avg('progress_pct') ?? 0);
+                if ($enrProgressAvg === 0 && $totalCourseTasks > 0) {
+                    $progressPct = (int) round(($completedTasks / $totalCourseTasks) * 100);
+                } else {
+                    $progressPct = max($enrProgressAvg, $totalCourseTasks > 0 ? (int) round(($completedTasks / $totalCourseTasks) * 100) : 0);
+                }
+
+                // Latest quiz or assessment score
                 $latestQuiz = $student->quizResults()
-                    ->whereHas('quiz', fn($q) => $q->where('course_id', $course->id))
+                    ->whereHas('quiz', fn($q) => $q->whereIn('course_id', $studentCourses->pluck('id')))
                     ->latest('completed_at')
                     ->first();
-                $latestScore = $latestQuiz ? $latestQuiz->percent . '%' : '–';
-                $latestDate  = $latestQuiz ? $latestQuiz->completed_at->format('d M Y') : '–';
 
-                // Determine status
+                $latestScore = $latestQuiz ? $latestQuiz->percent . '%' : ($studentAssignments->whereNotNull('score')->first() ? $studentAssignments->whereNotNull('score')->first()->score . '%' : '–');
+                $latestDate  = $latestQuiz ? $latestQuiz->completed_at->format('d M Y') : ($studentAssignments->whereNotNull('score')->first() && $studentAssignments->whereNotNull('score')->first()->submitted_at ? $studentAssignments->whereNotNull('score')->first()->submitted_at->format('d M Y') : '–');
+
+                // Recent activities
+                $recentActivities = [];
+                foreach ($studentAssignments->take(3) as $sa) {
+                    $recentActivities[] = [
+                        'type'        => 'task',
+                        'title'       => $sa->assignment->title ?? 'Assignment Task',
+                        'badge'       => $sa->status === 'graded' ? 'Graded (' . ($sa->score ?? 0) . '%)' : ucfirst($sa->status),
+                        'date'        => $sa->submitted_at ? $sa->submitted_at->format('d M Y') : $sa->created_at->format('d M Y'),
+                        'color'       => $sa->status === 'graded' ? 'emerald' : ($sa->status === 'submitted' ? 'blue' : 'amber'),
+                    ];
+                }
+                foreach ($attRecords->take(2) as $att) {
+                    $recentActivities[] = [
+                        'type'        => 'attendance',
+                        'title'       => $att->liveClass->title ?? 'Live Class Session',
+                        'badge'       => ucfirst($att->status),
+                        'date'        => $att->liveClass && $att->liveClass->scheduled_at ? $att->liveClass->scheduled_at->format('d M Y') : $att->created_at->format('d M Y'),
+                        'color'       => $att->status === 'attended' ? 'emerald' : ($att->status === 'late' ? 'amber' : 'red'),
+                    ];
+                }
+
+                // Determine category & status
                 $category = 'good';
                 $status   = 'Good';
+                $issue    = null;
+
                 if ($attPct < 80 || $progressPct < 60) {
                     $category = 'attention';
                     $status   = 'Needs Attention';
+                    $issue    = $attPct < 80 ? "Low Attendance ({$attPct}%)" : "Progress Below Target ({$progressPct}%)";
                 }
                 if ($progressPct < 55) {
                     $category = 'intervention';
                     $status   = 'Intervention';
+                    $issue    = "Progress Critical ({$progressPct}%)";
                 }
-                if ($pendingTasks > 2) {
+                if ($attAbsent > 0) {
                     $category = 'catchup';
                     $status   = 'Needs Attention';
+                    $issue    = "{$attAbsent} Absent Session(s) — Catch-Up Pending";
                 }
+                if ($overdueTasks > 0) {
+                    $category = 'attention';
+                    $status   = 'Needs Attention';
+                    $issue    = "{$overdueTasks} Overdue Task(s)";
+                }
+
+                // Initials & color
+                $words = explode(' ', trim($sUser->name));
+                $initials = strtoupper(substr($words[0] ?? 'S', 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
+                $color = $colors[$sid % count($colors)];
 
                 $studentsData[$sid] = [
                     'id'               => 'S24' . str_pad($sid, 3, '0', STR_PAD_LEFT),
+                    'student_id'       => $sid,
                     'name'             => $sUser->name,
-                    'class'            => $course->level,
-                    'subject'          => $course->subject->name ?? 'General',
+                    'initials'         => $initials,
+                    'avatar_color'     => $color,
+                    'class'            => $levelsList ?: $course->level,
+                    'subject'          => $subjectsList ?: ($course->subject->display_name ?? $course->subject->name ?? 'General'),
                     'attendance'       => $attPct,
+                    'attended_count'   => $attAttended,
+                    'absent_count'     => $attAbsent,
+                    'total_classes'    => $pastClassIds->count(),
                     'progress'         => $progressPct,
-                    'pendingTasks'     => $pendingTasks > 0 ? "{$pendingTasks} Pending" : "0 Pending",
+                    'completed_tasks'  => $completedTasks,
+                    'total_tasks'      => $totalCourseTasks,
+                    'pending_tasks'    => $pendingTasks,
+                    'pendingTasks'     => "{$pendingTasks} Pending",
+                    'overdue_tasks'    => $overdueTasks,
                     'latestAssessment' => $latestScore,
                     'latestDate'       => $latestDate,
                     'status'           => $status,
                     'category'         => $category,
-                    'strengths'        => 'Basic concepts',
-                    'weaknesses'       => 'Advanced application',
-                    'catchup'          => $pendingTasks > 0 ? 'Pending Tasks' : 'None',
+                    'issue'            => $issue,
+                    'strengths'        => $progressPct >= 70 ? 'Consistent submission & engagement' : 'Foundational concepts',
+                    'weaknesses'       => $attPct < 85 ? 'Live class attendance regularity' : ($progressPct < 60 ? 'Homework task completion' : 'Advanced application'),
+                    'catchup'          => $attAbsent > 0 ? "{$attAbsent} Session(s)" : 'None',
                     'intervention'     => $category === 'intervention' ? 'Active Support' : 'None',
-                    'note'             => 'Progress tracked from enrollment data.',
+                    'note'             => $category !== 'good' ? "Flagged for teacher follow-up: {$issue}." : 'Active learner, on track with course schedule.',
+                    'noteDate'         => now()->format('d M Y'),
+                    'recentActivities' => $recentActivities,
                 ];
             }
         }
@@ -167,23 +264,95 @@ class TeacherDashboardController extends Controller
         $courseIds     = $courses->pluck('id');
         $totalStudents = $courses->sum(fn($c) => $c->enrollments->count());
 
-        // Today's live classes
-        $todaysClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
+        $now = now();
+
+        // All active live classes for this teacher (or teacher's courses), excluding cancelled sessions
+        $allLiveClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
                                       $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
                                   })
-                                  ->whereDate('scheduled_at', today())
+                                  ->where('status', '!=', 'cancelled')
                                   ->with('course.subject')
                                   ->orderBy('scheduled_at')
                                   ->get();
 
+        // Today's active classes (running or upcoming today)
+        $todaysClasses = $allLiveClasses->filter(function($lc) use ($now) {
+            if (!$lc->scheduled_at) return false;
+            $end = $lc->scheduled_at->copy()->addMinutes($lc->duration_minutes ?: 60);
+            return $lc->scheduled_at->isToday() && $end->gte($now);
+        });
+
         // Next upcoming class
-        $upcomingClass = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                                      $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-                                  })
-                                  ->where('scheduled_at', '>', now())
-                                  ->with('course.subject')
-                                  ->orderBy('scheduled_at')
-                                  ->first();
+        $upcomingClass = $allLiveClasses->first(function($lc) use ($now) {
+            return $lc->scheduled_at && $lc->scheduled_at->gt($now);
+        });
+
+        // Build list for the restructured "Today's Classes" card:
+        // Exclusively displays running and upcoming classes.
+        // Shows "Join class" button if class is running or within 30 minutes before class start time.
+        // Past classes (end_time < now) are strictly excluded.
+        $activeLiveClasses = $allLiveClasses->filter(function($lc) use ($now) {
+            if (!$lc->scheduled_at) return false;
+            $end = $lc->scheduled_at->copy()->addMinutes($lc->duration_minutes ?: 60);
+            return $end->gte($now);
+        });
+
+        $dashboardClasses = $activeLiveClasses->map(function($lc) use ($now) {
+            $duration = (int) ($lc->duration_minutes ?: 60);
+            $start = $lc->scheduled_at;
+            $end = $start->copy()->addMinutes($duration);
+            $joinWindowStart = $start->copy()->subMinutes(30);
+
+            // Join button appears 30 minutes before class start time, and remains until class ends
+            $canJoin = $now->gte($joinWindowStart) && $now->lte($end);
+            $isLive = $now->gte($start) && $now->lte($end);
+            $isStartingSoon = $now->gte($joinWindowStart) && $now->lt($start);
+
+            if ($isLive) {
+                $statusType   = 'live';
+                $badgeText    = 'Live Now';
+                $scheduleText = 'Started ' . $start->format('g:i A') . ' • Ends ' . $end->format('g:i A');
+            } elseif ($isStartingSoon) {
+                $statusType   = 'starting_soon';
+                $minsLeft     = (int) ceil($now->diffInSeconds($start) / 60);
+                $badgeText    = $minsLeft <= 1 ? 'Starts in 1 min' : "Starts in {$minsLeft} mins";
+                $scheduleText = 'Starts at ' . $start->format('g:i A') . ' (' . $duration . ' mins)';
+            } else {
+                $statusType   = 'upcoming';
+                $badgeText    = null;
+                $scheduleText = $start->isToday() 
+                    ? 'Today, ' . $start->format('g:i A') 
+                    : ($start->isTomorrow() 
+                        ? 'Tomorrow, ' . $start->format('g:i A') 
+                        : $start->format('D, j M • g:i A'));
+            }
+
+            return [
+                'id'               => $lc->id,
+                'course_id'        => $lc->course_id,
+                'title'            => $lc->course ? ($lc->course->subject->display_name ?? ($lc->course->level . ' ' . ($lc->course->subject->name ?? ''))) : $lc->title,
+                'subtitle'         => $lc->title ?: ($lc->course->title ?? 'Session'),
+                'subject_name'     => strtolower($lc->course->subject->name ?? 'general'),
+                'can_join'         => $canJoin,
+                'is_live'          => $isLive,
+                'is_starting_soon' => $isStartingSoon,
+                'status_type'      => $statusType,
+                'badge_text'       => $badgeText,
+                'schedule_text'    => $scheduleText,
+                'meeting_url'      => $lc->course_id ? route('teacher.classes.show', $lc->course_id) : ($lc->meeting_url ?: '#'),
+                'scheduled_at'     => $start,
+                'join_window_ms'   => $joinWindowStart->timestamp * 1000,
+                'start_ms'         => $start->timestamp * 1000,
+                'end_ms'           => $end->timestamp * 1000,
+                'duration'         => $duration,
+            ];
+        });
+
+        // Float currently joinable / live classes to top, then sort chronologically
+        $dashboardClasses = $dashboardClasses->sortBy([
+            ['can_join', 'desc'],
+            ['scheduled_at', 'asc'],
+        ])->values();
 
         // Real attendance stats
         $attStats = $this->getAttendanceStats($courseIds);
@@ -218,7 +387,7 @@ class TeacherDashboardController extends Controller
 
         // Per-subject average progress (real from enrollments)
         $performanceBySubject = $courses->map(fn($c) => [
-            'subject' => $c->subject->name ?? 'N/A',
+            'subject' => $c->subject->display_name ?? $c->subject->name ?? 'N/A',
             'avg'     => (int) round($c->enrollments->avg('progress_pct') ?? 0),
         ]);
 
@@ -242,7 +411,7 @@ class TeacherDashboardController extends Controller
         ];
 
         return view('teacher.dashboard', compact(
-            'teacher', 'courses', 'totalStudents', 'todaysClasses',
+            'teacher', 'courses', 'totalStudents', 'todaysClasses', 'dashboardClasses',
             'upcomingClass', 'openGigsCount', 'claimedGigs', 'recentEarnings',
             'attStats', 'pendingReviews', 'pendingReviewCount',
             'catchUpStudents', 'attentionStudents', 'performanceBySubject', 'announcements'
@@ -257,24 +426,23 @@ class TeacherDashboardController extends Controller
         $courseIds   = $teacher->courses->pluck('id');
         $attStats    = $this->getAttendanceStats($courseIds);
 
-        // Upcoming classes
+        // Upcoming & active live classes
         $upcomingClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
                 $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
             })
-            ->where('scheduled_at', '>=', now())
+            ->activeOrUpcoming()
             ->with('course.subject')
             ->orderBy('scheduled_at')
-            ->take(10)
             ->get();
 
         // Past classes
         $pastClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
                 $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
             })
-            ->where('scheduled_at', '<', now())
+            ->completedOrPast()
             ->with('course.subject')
             ->orderByDesc('scheduled_at')
-            ->take(10)
+            ->take(20)
             ->get();
 
         return view('teacher.classes', compact('teacher', 'attStats', 'upcomingClasses', 'pastClasses'));
@@ -297,8 +465,45 @@ class TeacherDashboardController extends Controller
             abort(404, 'Class not found or you do not have permission.');
         }
 
-        // Real next upcoming live class
-        $nextClass = $course->liveClasses->where('scheduled_at', '>=', now()->subMinutes(120))->first();
+        $now = now();
+
+        // 1. Dynamically identify any active live session currently running for this course:
+        // Excludes cancelled or completed sessions; requires valid meeting_url; must be scheduled for today;
+        // active window starts 15 minutes before scheduled start time and ends at scheduled end time.
+        $liveSession = $course->liveClasses->filter(function($lc) use ($now) {
+            if (in_array($lc->getRawOriginal('status'), ['cancelled', 'completed'])) {
+                return false;
+            }
+            if (empty($lc->meeting_url)) {
+                return false;
+            }
+            if (!$lc->scheduled_at) {
+                return false;
+            }
+            $start = $lc->scheduled_at;
+            $duration = (int) ($lc->duration_minutes ?: 60);
+            $end = $start->copy()->addMinutes($duration);
+
+            if ($lc->getRawOriginal('status') === 'live') {
+                return $start->isToday() && $now->lte($end->copy()->addMinutes(15));
+            }
+
+            return $start->isToday() && $now->gte($start->copy()->subMinutes(15)) && $now->lte($end);
+        })->sortBy('scheduled_at')->first();
+
+        $isLiveRunning = (bool) $liveSession;
+
+        // 2. Next upcoming live class (fallback to liveSession or next chronologically)
+        $nextClass = $liveSession ?? $course->liveClasses->filter(function($lc) use ($now) {
+            if (in_array($lc->getRawOriginal('status'), ['cancelled', 'completed'])) {
+                return false;
+            }
+            if (!$lc->scheduled_at) {
+                return false;
+            }
+            $end = $lc->scheduled_at->copy()->addMinutes($lc->duration_minutes ?: 60);
+            return $now->lt($end);
+        })->sortBy('scheduled_at')->first() ?? $course->liveClasses->where('status', '!=', 'cancelled')->sortByDesc('scheduled_at')->first();
 
         // Real attendance stats for this course
         $liveClassIds = $course->liveClasses->pluck('id');
@@ -313,9 +518,111 @@ class TeacherDashboardController extends Controller
         // Real Subject Topics
         $topics = $course->subject?->topics ?? collect();
 
+        // Eager-load liveClasses with attendances for session tracking
+        $course->load(['liveClasses.attendances.student.user']);
+
+        $activeSession = $liveSession
+            ?? $nextClass 
+            ?? $course->liveClasses->where('scheduled_at', '<=', now())->sortByDesc('scheduled_at')->first()
+            ?? $course->liveClasses->first();
+
+        // Pending and recent correction requests for this course's live classes
+        $correctionRequests = AttendanceCorrectionRequest::whereIn('live_class_id', $liveClassIds)
+            ->with(['student.user', 'liveClass'])
+            ->latest()
+            ->get();
+
         return view('teacher.class-workspace', compact(
-            'teacher', 'course', 'nextClass', 'avgAttendancePct', 'classAvgProgress', 'studentsBelowTarget', 'topics'
+            'teacher', 'course', 'nextClass', 'activeSession', 'liveSession', 'isLiveRunning', 'avgAttendancePct', 'classAvgProgress', 'studentsBelowTarget', 'topics', 'correctionRequests'
         ));
+    }
+
+    public function updateMeetingUrl(Request $request, $id)
+    {
+        $teacher = $this->getTeacher(false);
+        $courseIds = $teacher->courses->pluck('id')->toArray();
+        $targetId = $request->input('live_class_id', $id);
+
+        $liveClass = LiveClass::where(function($q) use ($courseIds, $teacher) {
+                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+            })
+            ->where(function($q) use ($targetId, $id) {
+                $q->where('id', $targetId)
+                  ->orWhere('id', $id)
+                  ->orWhere('course_id', $id);
+            })
+            ->orderByRaw("CASE WHEN id = ? THEN 0 ELSE 1 END", [$targetId])
+            ->latest('scheduled_at')
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'meeting_url' => 'required|url|max:1000',
+        ]);
+
+        $liveClass->update([
+            'meeting_url' => $validated['meeting_url'],
+            'status'      => 'live',
+        ]);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'     => true,
+                'meeting_url' => $liveClass->meeting_url,
+                'message'     => 'Live meeting link saved successfully!',
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Live meeting link saved successfully! Students can now join.');
+    }
+
+    /**
+     * Save attendance records for a live class session from Teacher Class Workspace.
+     */
+    public function saveAttendance(LiveClass $liveClass, Request $request, AttendanceService $attendanceService)
+    {
+        $teacher = $this->getTeacher();
+
+        // Authorization: verify teacher is assigned to this live class or course
+        if ($liveClass->teacher_id !== $teacher->id && $liveClass->course?->teacher_id !== $teacher->id) {
+            abort(403, 'You are not authorized to manage attendance for this class.');
+        }
+
+        $validated = $request->validate([
+            'records'              => 'required|array',
+            'records.*.student_id' => 'required|integer|exists:students,id',
+            'records.*.status'     => 'required|string',
+            'records.*.remarks'    => 'nullable|string|max:500',
+        ]);
+
+        $result = $attendanceService->saveTeacherAttendance($teacher, $liveClass, $validated['records'], auth()->user());
+
+        return response()->json($result);
+    }
+
+    /**
+     * Review an attendance correction request (approve or reject).
+     */
+    public function reviewCorrection(AttendanceCorrectionRequest $correctionRequest, Request $request, AttendanceService $attendanceService)
+    {
+        $teacher = $this->getTeacher();
+        $liveClass = $correctionRequest->liveClass;
+
+        // Authorization: verify teacher owns the live class
+        if ($liveClass->teacher_id !== $teacher->id && $liveClass->course?->teacher_id !== $teacher->id) {
+            abort(403, 'You are not authorized to review this request.');
+        }
+
+        $validated = $request->validate([
+            'action'  => 'required|string|in:approved,rejected',
+            'remarks' => 'nullable|string|max:500',
+        ]);
+
+        $attendanceService->reviewCorrectionRequest($correctionRequest, auth()->user(), $validated['action'], $validated['remarks'] ?? null);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Attendance correction request ' . $validated['action'] . ' successfully.',
+        ]);
     }
 
     public function students()
@@ -372,7 +679,7 @@ class TeacherDashboardController extends Controller
                 'icon'        => $iconSvg,
                 'iconBg'      => $iconBg,
                 'class'       => $course->level ?? 'SPM',
-                'subject'     => $mat->subject->name ?? $course->subject->name ?? 'General',
+                'subject'     => $mat->subject->display_name ?? $mat->subject->name ?? $course->subject->display_name ?? $course->subject->name ?? 'General',
                 'topic'       => $mat->topicItem->title ?? $mat->topic ?? 'General',
                 'type'        => $mat->type,
                 'typeBg'      => $typeBg,
@@ -407,7 +714,7 @@ class TeacherDashboardController extends Controller
                         'icon'        => '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>',
                         'iconBg'      => 'bg-purple-50 text-purple-600',
                         'class'       => $course->level,
-                        'subject'     => $course->subject->name ?? 'General',
+                        'subject'     => $course->subject->display_name ?? $course->subject->name ?? 'General',
                         'topic'       => $assignment->description ? substr($assignment->description, 0, 40) : 'General',
                         'type'        => 'Assignment',
                         'typeBg'      => 'bg-purple-50 text-purple-700',
@@ -474,9 +781,13 @@ class TeacherDashboardController extends Controller
                             'statusBg'        => $sa->status === 'graded' ? 'bg-emerald-50 text-emerald-700' : ($sa->status === 'late' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'),
                             'notes'           => $sa->submission_notes,
                             'teacherFeedback' => $sa->teacher_feedback,
-                            'fileName'        => $sa->file_name,
-                            'fileUrl'         => $sa->file_url,
-                            'hasSubmission'   => true,
+                            'fileName'                => $sa->file_name,
+                            'fileUrl'                 => $sa->file_url,
+                            'gradedFileName'          => $sa->graded_file_name,
+                            'gradedFileUrl'           => $sa->graded_file_url,
+                            'interactiveSubmissionId' => $sa->interactiveSubmission?->id,
+                            'interactiveReviewUrl'    => $sa->interactiveSubmission ? route('teacher.submissions.review', $sa->interactiveSubmission->id) : null,
+                            'hasSubmission'           => true,
                         ];
                     } else {
                         $roster[] = [
@@ -494,6 +805,8 @@ class TeacherDashboardController extends Controller
                             'teacherFeedback' => null,
                             'fileName'        => null,
                             'fileUrl'         => null,
+                            'gradedFileName'  => null,
+                            'gradedFileUrl'   => null,
                             'hasSubmission'   => false,
                         ];
                     }
@@ -510,7 +823,7 @@ class TeacherDashboardController extends Controller
                     'name'             => $assignment->title,
                     'desc'             => $assignment->description ?? ($itemType === 'Exam' ? 'Formal examination paper.' : 'Complete the assigned work.'),
                     'class'            => $course->level,
-                    'subject'          => $course->subject->name ?? 'General',
+                    'subject'          => $course->subject->display_name ?? $course->subject->name ?? 'General',
                     'type'             => $itemType,
                     'topic'            => $assignment->topic ?? 'General',
                     'total_marks'      => $totalMarks,
@@ -579,7 +892,7 @@ class TeacherDashboardController extends Controller
                     'name'             => $quiz->title,
                     'desc'             => $quiz->description ?? 'Interactive practice quiz.',
                     'class'            => $course->level,
-                    'subject'          => $course->subject->name ?? 'General',
+                    'subject'          => $course->subject->display_name ?? $course->subject->name ?? 'General',
                     'type'             => 'Quiz',
                     'total_marks'      => $questionCount,
                     'duration_minutes' => $quiz->time_limit_minutes,
@@ -618,11 +931,38 @@ class TeacherDashboardController extends Controller
         $attStats      = $this->getAttendanceStats($courseIds);
 
         // Per-subject performance
-        $performanceBySubject = $teacher->courses->map(fn($c) => [
-            'subject'     => $c->subject->name ?? 'N/A',
-            'avg_progress'=> (int) round($c->enrollments->avg('progress_pct') ?? 0),
-            'enrolled'    => $c->enrollments->count(),
-        ]);
+        $performanceBySubject = $teacher->courses->map(function($c) {
+            $totalEnrollments = $c->enrollments->count();
+            $taskCount = $c->assignments->count();
+            $tasksCompleted = \App\Models\StudentAssignment::whereIn('assignment_id', $c->assignments->pluck('id'))
+                ->whereIn('status', ['submitted', 'graded'])
+                ->count();
+            $totalExpectedTasks = $totalEnrollments * max(1, $taskCount);
+            $taskRate = $totalExpectedTasks > 0 ? (int) round(($tasksCompleted / $totalExpectedTasks) * 100) : 0;
+            
+            $avgProgress = (int) round($c->enrollments->avg('progress_pct') ?? 0);
+            if ($avgProgress === 0 && $taskRate > 0) {
+                $avgProgress = $taskRate;
+            }
+
+            // Attendance for this course
+            $liveClassIds = $c->liveClasses->pluck('id');
+            $attRecords = \App\Models\StudentAttendance::whereIn('live_class_id', $liveClassIds)->get();
+            $courseAttPct = $attRecords->count() > 0 
+                ? (int) round($attRecords->whereIn('status', ['attended', 'late'])->count() / $attRecords->count() * 100) 
+                : 100;
+
+            return [
+                'course_id'    => $c->id,
+                'title'        => $c->title,
+                'level'        => $c->level,
+                'subject'      => $c->subject->display_name ?? $c->subject->name ?? 'General',
+                'avg_progress' => $avgProgress,
+                'enrolled'     => $totalEnrollments,
+                'tasks_count'  => $taskCount,
+                'att_pct'      => $courseAttPct,
+            ];
+        });
 
         // All students with real data
         $allStudents = $this->buildStudentData($teacher);
@@ -638,9 +978,32 @@ class TeacherDashboardController extends Controller
             ->take(10)
             ->get();
 
+        // Additional stats for monitoring page
+        $totalAssessments = \App\Models\Assignment::whereIn('course_id', $courseIds)->count()
+            + \App\Models\Quiz::whereIn('course_id', $courseIds)->count();
+
+        $totalSubmissions = \App\Models\StudentAssignment::whereHas('assignment', fn($q) => $q->whereIn('course_id', $courseIds))
+            ->whereIn('status', ['submitted', 'graded'])
+            ->count();
+
+        $totalExpectedSubmissions = \App\Models\StudentAssignment::whereHas('assignment', fn($q) => $q->whereIn('course_id', $courseIds))->count();
+        $tasksCompletedPct = $totalExpectedSubmissions > 0 ? (int) round(($totalSubmissions / $totalExpectedSubmissions) * 100) : 100;
+
+        $totalLiveClassesHeld = \App\Models\LiveClass::where(function($q) use ($courseIds, $teacher) {
+                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+            })
+            ->where('scheduled_at', '<', now())
+            ->where('status', '!=', 'cancelled')
+            ->count();
+
+        $attentionStudents = collect($allStudents)->filter(fn($s) => $s['category'] !== 'good')->values()->all();
+        $interventionStudents = collect($allStudents)->filter(fn($s) => $s['category'] === 'intervention')->values()->all();
+
         return view('teacher.monitoring', compact(
             'teacher', 'totalStudents', 'attStats',
-            'performanceBySubject', 'allStudents', 'catchUpStudents'
+            'performanceBySubject', 'allStudents', 'catchUpStudents',
+            'totalAssessments', 'tasksCompletedPct', 'totalLiveClassesHeld',
+            'attentionStudents', 'interventionStudents'
         ));
     }
 
@@ -718,7 +1081,7 @@ class TeacherDashboardController extends Controller
         $validated = $request->validate([
             'course_id' => 'required|in:' . implode(',', $courseIds),
             'title' => 'required|string|max:255',
-            'scheduled_at' => 'required|date|after:now',
+            'scheduled_at' => 'required|date',
             'duration_minutes' => 'nullable|integer|min:1|max:480',
             'meeting_url' => 'nullable|url|max:255',
         ]);
@@ -787,37 +1150,55 @@ class TeacherDashboardController extends Controller
 
     public function storeTask(Request $request, $id)
     {
-        $teacher = $this->getTeacher(false);
+        $teacher = $this->getTeacher(true);
         $course = $teacher->courses->where('id', $id)->firstOrFail();
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date'    => 'required|date|after_or_equal:today',
-            'file'        => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg,mp4',
+            'title'              => 'required|string|max:255',
+            'topic'              => 'nullable|string|max:255',
+            'description'        => 'nullable|string',
+            'due_date'           => 'required|date|after_or_equal:today',
+            'total_marks'        => 'nullable|integer|min:1|max:1000',
+            'assign_target'      => 'nullable|in:all,selected',
+            'student_ids'        => 'nullable|array',
+            'student_ids.*'      => 'integer',
+            'file'               => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg,mp4',
+            'is_interactive_pdf' => 'nullable|boolean',
         ]);
 
         $filePath = null;
         $fileName = null;
         $fileSize = null;
 
+        $isPdf = false;
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
             $filePath = $file->store('task_attachments', 'public');
+            $isPdf = strtolower($file->getClientOriginalExtension()) === 'pdf';
         }
 
         $assignment = $course->assignments()->create([
-            'title'       => $validated['title'],
-            'description' => $validated['description'],
-            'due_date'    => $validated['due_date'],
-            'file_path'   => $filePath,
-            'file_name'   => $fileName,
-            'file_size'   => $fileSize,
+            'title'              => $validated['title'],
+            'topic'              => $validated['topic'] ?? null,
+            'description'        => $validated['description'] ?? null,
+            'due_date'           => $validated['due_date'],
+            'total_marks'        => $validated['total_marks'] ?? 100,
+            'file_path'          => $filePath,
+            'file_name'          => $fileName,
+            'file_size'          => $fileSize,
+            'is_interactive_pdf' => $isPdf ? $request->boolean('is_interactive_pdf', false) : false,
         ]);
 
-        foreach ($course->enrollments as $enrollment) {
+        // Filter target enrollments based on teacher choice (all vs selected)
+        $targetEnrollments = $course->enrollments;
+        if ($request->input('assign_target') === 'selected' && !empty($request->input('student_ids'))) {
+            $selectedIds = collect($request->input('student_ids'))->map(fn($sid) => (int)$sid)->all();
+            $targetEnrollments = $course->enrollments->whereIn('student_id', $selectedIds);
+        }
+
+        foreach ($targetEnrollments as $enrollment) {
             StudentAssignment::firstOrCreate([
                 'student_id'    => $enrollment->student_id,
                 'assignment_id' => $assignment->id,
@@ -830,19 +1211,28 @@ class TeacherDashboardController extends Controller
                     'user_id' => $enrollment->student->user_id,
                     'type'    => 'task',
                     'title'   => 'New Assignment Assigned',
-                    'message' => "Your teacher assigned '{$validated['title']}' for " . ($course->subject->name ?? 'your class') . ". Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
+                    'message' => "Your teacher assigned '{$validated['title']}' for " . ($course->subject->display_name ?? $course->subject->name ?? 'your class') . ". Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
                 ]);
             }
         }
 
+        $assignedCount = $targetEnrollments->count();
         UserNotification::create([
             'user_id' => auth()->id(),
             'type'    => 'task',
             'title'   => 'Task Published & Assigned',
-            'message' => "You successfully assigned '{$validated['title']}' to {$course->title} ({$course->enrollments->count()} students).",
+            'message' => "You successfully assigned '{$validated['title']}' to {$course->title} ({$assignedCount} student(s)).",
         ]);
 
-        return redirect()->back()->with('success', 'New task/assignment with material attachment assigned to this class successfully!');
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "New task assigned to {$assignedCount} student(s) successfully!",
+                'assignment' => $assignment,
+            ]);
+        }
+
+        return redirect()->back()->with('success', "New task assigned to {$assignedCount} student(s) successfully!");
     }
 
     public function storeGeneralTask(Request $request)
@@ -870,12 +1260,14 @@ class TeacherDashboardController extends Controller
         $filePath = null;
         $fileName = null;
         $fileSize = null;
+        $isPdf = false;
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
             $filePath = $file->store('task_attachments', 'public');
+            $isPdf = strtolower($file->getClientOriginalExtension()) === 'pdf';
         }
 
         $assignment = $course->assignments()->create([
@@ -888,9 +1280,10 @@ class TeacherDashboardController extends Controller
             'duration_minutes' => $validated['duration_minutes'] ?? null,
             'exam_date'        => $validated['exam_date'] ?? null,
             'due_date'         => $validated['due_date'],
-            'file_path'        => $filePath,
-            'file_name'        => $fileName,
-            'file_size'        => $fileSize,
+            'file_path'          => $filePath,
+            'file_name'          => $fileName,
+            'file_size'          => $fileSize,
+            'is_interactive_pdf' => $isPdf ? $request->boolean('is_interactive_pdf', false) : false,
         ]);
 
         foreach ($course->enrollments as $enrollment) {
@@ -911,7 +1304,7 @@ class TeacherDashboardController extends Controller
                     'user_id' => $enrollment->student->user_id,
                     'type'    => 'task',
                     'title'   => $notificationTitle,
-                    'message' => "Your teacher assigned {$itemType} '{$validated['title']}' for " . ($course->subject->name ?? 'your class') . ". Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
+                    'message' => "Your teacher assigned {$itemType} '{$validated['title']}' for " . ($course->subject->display_name ?? $course->subject->name ?? 'your class') . ". Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
                 ]);
             }
         }
@@ -922,6 +1315,14 @@ class TeacherDashboardController extends Controller
             'title'   => "{$itemType} Published & Assigned",
             'message' => "You successfully assigned {$itemType} '{$validated['title']}' to {$course->title} ({$course->enrollments->count()} students).",
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "{$itemType} '{$validated['title']}' created and assigned successfully!",
+                'assignment' => $assignment,
+            ]);
+        }
 
         return redirect()->back()->with('success', "{$itemType} '{$validated['title']}' created and assigned successfully!");
     }
@@ -982,7 +1383,7 @@ class TeacherDashboardController extends Controller
                     'user_id' => $enrollment->student->user_id,
                     'type'    => 'quiz',
                     'title'   => 'New Interactive Quiz Available',
-                    'message' => "Your teacher published quiz '{$validated['title']}' ({$totalQuestions} questions) for " . ($course->subject->name ?? 'your class') . ".",
+                    'message' => "Your teacher published quiz '{$validated['title']}' ({$totalQuestions} questions) for " . ($course->subject->display_name ?? $course->subject->name ?? 'your class') . ".",
                 ]);
             }
         }
@@ -993,6 +1394,14 @@ class TeacherDashboardController extends Controller
             'title'   => 'Quiz Created',
             'message' => "You successfully created quiz '{$validated['title']}' with {$totalQuestions} questions for {$course->title}.",
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Quiz '{$quiz->title}' with {$totalQuestions} questions created successfully!",
+                'quiz' => $quiz,
+            ]);
+        }
 
         return redirect()->back()->with('success', "Quiz '{$quiz->title}' with {$totalQuestions} questions created successfully!");
     }
@@ -1066,7 +1475,7 @@ class TeacherDashboardController extends Controller
                         'user_id' => $enrollment->student->user_id,
                         'type'    => 'material',
                         'title'   => 'New Learning Material',
-                        'message' => "Your teacher uploaded {$validated['type']}: '{$validated['title']}' for " . ($course->subject->name ?? 'your class') . ".",
+                        'message' => "Your teacher uploaded {$validated['type']}: '{$validated['title']}' for " . ($course->subject->display_name ?? $course->subject->name ?? 'your class') . ".",
                     ]);
                 }
             }
@@ -1138,6 +1547,142 @@ class TeacherDashboardController extends Controller
         }
 
         return Storage::disk('public')->download($material->file_path, $material->file_name);
+    }
+
+    /**
+     * Download student assignment submission file securely with cPanel multi-path fallback.
+     */
+    public function downloadStudentSubmission($studentAssignmentId)
+    {
+        $sa = StudentAssignment::with(['assignment.course', 'student.user', 'interactiveSubmission'])->findOrFail($studentAssignmentId);
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(401, 'Please log in to download this submission.');
+        }
+
+        $authorized = false;
+        if ($user->isAdmin() || $user->isParent()) {
+            $authorized = true;
+        } elseif ($user->isTeacher()) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                if ($sa->assignment?->course?->teacher_id == $teacher->id || $sa->assignment?->teacher_id == $teacher->id) {
+                    $authorized = true;
+                } elseif ($teacher->courses()->where('id', $sa->assignment?->course_id)->exists()) {
+                    $authorized = true;
+                }
+            }
+        } elseif ($user->isStudent()) {
+            $student = Student::where('user_id', $user->id)->first();
+            if ($student && $sa->student_id == $student->id) {
+                $authorized = true;
+            }
+        }
+
+        if (!$authorized) {
+            abort(403, 'Unauthorized to download this submission.');
+        }
+
+        $filePath = $sa->file_path;
+        if (!$filePath && $sa->interactiveSubmission?->final_pdf_path) {
+            $filePath = $sa->interactiveSubmission->final_pdf_path;
+        }
+
+        if (!$filePath) {
+            abort(404, 'No submission file found for this record.');
+        }
+
+        // Multi-path fallback resolution for cPanel shared hosting
+        $resolvedFullPath = null;
+        if (Storage::disk('public')->exists($filePath)) {
+            $resolvedFullPath = Storage::disk('public')->path($filePath);
+        } elseif (file_exists(storage_path('app/public/' . $filePath))) {
+            $resolvedFullPath = storage_path('app/public/' . $filePath);
+        } elseif (file_exists(public_path('storage/' . $filePath))) {
+            $resolvedFullPath = public_path('storage/' . $filePath);
+        } elseif (file_exists(base_path('storage/app/public/' . $filePath))) {
+            $resolvedFullPath = base_path('storage/app/public/' . $filePath);
+        }
+
+        if (!$resolvedFullPath || !file_exists($resolvedFullPath)) {
+            abort(404, 'The submitted file was not found on the server storage. Please check storage permissions.');
+        }
+
+        $downloadName = $sa->file_name ?: ('submission_' . $sa->id . '.pdf');
+        if (!str_ends_with(strtolower($downloadName), '.pdf') && str_ends_with(strtolower($resolvedFullPath), '.pdf')) {
+            $downloadName .= '.pdf';
+        }
+
+        return response()->download($resolvedFullPath, $downloadName, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    /**
+     * Download teacher's graded assignment file securely with cPanel multi-path fallback.
+     */
+    public function downloadGradedTask($studentAssignmentId)
+    {
+        $sa = StudentAssignment::with(['assignment.course', 'student.user'])->findOrFail($studentAssignmentId);
+
+        $user = auth()->user();
+        if (!$user) {
+            abort(401, 'Please log in to download this graded file.');
+        }
+
+        $authorized = false;
+        if ($user->isAdmin()) {
+            $authorized = true;
+        } elseif ($user->isParent()) {
+            if ($user->studentChildren()->where('students.id', $sa->student_id)->exists() || $user->children()->where('id', $sa->student_id)->exists()) {
+                $authorized = true;
+            }
+        } elseif ($user->isTeacher()) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if ($teacher) {
+                if ($sa->assignment?->course?->teacher_id == $teacher->id || $sa->assignment?->teacher_id == $teacher->id) {
+                    $authorized = true;
+                } elseif ($teacher->courses()->where('id', $sa->assignment?->course_id)->exists()) {
+                    $authorized = true;
+                }
+            }
+        } elseif ($user->isStudent()) {
+            $student = Student::where('user_id', $user->id)->first();
+            if ($student && $sa->student_id == $student->id) {
+                $authorized = true;
+            }
+        }
+
+        if (!$authorized) {
+            abort(403, 'Unauthorized to download this graded task.');
+        }
+
+        $filePath = $sa->graded_file_path;
+        if (!$filePath) {
+            abort(404, 'No graded file found for this task.');
+        }
+
+        // Multi-path fallback resolution for cPanel shared hosting
+        $resolvedFullPath = null;
+        if (Storage::disk('public')->exists($filePath)) {
+            $resolvedFullPath = Storage::disk('public')->path($filePath);
+        } elseif (file_exists(storage_path('app/public/' . $filePath))) {
+            $resolvedFullPath = storage_path('app/public/' . $filePath);
+        } elseif (file_exists(public_path('storage/' . $filePath))) {
+            $resolvedFullPath = public_path('storage/' . $filePath);
+        } elseif (file_exists(base_path('storage/app/public/' . $filePath))) {
+            $resolvedFullPath = base_path('storage/app/public/' . $filePath);
+        }
+
+        if (!$resolvedFullPath || !file_exists($resolvedFullPath)) {
+            abort(404, 'The graded task file was not found on the server storage.');
+        }
+
+        $ext = pathinfo($resolvedFullPath, PATHINFO_EXTENSION);
+        $downloadName = $sa->graded_file_name ?: ('graded_' . $sa->id . ($ext ? ('.' . $ext) : ''));
+
+        return response()->download($resolvedFullPath, $downloadName);
     }
 
     public function updateMaterial(Request $request, $id)
@@ -1277,7 +1822,7 @@ class TeacherDashboardController extends Controller
                         'user_id' => $enrollment->student->user_id,
                         'type'    => 'task',
                         'title'   => "{$itemType} Updated",
-                        'message' => "{$itemType} '{$assignment->title}' for " . ($course->subject->name ?? 'your class') . " was updated. Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
+                        'message' => "{$itemType} '{$assignment->title}' for " . ($course->subject->display_name ?? $course->subject->name ?? 'your class') . " was updated. Due on " . Carbon::parse($validated['due_date'])->format('d M Y') . ".",
                     ]);
                 }
             }
@@ -1289,6 +1834,14 @@ class TeacherDashboardController extends Controller
             'title'   => "{$itemType} Updated",
             'message' => "{$itemType} '{$assignment->title}' was successfully updated.",
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "{$itemType} '{$assignment->title}' updated successfully!",
+                'assignment' => $assignment,
+            ]);
+        }
 
         return redirect()->back()->with('success', "{$itemType} '{$assignment->title}' updated successfully!");
     }
@@ -1329,10 +1882,13 @@ class TeacherDashboardController extends Controller
                                 ->whereIn('course_id', $courseIds)
                                 ->firstOrFail();
 
+        $maxMarks = $assignment->total_marks ?? 100;
+
         $validated = $request->validate([
-            'score'            => 'required|integer|min:0|max:100',
-            'teacher_feedback' => 'nullable|string|max:2000',
+            'score'            => 'required|numeric|min:0|max:' . max(100, $maxMarks),
+            'teacher_feedback' => 'nullable|string|max:3000',
             'status'           => 'required|in:graded,submitted,late',
+            'graded_file'      => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ]);
 
         $sub = StudentAssignment::firstOrNew([
@@ -1346,9 +1902,22 @@ class TeacherDashboardController extends Controller
         if (!$sub->submitted_at) {
             $sub->submitted_at = now();
         }
+
+        // Handle uploaded graded task file from teacher
+        if ($request->hasFile('graded_file')) {
+            $file = $request->file('graded_file');
+            $dir = 'graded_tasks/' . $assignment->id;
+            $savedName = 'graded_' . $studentId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($dir, $savedName, 'public');
+
+            $sub->graded_file_path = $path;
+            $sub->graded_file_name = $file->getClientOriginalName();
+        }
+
         $sub->save();
 
         $studentName = $sub->student?->user?->name ?? 'Student';
+        $gradedDocNote = $sub->graded_file_path ? " A graded task document has been attached for your review." : "";
 
         // 1. Notify Student
         if ($sub->student?->user_id) {
@@ -1357,7 +1926,7 @@ class TeacherDashboardController extends Controller
                 'user_id' => $sub->student->user_id,
                 'type'    => 'grade',
                 'title'   => 'Assignment Graded & Reviewed',
-                'message' => "Your teacher graded your submission for '{$assignment->title}' with a score of {$validated['score']}/100.{$feedbackMsg}",
+                'message' => "Your teacher graded your submission for '{$assignment->title}' with a score of {$validated['score']}/{$maxMarks}.{$feedbackMsg}{$gradedDocNote}",
             ]);
         }
 
@@ -1366,10 +1935,10 @@ class TeacherDashboardController extends Controller
             'user_id' => auth()->id(),
             'type'    => 'grade',
             'title'   => 'Submission Graded',
-            'message' => "You reviewed and graded {$studentName}'s submission for '{$assignment->title}' ({$validated['score']}/100).",
+            'message' => "You reviewed and graded {$studentName}'s submission for '{$assignment->title}' ({$validated['score']}/{$maxMarks})." . ($sub->graded_file_path ? " (Graded task file uploaded)" : ""),
         ]);
 
-        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$validated['score']}/100)!");
+        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$validated['score']}/{$maxMarks})!" . ($sub->graded_file_path ? " Graded document uploaded." : ""));
     }
 
     public function readAllNotifications()
@@ -1451,7 +2020,7 @@ class TeacherDashboardController extends Controller
                     'user_id' => $enrollment->student->user_id,
                     'type'    => 'class_reminder',
                     'title'   => 'New Class Recording Available',
-                    'message' => "A new class recording '{$validated['title']}' ({$validated['topic_name']}) has been uploaded to the Study Vault for " . ($course->subject->name ?? 'your subject') . ".",
+                    'message' => "A new class recording '{$validated['title']}' ({$validated['topic_name']}) has been uploaded to the Study Vault for " . ($course->subject->display_name ?? $course->subject->name ?? 'your subject') . ".",
                 ]);
             }
         }

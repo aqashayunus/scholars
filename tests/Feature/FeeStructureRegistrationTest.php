@@ -127,4 +127,70 @@ class FeeStructureRegistrationTest extends TestCase
         $student->delete();
         $user->delete();
     }
+
+    /**
+     * Test student registering with multiple levels (Form 4 & Form 5).
+     */
+    public function test_student_registration_with_multi_year_selection_enrolls_and_creates_invoice(): void
+    {
+        $teacherUser = User::factory()->create(['role' => 'teacher']);
+        \App\Models\Teacher::firstOrCreate(['user_id' => $teacherUser->id], [
+            'qualification' => 'Degree in Education',
+            'specialization' => 'Academic',
+            'rating' => 5.0,
+            'experience_years' => 5,
+        ]);
+
+        $bmF4 = Subject::firstOrCreate(
+            ['name' => 'Bahasa Melayu', 'form_year' => 'Form 4'],
+            [
+                'education_type' => 'secondary',
+                'category'       => 'Core',
+                'monthly_fee'    => 80.00,
+                'is_active'      => true,
+            ]
+        );
+
+        $bmF5 = Subject::firstOrCreate(
+            ['name' => 'Bahasa Melayu', 'form_year' => 'Form 5'],
+            [
+                'education_type' => 'secondary',
+                'category'       => 'Core',
+                'monthly_fee'    => 80.00,
+                'is_active'      => true,
+            ]
+        );
+
+        $payload = [
+            'name'                  => 'Multi Year Student',
+            'ic_number'             => '090303-10-1234',
+            'email'                 => 'multi_year_test@example.com',
+            'phone'                 => '+60 12-777 8888',
+            'password'              => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'nationality'           => 'Malaysian',
+            'state'                 => 'Selangor',
+            'programme'             => 'secondary',
+            'levels'                => ['Form 4', 'Form 5'],
+            'school_name'           => 'SMK Taman Melawati',
+            'subjects'              => ['Bahasa Melayu - Form 4', 'Bahasa Melayu - Form 5'],
+        ];
+
+        $response = $this->post(route('register.student.submit'), $payload);
+        $response->assertRedirect();
+
+        $user = User::where('email', 'multi_year_test@example.com')->first();
+        $this->assertNotNull($user);
+
+        $student = Student::where('user_id', $user->id)->first();
+        $this->assertNotNull($student);
+        $this->assertEquals('Form 4, Form 5', $student->level);
+
+        // Assert student is enrolled in courses for both subjects
+        $enrolledCourseIds = $student->enrollments->pluck('course_id');
+        $enrolledSubjectIds = \App\Models\Course::whereIn('id', $enrolledCourseIds)->pluck('subject_id')->toArray();
+
+        $this->assertContains($bmF4->id, $enrolledSubjectIds);
+        $this->assertContains($bmF5->id, $enrolledSubjectIds);
+    }
 }

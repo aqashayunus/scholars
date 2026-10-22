@@ -88,12 +88,7 @@ class PageController extends Controller
 
     public function freeTrial(\Illuminate\Http\Request $request)
     {
-        $subjects = Subject::where('is_active', true)->orderBy('order', 'asc')->orderBy('name', 'asc')->get();
-        $selectedSubject = $request->query('subject', '');
-        $selectedProgramme = $request->query('programme', 'SPM');
-        $promoCode = $request->query('promo', $request->query('ref', ''));
-
-        return view('pages.free-trial', compact('subjects', 'selectedSubject', 'selectedProgramme', 'promoCode'));
+        return redirect()->route('register');
     }
 
     public function submitFreeTrial(\Illuminate\Http\Request $request)
@@ -278,36 +273,71 @@ class PageController extends Controller
     public static function enrollStudentInSubjects(Student $student, array $subjectNames, ?string $level = null): void
     {
         $defaultTeacher = Teacher::first();
+        $effectiveLevel = $level ?: ($student->level ?? 'Form 5');
 
         foreach ($subjectNames as $subjectName) {
             $subjectName = trim($subjectName);
             if (empty($subjectName)) continue;
 
-            $subject = Subject::where('name', $subjectName)
-                ->orWhere('slug', Str::slug($subjectName))
+            // Prioritize matching exact form_year / level
+            $subject = Subject::where('is_active', true)
+                ->where(function($q) use ($subjectName) {
+                    $q->where('name', $subjectName)->orWhere('slug', Str::slug($subjectName));
+                })
+                ->where('form_year', $effectiveLevel)
                 ->first();
 
             if (!$subject) {
+                // Secondary check: match education type or stage
+                $isPrimary = str_contains(strtolower($effectiveLevel), 'year') || str_contains(strtolower($effectiveLevel), 'primary');
+                $subject = Subject::where('is_active', true)
+                    ->where(function($q) use ($subjectName) {
+                        $q->where('name', $subjectName)->orWhere('slug', Str::slug($subjectName));
+                    })
+                    ->where('education_type', $isPrimary ? 'primary' : 'secondary')
+                    ->first();
+            }
+
+            if (!$subject) {
+                $subject = Subject::where('is_active', true)
+                    ->where(function($q) use ($subjectName) {
+                        $q->where('name', $subjectName)->orWhere('slug', Str::slug($subjectName));
+                    })
+                    ->first();
+            }
+
+            if (!$subject) {
+                $isPrimary = str_contains(strtolower($effectiveLevel), 'year') || str_contains(strtolower($effectiveLevel), 'primary');
                 $subject = Subject::create([
                     'name'           => $subjectName,
-                    'slug'           => Str::slug($subjectName) ?: 'subj-' . Str::random(5),
-                    'education_type' => 'secondary',
-                    'stage'          => 'Upper Secondary',
-                    'form_year'      => $level ?: 'Form 5',
+                    'slug'           => Str::slug($subjectName . ' ' . $effectiveLevel) ?: 'subj-' . Str::random(5),
+                    'education_type' => $isPrimary ? 'primary' : 'secondary',
+                    'stage'          => $isPrimary ? 'Primary' : 'Upper Secondary',
+                    'form_year'      => $effectiveLevel,
                     'category'       => 'Core',
                     'is_active'      => true,
                 ]);
             }
 
             // Find or create Course for this subject
-            $course = Course::where('subject_id', $subject->id)->first();
+            $course = Course::where('subject_id', $subject->id)
+                ->where(function($q) use ($effectiveLevel) {
+                    $q->where('level', $effectiveLevel)
+                      ->orWhere('title', 'like', "%{$effectiveLevel}%");
+                })
+                ->first();
+
+            if (!$course) {
+                $course = Course::where('subject_id', $subject->id)->first();
+            }
+
             if (!$course) {
                 $course = Course::create([
                     'subject_id'    => $subject->id,
                     'teacher_id'    => $defaultTeacher?->id ?? 1,
                     'title'         => $subject->name,
                     'description'   => 'Comprehensive learning course for ' . $subject->name,
-                    'level'         => $level ?: 'SPM',
+                    'level'         => $effectiveLevel,
                     'status'        => 'published',
                     'total_lessons' => 12,
                 ]);
@@ -327,12 +357,12 @@ class PageController extends Controller
     }
 
     /**
-     * Synchronize enrollments for existing students who have a registration record but no enrollments yet.
+     * Synchronize enrollments for existing students who have a registration record or need curriculum enrollments.
      */
     public static function syncStudentEnrollments(Student $student): void
     {
-        // If student already has active enrollments, leave as is
-        if ($student->enrollments()->count() > 0) {
+        // If student already has enrollments, never inject arbitrary fallback subjects
+        if ($student->enrollments()->exists()) {
             return;
         }
 
@@ -352,12 +382,19 @@ class PageController extends Controller
             $subjectNames = is_array($registration->subjects) ? $registration->subjects : [$registration->subjects];
         }
 
-        // Fallback: Default to student's core curriculum level subject if no registration found
+        $effectiveLevel = $registration->level ?? $student->level ?? 'Form 5';
+
+        // Fallback: Default to core curriculum subjects ONLY if student has zero enrollments
         if (empty($subjectNames)) {
-            $subjectNames = ['Mathematics'];
+            $isPrimary = str_contains(strtolower($effectiveLevel), 'year') || str_contains(strtolower($effectiveLevel), 'primary');
+            if ($isPrimary) {
+                $subjectNames = ['Bahasa Melayu', 'English', 'Mathematics', 'Science'];
+            } else {
+                $subjectNames = ['Bahasa Melayu', 'English', 'Mathematics', 'Sejarah'];
+            }
         }
 
-        static::enrollStudentInSubjects($student, $subjectNames, $registration->level ?? $student->level ?? 'SPM');
+        static::enrollStudentInSubjects($student, $subjectNames, $effectiveLevel);
     }
 
     public function checkRegistrationAvailability(\Illuminate\Http\Request $request)

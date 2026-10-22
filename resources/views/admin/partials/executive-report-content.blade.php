@@ -198,7 +198,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="p-1.5 border-r border-black font-mono font-bold text-black">CRS-{{ str_pad($c->id, 3, '0', STR_PAD_LEFT) }}</td>
                         <td class="p-1.5 border-r border-black font-semibold text-black">{{ $c->title }}</td>
-                        <td class="p-1.5 border-r border-black text-black">{{ $c->subject->name ?? 'General' }}</td>
+                        <td class="p-1.5 border-r border-black text-black">{{ $c->subject->display_name ?? $c->subject->name ?? 'General' }}</td>
                         <td class="p-1.5 border-r border-black text-black">{{ $c->level ?? 'SPM' }}</td>
                         <td class="p-1.5 border-r border-black font-medium text-black">{{ $c->teacher->user->name ?? 'Unassigned' }}</td>
                         <td class="p-1.5 text-right font-mono font-bold text-black">{{ $c->enrollments_count ?? $c->enrollments->count() }} Students</td>
@@ -231,7 +231,7 @@
                     <tr class="hover:bg-gray-50">
                         <td class="p-1.5 border-r border-black font-mono font-bold text-black">TCH-{{ str_pad($t->id, 3, '0', STR_PAD_LEFT) }}</td>
                         <td class="p-1.5 border-r border-black font-semibold text-black">{{ $t->user->name ?? 'Educator' }}</td>
-                        <td class="p-1.5 border-r border-black text-black">{{ $t->specialization ?? ($t->courses->first()?->subject->name ?? 'General') }}</td>
+                        <td class="p-1.5 border-r border-black text-black">{{ $t->specialization ?? ($t->courses->first()?->subject->display_name ?? $t->courses->first()?->subject->name ?? 'General') }}</td>
                         <td class="p-1.5 border-r border-black text-center font-mono font-bold text-black">{{ $t->courses->count() }} Classes</td>
                         <td class="p-1.5 border-r border-black text-right font-mono font-bold text-black">{{ number_format($t->rating ?? 4.85, 2) }} / 5.0</td>
                         <td class="p-1.5 text-center"><span class="font-bold text-[8.5px] text-black uppercase">Verified</span></td>

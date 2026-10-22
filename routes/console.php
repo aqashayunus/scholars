@@ -24,3 +24,19 @@ Schedule::command('invoices:process-reminders')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/billing-reminders.log'));
+
+// ── Communication: Process Scheduled Email Campaigns every 5 minutes ─────────
+Schedule::command('emails:process-scheduled-campaigns')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/email-campaigns.log'));
+
+// ── Communication: Process Upcoming Class Reminders hourly ────────────────────
+Schedule::command('emails:process-class-reminders')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/class-reminders.log'));
+
+

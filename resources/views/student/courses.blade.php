@@ -16,7 +16,7 @@
                 <span class="text-white font-heading font-bold text-3xl">{{ substr($en->course->subject->name ?? 'C', 0, 1) }}</span>
             </div>
             <div class="mb-1 flex items-start justify-between gap-2">
-                <h3 class="font-heading font-bold text-charcoal text-sm leading-snug">{{ $en->course->title }}</h3>
+                <h3 class="font-heading font-bold text-charcoal text-sm leading-snug">{{ $en->course->subject->display_name ?? $en->course->title }}</h3>
                 <span class="badge badge-blue flex-shrink-0">{{ $en->course->level }}</span>
             </div>
             <p class="text-muted text-xs mb-1">{{ $en->course->teacher->user->name ?? 'Teacher' }}</p>

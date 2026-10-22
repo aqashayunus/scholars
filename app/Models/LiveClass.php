@@ -39,6 +39,13 @@ class LiveClass extends Model
 
     public function getComputedStatusAttribute(): string
     {
+        $current = $this->attributes['status'] ?? null;
+        if ($current === 'cancelled') {
+            return 'cancelled';
+        }
+        if ($current === 'live') {
+            return 'live';
+        }
         if (!$this->scheduled_at) {
             return 'upcoming';
         }
@@ -58,6 +65,12 @@ class LiveClass extends Model
 
     public function getStatusAttribute($value): string
     {
+        if ($value === 'cancelled') {
+            return 'cancelled';
+        }
+        if ($value === 'live') {
+            return 'live';
+        }
         if (!$this->scheduled_at) {
             return $value ?? 'upcoming';
         }
@@ -68,9 +81,69 @@ class LiveClass extends Model
     public function teacher()     { return $this->belongsTo(Teacher::class); }
     public function rescheduler() { return $this->belongsTo(User::class, 'rescheduled_by'); }
     public function attendances() { return $this->hasMany(StudentAttendance::class); }
+    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
+    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
 
     public function getAssignedTeacherAttribute()
     {
         return $this->teacher ?? $this->course?->teacher;
+    }
+
+    /**
+     * Scope a query to only include classes that are currently live or upcoming.
+     */
+    public function scopeActiveOrUpcoming($query)
+    {
+        $now = now();
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $endExpr = $isSqlite
+            ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
+            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+
+        return $query->where('status', '!=', 'cancelled')
+            ->where(function($q) use ($now, $endExpr) {
+                $q->where('status', 'live')
+                  ->orWhere('scheduled_at', '>=', $now)
+                  ->orWhereRaw("{$endExpr} >= ?", [$now]);
+            });
+    }
+
+    /**
+     * Scope a query to only include classes that are completed or whose scheduled duration has passed.
+     */
+    public function scopeCompletedOrPast($query)
+    {
+        $now = now();
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $endExpr = $isSqlite
+            ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
+            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+
+        return $query->where('status', '!=', 'cancelled')
+            ->where(function($q) use ($now, $endExpr) {
+                $q->where('status', 'completed')
+                  ->orWhere(function($sub) use ($now, $endExpr) {
+                      $sub->where('status', '!=', 'live')
+                          ->whereRaw("{$endExpr} < ?", [$now]);
+                  });
+            });
+    }
+
+    public function isOngoingOrUpcoming(): bool
+    {
+        if ($this->status === 'cancelled') return false;
+        if ($this->status === 'live') return true;
+        if (!$this->scheduled_at) return true;
+        $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+        return $end->gte(now());
+    }
+
+    public function isPastOrCompleted(): bool
+    {
+        if ($this->status === 'completed') return true;
+        if ($this->status === 'live') return false;
+        if (!$this->scheduled_at) return false;
+        $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+        return $end->lt(now());
     }
 }

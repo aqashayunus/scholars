@@ -65,7 +65,7 @@
                     <span>Back to Blog</span>
                 </a>
 
-                <a href="{{ route('free-trial') }}" class="btn-accent text-xs px-5 py-2">
+                <a href="{{ route('register') }}" class="btn-accent text-xs px-5 py-2">
                     Join Olympia Scholars
                 </a>
             </div>

@@ -40,6 +40,29 @@ class CustomRegistrationTest extends TestCase
         $follow->assertSee('Form 4', false);
     }
 
+    public function test_student_can_register_with_multiple_forms_or_years(): void
+    {
+        $response = $this->post(route('register.student.submit'), [
+            'name'                  => 'SPM Multi-Year Scholar',
+            'ic_number'             => '090101-10-9876',
+            'email'                 => 'spm_multi_year@example.com',
+            'phone'                 => '+60 12-345 6789',
+            'nationality'           => 'Malaysian',
+            'state'                 => 'Kuala Lumpur',
+            'programme'             => 'secondary',
+            'levels'                => ['Form 4', 'Form 5'],
+            'school_name'           => 'SMK Taman Melawati',
+            'password'              => 'StrongPass123!',
+            'password_confirmation' => 'StrongPass123!',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('students', [
+            'level' => 'Form 4, Form 5',
+            'school_name' => 'SMK Taman Melawati',
+        ]);
+    }
+
     public function test_parent_registration_screen_renders_successfully(): void
     {
         $response = $this->get(route('register.parent'));

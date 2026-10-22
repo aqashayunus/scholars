@@ -75,6 +75,20 @@ class BillingNotificationService
                     'message' => "Invoice #{$invoice->invoice_number} ({$invoice->title}) for {$studentName} (RM {$amountFormatted}) has been issued. Due: {$dueDateFormatted}.",
                 ]);
             }
+
+            // 3. Automated Branded Email Trigger
+            try {
+                \App\Services\Email\EmailAutomationService::trigger(
+                    'invoice_issued',
+                    [
+                        'invoice' => $invoice,
+                        'student' => $student,
+                    ],
+                    "invoice_{$invoice->id}_issued"
+                );
+            } catch (\Throwable $emailErr) {
+                Log::warning('[BillingNotificationService] Email automation trigger failed for invoice_issued: ' . $emailErr->getMessage());
+            }
         } catch (\Throwable $e) {
             Log::error('[BillingNotificationService] notifyInvoiceIssued failed: ' . $e->getMessage());
         }
@@ -124,6 +138,24 @@ class BillingNotificationService
                     'title'   => $parentTitle,
                     'message' => $parentMsg,
                 ]);
+            }
+
+            // Automated Branded Email Trigger
+            try {
+                $triggerKey = $isPartial ? 'partial_payment' : 'payment_confirmed';
+
+                \App\Services\Email\EmailAutomationService::trigger(
+                    $triggerKey,
+                    [
+                        'invoice'        => $invoice,
+                        'student'        => $student,
+                        'amount_paid'    => $amount,
+                        'receipt_number' => $receiptNumber,
+                    ],
+                    "payment_{$invoice->id}_" . ($receiptNumber ?: (string) time())
+                );
+            } catch (\Throwable $emailErr) {
+                Log::warning('[BillingNotificationService] Email automation trigger failed for payment: ' . $emailErr->getMessage());
             }
         } catch (\Throwable $e) {
             Log::error('[BillingNotificationService] notifyPaymentRecorded failed: ' . $e->getMessage());
@@ -257,6 +289,22 @@ class BillingNotificationService
                 'title'   => $title,
                 'message' => "Payment reminder: Invoice #{$invoice->invoice_number} ({$invoice->title}) has an outstanding balance of RM {$balance}. Due date: {$dueDate}.",
             ]);
+
+            // Automated Branded Email Trigger
+            try {
+                $triggerKey = $isOverdue ? 'payment_overdue' : 'payment_reminder_upcoming';
+                \App\Services\Email\EmailAutomationService::trigger(
+                    $triggerKey,
+                    [
+                        'invoice' => $invoice,
+                        'student' => $invoice->student,
+                        'user'    => $recipientUser,
+                    ],
+                    "reminder_{$reminder->id}"
+                );
+            } catch (\Throwable $emailErr) {
+                Log::warning('[BillingNotificationService] Email automation trigger failed for reminder: ' . $emailErr->getMessage());
+            }
         } catch (\Throwable $e) {
             Log::error('[BillingNotificationService] notifyReminderSent failed: ' . $e->getMessage());
         }

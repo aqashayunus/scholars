@@ -127,11 +127,33 @@ class StudentAccessRestrictionService
             if ($student->status !== 'inactive' && $student->status !== 'restricted') {
                 $student->status = 'restricted';
                 $student->save();
+
+                // Trigger automated official restriction notification
+                try {
+                    \App\Services\Email\EmailAutomationService::trigger(
+                        'account_restricted',
+                        ['student' => $student],
+                        "student_{$student->id}_restricted_" . now()->toDateString()
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[StudentAccessRestrictionService] Restriction email failed: ' . $e->getMessage());
+                }
             }
         } else {
             if ($student->status === 'restricted') {
                 $student->status = 'active';
                 $student->save();
+
+                // Trigger automated official access restored notification
+                try {
+                    \App\Services\Email\EmailAutomationService::trigger(
+                        'access_restored',
+                        ['student' => $student],
+                        "student_{$student->id}_restored_" . now()->toDateString()
+                    );
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[StudentAccessRestrictionService] Restoration email failed: ' . $e->getMessage());
+                }
             }
         }
     }

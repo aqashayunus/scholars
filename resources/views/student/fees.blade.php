@@ -6,7 +6,7 @@
 
     @php
         $enrolledCourses = $student->enrollments->map(fn($e) => $e->course)->filter();
-        $enrolledSubjectNames = $enrolledCourses->map(fn($c) => $c->subject->name ?? $c->title)->unique()->values();
+        $enrolledSubjectNames = $enrolledCourses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? $c->title)->unique()->values();
     @endphp
 
     <div x-data="{ 

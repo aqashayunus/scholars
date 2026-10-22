@@ -26,6 +26,9 @@ use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\Assignment;
 use App\Models\StudentAssignment;
+use App\Models\StudentAttendance;
+use App\Models\AttendanceEvent;
+use App\Models\AttendanceCorrectionRequest;
 use App\Models\FeeStructure;
 use App\Services\PdfDiagnosticParser;
 use Illuminate\Http\Request;
@@ -34,10 +37,14 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\WelcomeMail;
-use App\Mail\EngagementBlastMail;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Models\EmailTemplate;
+use App\Models\EmailCampaign;
+use App\Models\EmailAutomation;
+use App\Models\EmailLog;
+use App\Services\Email\EmailVariableRegistry;
+use App\Services\Email\AudienceResolverService;
 
 class AdminDashboardController extends Controller
 {
@@ -86,7 +93,7 @@ class AdminDashboardController extends Controller
 
         // ── 3. Full Database Collections ─────────────────────────────────────
         $allPayments          = Payment::with(['user', 'course.subject', 'student.user', 'payer', 'invoice'])->latest('id')->get();
-        $allFeeStructures     = \App\Models\FeeStructure::with('student.user')->latest('id')->get();
+        $allFeeStructures     = \App\Models\FeeStructure::with(['student.user', 'subjects'])->latest('id')->get();
         $allInvoices          = \App\Models\Invoice::with(['student.user', 'student.parents', 'student.parent', 'feeStructure', 'items', 'reminders', 'paymentTransactions.payer', 'paymentTransactions.user'])->latest('id')->get();
         $allStudentsList      = Student::whereHas('user', function ($q) {
             $q->where('role', 'student');
@@ -133,7 +140,8 @@ class AdminDashboardController extends Controller
         $allUsers             = User::latest('id')->get();
         $allGigs              = TeachingGig::with(['teacher.user', 'subject'])->latest('id')->get();
         $allMasteries         = StudentTopicMastery::with(['student.user', 'subject'])->latest('id')->take(40)->get();
-        $allSubjects          = Subject::with(['topics.subtopics'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
+        $allSubjects          = Subject::with(['topics.subtopics', 'diagnosticTest'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
+        $missingSubjectDiagnosticCount = $allSubjects->where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
         $allTopics            = SubjectTopic::with(['subject', 'subtopics'])->orderBy('subject_id')->orderBy('chapter_number')->get();
         $allLiveClasses       = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user'])->latest('id')->get();
         $allRecordedClasses   = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
@@ -141,7 +149,7 @@ class AdminDashboardController extends Controller
         $teacherApplications  = TeacherApplication::with('user')->latest('id')->get();
 
         // ── 3c. Student Diagnostic Test Insights ─────────────────────────────
-        $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->latest('id')->get();
+        $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->with('subject')->latest('id')->get();
         $selectedDiagId  = $request->input('diagnostic_id');
         $activeDiagnostic = $selectedDiagId ? $diagnosticTests->firstWhere('id', $selectedDiagId) : $diagnosticTests->first();
         $activeDiagId    = $activeDiagnostic?->id;
@@ -432,6 +440,87 @@ class AdminDashboardController extends Controller
             ->latest('id')
             ->get();
 
+        // ── Email Management & Blast System ───────────────────────────────
+        $emailStats = [
+            'total_sent'          => EmailLog::whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])->count(),
+            'processed'           => EmailLog::count(),
+            'failed'              => EmailLog::where('status', EmailLog::STATUS_FAILED)->count(),
+            'pending'             => EmailLog::where('status', EmailLog::STATUS_QUEUED)->count(),
+            'scheduled_campaigns' => EmailCampaign::where('status', EmailCampaign::STATUS_SCHEDULED)->count(),
+            'active_automations'  => EmailAutomation::where('is_enabled', true)->count(),
+        ];
+
+        $emailTemplates     = EmailTemplate::with('creator')->notArchived()->orderBy('category')->orderBy('name')->get();
+        $emailCampaigns     = EmailCampaign::with(['template', 'creator'])->latest('id')->take(30)->get();
+        $emailAutomations   = EmailAutomation::with('template')->get();
+        $emailLogs          = EmailLog::with(['template', 'user'])->latest('id')->take(60)->get();
+        $emailCategories    = EmailTemplate::categories();
+        $availableVariables = EmailVariableRegistry::flatList();
+        $supportedAudiences = AudienceResolverService::supportedAudiences();
+
+        $emailSettings = [
+            'sender_display_name'    => Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars')),
+            'sender_email_address'   => Setting::get('sender_email_address', config('mail.from.address', 'noreply@olympiascholars.edu.my')),
+            'reply_to_email'         => Setting::get('reply_to_email', config('mail.from.address', 'support@olympiascholars.edu.my')),
+            'official_support_email' => Setting::get('official_support_email', 'support@olympiascholars.edu.my'),
+            'official_website_url'   => Setting::get('official_website_url', config('app.url', 'https://olympiascholars.edu.my')),
+            'official_email_footer'  => Setting::get('official_email_footer', 'Olympia Scholars • Dedicated to Educational Excellence • Kuala Lumpur, Malaysia'),
+            'email_banner_url'       => Setting::get('email_banner_url', asset('images/email-banner.png')),
+            'mail_mailer'            => config('mail.default', 'smtp'),
+            'mail_host'              => config('mail.mailers.smtp.host', 'smtp.gmail.com'),
+            'mail_port'              => config('mail.mailers.smtp.port', 587),
+            'mail_encryption'        => config('mail.mailers.smtp.encryption', 'tls'),
+        ];
+
+        // 7-day sending trend data
+        $emailTrendsLabels = [];
+        $emailTrendsSent   = [];
+        $emailTrendsFailed = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = now()->subDays($i);
+            $dayStr = $day->format('Y-m-d');
+            $emailTrendsLabels[] = $day->format('d M');
+            $emailTrendsSent[]   = EmailLog::whereDate('created_at', $dayStr)->whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])->count();
+            $emailTrendsFailed[] = EmailLog::whereDate('created_at', $dayStr)->where('status', EmailLog::STATUS_FAILED)->count();
+        }
+
+        // Category breakdown
+        $catCounts = EmailLog::select('category', DB::raw('count(*) as total'))
+            ->groupBy('category')
+            ->pluck('total', 'category')
+            ->toArray();
+        $emailCategoryLabels = [];
+        $emailCategoryData   = [];
+        foreach ($emailCategories as $ckey => $clabel) {
+            $emailCategoryLabels[] = $clabel;
+            $emailCategoryData[]   = $catCounts[$ckey] ?? 0;
+        }
+
+        // ── 7. Attendance Hub Data ──────────────────────────────────────────
+        $allAttendances = StudentAttendance::with([
+            'student.user',
+            'liveClass.course.subject',
+            'liveClass.teacher.user',
+            'verifier',
+        ])->latest('id')->take(500)->get();
+
+        $attendanceTotalRecords  = StudentAttendance::count();
+        $attendanceAttendedCount = StudentAttendance::where('status', 'attended')->count();
+        $attendanceLateCount     = StudentAttendance::where('status', 'late')->count();
+        $attendanceAbsentCount   = StudentAttendance::where('status', 'absent')->count();
+        $attendanceExcusedCount  = StudentAttendance::where('status', 'excused')->count();
+        $attendancePendingCount  = StudentAttendance::where('status', 'pending_verification')->count();
+
+        $pendingAttendanceCorrections = AttendanceCorrectionRequest::where('status', 'pending')
+            ->with(['student.user', 'liveClass.course.subject'])
+            ->latest()
+            ->take(10)
+            ->get();
+
+        $attendanceLateThreshold        = (int) Setting::get('attendance.late_threshold_minutes', 15);
+        $attendanceEarlyJoinWindow      = (int) Setting::get('attendance.early_join_window_minutes', 15);
+        $attendanceExcusedInDenominator = (bool) Setting::get('attendance.excused_in_denominator', 0);
+
         return view('admin.dashboard', compact(
             'totalUsers', 'totalStudents', 'totalTeachers', 'totalParents', 'totalAdmins',
             'totalCourses', 'publishedCourses', 'draftCourses', 'archivedCourses',
@@ -442,7 +531,7 @@ class AdminDashboardController extends Controller
             'teacherCutPct', 'currencySymbol',
             'allPayments', 'allFeeStructures', 'allInvoices', 'allStudentsList', 'allCertificates', 'financialLogs', 'pendingProofPayments', 'allVerificationPayments',
             'allEnrollments', 'allTeachers', 'allCourses', 'allUsers', 'allGigs', 'allMasteries',
-            'allSubjects', 'allTopics', 'allLiveClasses', 'allRecordedClasses', 'teacherApplications', 'allQuizzes', 'allTasks',
+            'allSubjects', 'missingSubjectDiagnosticCount', 'allTopics', 'allLiveClasses', 'allRecordedClasses', 'teacherApplications', 'allQuizzes', 'allTasks',
             'revenueLabels', 'revenueData',
             'subjectEnrollments', 'subjectLabels', 'subjectData',
             'recentLogs', 'restrictedStudentsCount',
@@ -452,7 +541,14 @@ class AdminDashboardController extends Controller
             'allDiagnosticStudents', 'diagnosticTotalStudents', 'diagnosticCompletedCount', 'diagnosticPendingCount',
             'diagnosticCompletionRate', 'diagnosticAvgScore', 'diagnosticCemerlangCount', 'diagnosticBaikCount',
             'diagnosticSederhanaCount', 'diagnosticPerluBimbinganCount',
-            'diagnosticTests', 'activeDiagnostic'
+            'diagnosticTests', 'activeDiagnostic',
+            'emailStats', 'emailTemplates', 'emailCampaigns', 'emailAutomations', 'emailLogs',
+            'emailCategories', 'availableVariables', 'supportedAudiences', 'emailSettings',
+            'emailTrendsLabels', 'emailTrendsSent', 'emailTrendsFailed',
+            'emailCategoryLabels', 'emailCategoryData',
+            'allAttendances', 'attendanceTotalRecords', 'attendanceAttendedCount', 'attendanceLateCount',
+            'attendanceAbsentCount', 'attendanceExcusedCount', 'attendancePendingCount',
+            'pendingAttendanceCorrections', 'attendanceLateThreshold', 'attendanceEarlyJoinWindow', 'attendanceExcusedInDenominator'
         ));
     }
 
@@ -529,8 +625,27 @@ class AdminDashboardController extends Controller
             ->with('success', "User '{$user->name}' created successfully. Welcome email dispatched to {$user->email}.");
     }
 
+    public function showUser($id)
+    {
+        $user = User::with(['studentProfile', 'teacherProfile'])->find($id);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+            return response()->json($user);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#users');
+    }
+
     public function updateUser(Request $request, $id)
     {
+        // Fallback if a client/proxy sent _method=DELETE via POST/PUT to this endpoint
+        if ($request->input('_method') === 'DELETE' || $request->input('action') === 'delete') {
+            return $this->destroyUser($id);
+        }
+
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
@@ -554,7 +669,13 @@ class AdminDashboardController extends Controller
         if ($user->role === 'student' && !$user->studentProfile) {
             Student::create(['user_id' => $user->id, 'level' => 'SPM', 'total_points' => 0]);
         } elseif ($user->role === 'teacher' && !$user->teacherProfile) {
-            Teacher::create(['user_id' => $user->id, 'specialization' => 'General Academic', 'rating' => 5.0, 'experience_years' => 1]);
+            Teacher::create([
+                'user_id'          => $user->id,
+                'specialization'   => 'General Academic',
+                'qualification'    => 'Certified Educator',
+                'rating'           => 5.0,
+                'experience_years' => 1
+            ]);
         }
 
         try {
@@ -567,6 +688,14 @@ class AdminDashboardController extends Controller
             ]);
         } catch (\Throwable $e) {}
 
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$user->name}' updated successfully.",
+                'user'    => $user,
+            ]);
+        }
+
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$user->name}' updated successfully.");
     }
@@ -574,6 +703,9 @@ class AdminDashboardController extends Controller
     public function destroyUser($id)
     {
         if (auth()->id() == $id) {
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json(['error' => 'Cannot delete your own active administrator account.'], 403);
+            }
             return redirect()->to(route('admin.dashboard') . '#users')
                 ->with('error', 'Cannot delete your own active administrator account.');
         }
@@ -584,6 +716,13 @@ class AdminDashboardController extends Controller
         if ($user->studentProfile) $user->studentProfile()->delete();
         if ($user->teacherProfile) $user->teacherProfile()->delete();
         $user->delete();
+
+        if (request()->wantsJson() || request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "User '{$userName}' deleted successfully."
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$userName}' deleted successfully.");
@@ -607,6 +746,13 @@ class AdminDashboardController extends Controller
                 'read_at' => null,
             ]);
         } catch (\Throwable $e) {}
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Password for '{$user->name}' has been reset to '{$newPassword}'."
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "Password for '{$user->name}' has been reset to '{$newPassword}'.");
@@ -851,6 +997,270 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#courses-subjects')
             ->with('success', "Subject '{$name}' deleted successfully.");
+    }
+
+    public function showSubject($id)
+    {
+        $subject = Subject::find($id);
+
+        if (request()->wantsJson() || request()->ajax()) {
+            if (!$subject) {
+                return response()->json(['error' => 'Subject not found'], 404);
+            }
+            return response()->json($subject);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects');
+    }
+
+    // ── SUBJECT DIAGNOSTIC TEST MANAGEMENT ────────────────────────────────────
+
+    /**
+     * Attach an existing diagnostic test to a subject.
+     * Also retroactively assigns it to all currently enrolled students if requested.
+     */
+    public function setSubjectDiagnosticTest(Request $request, $id)
+    {
+        $subject = Subject::findOrFail($id);
+        $request->validate([
+            'diagnostic_assignment_id'    => 'required|exists:assignments,id',
+            'diagnostic_duration_minutes' => 'nullable|integer|min:1|max:600',
+            'retroactive'                 => 'nullable|boolean',
+        ]);
+
+        $assignment = Assignment::findOrFail($request->diagnostic_assignment_id);
+
+        // Link the assignment back to this subject
+        $assignment->update(['subject_id' => $subject->id]);
+
+        $subject->update([
+            'diagnostic_assignment_id'    => $assignment->id,
+            'diagnostic_duration_minutes' => $request->input('diagnostic_duration_minutes') ?: null,
+        ]);
+
+        // Retroactive: assign to all students currently enrolled in this subject
+        if ($request->boolean('retroactive')) {
+            $this->assignDiagnosticToEnrolledStudents($subject, $assignment);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
+            ->with('success', "Diagnostic test \"{$assignment->title}\" attached to {$subject->display_name}.");
+    }
+
+    /**
+     * Create a brand-new diagnostic test and immediately attach it to the subject.
+     */
+    public function createSubjectDiagnosticTest(Request $request, $id)
+    {
+        $subject = Subject::findOrFail($id);
+
+        $request->validate([
+            'title'                       => 'required|string|max:255',
+            'total_questions'             => 'nullable|integer|min:0|max:500',
+            'time_limit_minutes'          => 'nullable|integer|min:1|max:600',
+            'diagnostic_duration_minutes' => 'nullable|integer|min:1|max:600',
+            'total_marks'                 => 'nullable|integer|min:1',
+            'answer_key'                  => 'nullable',
+            'section_b_questions'         => 'nullable|integer|min:0',
+            'section_b_answer_key'        => 'nullable',
+            'questions_json'              => 'nullable|string',
+            'is_interactive_pdf'          => 'nullable',
+            'file'                        => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,png,jpg,jpeg|max:30720',
+            'retroactive'                 => 'nullable|boolean',
+        ]);
+
+        $filePath = null;
+        $fileName = null;
+        $fileSize = null;
+        if ($request->hasFile('file') && $request->file('file')->isValid()) {
+            $file     = $request->file('file');
+            $filePath = $file->store('assignments', 'public');
+            $fileName = $file->getClientOriginalName();
+            $fileSize = $file->getSize();
+        }
+
+        // Process question-by-question builder data (if provided)
+        $questionsData = [];
+        if ($request->filled('questions_json')) {
+            $decoded = json_decode($request->input('questions_json'), true);
+            if (is_array($decoded)) {
+                $questionsData = $decoded;
+            }
+        }
+
+        $answerKey = null;
+        $sectionBKey = null;
+        $totalQuestions = (int) ($request->input('total_questions') ?? 0);
+        $sectionBCount = (int) ($request->input('section_b_questions') ?? 0);
+
+        if (!empty($questionsData)) {
+            $answerKey = [];
+            $sectionBKey = [];
+            $mcqCount = 0;
+            $sectionBCount = 0;
+
+            foreach ($questionsData as $idx => $item) {
+                $qNum  = (int) ($item['number'] ?? ($idx + 1));
+                $type  = isset($item['type']) && in_array($item['type'], ['mcq', 'fill_in_blank']) ? $item['type'] : 'mcq';
+                $ans   = trim((string)($item['correct_answer'] ?? ''));
+                // Preserve marks field (default to 1.0 if not set)
+                $questionsData[$idx]['marks'] = (float) ($item['marks'] ?? 1.0);
+
+                if ($type === 'mcq') {
+                    $mcqCount++;
+                    $ans = strtoupper($ans);
+                    $answerKey[(string)$qNum] = $ans;
+                } else {
+                    $sectionBCount++;
+                    $sectionBKey[(string)$qNum] = $ans;
+                }
+            }
+            $totalQuestions = count($questionsData);
+        } else {
+            // Parse answer key if submitted as comma-separated string or array (legacy fallback)
+            if ($request->filled('answer_key')) {
+                $raw = $request->input('answer_key');
+                if (is_array($raw)) {
+                    $answerKey = $raw;
+                } else {
+                    $parts = array_map('trim', explode(',', $raw));
+                    $map   = [];
+                    foreach ($parts as $idx => $opt) {
+                        if ($opt !== '') {
+                            $map[(string)($idx + 1)] = strtoupper($opt);
+                        }
+                    }
+                    $answerKey = $map;
+                }
+            }
+
+            if ($request->filled('section_b_answer_key')) {
+                $rawB = $request->input('section_b_answer_key');
+                if (is_array($rawB)) {
+                    $sectionBKey = $rawB;
+                } else {
+                    $parts  = array_map('trim', explode(',', $rawB));
+                    $mapB   = [];
+                    foreach ($parts as $idx => $ans) {
+                        if ($ans !== '') {
+                            $mapB[(string)($idx + 1)] = $ans;
+                        }
+                    }
+                    $sectionBKey = $mapB;
+                }
+            }
+        }
+
+        $timeLimitMinutes = $request->input('time_limit_minutes')
+            ?: $request->input('diagnostic_duration_minutes')
+            ?: 20;
+
+        // Compute total marks: sum of per-question marks if questionsData exists, else fallback
+        if (!empty($questionsData)) {
+            $totalMarks = (int) round(array_sum(array_column($questionsData, 'marks')) ?: $totalQuestions);
+        } else {
+            $totalMarks = (int) ($request->input('total_marks') ?: ($totalQuestions ?: 100));
+        }
+
+        $assignment = DB::transaction(function () use (
+            $request, $subject, $filePath, $fileName, $fileSize,
+            $answerKey, $sectionBKey, $timeLimitMinutes, $questionsData,
+            $totalQuestions, $sectionBCount, $totalMarks
+        ) {
+            $data = [
+                'title'                => $request->input('title'),
+                'type'                 => 'Diagnostic Test',
+                'subject_id'           => $subject->id,
+                'is_global'            => false,
+                'created_by_admin'     => true,
+                'target_level'         => $subject->form_year ?? 'All Levels',
+                'total_questions'      => $totalQuestions,
+                'time_limit_minutes'   => (int) $timeLimitMinutes,
+                'total_marks'          => $totalMarks,
+                'answer_key'           => $answerKey,
+                'section_b_questions'  => $sectionBCount,
+                'section_b_answer_key' => $sectionBKey,
+                'questions_data'       => !empty($questionsData) ? $questionsData : null,
+                'is_interactive_pdf'   => $filePath && !preg_match('/\.pdf$/i', $fileName ?? '') ? false : $request->boolean('is_interactive_pdf', true),
+                'topic'                => 'General Diagnostic',
+                'description'          => "Diagnostic assessment for {$subject->display_name}",
+            ];
+
+            if ($filePath) {
+                $data['file_path'] = $filePath;
+                $data['file_name'] = $fileName;
+                $data['file_size'] = $fileSize;
+            }
+
+            if ($subject->diagnostic_assignment_id && ($existing = Assignment::find($subject->diagnostic_assignment_id))) {
+                $existing->update($data);
+                $a = $existing;
+            } else {
+                $a = Assignment::create($data);
+            }
+
+            $subject->update([
+                'diagnostic_assignment_id'    => $a->id,
+                'diagnostic_duration_minutes' => $request->input('diagnostic_duration_minutes') ?: null,
+            ]);
+
+            return $a;
+        });
+
+        // Retroactive assignment to enrolled students
+        if ($request->boolean('retroactive')) {
+            $this->assignDiagnosticToEnrolledStudents($subject, $assignment);
+        }
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => "Diagnostic test \"{$assignment->title}\" saved and attached to {$subject->display_name}.",
+                'assignment_id' => $assignment->id,
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
+            ->with('success', "Diagnostic test \"{$assignment->title}\" saved and attached to {$subject->display_name}.");
+    }
+
+    /**
+     * Remove the diagnostic test link from a subject (does NOT delete the assignment).
+     */
+    public function detachSubjectDiagnosticTest(Request $request, $id)
+    {
+        $subject = Subject::with('diagnosticTest')->findOrFail($id);
+        $testTitle = $subject->diagnosticTest?->title ?? 'Diagnostic Test';
+
+        $subject->update([
+            'diagnostic_assignment_id'    => null,
+            'diagnostic_duration_minutes' => null,
+        ]);
+
+        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
+            ->with('success', "Diagnostic test \"{$testTitle}\" detached from {$subject->display_name}.");
+    }
+
+    /**
+     * Retroactively create StudentAssignment records for all students enrolled in the subject.
+     */
+    private function assignDiagnosticToEnrolledStudents(Subject $subject, Assignment $assignment): int
+    {
+        $courseIds = \App\Models\Course::where('subject_id', $subject->id)->pluck('id');
+        $studentIds = \App\Models\Enrollment::whereIn('course_id', $courseIds)
+            ->pluck('student_id')
+            ->unique();
+
+        $count = 0;
+        foreach ($studentIds as $studentId) {
+            \App\Models\StudentAssignment::firstOrCreate(
+                ['student_id' => $studentId, 'assignment_id' => $assignment->id],
+                ['status' => 'pending']
+            );
+            $count++;
+        }
+
+        return $count;
     }
 
     // ── TOPIC & SUBTOPIC CRUD (CURRICULUM SYLLABUS BUILDER) ───────────────────
@@ -1176,20 +1586,49 @@ class AdminDashboardController extends Controller
     public function storeRecordedClass(Request $request)
     {
         $validated = $request->validate([
-            'course_id'        => 'nullable|exists:courses,id',
-            'subject_id'       => 'nullable|exists:subjects,id',
-            'title'            => 'required|string|max:255',
-            'topic_name'       => 'required|string|max:255',
-            'video_url'        => 'required|url|max:255',
-            'thumbnail'        => 'nullable|string|max:255',
-            'duration_minutes' => 'required|integer|min:1|max:480',
-            'views_count'      => 'nullable|integer|min:0',
-            'summary'          => 'nullable|string',
+            'course_id'   => 'nullable|exists:courses,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'title'       => 'required|string|max:255',
+            'topic_name'  => 'required|string|max:255',
+            'video_url'   => 'nullable|string|max:1000',
+            'video_file'  => 'nullable|file|max:512000|mimes:mp4,mov,avi,mkv,webm,ogg',
+            'summary'     => 'nullable|string',
         ]);
 
-        $validated['views_count'] = $validated['views_count'] ?? 0;
+        $videoUrl = $validated['video_url'] ?? null;
 
-        $recordedClass = RecordedClass::create($validated);
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('recordings', 'public');
+            $videoUrl = asset('storage/' . $path);
+        }
+
+        if (empty($videoUrl)) {
+            return back()->withErrors(['video_file' => 'Please provide either a video file (MP4, etc.) or a video playback URL.'])->withInput();
+        }
+
+        // Auto-resolve subject_id from course if course is chosen
+        if (!empty($validated['course_id'])) {
+            $course = Course::find($validated['course_id']);
+            if ($course && $course->subject_id) {
+                $validated['subject_id'] = $course->subject_id;
+            }
+        }
+
+        if (empty($validated['subject_id'])) {
+            return back()->withErrors(['subject_id' => 'Please select a Subject for this recording.'])->withInput();
+        }
+
+        $recordedClass = RecordedClass::create([
+            'course_id'        => $validated['course_id'] ?? null,
+            'subject_id'       => $validated['subject_id'] ?? null,
+            'title'            => $validated['title'],
+            'topic_name'       => $validated['topic_name'],
+            'video_url'        => $videoUrl,
+            'thumbnail'        => null,
+            'duration_minutes' => 45,
+            'views_count'      => 0,
+            'summary'          => $validated['summary'] ?? null,
+        ]);
 
         try {
             if ($recordedClass->course) {
@@ -1216,18 +1655,37 @@ class AdminDashboardController extends Controller
         $recordedClass = RecordedClass::findOrFail($id);
 
         $validated = $request->validate([
-            'course_id'        => 'nullable|exists:courses,id',
-            'subject_id'       => 'nullable|exists:subjects,id',
-            'title'            => 'required|string|max:255',
-            'topic_name'       => 'required|string|max:255',
-            'video_url'        => 'required|url|max:255',
-            'thumbnail'        => 'nullable|string|max:255',
-            'duration_minutes' => 'required|integer|min:1|max:480',
-            'views_count'      => 'nullable|integer|min:0',
-            'summary'          => 'nullable|string',
+            'course_id'   => 'nullable|exists:courses,id',
+            'subject_id'  => 'nullable|exists:subjects,id',
+            'title'       => 'required|string|max:255',
+            'topic_name'  => 'required|string|max:255',
+            'video_url'   => 'nullable|string|max:1000',
+            'video_file'  => 'nullable|file|max:512000|mimes:mp4,mov,avi,mkv,webm,ogg',
+            'summary'     => 'nullable|string',
         ]);
 
-        $recordedClass->update($validated);
+        $videoUrl = $validated['video_url'] ?? $recordedClass->video_url;
+
+        if ($request->hasFile('video_file')) {
+            $path = $request->file('video_file')->store('recordings', 'public');
+            $videoUrl = asset('storage/' . $path);
+        }
+
+        if (!empty($validated['course_id'])) {
+            $course = Course::find($validated['course_id']);
+            if ($course && $course->subject_id) {
+                $validated['subject_id'] = $course->subject_id;
+            }
+        }
+
+        $recordedClass->update([
+            'course_id'   => $validated['course_id'] ?? null,
+            'subject_id'  => $validated['subject_id'] ?? $recordedClass->subject_id,
+            'title'       => $validated['title'],
+            'topic_name'  => $validated['topic_name'],
+            'video_url'   => $videoUrl,
+            'summary'     => $validated['summary'] ?? null,
+        ]);
 
         return redirect()->to(route('admin.dashboard') . '#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' updated successfully.");
@@ -1253,8 +1711,9 @@ class AdminDashboardController extends Controller
             'target_level'     => 'nullable|string|max:100',
             'course_id'        => 'nullable|exists:courses,id',
             'topic'            => 'nullable|string|max:255',
-            'total_marks'      => 'nullable|integer|min:1|max:1000',
-            'due_date'         => 'nullable|date',
+            'total_marks'        => 'nullable|integer|min:1|max:1000',
+            'time_limit_minutes' => 'nullable|integer|min:1|max:600',
+            'due_date'           => 'nullable|date',
             'description'      => 'nullable|string|max:5000',
             'instructions'     => 'nullable|string|max:5000',
             'file'             => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
@@ -1268,6 +1727,7 @@ class AdminDashboardController extends Controller
             $file = $request->file('file');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
+            Storage::disk('public')->makeDirectory('assignments');
             $filePath = $file->store('assignments', 'public');
         }
 
@@ -1275,6 +1735,7 @@ class AdminDashboardController extends Controller
 
         $answerKeyRaw = $request->input('answer_key');
         $answerKeyMap = null;
+        $sectionBMap = null;
         if (!empty($answerKeyRaw)) {
             if (is_array($answerKeyRaw)) {
                 $answerKeyMap = $answerKeyRaw;
@@ -1328,6 +1789,7 @@ class AdminDashboardController extends Controller
                     'type'           => $type,
                     'title'          => $title,
                     'correct_answer' => $ans,
+                    'marks'          => (float) ($item['marks'] ?? 1.0),
                     'image'          => $img,
                     'prompt'         => $item['prompt'] ?? null,
                     'page_number'    => $item['page_number'] ?? ($item['page'] ?? 1),
@@ -1366,6 +1828,7 @@ class AdminDashboardController extends Controller
             'file_path'            => $filePath,
             'file_name'            => $fileName,
             'file_size'            => $fileSize,
+            'is_interactive_pdf'   => $request->boolean('is_interactive_pdf', false),
         ]);
 
         // If a specific student_id is provided, link ONLY to that student
@@ -1414,6 +1877,14 @@ class AdminDashboardController extends Controller
             }
         }
 
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.',
+                'assignment_id' => $assignment->id,
+            ]);
+        }
+
         $redirectTab = $request->input('redirect_tab', '#courses-tasks');
         return redirect()->to(route('admin.dashboard') . $redirectTab)
             ->with('success', 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.');
@@ -1427,8 +1898,9 @@ class AdminDashboardController extends Controller
             'title'            => 'required|string|max:255',
             'type'             => 'required|string|max:50',
             'target_level'     => 'nullable|string|max:100',
-            'total_marks'      => 'nullable|integer|min:1|max:1000',
-            'due_date'         => 'nullable|date',
+            'total_marks'        => 'nullable|integer|min:1|max:1000',
+            'time_limit_minutes' => 'nullable|integer|min:1|max:600',
+            'due_date'           => 'nullable|date',
             'description'      => 'nullable|string|max:5000',
             'instructions'     => 'nullable|string|max:5000',
             'file'             => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
@@ -1480,6 +1952,7 @@ class AdminDashboardController extends Controller
                     'type'           => $type,
                     'title'          => $title,
                     'correct_answer' => $ans,
+                    'marks'          => (float) ($item['marks'] ?? 1.0),
                     'image'          => $img,
                     'prompt'         => $item['prompt'] ?? null,
                     'page_number'    => $item['page_number'] ?? ($item['page'] ?? 1),
@@ -1543,6 +2016,14 @@ class AdminDashboardController extends Controller
         $assignment->description  = $validated['description'] ?? null;
         $assignment->instructions = $validated['instructions'] ?? null;
         $assignment->save();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'       => true,
+                'message'       => 'Task "' . $assignment->title . '" updated successfully.',
+                'assignment_id' => $assignment->id,
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#courses-tasks')
             ->with('success', 'Task "' . $assignment->title . '" updated successfully.');
@@ -1712,6 +2193,7 @@ class AdminDashboardController extends Controller
         $validated = $request->validate([
             'score'            => 'required|numeric|min:0|max:1000',
             'teacher_feedback' => 'nullable|string|max:3000',
+            'graded_file'      => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ]);
 
         $sub = StudentAssignment::firstOrNew([
@@ -1722,7 +2204,27 @@ class AdminDashboardController extends Controller
         $sub->score            = $validated['score'];
         $sub->teacher_feedback = $validated['teacher_feedback'] ?? null;
         $sub->status           = 'graded';
+
+        if ($request->hasFile('graded_file')) {
+            $file = $request->file('graded_file');
+            $dir = 'graded_tasks/' . $assignmentId;
+            $savedName = 'graded_' . $studentId . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs($dir, $savedName, 'public');
+
+            $sub->graded_file_path = $path;
+            $sub->graded_file_name = $file->getClientOriginalName();
+        }
+
         $sub->save();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success'          => true,
+                'message'          => 'Student submission graded successfully.',
+                'graded_file_name' => $sub->graded_file_name,
+                'graded_file_url'  => $sub->graded_file_url,
+            ]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#courses-tasks')
             ->with('success', 'Student submission graded successfully.');
@@ -1730,22 +2232,26 @@ class AdminDashboardController extends Controller
 
     public function getTaskSubmissions($id)
     {
-        $assignment = Assignment::with(['results.student.user'])->findOrFail($id);
+        $assignment = Assignment::with(['results.student.user', 'results.interactiveSubmission'])->findOrFail($id);
 
         $submissions = $assignment->results->map(function ($sa) use ($assignment) {
             return [
-                'student_id'       => $sa->student_id,
-                'student_name'     => $sa->student?->user?->name ?? 'Student #' . $sa->student_id,
-                'student_email'    => $sa->student?->user?->email ?? '-',
-                'student_level'    => $sa->student?->level ?? '-',
-                'status'           => $sa->status,
-                'score'            => $sa->score,
-                'total_marks'      => $assignment->total_marks ?? 100,
-                'submitted_at'     => $sa->submitted_at ? $sa->submitted_at->format('d M Y, h:i A') : null,
-                'submission_notes' => $sa->submission_notes,
-                'teacher_feedback' => $sa->teacher_feedback,
-                'file_name'        => $sa->file_name,
-                'file_url'         => $sa->file_url,
+                'student_id'                => $sa->student_id,
+                'student_name'              => $sa->student?->user?->name ?? 'Student #' . $sa->student_id,
+                'student_email'             => $sa->student?->user?->email ?? '-',
+                'student_level'             => $sa->student?->level ?? '-',
+                'status'                    => $sa->status,
+                'score'                     => $sa->score,
+                'total_marks'               => $assignment->total_marks ?? 100,
+                'submitted_at'              => $sa->submitted_at ? $sa->submitted_at->format('d M Y, h:i A') : null,
+                'submission_notes'          => $sa->submission_notes,
+                'teacher_feedback'          => $sa->teacher_feedback,
+                'file_name'                 => $sa->file_name,
+                'file_url'                  => $sa->file_url,
+                'graded_file_name'          => $sa->graded_file_name,
+                'graded_file_url'           => $sa->graded_file_url,
+                'interactive_submission_id' => $sa->interactiveSubmission?->id,
+                'interactive_review_url'    => $sa->interactiveSubmission ? route('admin.submissions.review', $sa->interactiveSubmission->id) : null,
             ];
         });
 
@@ -2082,7 +2588,7 @@ class AdminDashboardController extends Controller
                     $enr->student?->user?->name ?? 'Student #' . $enr->student_id,
                     $enr->student?->user?->email ?? 'N/A',
                     $enr->course->title ?? 'Course #' . $enr->course_id,
-                    $enr->course->subject->name ?? 'General',
+                    $enr->course->subject->display_name ?? $enr->course->subject->name ?? 'General',
                     $enr->course->teacher->user->name ?? 'Staff',
                     $enr->progress_pct ?? 0,
                     $enr->enrolled_at ? $enr->enrolled_at->format('Y-m-d H:i') : ($enr->created_at ? $enr->created_at->format('Y-m-d H:i') : 'N/A'),
@@ -2263,7 +2769,7 @@ class AdminDashboardController extends Controller
             return;
         }
 
-        $subjectName = $quiz->course->subject->name ?? 'General';
+        $subjectName = $quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General';
 
         foreach ($userIds as $userId) {
             \App\Models\UserNotification::create([
@@ -2365,28 +2871,52 @@ class AdminDashboardController extends Controller
     public function storeFeeStructure(Request $request)
     {
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'amount'          => 'required|numeric|min:0',
-            'education_level' => 'required|string|max:100',
-            'frequency'       => 'required|in:monthly,term,one_time,yearly',
-            'is_active'       => 'nullable',
-            'student_id'      => 'nullable|exists:students,id',
+            'name'             => 'required|string|max:255',
+            'description'      => 'nullable|string',
+            'amount'           => 'required|numeric|min:0',
+            'education_level'  => 'required|string|max:100',
+            'frequency'        => 'required|in:monthly,term,one_time,yearly',
+            'is_active'        => 'nullable',
+            'student_id'       => 'nullable|exists:students,id',
+            'package_type'     => 'nullable|in:individual,fixed_bundle,pick_n,tiered,custom',
+            'minimum_subjects' => 'nullable|integer|min:1|max:20',
+            'maximum_subjects' => 'nullable|integer|min:1|max:20',
+            'effective_from'   => 'nullable|date',
+            'effective_until'  => 'nullable|date',
+            'subjects'                  => 'nullable|array',
+            'subjects.*.subject_id'     => 'required|exists:subjects,id',
+            'subjects.*.is_required'    => 'required|boolean',
+            'subjects.*.sort_order'     => 'nullable|integer|min:0',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
         if (empty($validated['student_id'])) {
             $validated['student_id'] = null;
         }
+        if (empty($validated['package_type'])) {
+            $validated['package_type'] = 'individual';
+        }
 
-        $fee = \App\Models\FeeStructure::create($validated);
+        $fee = \App\Models\FeeStructure::create(\Illuminate\Support\Arr::except($validated, ['subjects']));
+
+        // Sync subjects if this is a bundle package
+        if (!empty($validated['subjects']) && in_array($validated['package_type'], ['fixed_bundle', 'pick_n'])) {
+            $syncData = [];
+            foreach ($validated['subjects'] as $idx => $sub) {
+                $syncData[$sub['subject_id']] = [
+                    'is_required' => (bool)$sub['is_required'],
+                    'sort_order'  => (int)($sub['sort_order'] ?? $idx),
+                ];
+            }
+            $fee->subjects()->sync($syncData);
+        }
 
         \App\Models\FinancialAuditLog::create([
             'user_id'     => auth()->id(),
             'action'      => 'package_created',
             'target_type' => 'FeeStructure',
             'ip_address'  => $request->ip(),
-            'details'     => "Created fee structure '{$fee->name}' at RM {$fee->amount}" . ($fee->student_id ? " (Targeted to student #{$fee->student_id})" : ""),
+            'details'     => "Created fee structure '{$fee->name}' at RM {$fee->amount}" . ($fee->student_id ? " (Targeted to student #{$fee->student_id})" : "") . ($fee->package_type !== 'individual' ? " [Package: {$fee->package_type}]" : ""),
         ]);
 
         return back()->with('success', "Fee structure '{$fee->name}' created successfully!");
@@ -2406,17 +2936,36 @@ class AdminDashboardController extends Controller
             // Package engine fields
             'package_type'     => 'nullable|in:individual,fixed_bundle,pick_n,tiered,custom',
             'minimum_subjects' => 'nullable|integer|min:1|max:20',
-            'maximum_subjects' => 'nullable|integer|min:1|max:20|gte:minimum_subjects',
+            'maximum_subjects' => 'nullable|integer|min:1|max:20',
             'effective_from'   => 'nullable|date',
             'effective_until'  => 'nullable|date|after_or_equal:effective_from',
             'status'           => 'nullable|in:draft,active,inactive,archived',
+            'subjects'                  => 'nullable|array',
+            'subjects.*.subject_id'     => 'required|exists:subjects,id',
+            'subjects.*.is_required'    => 'required|boolean',
+            'subjects.*.sort_order'     => 'nullable|integer|min:0',
         ]);
 
         $validated['is_active']  = $request->boolean('is_active', true);
         $validated['student_id'] = $request->filled('student_id') ? $validated['student_id'] : null;
 
         $oldValues = $fee->only(['name', 'amount', 'package_type', 'status']);
-        $fee->update($validated);
+        $fee->update(\Illuminate\Support\Arr::except($validated, ['subjects']));
+
+        // Sync subjects if bundle package type
+        if (in_array($validated['package_type'] ?? $fee->package_type, ['fixed_bundle', 'pick_n'])) {
+            $syncData = [];
+            foreach ($validated['subjects'] ?? [] as $idx => $sub) {
+                $syncData[$sub['subject_id']] = [
+                    'is_required' => (bool)$sub['is_required'],
+                    'sort_order'  => (int)($sub['sort_order'] ?? $idx),
+                ];
+            }
+            $fee->subjects()->sync($syncData);
+        } elseif (isset($validated['package_type']) && $validated['package_type'] === 'individual') {
+            // Clear subjects if switching back to individual
+            $fee->subjects()->detach();
+        }
 
         \App\Models\FinancialAuditLog::create([
             'user_id'     => auth()->id(),
@@ -2866,34 +3415,63 @@ class AdminDashboardController extends Controller
     public function updateFinanceSettings(Request $request)
     {
         $validated = $request->validate([
-            'company_bank_name'           => 'required|string|max:255',
-            'company_bank_account_name'   => 'required|string|max:255',
-            'company_bank_account_number' => 'required|string|max:255',
+            'company_bank_name'           => 'nullable|string|max:255',
+            'company_bank_account_name'   => 'nullable|string|max:255',
+            'company_bank_account_number' => 'nullable|string|max:255',
             'company_bank_instructions'   => 'nullable|string',
-            'gateway_provider'            => 'required|string|max:100',
+            'gateway_provider'            => 'nullable|string|max:100',
             'gateway_merchant_id'         => 'nullable|string|max:255',
             'gateway_sandbox_mode'        => 'nullable|boolean',
+            'billplz_api_key'             => 'nullable|string|max:255',
+            'billplz_x_signature_key'     => 'nullable|string|max:255',
+            'billplz_collection_id'       => 'nullable|string|max:255',
+            'billplz_sandbox'             => 'nullable|boolean',
+            'is_gateway_form'             => 'nullable|boolean',
         ]);
 
-        \App\Models\Setting::set('company_bank_name', $validated['company_bank_name'], 'finance', 'Company Bank Name');
-        \App\Models\Setting::set('company_bank_account_name', $validated['company_bank_account_name'], 'finance', 'Company Account Name');
-        \App\Models\Setting::set('company_bank_account_number', $validated['company_bank_account_number'], 'finance', 'Company Account Number');
-        \App\Models\Setting::set('company_bank_instructions', $validated['company_bank_instructions'] ?? '', 'finance', 'Transfer Instructions');
-        \App\Models\Setting::set('gateway_provider', $validated['gateway_provider'], 'finance', 'Gateway Provider');
-        if (!empty($validated['gateway_merchant_id'])) {
-            \App\Models\Setting::set('gateway_merchant_id', $validated['gateway_merchant_id'], 'finance', 'Gateway Merchant ID');
+        if ($request->has('company_bank_name')) {
+            \App\Models\Setting::set('company_bank_name', $validated['company_bank_name'] ?? '', 'finance', 'Company Bank Name');
         }
-        \App\Models\Setting::set('gateway_sandbox_mode', $request->has('gateway_sandbox_mode') ? '1' : '0', 'finance', 'Gateway Sandbox Mode');
+        if ($request->has('company_bank_account_name')) {
+            \App\Models\Setting::set('company_bank_account_name', $validated['company_bank_account_name'] ?? '', 'finance', 'Company Account Name');
+        }
+        if ($request->has('company_bank_account_number')) {
+            \App\Models\Setting::set('company_bank_account_number', $validated['company_bank_account_number'] ?? '', 'finance', 'Company Account Number');
+        }
+        if ($request->has('company_bank_instructions')) {
+            \App\Models\Setting::set('company_bank_instructions', $validated['company_bank_instructions'] ?? '', 'finance', 'Transfer Instructions');
+        }
+        if ($request->has('gateway_provider')) {
+            \App\Models\Setting::set('gateway_provider', $validated['gateway_provider'] ?? 'billplz', 'finance', 'Gateway Provider');
+        }
+        if ($request->has('gateway_merchant_id')) {
+            \App\Models\Setting::set('gateway_merchant_id', $validated['gateway_merchant_id'] ?? '', 'finance', 'Gateway Merchant ID');
+        }
+
+        // Billplz Gateway Credentials
+        if ($request->has('billplz_api_key')) {
+            \App\Models\Setting::set('billplz_api_key', trim((string)$request->input('billplz_api_key')), 'finance', 'Billplz API Secret Key');
+        }
+        if ($request->has('billplz_x_signature_key')) {
+            \App\Models\Setting::set('billplz_x_signature_key', trim((string)$request->input('billplz_x_signature_key')), 'finance', 'Billplz X-Signature Key');
+        }
+        if ($request->has('billplz_collection_id')) {
+            \App\Models\Setting::set('billplz_collection_id', trim((string)$request->input('billplz_collection_id')), 'finance', 'Billplz Collection ID');
+        }
+        if ($request->has('is_gateway_form')) {
+            \App\Models\Setting::set('billplz_sandbox', $request->has('billplz_sandbox') ? '1' : '0', 'finance', 'Billplz Sandbox Mode');
+            \App\Models\Setting::set('gateway_sandbox_mode', $request->has('billplz_sandbox') ? '1' : '0', 'finance', 'Gateway Sandbox Mode');
+        }
 
         \App\Models\FinancialAuditLog::create([
             'user_id'     => auth()->id(),
             'action'      => 'update_settings',
             'target_type' => 'FinanceSettings',
             'ip_address'  => $request->ip(),
-            'details'     => "Updated company banking & payment gateway settings.",
+            'details'     => "Updated company banking & Billplz payment gateway settings.",
         ]);
 
-        return back()->with('success', 'Finance and payment settings updated successfully.');
+        return back()->with('success', 'Finance and Billplz payment gateway settings updated successfully.');
     }
 
     public function revealGatewayCredentials(Request $request)
@@ -2906,12 +3484,30 @@ class AdminDashboardController extends Controller
             'details'     => "Admin revealed sensitive payment gateway credentials.",
         ]);
 
+        $billplzService = new \App\Services\Billplz\BillplzService();
+
         return response()->json([
-            'success'     => true,
-            'merchant_id' => \App\Models\Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
-            'api_key'     => 'sk_live_' . md5('osc_live_secret_key_prod'),
-            'provider'    => \App\Models\Setting::get('gateway_provider', 'mock_fpx'),
+            'success'                 => true,
+            'merchant_id'             => \App\Models\Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
+            'api_key'                 => $billplzService->getApiKey() ?: 'sk_live_' . md5('osc_live_secret_key_prod'),
+            'billplz_api_key'         => $billplzService->getApiKey() ?: '',
+            'billplz_x_signature_key' => $billplzService->getXSignatureKey() ?: '',
+            'billplz_collection_id'   => $billplzService->getCollectionId() ?: '',
+            'billplz_sandbox'         => $billplzService->isSandbox(),
+            'provider'                => \App\Models\Setting::get('gateway_provider', 'billplz'),
         ]);
+    }
+
+    public function testBillplzConnection(Request $request)
+    {
+        $billplzService = new \App\Services\Billplz\BillplzService();
+        $apiKey       = $request->filled('api_key') ? trim($request->input('api_key')) : null;
+        $collectionId = $request->filled('collection_id') ? trim($request->input('collection_id')) : null;
+        $isSandbox    = $request->has('sandbox') ? $request->boolean('sandbox') : null;
+
+        $result = $billplzService->testConnection($apiKey, $collectionId, $isSandbox);
+
+        return response()->json($result);
     }
 
     public function clearSystemCache()
@@ -3442,6 +4038,107 @@ class AdminDashboardController extends Controller
             }
             fclose($handle);
         }, 'inactive-users-' . now()->format('Y-m-d') . '.csv', [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    /**
+     * Admin Attendance Hub: Redirect to the unified dashboard Attendance tab.
+     */
+    public function attendance(Request $request)
+    {
+        return redirect('/admin/dashboard#attendance');
+    }
+
+    /**
+     * Update institutional attendance policy settings.
+     */
+    public function updateAttendanceSettings(Request $request)
+    {
+        $validated = $request->validate([
+            'late_threshold_minutes'    => 'required|integer|min:1|max:120',
+            'early_join_window_minutes' => 'required|integer|min:0|max:120',
+            'excused_in_denominator'    => 'nullable',
+        ]);
+
+        Setting::set('attendance.late_threshold_minutes', $validated['late_threshold_minutes'], 'attendance', 'Late threshold in minutes');
+        Setting::set('attendance.early_join_window_minutes', $validated['early_join_window_minutes'], 'attendance', 'Early join window in minutes');
+        Setting::set('attendance.excused_in_denominator', $request->has('excused_in_denominator') ? '1' : '0', 'attendance', 'Include excused in attendance rate denominator');
+
+        return back()->with('success', 'Attendance policies updated successfully.');
+    }
+
+    /**
+     * Stream CSV export of attendance records.
+     */
+    public function exportAttendanceCsv(Request $request): StreamedResponse
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate   = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $status    = $request->input('status');
+        $courseId  = $request->input('course_id');
+        $teacherId = $request->input('teacher_id');
+
+        $query = StudentAttendance::with([
+            'student.user',
+            'liveClass.course.subject',
+            'liveClass.teacher.user',
+            'verifier',
+        ])->whereHas('liveClass', function ($q) use ($startDate, $endDate, $courseId, $teacherId) {
+            $q->whereBetween('scheduled_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay(),
+            ]);
+            if ($courseId) {
+                $q->where('course_id', $courseId);
+            }
+            if ($teacherId) {
+                $q->where('teacher_id', $teacherId);
+            }
+        });
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $records = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->streamDownload(function () use ($records) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, [
+                'Attendance ID',
+                'Student Name',
+                'Student Email',
+                'Subject',
+                'Course',
+                'Live Class Title',
+                'Scheduled At',
+                'Joined At',
+                'Status',
+                'Verified By',
+                'Verified At',
+                'Remarks',
+            ]);
+
+            foreach ($records as $r) {
+                fputcsv($handle, [
+                    '#' . $r->id,
+                    $r->student?->user?->name ?? 'Student #' . $r->student_id,
+                    $r->student?->user?->email ?? '',
+                    $r->liveClass?->course?->subject?->name ?? 'General',
+                    $r->liveClass?->course?->title ?? '',
+                    $r->liveClass?->title ?? 'Session',
+                    $r->liveClass?->scheduled_at ? $r->liveClass->scheduled_at->format('Y-m-d H:i') : '',
+                    $r->joined_at ? $r->joined_at->format('Y-m-d H:i:s') : 'Not Joined',
+                    ucfirst(str_replace('_', ' ', $r->status)),
+                    $r->verifier?->name ?? ($r->verified_at ? 'System' : 'Unverified'),
+                    $r->verified_at ? $r->verified_at->format('Y-m-d H:i') : '',
+                    $r->remarks ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        }, 'attendance-export-' . now()->format('Y-m-d') . '.csv', [
             'Content-Type' => 'text/csv',
         ]);
     }

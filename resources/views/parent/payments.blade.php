@@ -88,7 +88,7 @@
                 @if ($children->count() > 1)
                     <div class="flex items-center gap-2 bg-gray-50 px-3.5 py-2.5 rounded-2xl border border-gray-200/70 w-full sm:w-auto min-w-0">
                         <span class="text-xs font-bold text-gray-500 shrink-0">Viewing:</span>
-                        <select onchange="window.location.href='{{ route('parent.payments') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1 pr-6 outline-none truncate w-full sm:max-w-[200px]">
+                        <select onchange="window.location.href='{{ route('parent.payments') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1.5 pr-8 outline-none truncate w-full sm:max-w-[250px]">
                             <option value="">All Children</option>
                             @foreach ($children as $ch)
                                 <option value="{{ $ch->id }}" {{ $child && $child->id === $ch->id ? 'selected' : '' }}>
@@ -306,7 +306,7 @@
                                     'payment_method' => $p->payment_method ?? 'Not specified',
                                     'date'           => $p->created_at ? $p->created_at->format('j M Y') : 'N/A',
                                     'paid_at'        => $p->paid_at ? $p->paid_at->format('j M Y, g:i A') : 'Pending',
-                                    'subject'        => $p->course->subject->name ?? 'Tuition Fee',
+                                    'subject'        => $p->course->subject->display_name ?? $p->course->subject->name ?? 'Tuition Fee',
                                     'parent_name'    => auth()->user()->name,
                                     'parent_email'   => auth()->user()->email,
                                 ]);
@@ -321,7 +321,7 @@
                                     <div class="font-extrabold text-gray-900">{{ $p->description }}</div>
                                     @if ($p->course && $p->course->subject)
                                         <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md mt-1 inline-block">
-                                            {{ $p->course->subject->name }}
+                                            {{ $p->course->subject->display_name ?? $p->course->subject->name }}
                                         </span>
                                     @endif
                                 </td>
@@ -391,7 +391,7 @@
                             'payment_method' => $p->payment_method ?? 'Not specified',
                             'date'           => $p->created_at ? $p->created_at->format('j M Y') : 'N/A',
                             'paid_at'        => $p->paid_at ? $p->paid_at->format('j M Y, g:i A') : 'Pending',
-                            'subject'        => $p->course->subject->name ?? 'Tuition Fee',
+                            'subject'        => $p->course->subject->display_name ?? $p->course->subject->name ?? 'Tuition Fee',
                             'parent_name'    => auth()->user()->name,
                             'parent_email'   => auth()->user()->email,
                         ]);
@@ -626,7 +626,7 @@
                     {{-- 1. FPX Banks --}}
                     <div x-show="paymentMethod === 'FPX Online Banking'" class="pt-3 space-y-2">
                         <label class="text-xs font-bold text-gray-600 block">Select Your Bank</label>
-                        <select x-model="selectedBank" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-2.5 text-xs font-bold text-gray-900 focus:bg-white outline-none">
+                        <select x-model="selectedBank" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5 pr-9 text-xs font-bold text-gray-900 focus:bg-white outline-none">
                             <option value="Maybank2u">Maybank2u</option>
                             <option value="CIMB Clicks">CIMB Clicks</option>
                             <option value="Public Bank (PBE)">Public Bank (PBE)</option>

@@ -35,142 +35,142 @@
             </div>
         @endif
 
-        {{-- ── 1. FILTER CONTROLS & DATE SELECTOR ── --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="flex flex-wrap items-center gap-3">
-                {{-- Range Selector Pills --}}
-                <div class="inline-flex rounded-xl bg-white border border-gray-200/80 p-1 text-xs font-medium text-gray-500 shadow-2xs">
-                    <button class="px-3 py-1 rounded-lg bg-blue-600 text-white shadow-xs font-medium">Month</button>
-                    <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">Quarter</button>
-                    <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">Year</button>
-                    <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">All Time</button>
-                </div>
-
-                {{-- Status Filter --}}
-                <div class="text-xs font-normal text-gray-500 flex items-center gap-2">
-                    <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                    <span>Database Status: <span class="font-medium text-gray-700">Connected &amp; Live</span></span>
-                </div>
-            </div>
-
-            {{-- Action Buttons --}}
-            <div class="flex items-center gap-2">
-                <button onclick="openExportModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
-                    <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Export Ledger CSV</span>
-                </button>
-                <button onclick="openExecutiveReportModal()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs rounded-xl shadow-2xs border border-slate-300 transition flex items-center gap-1.5 cursor-pointer" title="Preview Official Plain-Text Executive Report">
-                    <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>Official Report</span>
-                </button>
-                <button onclick="window.print()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                    <span>Print Report</span>
-                </button>
-            </div>
-        </div>
-
-        {{-- ── 2. SIX HIGHLY ALIGNED METRIC CARDS ── --}}
-        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
-            
-            {{-- Card 1: Total Users --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Total Users</span>
-                        <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                    </div>
-                    <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $totalUsers }}</h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
-                    <span class="truncate">{{ $totalStudents }} Students</span>
-                    <span class="text-blue-600 font-medium shrink-0">{{ $totalTeachers }} Mentors</span>
-                </div>
-            </div>
-
-            {{-- Card 2: Gross Revenue --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Gross Revenue</span>
-                        <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </div>
-                    <h3 class="text-xl text-gray-900 mt-2 font-semibold tracking-tight">RM {{ number_format($totalRevenue, 2) }}</h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-emerald-700 pt-2 border-t border-gray-100">
-                    <span class="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-medium text-[10px]">PAID</span>
-                    <span class="text-gray-500 font-normal truncate">{{ $paidInvoicesCount }} Invoices</span>
-                </div>
-            </div>
-
-            {{-- Card 3: Active Enrollments --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Enrollments</span>
-                        <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                    </div>
-                    <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $activeEnrollments }}</h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
-                    <span class="truncate">Active Subscriptions</span>
-                    <span class="text-indigo-600 font-medium shrink-0">Live</span>
-                </div>
-            </div>
-
-            {{-- Card 4: Total Courses --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Courses</span>
-                        <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
-                    </div>
-                    <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $totalCourses }}</h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
-                    <span class="truncate">{{ $publishedCourses }} Published</span>
-                    <span class="text-purple-600 font-medium shrink-0">{{ $totalSubjects }} Subjects</span>
-                </div>
-            </div>
-
-            {{-- Card 5: Teacher Payout Est. (DB-configured cut %) --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Teacher Payout</span>
-                        <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                    </div>
-                    <h3 class="text-xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $currencySymbol }} {{ number_format($teacherPayoutEst, 2) }}</h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-amber-700 pt-2 border-t border-gray-100">
-                    <span class="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 font-medium text-[10px]">{{ $teacherCutPct }}% Cut</span>
-                    <span class="text-gray-500 font-normal truncate">{{ $totalTeachers }} Mentors</span>
-                </div>
-            </div>
-
-            {{-- Card 6: Average Rating --}}
-            <div class="admin-kpi-card">
-                <div>
-                    <div class="flex items-center justify-between text-gray-500">
-                        <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Teacher Rating</span>
-                        <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
-                    </div>
-                    <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $avgTeacherRating }} <span class="text-xs font-normal text-gray-400">/ 5.0</span></h3>
-                </div>
-                <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
-                    <span class="text-amber-500 font-medium tracking-tighter">★★★★★</span>
-                    <span class="text-gray-500 font-normal shrink-0">Verified</span>
-                </div>
-            </div>
-
-        </div>
-
         {{-- ── 3. TABBED CONTENT PANELS ── --}}
 
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB 1: OVERVIEW & REAL-TIME TABLES                                --}}
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         <div id="tab-overview" class="admin-tab-content space-y-6">
+
+            {{-- ── 1. FILTER CONTROLS & DATE SELECTOR ── --}}
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-3">
+                    {{-- Range Selector Pills --}}
+                    <div class="inline-flex rounded-xl bg-white border border-gray-200/80 p-1 text-xs font-medium text-gray-500 shadow-2xs">
+                        <button class="px-3 py-1 rounded-lg bg-blue-600 text-white shadow-xs font-medium">Month</button>
+                        <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">Quarter</button>
+                        <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">Year</button>
+                        <button class="px-3 py-1 rounded-lg hover:text-gray-800 transition font-normal">All Time</button>
+                    </div>
+
+                    {{-- Status Filter --}}
+                    <div class="text-xs font-normal text-gray-500 flex items-center gap-2">
+                        <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                        <span>Database Status: <span class="font-medium text-gray-700">Connected &amp; Live</span></span>
+                    </div>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex items-center gap-2">
+                    <button onclick="openExportModal()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Export Ledger CSV</span>
+                    </button>
+                    <button onclick="openExecutiveReportModal()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs rounded-xl shadow-2xs border border-slate-300 transition flex items-center gap-1.5 cursor-pointer" title="Preview Official Plain-Text Executive Report">
+                        <svg class="w-3.5 h-3.5 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Official Report</span>
+                    </button>
+                    <button onclick="window.print()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Print Report</span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ── 2. SIX HIGHLY ALIGNED METRIC CARDS ── --}}
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
+                
+                {{-- Card 1: Total Users --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Total Users</span>
+                            <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        </div>
+                        <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $totalUsers }}</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
+                        <span class="truncate">{{ $totalStudents }} Students</span>
+                        <span class="text-blue-600 font-medium shrink-0">{{ $totalTeachers }} Mentors</span>
+                    </div>
+                </div>
+
+                {{-- Card 2: Gross Revenue --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Gross Revenue</span>
+                            <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        </div>
+                        <h3 class="text-xl text-gray-900 mt-2 font-semibold tracking-tight">RM {{ number_format($totalRevenue, 2) }}</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-emerald-700 pt-2 border-t border-gray-100">
+                        <span class="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-medium text-[10px]">PAID</span>
+                        <span class="text-gray-500 font-normal truncate">{{ $paidInvoicesCount }} Invoices</span>
+                    </div>
+                </div>
+
+                {{-- Card 3: Active Enrollments --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Enrollments</span>
+                            <svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        </div>
+                        <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $activeEnrollments }}</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
+                        <span class="truncate">Active Subscriptions</span>
+                        <span class="text-indigo-600 font-medium shrink-0">Live</span>
+                    </div>
+                </div>
+
+                {{-- Card 4: Total Courses --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Courses</span>
+                            <svg class="w-4 h-4 text-purple-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        </div>
+                        <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $totalCourses }}</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
+                        <span class="truncate">{{ $publishedCourses }} Published</span>
+                        <span class="text-purple-600 font-medium shrink-0">{{ $totalSubjects }} Subjects</span>
+                    </div>
+                </div>
+
+                {{-- Card 5: Teacher Payout Est. (DB-configured cut %) --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Teacher Payout</span>
+                            <svg class="w-4 h-4 text-amber-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        </div>
+                        <h3 class="text-xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $currencySymbol }} {{ number_format($teacherPayoutEst, 2) }}</h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-amber-700 pt-2 border-t border-gray-100">
+                        <span class="px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 font-medium text-[10px]">{{ $teacherCutPct }}% Cut</span>
+                        <span class="text-gray-500 font-normal truncate">{{ $totalTeachers }} Mentors</span>
+                    </div>
+                </div>
+
+                {{-- Card 6: Average Rating --}}
+                <div class="admin-kpi-card">
+                    <div>
+                        <div class="flex items-center justify-between text-gray-500">
+                            <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Teacher Rating</span>
+                            <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                        </div>
+                        <h3 class="text-2xl text-gray-900 mt-2 font-semibold tracking-tight">{{ $avgTeacherRating }} <span class="text-xs font-normal text-gray-400">/ 5.0</span></h3>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] font-normal text-gray-500 pt-2 border-t border-gray-100">
+                        <span class="text-amber-500 font-medium tracking-tighter">★★★★★</span>
+                        <span class="text-gray-500 font-normal shrink-0">Verified</span>
+                    </div>
+                </div>
+
+            </div>
             
             {{-- Visual Charts Grid --}}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -303,10 +303,11 @@
                             </h3>
                             <p class="text-xs text-gray-500 font-normal">Review incoming instructor applications, qualifications, and approve teaching credentials</p>
                         </div>
+
                     </div>
 
                     <div class="overflow-x-auto admin-scrollbar">
-                        <table class="w-full text-left text-xs">
+                        <table class="w-full text-left text-xs" id="teacherApplicationsTable">
                             <thead>
                                 <tr class="border-b border-gray-100 text-gray-400 font-medium uppercase text-[10px] bg-gray-50/50">
                                     <th class="py-2.5 px-3">Applicant Name</th>
@@ -314,38 +315,50 @@
                                     <th class="py-2.5 px-3">Qualification</th>
                                     <th class="py-2.5 px-3">Experience</th>
                                     <th class="py-2.5 px-3">Specialization</th>
+                                    <th class="py-2.5 px-3">Preferred Level / Year</th>
                                     <th class="py-2.5 px-3">Status</th>
                                     <th class="py-2.5 px-3 text-right">Review Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($teacherApplications as $app)
-                                    <tr class="hover:bg-amber-50/40 transition">
+                                    <tr class="hover:bg-amber-50/40 transition target-row">
                                         <td class="py-3 px-3 font-medium text-gray-900">{{ $app->full_name }}</td>
                                         <td class="py-3 px-3 text-gray-600 font-normal">{{ $app->email }} <span class="text-gray-400 block text-[10px]">{{ $app->phone }}</span></td>
                                         <td class="py-3 px-3 text-gray-700 font-normal">{{ $app->qualification }}</td>
                                         <td class="py-3 px-3 font-medium text-gray-800">{{ $app->experience_years }} Years</td>
                                         <td class="py-3 px-3 font-medium text-blue-600">{{ $app->preferred_subjects }}</td>
+                                        <td class="py-3 px-3 text-gray-700 font-normal">
+                                            {{ implode(', ', $app->teaching_levels_list) }}
+                                        </td>
                                         <td class="py-3 px-3">
                                             <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase {{ $app->status === 'approved' ? 'bg-emerald-50 text-emerald-700' : ($app->status === 'rejected' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800') }}">
                                                 {{ $app->status }}
                                             </span>
                                         </td>
                                         <td class="py-3 px-3 text-right">
-                                            @if($app->status === 'pending')
-                                                <div class="flex items-center justify-end gap-1.5">
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                <button type="button"
+                                                        data-applicant-name="{{ e($app->full_name) }}"
+                                                        data-resume="{{ $app->resume_path ? asset('storage/' . $app->resume_path) : '' }}"
+                                                        data-certificate="{{ $app->certificate_path ? asset('storage/' . $app->certificate_path) : '' }}"
+                                                        data-transcript="{{ $app->transcript_path ? asset('storage/' . $app->transcript_path) : '' }}"
+                                                        data-additional="{{ $app->additional_document_path ? asset('storage/' . $app->additional_document_path) : '' }}"
+                                                        onclick="openTeacherDocsModal(this)"
+                                                        class="px-2.5 py-1 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-[11px] font-normal transition cursor-pointer">
+                                                    View Documents
+                                                </button>
+                                                @if($app->status === 'pending')
                                                     <form action="{{ route('admin.teacher-applications.approve', $app->id) }}" method="POST">
                                                         @csrf
-                                                        <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-medium transition">Approve</button>
+                                                        <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-medium transition cursor-pointer">Approve</button>
                                                     </form>
                                                     <form action="{{ route('admin.teacher-applications.reject', $app->id) }}" method="POST">
                                                         @csrf
-                                                        <button type="submit" onclick="return confirm('Reject application for {{ $app->full_name }}?')" class="px-2.5 py-1 bg-gray-100 hover:bg-rose-50 text-rose-600 rounded-lg text-[11px] font-medium transition">Reject</button>
+                                                        <button type="submit" onclick="return confirm('Reject application for {{ $app->full_name }}?')" class="px-2.5 py-1 bg-gray-100 hover:bg-rose-50 text-rose-600 rounded text-[11px] font-medium transition cursor-pointer">Reject</button>
                                                     </form>
-                                                </div>
-                                            @else
-                                                <span class="text-[11px] text-gray-400 font-normal">Processed</span>
-                                            @endif
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -362,11 +375,14 @@
                         <h2 class="font-semibold text-lg text-gray-900">Active Educator Performance &amp; Staff Directory</h2>
                         <p class="text-xs text-gray-500 font-normal">Verified teacher profiles, company records, duty status, and courses taught</p>
                     </div>
-                    <span class="text-xs text-gray-500 font-normal">{{ $allTeachers->where('application_status', 'active')->count() }} Active ({{ $allTeachers->count() }} Total)</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-500 font-normal">{{ $allTeachers->where('application_status', 'active')->count() }} Active ({{ $allTeachers->count() }} Total)</span>
+
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto admin-scrollbar">
-                    <table class="w-full text-left text-xs">
+                    <table class="w-full text-left text-xs" id="teachersTable">
                         <thead>
                             <tr class="border-b border-gray-200 text-gray-500 font-medium uppercase text-[10px] bg-gray-50/75">
                                 <th class="py-3 px-4">Teacher Name</th>
@@ -384,6 +400,9 @@
                             @forelse($allTeachers as $t)
                                 @php
                                     $teacherActive = ($t->application_status !== 'inactive' && $t->application_status !== 'deactivated');
+                                    $tApp = $teacherApplications->first(function($app) use ($t) {
+                                        return ($t->user_id && $app->user_id == $t->user_id) || ($t->user && strtolower($app->email) === strtolower($t->user->email));
+                                    });
                                     $teacherDetailsPayload = [
                                         'id' => $t->id,
                                         'name' => $t->user->name ?? 'Teacher #' . $t->id,
@@ -399,8 +418,15 @@
                                         'application_status' => $t->application_status ?? 'approved',
                                         'is_online' => (bool)$t->is_online,
                                         'joined_date' => $t->created_at ? $t->created_at->format('d M Y') : '—',
+                                        'documents' => [
+                                            'resume'              => $tApp && $tApp->resume_path ? asset('storage/' . $tApp->resume_path) : null,
+                                            'certificate'         => $tApp && $tApp->certificate_path ? asset('storage/' . $tApp->certificate_path) : null,
+                                            'transcript'          => $tApp && $tApp->transcript_path ? asset('storage/' . $tApp->transcript_path) : null,
+                                            'additional_document' => $tApp && $tApp->additional_document_path ? asset('storage/' . $tApp->additional_document_path) : null,
+                                        ],
                                         'subjects' => $t->subjects->map(fn($s) => [
                                             'name' => $s->name,
+                                            'display_name' => $s->display_name ?? $s->name,
                                             'stage' => $s->stage ?? ucfirst($s->education_type),
                                             'form_year' => $s->form_year ?? '—',
                                             'category' => $s->stream_package ?? $s->category ?? 'General',
@@ -408,7 +434,7 @@
                                         ])->values(),
                                         'courses' => $t->courses->map(fn($c) => [
                                             'title' => $c->title,
-                                            'subject' => $c->subject->name ?? '—',
+                                            'subject' => $c->subject->display_name ?? $c->subject->name ?? '—',
                                             'level' => $c->level ?? '—',
                                             'price' => number_format($c->monthly_fee ?? 0, 2),
                                             'enrollments_count' => $c->enrollments->count(),
@@ -416,7 +442,7 @@
                                         ])->values(),
                                     ];
                                 @endphp
-                                <tr class="hover:bg-gray-50/60 transition {{ !$teacherActive ? 'opacity-65' : '' }}">
+                                <tr class="hover:bg-gray-50/60 transition target-row {{ !$teacherActive ? 'opacity-65' : '' }}">
                                     <td class="py-3.5 px-4 text-gray-900 font-medium">
                                         <div class="flex items-center gap-1.5">
                                             <button type="button"
@@ -439,7 +465,7 @@
                                     <td class="py-3.5 px-4">
                                         <div class="text-gray-700 font-normal text-[11px] leading-relaxed">
                                             @forelse($t->subjects as $ts)
-                                                <span>{{ $ts->name }}@if(!$loop->last), @endif</span>
+                                                <span>{{ $ts->display_name ?? $ts->name }}@if(!$loop->last), @endif</span>
                                             @empty
                                                 <span class="text-gray-400 italic">None assigned</span>
                                             @endforelse
@@ -534,13 +560,14 @@
                                 <span>{{ $restrictedStudentsCount }} Restricted</span>
                             </span>
                         @endif
+
                         <div class="relative">
                             <svg class="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                             </svg>
                             <input type="text"
                                    id="studentDirSearch"
-                                   oninput="filterTable('studentDirectoryTable', this.value)"
+                                   oninput="handleStudentDirSearch(this.value)"
                                    placeholder="Search student, parent, or teacher..."
                                    class="text-xs rounded-xl border border-gray-200 bg-white pl-8 pr-3 py-1.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-slate-400 w-64 shadow-2xs">
                         </div>
@@ -592,7 +619,7 @@
                                     foreach ($st->enrollments as $enr) {
                                         $course = $enr->course;
                                         $tUser = $course?->teacher?->user;
-                                        $subName = $course?->subject?->name ?? $course?->title ?? 'Course';
+                                        $subName = $course?->subject?->display_name ?? $course?->subject?->name ?? $course?->title ?? 'Course';
 
                                         $enrollmentsData[] = [
                                             'course_title' => $course?->title ?? 'General Course',
@@ -658,7 +685,7 @@
                                         'restriction_details' => $st->restriction_details ?? null,
                                     ];
                                 @endphp
-                                <tr class="target-row hover:bg-gray-50/60 transition {{ $isInactive ? 'opacity-65' : '' }}">
+                                <tr class="target-row student-dir-row hover:bg-gray-50/60 transition {{ $isInactive ? 'opacity-65' : '' }}">
                                     <td class="py-3 px-4 font-mono text-gray-500 font-normal">
                                         {{ $studentRef }}
                                     </td>
@@ -720,6 +747,15 @@
                                     </td>
                                     <td class="py-3 px-4 text-right">
                                         <div class="flex items-center justify-end gap-1.5">
+                                            {{-- Upload Personal Task / Notes Document --}}
+                                            <button type="button"
+                                                    onclick="openPersonalUploadModal({{ $st->id }}, '{{ addslashes($studentName) }}', '{{ $st->level ?? '' }}', '#student')"
+                                                    title="Upload Task / Notes Document"
+                                                    aria-label="Upload Task / Notes Document"
+                                                    class="w-8 h-8 rounded-lg border border-gray-200 text-emerald-600 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 flex items-center justify-center transition cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            </button>
+
                                             {{-- Textless See Linkage Action Button --}}
                                             <button type="button"
                                                     data-linkage="{{ json_encode($linkagePayload) }}"
@@ -770,13 +806,42 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-8 text-gray-400 font-normal">
+                                    <td colspan="8" class="text-center py-8 text-gray-400 font-normal">
                                         No student records found.
                                     </td>
                                 </tr>
                             @endforelse
+                            <tr id="studentDirNoResultsRow" class="hidden">
+                                <td colspan="8" class="text-center py-8 text-gray-400 font-normal italic">
+                                    No matching students found.
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+
+                {{-- Student Directory Pagination & Count Footer --}}
+                <div id="studentDirPaginationContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-gray-50/30 text-xs">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative inline-flex items-center">
+                            <select id="studentDirPerPageSelectBottom" onchange="setStudentDirPerPage(this.value)" class="appearance-none !bg-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg pl-2.5 pr-6 py-1 text-xs font-normal text-gray-700 outline-none focus:outline-none focus:border-slate-400 transition cursor-pointer">
+                                <option value="10" selected>10 rows</option>
+                                <option value="25">25 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="all">All rows</option>
+                            </select>
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+
+                        <div class="text-gray-500 font-normal">
+                            Showing <span id="studentDirShowingStart" class="font-semibold text-gray-800">0</span> to <span id="studentDirShowingEnd" class="font-semibold text-gray-800">0</span> of <span id="studentDirTotalFiltered" class="font-semibold text-gray-800">0</span> students
+                            <span id="studentDirTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="studentDirGrandTotal">0</span> total)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5" id="studentDirPaginationButtons">
+                        {{-- Dynamically generated pagination buttons --}}
+                    </div>
                 </div>
             </div>
         </div>
@@ -799,10 +864,10 @@
                     @if(isset($diagnosticTests) && $diagnosticTests->count() > 1)
                     <div class="flex items-center gap-2">
                         <span class="text-xs text-gray-500 font-medium">Assessment:</span>
-                        <select onchange="window.location.href='?diagnostic_id='+this.value+'#students'" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                        <select onchange="window.location.href='?diagnostic_id='+this.value+'#students'" class="bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-8 py-2 text-xs font-semibold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[160px]">
                             @foreach($diagnosticTests as $dt)
                                 <option value="{{ $dt->id }}" {{ $activeDiagnostic && $activeDiagnostic->id == $dt->id ? 'selected' : '' }}>
-                                    {{ $dt->title }}
+                                    {{ $dt->subject ? '[' . $dt->subject->name . '] ' : '' }}{{ $dt->title }}
                                 </option>
                             @endforeach
                         </select>
@@ -842,11 +907,12 @@
                     </div>
 
                     <div class="flex items-center gap-2 shrink-0">
-                        <select id="diagnosticStatusFilter" onchange="filterDiagnosticTable()" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500">
+                        <select id="diagnosticStatusFilter" onchange="filterDiagnosticTable()" class="bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-8 py-2 text-xs font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 min-w-[150px]">
                             <option value="all">All Status ({{ $diagnosticTotalStudents }})</option>
                             <option value="completed">Completed ({{ $diagnosticCompletedCount }})</option>
                             <option value="pending">Pending ({{ $diagnosticPendingCount }})</option>
                         </select>
+
                     </div>
                 </div>
 
@@ -866,7 +932,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @forelse($allDiagnosticStudents as $st)
-                            <tr class="hover:bg-gray-50/60 transition diagnostic-row"
+                            <tr class="hover:bg-gray-50/60 transition diagnostic-row target-row"
                                 data-name="{{ strtolower($st->name) }}"
                                 data-email="{{ strtolower($st->email) }}"
                                 data-status="{{ strtolower($st->status) }}">
@@ -927,7 +993,7 @@
                                         </button>
                                         @endif
 
-                                        <button type="button" onclick="openPersonalUploadModal({{ $st->id }}, '{{ addslashes($st->name) }}', '{{ $st->level }}')" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer" title="Add Task / Notes (Upload Personal Document)">
+                                        <button type="button" onclick="openPersonalUploadModal({{ $st->id }}, '{{ addslashes($st->name) }}', '{{ $st->level ?? '' }}', '#students')" class="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition cursor-pointer" title="Add Task / Notes (Upload Personal Document)">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                         </button>
                                     </div>
@@ -950,11 +1016,14 @@
                         <h2 class="font-semibold text-lg text-gray-900">Student Academic Topic Masteries</h2>
                         <p class="text-xs text-gray-400 font-normal">Real student topic scores and curriculum progression</p>
                     </div>
-                    <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">{{ $totalMasteries }} Recorded Assessments</span>
+                    <div class="flex items-center gap-2">
+
+                        <span class="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">{{ $totalMasteries }} Recorded Assessments</span>
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto admin-scrollbar">
-                    <table class="w-full text-left text-xs">
+                    <table class="w-full text-left text-xs" id="masteriesTable">
                         <thead>
                             <tr class="border-b border-gray-100 text-gray-400 font-medium uppercase text-[10px] bg-gray-50/50">
                                 <th class="py-3 px-4">Student</th>
@@ -968,9 +1037,9 @@
                         <tbody class="divide-y divide-gray-100">
                             @forelse($allMasteries as $m)
                                 @php $score = (int)$m->mastery_score; @endphp
-                                <tr class="hover:bg-gray-50/60 transition">
+                                <tr class="hover:bg-gray-50/60 transition target-row">
                                     <td class="py-3 px-4 font-medium text-gray-900">{{ $m->student?->user?->name ?? 'Student #' . $m->student_id }}</td>
-                                    <td class="py-3 px-4 font-medium text-blue-600">{{ $m->subject?->name ?? 'General' }}</td>
+                                    <td class="py-3 px-4 font-medium text-blue-600">{{ $m->subject?->display_name ?? $m->subject?->name ?? 'General' }}</td>
                                     <td class="py-3 px-4 font-normal text-gray-800">{{ $m->topic_name }}</td>
                                     <td class="py-3 px-4">
                                         <div class="flex items-center gap-2">
@@ -1006,8 +1075,13 @@
                 <button onclick="switchSubTab('courses-catalog')" id="subnav-courses-catalog" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white shadow-sm hover:scale-95 transition subtab-link">
                     Courses Catalog
                 </button>
-                <button onclick="switchSubTab('courses-subjects')" id="subnav-courses-subjects" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition subtab-link">
-                    Subjects List
+                <button onclick="switchSubTab('courses-subjects')" id="subnav-courses-subjects" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition subtab-link inline-flex items-center gap-1.5">
+                    <span>Subjects List</span>
+                    @if(isset($missingSubjectDiagnosticCount) && $missingSubjectDiagnosticCount > 0)
+                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none" title="{{ $missingSubjectDiagnosticCount }} subjects missing diagnostic test">
+                            {{ $missingSubjectDiagnosticCount }}
+                        </span>
+                    @endif
                 </button>
                 <button onclick="switchSubTab('courses-topics')" id="subnav-courses-topics" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition subtab-link">
                     Topics &amp; Subtopics (Syllabus)
@@ -1037,6 +1111,7 @@
                             <p class="text-xs text-gray-400 font-normal">Manage academic courses, configure tuition fees, and publish catalog offerings</p>
                         </div>
                         <div class="flex items-center gap-2">
+
                             <input id="courseSearchInput" onkeyup="filterTable('coursesTable', this.value)" type="text" placeholder="Search course, subject..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-52 font-normal">
                             <button onclick="openCreateCourseModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -1066,7 +1141,7 @@
                                             <div class="font-semibold text-gray-900">{{ $c->title }}</div>
                                         </td>
                                         <td class="py-3 px-4 font-normal text-gray-700">
-                                            <div>{{ $c->subject->name ?? 'General' }}</div>
+                                            <div>{{ $c->subject->display_name ?? $c->subject->name ?? 'General' }}</div>
                                             @if($c->subject && $c->subject->code)
                                                 <div class="text-[10px] text-gray-400 font-mono">{{ $c->subject->code }}</div>
                                             @endif
@@ -1121,7 +1196,8 @@
                             <p class="text-xs text-gray-400 font-normal mt-0.5">Manage official curriculum hierarchy: Education Level → Form/Year → Category (Core/Elective) → Subject</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <select id="kpmCategoryFilter" onchange="filterKpmSubjectsTable()" class="bg-gray-50 border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+
+                            <select id="kpmCategoryFilter" onchange="filterKpmSubjectsTable()" class="bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-8 py-1.5 text-xs text-gray-700 font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer min-w-[150px]">
                                 <option value="all">All Categories</option>
                                 <option value="Core">Core Subjects (Teras)</option>
                                 <option value="Elective">Elective Subjects (Elektif)</option>
@@ -1146,6 +1222,7 @@
                                     <th class="py-3 px-4 w-28">Form / Year</th>
                                     <th class="py-3 px-4 w-44">Category &amp; Package</th>
                                     <th class="py-3 px-4 w-24 text-center">Syllabus</th>
+                                    <th class="py-3 px-4 w-48">Diagnostic Test</th>
                                     <th class="py-3 px-4 w-20">Status</th>
                                     <th class="py-3 px-4 text-right w-24">Actions</th>
                                 </tr>
@@ -1165,7 +1242,7 @@
                                             default             => 'bg-gray-100 text-gray-700 border-gray-200'
                                         };
                                     @endphp
-                                    <tr class="hover:bg-gray-50/60 transition kpm-subject-row" 
+                                    <tr class="hover:bg-gray-50/60 transition kpm-subject-row target-row" 
                                         data-education-type="{{ $s->education_type }}" 
                                         data-stage="{{ $s->stage }}" 
                                         data-category="{{ $s->category }}" 
@@ -1214,6 +1291,40 @@
                                             </button>
                                         </td>
 
+                                        {{-- Diagnostic Test --}}
+                                        {{-- Diagnostic Test --}}
+                                        <td class="py-3.5 px-4">
+                                            @if($s->hasDiagnosticTest() && $s->diagnosticTest)
+                                                <button type="button"
+                                                    onclick="openDiagnosticModal({{ json_encode([
+                                                        'id'                          => $s->id,
+                                                        'name'                        => $s->display_name,
+                                                        'diagnostic_assignment_id'    => $s->diagnostic_assignment_id,
+                                                        'diagnostic_duration_minutes' => $s->diagnostic_duration_minutes,
+                                                        'test_title'                  => $s->diagnosticTest->title,
+                                                        'total_questions'             => $s->diagnosticTest->total_questions,
+                                                        'section_b_questions'         => $s->diagnosticTest->section_b_questions,
+                                                        'total_marks'                 => $s->diagnosticTest->total_marks,
+                                                        'file_name'                   => $s->diagnosticTest->file_name,
+                                                        'is_interactive_pdf'          => $s->diagnosticTest->is_interactive_pdf ?? true,
+                                                        'questions_data'              => $s->diagnosticTest->questions_data,
+                                                        'answer_key_map'              => $s->diagnosticTest->getAnswerKeyMap(),
+                                                        'section_b_answer_key_map'    => $s->diagnosticTest->getSectionBAnswerKeyMap()
+                                                    ]) }})"
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200/80 transition cursor-pointer"
+                                                    title="{{ $s->diagnosticTest->title }} ({{ $s->diagnostic_duration }} min)">
+                                                    Set
+                                                </button>
+                                            @else
+                                                <button type="button"
+                                                    onclick="openDiagnosticModal({{ json_encode(['id' => $s->id, 'name' => $s->display_name, 'diagnostic_assignment_id' => null, 'diagnostic_duration_minutes' => null, 'test_title' => null]) }})"
+                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 text-gray-400 border border-gray-200/80 transition cursor-pointer"
+                                                    title="Diagnostic test not set. Click to configure.">
+                                                    Not Set
+                                                </button>
+                                            @endif
+                                        </td>
+
                                         {{-- Status --}}
                                         <td class="py-3.5 px-4">
                                             <span class="px-2 py-0.5 rounded-full text-[10px] font-medium {{ $s->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
@@ -1224,6 +1335,28 @@
                                         {{-- Actions --}}
                                         <td class="py-3.5 px-4 text-right">
                                             <div class="flex items-center justify-end gap-1.5">
+                                                <button onclick="openDiagnosticModal({{ json_encode([
+                                                    'id'                          => $s->id,
+                                                    'name'                        => $s->display_name,
+                                                    'diagnostic_assignment_id'    => $s->diagnostic_assignment_id,
+                                                    'diagnostic_duration_minutes' => $s->diagnostic_duration_minutes,
+                                                    'test_title'                  => $s->diagnosticTest?->title,
+                                                    'total_questions'             => $s->diagnosticTest?->total_questions,
+                                                    'section_b_questions'         => $s->diagnosticTest?->section_b_questions,
+                                                    'total_marks'                 => $s->diagnosticTest?->total_marks,
+                                                    'file_name'                   => $s->diagnosticTest?->file_name,
+                                                    'is_interactive_pdf'          => $s->diagnosticTest?->is_interactive_pdf ?? true,
+                                                    'questions_data'              => $s->diagnosticTest?->questions_data,
+                                                    'answer_key_map'              => $s->diagnosticTest?->getAnswerKeyMap(),
+                                                    'section_b_answer_key_map'    => $s->diagnosticTest?->getSectionBAnswerKeyMap()
+                                                ]) }})"
+                                                    class="relative p-1.5 {{ $s->hasDiagnosticTest() ? 'text-blue-600 hover:text-blue-800 hover:bg-blue-50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50' }} rounded-lg transition cursor-pointer"
+                                                    title="{{ $s->hasDiagnosticTest() ? 'Manage Diagnostic Test' : 'Diagnostic test not set (Action Required)' }}">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                                    @if(!$s->hasDiagnosticTest())
+                                                        <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" title="Diagnostic test not set"></span>
+                                                    @endif
+                                                </button>
                                                 <button onclick="openEditSubjectModal({{ json_encode($s) }})" class="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer" title="Edit KPM Subject">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 </button>
@@ -1238,7 +1371,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="8" class="text-center py-6 text-gray-400">No subjects found.</td></tr>
+                                    <tr><td colspan="9" class="text-center py-6 text-gray-400">No subjects found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -1260,6 +1393,8 @@
                         </div>
                         
                         <div class="flex flex-wrap items-center gap-2.5">
+
+
                             {{-- Topic Search Input --}}
                             <div class="relative">
                                 <input id="topicSearchInput" onkeyup="filterTopicsTable(this.value)" type="text" placeholder="Search topic or checkpoint..." class="bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-48 sm:w-56 font-normal">
@@ -1267,7 +1402,7 @@
                             </div>
 
                             {{-- Subject Filter Dropdown --}}
-                            <select id="topicSubjectFilter" onchange="filterTopicsBySubject(this.value)" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 font-medium outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 max-w-[200px] sm:max-w-xs">
+                            <select id="topicSubjectFilter" onchange="filterTopicsBySubject(this.value)" class="bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-8 py-1.5 text-xs text-gray-700 font-medium outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 min-w-[180px] max-w-[240px] sm:max-w-xs">
                                 <option value="all">All Subjects ({{ $allSubjects->where('is_active', true)->count() }} Active)</option>
                                 
                                 <optgroup label="Primary School (Year 4–6)">
@@ -1332,7 +1467,7 @@
                                         };
                                     @endphp
                                     {{-- Primary Topic Row --}}
-                                    <tr class="hover:bg-gray-50/70 transition topic-main-row" 
+                                    <tr class="hover:bg-gray-50/70 transition topic-main-row target-row" 
                                         data-subject-id="{{ $topic->subject_id }}" 
                                         data-education-type="{{ $topic->subject->education_type ?? '' }}"
                                         data-stage="{{ $topic->subject->stage ?? '' }}"
@@ -1350,7 +1485,7 @@
                                             <div class="space-y-0.5">
                                                 <div class="flex items-center gap-1.5">
                                                     <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $topic->subject->color ?? '#3b82f6' }}"></span>
-                                                    <span class="font-semibold text-gray-800 text-xs truncate max-w-[150px]">{{ $topic->subject->name ?? 'General' }}</span>
+                                                    <span class="font-semibold text-gray-800 text-xs truncate max-w-[150px]">{{ $topic->subject->display_name ?? $topic->subject->name ?? 'General' }}</span>
                                                 </div>
                                                 <div class="text-[10px] text-gray-400 font-normal">
                                                     {{ $topicStageLabel }}@if($topic->subject && $topic->subject->code) • {{ $topic->subject->code }}@endif
@@ -1465,6 +1600,7 @@
                             <p class="text-xs text-gray-400 font-normal">Manage upcoming interactive sessions, Zoom meeting URLs, and duration parameters</p>
                         </div>
                         <div class="flex items-center gap-2">
+
                             <input id="liveSearchInput" onkeyup="filterTable('liveClassesTable', this.value)" type="text" placeholder="Search classes..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-44 font-normal">
                             <button onclick="openCreateLiveClassModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -1550,9 +1686,10 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                         <div>
                             <h2 class="font-semibold text-base text-gray-900">Recorded Study Video Vault</h2>
-                            <p class="text-xs text-gray-400 font-normal">Manage asynchronous class records, playback video links, topic chapters, and views stats</p>
+                            <p class="text-xs text-gray-400 font-normal">Manage asynchronous class records, MP4 video uploads, and topic chapters</p>
                         </div>
                         <div class="flex items-center gap-2">
+
                             <input id="recordedSearchInput" onkeyup="filterTable('recordedClassesTable', this.value)" type="text" placeholder="Search vault..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-44 font-normal">
                             <button onclick="openCreateRecordedClassModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -1568,9 +1705,7 @@
                                     <th class="py-3 px-4">Course / Subject</th>
                                     <th class="py-3 px-4">Topic / Chapter</th>
                                     <th class="py-3 px-4">Video Title</th>
-                                    <th class="py-3 px-4">Duration</th>
-                                    <th class="py-3 px-4">Views count</th>
-                                    <th class="py-3 px-4">Video URL</th>
+                                    <th class="py-3 px-4">Video Playback</th>
                                     <th class="py-3 px-4 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -1581,7 +1716,7 @@
                                             @if($rc->course)
                                                 <div class="font-medium text-gray-900">{{ $rc->course->title }}</div>
                                             @endif
-                                            <div class="text-[10px] text-blue-600 font-medium">{{ $rc->subject->name ?? 'General academic' }}</div>
+                                            <div class="text-[10px] text-blue-600 font-medium">{{ $rc->subject->display_name ?? $rc->subject->name ?? 'General academic' }}</div>
                                         </td>
                                         <td class="py-3.5 px-4 font-normal text-gray-700">{{ $rc->topic_name }}</td>
                                         <td class="py-3.5 px-4">
@@ -1590,13 +1725,18 @@
                                                 <div class="text-[10px] text-gray-400 truncate max-w-xs">{{ $rc->summary }}</div>
                                             @endif
                                         </td>
-                                        <td class="py-3.5 px-4 text-gray-600">{{ $rc->duration_minutes }} Mins</td>
-                                        <td class="py-3.5 px-4 font-medium text-blue-600">{{ $rc->views_count ?? 0 }} Views</td>
                                         <td class="py-3.5 px-4">
-                                            <a href="{{ $rc->video_url }}" target="_blank" class="text-blue-600 hover:underline font-normal flex items-center gap-1 font-mono text-[10px]">
-                                                <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                                <span>Playback</span>
-                                            </a>
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                @if(str_contains(strtolower($rc->video_url), '.mp4') || str_contains($rc->video_url, 'storage/recordings'))
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold text-[9px] uppercase tracking-wider">MP4 File</span>
+                                                @else
+                                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold text-[9px] uppercase tracking-wider">Web Link</span>
+                                                @endif
+                                                <a href="{{ $rc->video_url }}" target="_blank" class="text-blue-600 hover:underline font-normal flex items-center gap-1 font-mono text-[10px]">
+                                                    <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    <span>Playback</span>
+                                                </a>
+                                            </div>
                                         </td>
                                         <td class="py-3.5 px-4 text-right">
                                             <div class="flex items-center justify-end gap-1.5">
@@ -1614,7 +1754,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="7" class="text-center py-6 text-gray-400">No recorded classes found in vault.</td></tr>
+                                    <tr><td colspan="5" class="text-center py-6 text-gray-400">No recorded classes found in vault.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -1635,8 +1775,9 @@
                             <p class="text-xs text-gray-400 font-normal">Create diagnostic tests and academic tasks for all students across the platform (enrolled or pre-enrollment)</p>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
+
                             <input id="adminTaskSearch" onkeyup="filterAdminTasks()" type="text" placeholder="Search task title, topic..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-48 font-normal">
-                            <select id="adminTaskTypeFilter" onchange="filterAdminTasks()" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
+                            <select id="adminTaskTypeFilter" onchange="filterAdminTasks()" class="bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-8 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal min-w-[140px]">
                                 <option value="all">All Types</option>
                                 <option value="Diagnostic Test">Diagnostic Tests</option>
                                 <option value="Assessment">Assessments</option>
@@ -1722,7 +1863,7 @@
                                                 <div class="text-[10px] text-gray-400 font-normal">{{ $task->target_level ?: 'Universal (All Levels)' }}</div>
                                             @else
                                                 <div class="font-medium text-gray-800">{{ $task->course->title ?? 'Class Course' }}</div>
-                                                <div class="text-[10px] text-gray-400 font-normal">{{ $task->course->subject->name ?? 'Course Specific' }}</div>
+                                                <div class="text-[10px] text-gray-400 font-normal">{{ $task->course->subject->display_name ?? $task->course->subject->name ?? 'Course Specific' }}</div>
                                             @endif
                                         </td>
                                         <td class="py-3 px-4">
@@ -1807,10 +1948,11 @@
                             <p class="text-xs text-gray-400 font-normal">Manage quizzes and their multiple-choice questions for each subject/course</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <select id="quizSubjectFilter" onchange="filterQuizzes()" class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-44 font-normal">
+
+                            <select id="quizSubjectFilter" onchange="filterQuizzes()" class="bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-8 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 min-w-[160px] font-normal">
                                 <option value="all">All Subjects</option>
                                 @foreach($allSubjects as $sub)
-                                    <option value="{{ $sub->name }}">{{ $sub->name }}</option>
+                                    <option value="{{ $sub->display_name ?? $sub->name }}">{{ $sub->display_name ?? $sub->name }}</option>
                                 @endforeach
                             </select>
                             <input id="quizSearchInput" onkeyup="filterQuizzes()" type="text" placeholder="Search quiz..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-44 font-normal">
@@ -1835,9 +1977,9 @@
                             </thead>
                             <tbody class="divide-y divide-gray-100">
                                 @forelse($allQuizzes as $qz)
-                                    <tr class="hover:bg-gray-50/60 transition quiz-row" data-subject="{{ $qz->course->subject->name ?? 'General' }}">
+                                    <tr class="hover:bg-gray-50/60 transition target-row quiz-row" data-subject="{{ $qz->course->subject->display_name ?? $qz->course->subject->name ?? 'General' }}">
                                         <td class="py-3.5 px-4 font-medium text-gray-900 quiz-title">{{ $qz->title }}</td>
-                                        <td class="py-3.5 px-4 font-medium text-blue-600">{{ $qz->course->subject->name ?? 'General' }}</td>
+                                        <td class="py-3.5 px-4 font-medium text-blue-600">{{ $qz->course->subject->display_name ?? $qz->course->subject->name ?? 'General' }}</td>
                                         <td class="py-3.5 px-4 text-gray-700 font-normal">{{ $qz->course->title ?? 'N/A' }}</td>
                                         <td class="py-3.5 px-4 font-semibold text-slate-700">{{ $qz->total_questions }}</td>
                                         <td class="py-3.5 px-4">
@@ -1890,128 +2032,527 @@
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB 5: FINANCIAL & PAYMENT MANAGEMENT MODULE                       --}}
         {{-- ══════════════════════════════════════════════════════════════════ --}}
-        <div id="tab-financials" class="admin-tab-content hidden space-y-6" x-data="{
-            finSubtab: 'invoices',
-            showInvoiceModal: false,
-            showFeeModal: false,
-            showSettingsModal: false,
-            showDetailModal: false,
-            showRecordPaymentModal: false,
-            selectedInvoice: null,
-            paymentInvoiceId: null,
-            paymentInvoiceNumber: '',
-            paymentStudentName: '',
-            paymentTotal: 0,
-            paymentPaid: 0,
-            paymentBalance: 0,
-            paymentAmount: 0,
-            newInvStudentName: '{{ addslashes($allStudentsList->first()?->user?->name ?? "") }}',
-            newInvFeeTypeName: 'Tuition Fee',
-            newInvMonthYear: '{{ now()->format("F Y") }}',
-            newInvTitle: 'Tuition Fee {{ now()->format("F Y") }} {{ addslashes($allStudentsList->first()?->user?->name ?? "") }}',
-            newInvSubtotal: '250.00',
-            updateInvoiceTitle() {
-                const feeType = this.newInvFeeTypeName || 'Tuition Fee';
-                const monthYear = this.newInvMonthYear || '{{ now()->format("F Y") }}';
-                const student = this.newInvStudentName || '';
-                this.newInvTitle = `${feeType} ${monthYear} ${student}`.trim();
-            },
-            onStudentChange(event) {
-                const sel = event.target;
-                const opt = sel.options[sel.selectedIndex];
-                this.newInvStudentName = opt.getAttribute('data-name') || '';
-                this.updateInvoiceTitle();
-            },
-            onFeeStructureChange(event) {
-                const sel = event.target;
-                const opt = sel.options[sel.selectedIndex];
-                const feeName = opt.getAttribute('data-name');
-                const feeAmount = opt.getAttribute('data-amount');
-                this.newInvFeeTypeName = feeName || 'Tuition Fee';
-                if (feeAmount) {
-                    this.newInvSubtotal = parseFloat(feeAmount).toFixed(2);
-                }
-                this.updateInvoiceTitle();
-            },
-            openDetail(inv) {
-                this.selectedInvoice = inv;
-                this.showDetailModal = true;
-            },
-            openRecordPayment(inv) {
-                this.paymentInvoiceId = inv.id;
-                this.paymentInvoiceNumber = inv.invoice_number;
-                this.paymentStudentName = inv.student_name;
-                this.paymentTotal = inv.total_amount;
-                this.paymentPaid = inv.amount_paid;
-                this.paymentBalance = inv.outstanding_amount;
-                this.paymentAmount = inv.outstanding_amount;
-                this.showRecordPaymentModal = true;
-            },
-            revealedCredentials: null,
-            isRevealing: false,
-            async revealSecret() {
-                this.isRevealing = true;
-                try {
-                    const res = await fetch('{{ route('admin.settings.finance.reveal') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        @php
+            $firstStudentName = $allStudentsList->first()?->user?->name ?? '';
+            $currentMonthYear = now()->format('F Y');
+            $defaultInvoiceTitle = 'Tuition Fee ' . $currentMonthYear . ($firstStudentName ? ' ' . $firstStudentName : '');
+            $feeAllSubjectsJson = json_encode($allSubjects->where('is_active', true)->map(function($s) {
+                return [
+                    'id'             => $s->id,
+                    'name'           => $s->name,
+                    'form_year'      => $s->form_year ?? '',
+                    'stage'          => $s->stage ?? '',
+                    'level'          => $s->level ?? '',
+                    'display_name'   => $s->display_name ?? $s->name,
+                    'education_type' => $s->education_type ?? '',
+                    'is_required'    => false,
+                ];
+            })->values());
+        @endphp
+        <script>
+            function financialsModuleData() {
+                return {
+                    finSubtab: 'invoices',
+                    showInvoiceModal: false,
+                    showFeeModal: false,
+                    showSettingsModal: false,
+                    showDetailModal: false,
+                    showRecordPaymentModal: false,
+                    selectedInvoice: null,
+                    paymentInvoiceId: null,
+                    paymentInvoiceNumber: '',
+                    paymentStudentName: '',
+                    paymentTotal: 0,
+                    paymentPaid: 0,
+                    paymentBalance: 0,
+                    paymentAmount: 0,
+                    newInvStudentName: @json($firstStudentName),
+                    newInvFeeTypeName: 'Tuition Fee',
+                    newInvMonthYear: @json($currentMonthYear),
+                    newInvTitle: @json($defaultInvoiceTitle),
+                    newInvSubtotal: '250.00',
+                    updateInvoiceTitle() {
+                        const feeType = this.newInvFeeTypeName || 'Tuition Fee';
+                        const monthYear = this.newInvMonthYear || @json($currentMonthYear);
+                        const student = this.newInvStudentName || '';
+                        this.newInvTitle = `${feeType} ${monthYear} ${student}`.trim();
+                    },
+                    onStudentChange(event) {
+                        const sel = event.target;
+                        const opt = sel.options[sel.selectedIndex];
+                        this.newInvStudentName = opt ? (opt.getAttribute('data-name') || '') : '';
+                        this.updateInvoiceTitle();
+                    },
+                    onFeeStructureChange(event) {
+                        const sel = event.target;
+                        const opt = sel.options[sel.selectedIndex];
+                        const feeName = opt ? opt.getAttribute('data-name') : null;
+                        const feeAmount = opt ? opt.getAttribute('data-amount') : null;
+                        this.newInvFeeTypeName = feeName || 'Tuition Fee';
+                        if (feeAmount) {
+                            this.newInvSubtotal = parseFloat(feeAmount).toFixed(2);
                         }
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        this.revealedCredentials = data;
+                        this.updateInvoiceTitle();
+                    },
+                    openDetail(inv) {
+                        this.selectedInvoice = inv;
+                        this.showDetailModal = true;
+                    },
+                    openRecordPayment(inv) {
+                        this.paymentInvoiceId = inv.id;
+                        this.paymentInvoiceNumber = inv.invoice_number;
+                        this.paymentStudentName = inv.student_name;
+                        this.paymentTotal = inv.total_amount;
+                        this.paymentPaid = inv.amount_paid;
+                        this.paymentBalance = inv.outstanding_amount;
+                        this.paymentAmount = inv.outstanding_amount;
+                        this.showRecordPaymentModal = true;
+                    },
+                    revealedCredentials: null,
+                    isRevealing: false,
+                    isTestingBillplz: false,
+                    billplzTestResult: null,
+                    billplzForm: {
+                        api_key: '{{ \App\Models\Setting::get('billplz_api_key', config('services.billplz.api_key', '')) }}',
+                        collection_id: '{{ \App\Models\Setting::get('billplz_collection_id', config('services.billplz.collection_id', '')) }}',
+                        x_signature_key: '{{ \App\Models\Setting::get('billplz_x_signature_key', config('services.billplz.x_signature_key', '')) }}',
+                        sandbox: {{ (\App\Models\Setting::get('billplz_sandbox') !== null ? (filter_var(\App\Models\Setting::get('billplz_sandbox'), FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false') : (config('services.billplz.sandbox', true) ? 'true' : 'false')) }},
+                    },
+                    async revealSecret() {
+                        this.isRevealing = true;
+                        try {
+                            const res = await fetch('{{ route('admin.settings.finance.reveal') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                }
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                                this.revealedCredentials = data;
+                                if (data.billplz_api_key) this.billplzForm.api_key = data.billplz_api_key;
+                                if (data.billplz_collection_id) this.billplzForm.collection_id = data.billplz_collection_id;
+                                if (data.billplz_x_signature_key) this.billplzForm.x_signature_key = data.billplz_x_signature_key;
+                                if (data.billplz_sandbox !== undefined) this.billplzForm.sandbox = data.billplz_sandbox;
+                            }
+                        } catch(e) {
+                            alert('Could not verify credentials.');
+                        } finally {
+                            this.isRevealing = false;
+                        }
+                    },
+                    async testBillplzLiveConnection() {
+                        this.isTestingBillplz = true;
+                        this.billplzTestResult = null;
+                        try {
+                            const res = await fetch('{{ route('admin.settings.billplz.test') }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({
+                                    api_key: this.billplzForm.api_key,
+                                    collection_id: this.billplzForm.collection_id,
+                                    sandbox: this.billplzForm.sandbox
+                                })
+                            });
+                            const data = await res.json();
+                            this.billplzTestResult = data;
+                        } catch(e) {
+                            this.billplzTestResult = {
+                                success: false,
+                                message: 'Failed to contact local server: ' + e.message
+                            };
+                        } finally {
+                            this.isTestingBillplz = false;
+                        }
+                    },
+                    copyToClipboard(text, msg = 'Copied to clipboard!') {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(() => {
+                                alert(msg);
+                            }).catch(() => {
+                                prompt('Copy URL:', text);
+                            });
+                        } else {
+                            prompt('Copy URL:', text);
+                        }
+                    },
+                    feeModalMode: 'create',
+                    feeModalAction: '{{ route('admin.fee-structures.store') }}',
+                    feeForm: {
+                        id: null,
+                        name: '',
+                        amount: '',
+                        frequency: 'monthly',
+                        education_level: 'All',
+                        student_id: '',
+                        is_active: true,
+                        description: '',
+                        package_type: 'individual',
+                        minimum_subjects: 4,
+                        maximum_subjects: 4,
+                        effective_from: '',
+                        effective_until: '',
+                        selected_subjects: [],
+                    },
+                    feeAllSubjects: {!! $feeAllSubjectsJson !!},
+                    filteredFeeSubjects() {
+                        const lvl = (this.feeForm.education_level || 'All').trim();
+                        if (!lvl || lvl === 'All') {
+                            return this.feeAllSubjects;
+                        }
+                        return this.feeAllSubjects.filter(s => {
+                            const fy = (s.form_year || '').trim();
+                            if (fy === lvl) {
+                                return true;
+                            }
+                            if (lvl === 'Year 1–6' || lvl === 'Year 1-6') {
+                                return fy.startsWith('Year ') || s.stage === 'Primary' || s.education_type === 'primary';
+                            }
+                            if (lvl === 'Form 1–3' || lvl === 'Form 1-3') {
+                                return ['Form 1', 'Form 2', 'Form 3'].includes(fy) || s.stage === 'Lower Secondary';
+                            }
+                            if (lvl === 'Form 4–5' || lvl === 'Form 4-5') {
+                                return ['Form 4', 'Form 5'].includes(fy) || s.stage === 'Upper Secondary';
+                            }
+                            if (lvl === 'Form 6') {
+                                return fy === 'Form 6';
+                            }
+                            return fy.toLowerCase() === lvl.toLowerCase();
+                        });
+                    },
+                    onEducationLevelChange() {
+                        if (this.feeForm.education_level && this.feeForm.education_level !== 'All') {
+                            const validIds = new Set(this.filteredFeeSubjects().map(s => s.id));
+                            this.feeForm.selected_subjects = this.feeForm.selected_subjects.filter(s => validIds.has(s.subject_id));
+                        }
+                    },
+                    toggleFeeSubject(id) {
+                        const idx = this.feeForm.selected_subjects.findIndex(s => s.subject_id === id);
+                        if (idx >= 0) {
+                            this.feeForm.selected_subjects.splice(idx, 1);
+                        } else {
+                            this.feeForm.selected_subjects.push({ subject_id: id, is_required: this.feeForm.package_type === 'fixed_bundle' });
+                        }
+                    },
+                    selectAllFeeSubjects() {
+                        const list = this.filteredFeeSubjects();
+                        const current = [...this.feeForm.selected_subjects];
+                        list.forEach(s => {
+                            if (!current.some(sel => sel.subject_id === s.id)) {
+                                current.push({
+                                    subject_id: s.id,
+                                    is_required: this.feeForm.package_type === 'fixed_bundle'
+                                });
+                            }
+                        });
+                        this.feeForm.selected_subjects = current;
+                    },
+                    clearAllFeeSubjects() {
+                        if (!this.feeForm.education_level || this.feeForm.education_level === 'All') {
+                            this.feeForm.selected_subjects = [];
+                        } else {
+                            const filteredIds = new Set(this.filteredFeeSubjects().map(s => s.id));
+                            this.feeForm.selected_subjects = this.feeForm.selected_subjects.filter(s => !filteredIds.has(s.subject_id));
+                        }
+                    },
+                    isFeeSubjectSelected(id) {
+                        return this.feeForm.selected_subjects.some(s => s.subject_id === id);
+                    },
+                    openCreateFeeModal() {
+                        this.feeModalMode = 'create';
+                        this.feeModalAction = '{{ route('admin.fee-structures.store') }}';
+                        this.feeForm = {
+                            id: null,
+                            name: '',
+                            amount: '',
+                            frequency: 'yearly',
+                            education_level: 'All',
+                            student_id: '',
+                            is_active: true,
+                            description: '',
+                            package_type: 'individual',
+                            minimum_subjects: 4,
+                            maximum_subjects: 4,
+                            effective_from: '',
+                            effective_until: '',
+                            selected_subjects: [],
+                        };
+                        this.showFeeModal = true;
+                    },
+                    openEditFeeModal(fs) {
+                        this.feeModalMode = 'edit';
+                        this.feeModalAction = '{{ url('/admin/fee-structures') }}/' + fs.id;
+                        this.feeForm = {
+                            id: fs.id,
+                            name: fs.name || '',
+                            amount: fs.amount ? parseFloat(fs.amount).toFixed(2) : '',
+                            frequency: fs.frequency || 'monthly',
+                            education_level: fs.education_level || 'All',
+                            student_id: fs.student_id ? String(fs.student_id) : '',
+                            is_active: fs.is_active === undefined ? true : Boolean(Number(fs.is_active)),
+                            description: fs.description || '',
+                            package_type: fs.package_type || 'individual',
+                            minimum_subjects: fs.minimum_subjects || 4,
+                            maximum_subjects: fs.maximum_subjects || 4,
+                            effective_from: fs.effective_from ? String(fs.effective_from).substring(0, 10) : '',
+                            effective_until: fs.effective_until ? String(fs.effective_until).substring(0, 10) : '',
+                            selected_subjects: (fs.subjects || []).map(s => ({ subject_id: s.id, is_required: s.pivot ? Boolean(Number(s.pivot.is_required)) : (fs.package_type === 'fixed_bundle') })),
+                        };
+                        this.showFeeModal = true;
                     }
-                } catch(e) {
-                    alert('Could not verify credentials.');
-                } finally {
-                    this.isRevealing = false;
-                }
-            },
-            feeModalMode: 'create',
-            feeModalAction: '{{ route('admin.fee-structures.store') }}',
-            feeForm: {
-                id: null,
-                name: '',
-                amount: '',
-                frequency: 'monthly',
-                education_level: 'All',
-                student_id: '',
-                is_active: true,
-                description: '',
-            },
-            openCreateFeeModal() {
-                this.feeModalMode = 'create';
-                this.feeModalAction = '{{ route('admin.fee-structures.store') }}';
-                this.feeForm = {
-                    id: null,
-                    name: '',
-                    amount: '',
-                    frequency: 'monthly',
-                    education_level: 'All',
-                    student_id: '',
-                    is_active: true,
-                    description: '',
                 };
-                this.showFeeModal = true;
-            },
-            openEditFeeModal(fs) {
-                this.feeModalMode = 'edit';
-                this.feeModalAction = '{{ url('/admin/fee-structures') }}/' + fs.id;
-                this.feeForm = {
-                    id: fs.id,
-                    name: fs.name || '',
-                    amount: fs.amount ? parseFloat(fs.amount).toFixed(2) : '',
-                    frequency: fs.frequency || 'monthly',
-                    education_level: fs.education_level || 'All',
-                    student_id: fs.student_id ? String(fs.student_id) : '',
-                    is_active: fs.is_active === undefined ? true : Boolean(Number(fs.is_active)),
-                    description: fs.description || '',
-                };
-                this.showFeeModal = true;
             }
-        }">
+        </script>
+
+        {{-- ══════════════════════════════════════════════════════════════════ --}}
+        {{-- TAB: ATTENDANCE & ROLL CALL MANAGEMENT                            --}}
+        {{-- ══════════════════════════════════════════════════════════════════ --}}
+        <div id="tab-attendance" class="admin-tab-content hidden space-y-6">
+
+            {{-- ── 1. HEADER & ACTIONS ── --}}
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs">
+                <div>
+                    <h2 class="font-semibold text-lg text-gray-900 tracking-tight">Institutional Attendance Hub</h2>
+                    <p class="text-xs text-gray-400 font-normal">Audit student live-class check-ins, verify teacher roll calls, and configure automated attendance policies.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('admin.export.attendance') }}" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Export CSV</span>
+                    </a>
+                </div>
+            </div>
+
+            {{-- ── 2. SIX ALIGNED KPI SUMMARY CARDS ── --}}
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
+                <div class="admin-kpi-card">
+                    <span class="text-[11px] font-medium text-gray-500 uppercase tracking-wider">Total Records</span>
+                    <h3 class="text-2xl text-gray-900 font-semibold tracking-tight my-1">{{ number_format($attendanceTotalRecords ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">Logged Sessions</span>
+                </div>
+
+                <div class="admin-kpi-card border-l-4 border-l-emerald-500">
+                    <span class="text-[11px] font-medium text-emerald-600 uppercase tracking-wider">Present (On Time)</span>
+                    <h3 class="text-2xl text-emerald-700 font-semibold tracking-tight my-1">{{ number_format($attendanceAttendedCount ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">{{ ($attendanceTotalRecords ?? 0) > 0 ? round((($attendanceAttendedCount ?? 0) / $attendanceTotalRecords) * 100, 1) : 0 }}% on-time</span>
+                </div>
+
+                <div class="admin-kpi-card border-l-4 border-l-amber-500">
+                    <span class="text-[11px] font-medium text-amber-600 uppercase tracking-wider">Late Arrivals</span>
+                    <h3 class="text-2xl text-amber-700 font-semibold tracking-tight my-1">{{ number_format($attendanceLateCount ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">&gt; {{ $attendanceLateThreshold ?? 15 }}m threshold</span>
+                </div>
+
+                <div class="admin-kpi-card border-l-4 border-l-rose-500">
+                    <span class="text-[11px] font-medium text-rose-600 uppercase tracking-wider">Absent</span>
+                    <h3 class="text-2xl text-rose-700 font-semibold tracking-tight my-1">{{ number_format($attendanceAbsentCount ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">Unexcused</span>
+                </div>
+
+                <div class="admin-kpi-card border-l-4 border-l-blue-500">
+                    <span class="text-[11px] font-medium text-blue-600 uppercase tracking-wider">Excused</span>
+                    <h3 class="text-2xl text-blue-700 font-semibold tracking-tight my-1">{{ number_format($attendanceExcusedCount ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">Medical / Official</span>
+                </div>
+
+                <div class="admin-kpi-card border-l-4 border-l-slate-400">
+                    <span class="text-[11px] font-medium text-slate-600 uppercase tracking-wider">Pending Audit</span>
+                    <h3 class="text-2xl text-slate-800 font-semibold tracking-tight my-1">{{ number_format($attendancePendingCount ?? 0) }}</h3>
+                    <span class="text-[11px] text-gray-400 font-normal">Needs Review</span>
+                </div>
+            </div>
+
+            {{-- ── 3. PENDING APPEALS ALERT (IF ANY) ── --}}
+            @if(isset($pendingAttendanceCorrections) && $pendingAttendanceCorrections->isNotEmpty())
+                <div class="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            <h4 class="text-xs font-semibold text-amber-900 uppercase tracking-wider">Student Attendance Appeals ({{ $pendingAttendanceCorrections->count() }} Pending)</h4>
+                        </div>
+                        <span class="text-[11px] text-amber-700 font-normal">Requires instructor review in Teacher Workspace</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($pendingAttendanceCorrections as $pc)
+                            <div class="p-3 bg-white rounded-xl border border-amber-200/80 shadow-2xs space-y-1">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="font-medium text-gray-900">{{ $pc->student->user->name ?? 'Student' }}</span>
+                                    <span class="text-[10px] text-amber-700 font-medium uppercase px-2 py-0.5 rounded bg-amber-50">{{ $pc->requested_status }}</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 truncate font-normal">{{ $pc->liveClass->title ?? 'Session' }}</p>
+                                <p class="text-[10px] text-gray-400 italic truncate font-normal">"{{ $pc->reason }}"</p>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            {{-- ── 4. AUDIT TRAIL DATA TABLE ── --}}
+            <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden p-5 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-semibold text-base text-gray-900">Session Attendance &amp; Roll Call Logs</h3>
+                        <p class="text-xs text-gray-400 font-normal">Live student join events with timestamps, roll call verifications, and audit remarks</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+
+                        <select id="attendanceStatusFilter" onchange="filterAttendanceTable()" class="bg-gray-50 border border-gray-200 rounded-xl pl-3 pr-8 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
+                            <option value="all">All Statuses</option>
+                            <option value="attended">Present</option>
+                            <option value="late">Late</option>
+                            <option value="absent">Absent</option>
+                            <option value="excused">Excused</option>
+                            <option value="pending_verification">Pending Audit</option>
+                        </select>
+                        <input id="attendanceSearchInput" onkeyup="filterTable('attendanceTable', this.value)" type="text" placeholder="Search student, class, teacher..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-52 font-normal">
+                        <a href="{{ route('admin.export.attendance') }}" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0">
+                            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                            <span>CSV</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto admin-scrollbar">
+                    <table class="w-full text-left text-xs" id="attendanceTable">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 font-medium uppercase text-[10px] bg-gray-50/50">
+                                <th class="py-3 px-4">Student</th>
+                                <th class="py-3 px-4">Class / Course</th>
+                                <th class="py-3 px-4">Teacher</th>
+                                <th class="py-3 px-4">Scheduled</th>
+                                <th class="py-3 px-4">Joined At</th>
+                                <th class="py-3 px-4">Status</th>
+                                <th class="py-3 px-4">Verification</th>
+                                <th class="py-3 px-4">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @forelse($allAttendances as $att)
+                                @php
+                                    $stName = $att->student?->user?->name ?? 'Student #' . $att->student_id;
+                                    $stEmail = $att->student?->user?->email ?? '';
+                                    $initials = collect(explode(' ', $stName))->filter()->take(2)->map(fn($w) => mb_substr($w, 0, 1))->join('');
+                                    if (!$initials) $initials = 'ST';
+                                @endphp
+                                <tr class="hover:bg-gray-50/60 transition target-row attendance-row" data-status="{{ $att->status }}">
+                                    <td class="py-3.5 px-4">
+                                        <div class="flex items-center gap-2.5">
+                                            <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                                {{ $initials }}
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 leading-tight">{{ $stName }}</p>
+                                                <p class="text-[10px] text-gray-400 font-mono">{{ $stEmail }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 px-4">
+                                        <p class="font-medium text-gray-800 leading-tight">{{ $att->liveClass?->title ?? 'Session' }}</p>
+                                        <p class="text-[10px] text-blue-600 font-normal">{{ $att->liveClass?->course?->subject?->name ?? 'General' }}</p>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-gray-700 font-normal">
+                                        {{ $att->liveClass?->teacher?->user?->name ?? 'Assigned Instructor' }}
+                                    </td>
+                                    <td class="py-3.5 px-4 text-gray-600 font-normal whitespace-nowrap">
+                                        {{ $att->liveClass?->scheduled_at ? $att->liveClass->scheduled_at->format('d M Y, g:i A') : '—' }}
+                                    </td>
+                                    <td class="py-3.5 px-4 whitespace-nowrap font-normal">
+                                        @if($att->joined_at)
+                                            <span class="text-gray-800 font-medium">{{ $att->joined_at->format('g:i:s A') }}</span>
+                                        @else
+                                            <span class="text-gray-400 italic">Not joined</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 whitespace-nowrap">
+                                        @if($att->status === 'attended')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60">Present</span>
+                                        @elseif($att->status === 'late')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60">Late</span>
+                                        @elseif($att->status === 'absent')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200/60">Absent</span>
+                                        @elseif($att->status === 'excused')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200/60">Excused</span>
+                                        @else
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60">Pending</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 whitespace-nowrap font-normal">
+                                        @if($att->verified_at)
+                                            <p class="font-medium text-gray-800 leading-tight">{{ $att->verifier?->name ?? 'Teacher' }}</p>
+                                            <p class="text-[10px] text-gray-400">{{ $att->verified_at->format('d M, g:i A') }}</p>
+                                        @else
+                                            <span class="text-[10px] text-gray-400 italic">Unverified</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 text-gray-500 max-w-[180px] truncate font-normal" title="{{ $att->remarks }}">
+                                        {{ $att->remarks ?: '—' }}
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="py-12 text-center text-gray-400 font-normal">
+                                        No attendance records found.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- ── 5. INSTITUTIONAL POLICY SETTINGS ── --}}
+            <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-5">
+                <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+                    <div>
+                        <h3 class="font-semibold text-base text-gray-900">Institutional Attendance Policies</h3>
+                        <p class="text-xs text-gray-400 font-normal">Configure global parameters governing student check-ins, late thresholds, and calculation rules</p>
+                    </div>
+                    <span class="text-[10px] font-medium text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">Admin Policy</span>
+                </div>
+
+                <form action="{{ route('admin.settings.attendance') }}" method="POST" class="space-y-4 max-w-2xl">
+                    @csrf
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Late Threshold (Minutes)</label>
+                            <input type="number" name="late_threshold_minutes" min="1" max="120" value="{{ $attendanceLateThreshold ?? 15 }}" required
+                                   class="w-full text-xs p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-normal">
+                            <p class="text-[10px] text-gray-400 mt-1 font-normal">Students joining after this many minutes from scheduled start are flagged as Late.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1">Early Join Window (Minutes)</label>
+                            <input type="number" name="early_join_window_minutes" min="0" max="120" value="{{ $attendanceEarlyJoinWindow ?? 15 }}" required
+                                   class="w-full text-xs p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-normal">
+                            <p class="text-[10px] text-gray-400 mt-1 font-normal">Window prior to scheduled class time when students can click Join Class.</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-1">
+                        <label class="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer">
+                            <input type="checkbox" name="excused_in_denominator" value="1" {{ (!empty($attendanceExcusedInDenominator)) ? 'checked' : '' }} class="mt-0.5 rounded text-blue-600">
+                            <div>
+                                <span class="font-medium text-xs text-gray-800 block">Include Excused Absences in Attendance Denominator</span>
+                                <span class="text-[11px] text-gray-500 font-normal">If unchecked, officially excused absences are omitted from both the numerator and denominator so the student's rate is not penalized.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer">
+                            Update Attendance Policies
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
+        <div id="tab-financials" class="admin-tab-content hidden space-y-6" x-data="financialsModuleData()">
             {{-- Finance Sub-Navigation Bar --}}
             <div class="bg-white rounded-2xl border border-gray-200/80 p-2 shadow-xs flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
@@ -2022,7 +2563,10 @@
                     <button type="button" @click="finSubtab = 'verifications'" :class="finSubtab === 'verifications' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'" class="px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
                         <span>Payment Verification</span>
                         @php
-                            $actionableFinCount = $allInvoices->whereIn('status', ['partially_paid', 'issued', 'overdue'])->count();
+                            $actionableFinCount = \App\Models\Payment::where('status', 'pending')->count()
+                                + \App\Models\Invoice::where('status', 'pending_verification')
+                                    ->whereDoesntHave('payments', fn($q) => $q->where('status', 'pending'))
+                                    ->count();
                         @endphp
                         @if($actionableFinCount > 0)
                             <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-500 text-white">{{ $actionableFinCount }}</span>
@@ -2062,7 +2606,10 @@
                         <h3 class="font-semibold text-base text-gray-900">Student Tuition Invoices</h3>
                         <p class="text-xs text-gray-400">All issued billing invoices with live payment tracking, partial payment authorization &amp; reminder logs</p>
                     </div>
-                    <input id="invoiceSearchInput" onkeyup="filterTable('invoicesTable', this.value)" type="text" placeholder="Search invoice number, student..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-300 w-52 font-normal">
+                    <div class="flex items-center gap-2">
+
+                        <input id="invoiceSearchInput" onkeyup="filterTable('invoicesTable', this.value)" type="text" placeholder="Search invoice number, student..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-300 w-52 font-normal">
+                    </div>
                 </div>
 
                 <div class="overflow-x-auto admin-scrollbar">
@@ -2267,7 +2814,10 @@
                         <h3 class="font-semibold text-base text-gray-900">Payment Verification &amp; Status Management</h3>
                         <p class="text-xs text-gray-400">Manage payment status (Partially Paid, Full Paid, Issued, Overdue, Cancelled) and view receipts</p>
                     </div>
-                    <input id="verificationsSearchInput" onkeyup="filterTable('verificationsTable', this.value)" type="text" placeholder="Search invoice #, student, ref..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-300 w-56 font-normal">
+                    <div class="flex items-center gap-2">
+
+                        <input id="verificationsSearchInput" onkeyup="filterTable('verificationsTable', this.value)" type="text" placeholder="Search invoice #, student, ref..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-300 w-56 font-normal">
+                    </div>
                 </div>
 
                 @if($allInvoices->isNotEmpty())
@@ -2572,7 +3122,7 @@
                         <div class="border border-gray-200/80 rounded-2xl p-5 bg-white space-y-3.5 flex flex-col justify-between hover:shadow-md hover:border-blue-200 transition-all duration-200">
                             <div class="space-y-2.5">
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
-                                    <div class="flex items-center gap-1.5">
+                                 <div class="flex items-center gap-1.5 flex-wrap">
                                         @if($fs->is_active)
                                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -2585,6 +3135,15 @@
                                             </span>
                                         @endif
                                         <span class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider border border-blue-100/60">{{ str_replace('_', ' ', $fs->frequency) }}</span>
+                                        @if($fs->package_type && $fs->package_type !== 'individual')
+                                            @php
+                                                $pkgColors = ['fixed_bundle'=>'bg-amber-50 text-amber-700 border-amber-200', 'pick_n'=>'bg-indigo-50 text-indigo-700 border-indigo-200', 'tiered'=>'bg-rose-50 text-rose-700 border-rose-200', 'custom'=>'bg-slate-100 text-slate-700 border-slate-200'];
+                                                $pkgLabels = ['fixed_bundle'=>'Fixed Bundle', 'pick_n'=>'Pick-N Bundle', 'tiered'=>'Tiered', 'custom'=>'Custom'];
+                                            @endphp
+                                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border {{ $pkgColors[$fs->package_type] ?? 'bg-gray-100 text-gray-600 border-gray-200' }}">
+                                                {{ $pkgLabels[$fs->package_type] ?? $fs->package_type }}
+                                            </span>
+                                        @endif
                                     </div>
                                     <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">{{ $fs->education_level }}</span>
                                 </div>
@@ -2593,6 +3152,74 @@
                                     <h4 class="font-heading font-black text-sm text-gray-900">{{ $fs->name }}</h4>
                                     <p class="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{{ $fs->description ?? 'Standard tuition curriculum program' }}</p>
                                 </div>
+
+                                {{-- Offer validity period --}}
+                                @if($fs->effective_from || $fs->effective_until)
+                                    @php
+                                        $now = now()->startOfDay();
+                                        $from = $fs->effective_from ? \Carbon\Carbon::parse($fs->effective_from)->startOfDay() : null;
+                                        $until = $fs->effective_until ? \Carbon\Carbon::parse($fs->effective_until)->endOfDay() : null;
+                                        $isExpired = $until && $now->gt($until);
+                                        $isUpcoming = $from && $now->lt($from);
+                                    @endphp
+                                    <div class="flex items-center justify-between gap-1.5 text-[10px] {{ $isExpired ? 'text-rose-700 bg-rose-50 border-rose-200' : ($isUpcoming ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200') }} px-2 py-1 rounded-lg border font-medium">
+                                        <div class="flex items-center gap-1 truncate">
+                                            <span>📅</span>
+                                            <span class="truncate">
+                                                Offer: 
+                                                {{ $from ? $from->format('d M Y') : 'Now' }}
+                                                –
+                                                {{ $until ? $until->format('d M Y') : 'Next' }}
+                                            </span>
+                                        </div>
+                                        @if($isExpired)
+                                            <span class="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-rose-200/80 text-rose-800 rounded shrink-0">Expired</span>
+                                        @elseif($isUpcoming)
+                                            <span class="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-amber-200/80 text-amber-800 rounded shrink-0">Upcoming</span>
+                                        @else
+                                            <span class="font-bold uppercase text-[9px] px-1.5 py-0.5 bg-emerald-200/80 text-emerald-800 rounded shrink-0">Active</span>
+                                        @endif
+                                    </div>
+                                @endif
+
+                                {{-- Package subjects chips & Pick-N constraint --}}
+                                @if($fs->package_type === 'pick_n')
+                                    <div class="p-2.5 bg-indigo-50/70 border border-indigo-200/80 rounded-xl space-y-1.5">
+                                        <div class="flex items-center justify-between text-[11px] font-bold text-indigo-900">
+                                            <span>🎯 Student Selection:</span>
+                                            <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-mono text-[10px]">
+                                                {{ $fs->minimum_subjects == $fs->maximum_subjects ? ($fs->maximum_subjects ?? 4) . ' Subjects' : (($fs->minimum_subjects ?? 1) . ' - ' . ($fs->maximum_subjects ?? 4) . ' Subjects') }}
+                                            </span>
+                                        </div>
+                                        @if($fs->subjects->count() > 0)
+                                            <p class="text-[10px] text-indigo-700">Students can choose from {{ $fs->subjects->count() }} available subjects.</p>
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach($fs->subjects->take(6) as $sub)
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white text-indigo-800 border border-indigo-200 shadow-2xs">{{ $sub->display_name ?? $sub->name }}</span>
+                                                @endforeach
+                                                @if($fs->subjects->count() > 6)
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">+{{ $fs->subjects->count() - 6 }} lagi</span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <p class="text-[10px] text-indigo-600 italic">Students can choose any active subject for {{ $fs->education_level }}.</p>
+                                        @endif
+                                    </div>
+                                @elseif($fs->package_type === 'fixed_bundle')
+                                    <div class="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-1.5">
+                                        <div class="flex items-center justify-between text-[11px] font-bold text-amber-900">
+                                            <span>Subject Remains Included:</span>
+                                            <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-mono text-[10px]">{{ $fs->subjects->count() }} Subjects</span>
+                                        </div>
+                                        <div class="flex flex-wrap gap-1">
+                                            @forelse($fs->subjects as $sub)
+                                                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-white text-amber-900 border border-amber-200 shadow-2xs">{{ $sub->display_name ?? $sub->name }}</span>
+                                            @empty
+                                                <span class="text-[10px] text-amber-600 italic">No subjects have been assigned yet. Please edit to select subjects.</span>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                @endif
 
                                 {{-- Targeted Student Pill --}}
                                 @if($fs->student_id && $fs->student)
@@ -2614,7 +3241,11 @@
                                     <span class="text-[11px] text-gray-400 font-normal">/ {{ $fs->frequency }}</span>
                                 </div>
                                 <div class="flex items-center gap-1.5">
-                                    <button type="button" @click="openEditFeeModal({{ json_encode($fs) }})" title="Edit fee plan" class="px-2.5 py-1.5 rounded-lg border border-gray-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1">
+                                    @php
+                                        $fsWithSubjects = \App\Models\FeeStructure::with('subjects')->find($fs->id);
+                                        $fsJson = array_merge($fs->toArray(), ['subjects' => $fsWithSubjects?->subjects->map(fn($s)=>['id'=>$s->id,'pivot'=>['is_required'=>$s->pivot->is_required??false]])->toArray() ?? []]);
+                                    @endphp
+                                    <button type="button" @click="openEditFeeModal({{ json_encode($fsJson) }})" title="Edit fee plan" class="px-2.5 py-1.5 rounded-lg border border-gray-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                         <span>Edit</span>
                                     </button>
@@ -2662,6 +3293,7 @@
                         <p class="text-xs text-gray-400">All {{ $allPayments->count() }} real database payment transactions</p>
                     </div>
                     <div class="flex items-center gap-2">
+
                         <input id="paymentSearchInput" onkeyup="filterTable('paymentsTable', this.value)" type="text" placeholder="Search reference, payer, status..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-52 font-normal">
                         <a href="{{ route('admin.export.payments') }}" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 shrink-0">
                             <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -2898,46 +3530,163 @@
                     </form>
                 </div>
 
-                {{-- Sensitive Payment Gateway Credentials (Encrypted / Admin Only) --}}
-                <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-4">
-                    <div>
-                        <span class="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-lg text-[10px] font-bold uppercase tracking-wider">Confidential</span>
-                        <h3 class="font-heading font-black text-base text-gray-900 mt-1">Payment Gateway Credentials</h3>
-                        <p class="text-xs text-gray-400">Integrated merchant keys used for online FPX checkout processing</p>
-                    </div>
-
-                    <div class="p-4 bg-slate-900 text-white rounded-2xl space-y-3 text-xs">
+                {{-- Billplz FPX Payment Gateway Configuration --}}
+                <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-5">
+                    <div class="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
                         <div>
-                            <p class="text-[10px] text-gray-400 font-mono uppercase">Gateway Provider</p>
-                            <p class="font-bold text-emerald-400">{{ strtoupper(\App\Models\Setting::get('gateway_provider', 'mock_fpx')) }} (Sandboxed Live FPX)</p>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                                    Official Malaysian Gateway
+                                </span>
+                                <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"
+                                      :class="billplzForm.sandbox ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-blue-50 text-blue-700 border border-blue-200'">
+                                    <span x-text="billplzForm.sandbox ? 'Sandbox / Staging' : 'Production Live'"></span>
+                                </span>
+                            </div>
+                            <h3 class="font-heading font-black text-base text-gray-900 mt-1.5 flex items-center gap-2">
+                                <span>Billplz FPX Gateway Settings</span>
+                            </h3>
+                            <p class="text-xs text-gray-400">Configure your Billplz merchant keys, collection, and automated FPX webhook listeners.</p>
                         </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 font-mono uppercase">Merchant ID</p>
-                            <p class="font-mono text-gray-200">{{ \App\Models\Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892') }}</p>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 font-mono uppercase">API Secret Key</p>
-                            <template x-if="revealedCredentials">
-                                <p class="font-mono text-amber-300 font-bold break-all" x-text="revealedCredentials.api_key"></p>
-                            </template>
-                            <template x-if="!revealedCredentials">
-                                <p class="font-mono text-gray-400">••••••••••••••••••••••••••••••••</p>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="pt-2 flex items-center justify-between">
-                        <span class="text-[11px] text-gray-400 italic">Access is recorded in audit logs.</span>
                         <template x-if="!revealedCredentials">
-                            <button type="button" @click="revealSecret()" :disabled="isRevealing" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-xs transition cursor-pointer shadow-xs">
-                                <span x-text="isRevealing ? 'Verifying...' : 'Reveal Credentials'"></span>
+                            <button type="button" @click="revealSecret()" :disabled="isRevealing"
+                                    class="shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-[11px] transition cursor-pointer shadow-xs flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <span x-text="isRevealing ? 'Verifying...' : 'Reveal Saved Keys'"></span>
                             </button>
                         </template>
                         <template x-if="revealedCredentials">
-                            <button type="button" @click="revealedCredentials = null" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-bold text-xs transition cursor-pointer">
-                                Mask Credentials
+                            <button type="button" @click="revealedCredentials = null"
+                                    class="shrink-0 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-bold text-[11px] transition cursor-pointer">
+                                Mask Secrets
                             </button>
                         </template>
+                    </div>
+
+                    {{-- Configuration Form --}}
+                    <form method="POST" action="{{ route('admin.settings.finance') }}" class="space-y-4 text-xs">
+                        @csrf
+                        <input type="hidden" name="is_gateway_form" value="1">
+                        <input type="hidden" name="gateway_provider" value="billplz">
+
+                        {{-- Mode Selector (Sandbox vs Live) --}}
+                        <div class="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-gray-50/70">
+                            <div>
+                                <p class="font-bold text-gray-800">Sandbox / Staging Environment</p>
+                                <p class="text-[11px] text-gray-500">Route payments through Billplz Sandbox (billplz-sandbox.com) with simulated FPX banks</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="billplz_sandbox" value="1" x-model="billplzForm.sandbox" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="font-bold text-gray-700">Billplz API Secret Key</label>
+                                <span class="text-[10px] text-gray-400 font-mono">Found in Billplz Settings &gt; Keys &amp; Integration</span>
+                            </div>
+                            <input :type="revealedCredentials ? 'text' : 'password'"
+                                   name="billplz_api_key"
+                                   x-model="billplzForm.api_key"
+                                   placeholder="e.g. 5240c061-0000-0000-0000-000000000000"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="font-bold text-gray-700">Billing Collection ID</label>
+                                </div>
+                                <input type="text"
+                                       name="billplz_collection_id"
+                                       x-model="billplzForm.collection_id"
+                                       placeholder="e.g. in50b8km"
+                                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-emerald-500">
+                                <p class="text-[10px] text-gray-400 mt-1">Target collection where bills will be created.</p>
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="font-bold text-gray-700">X-Signature Key</label>
+                                </div>
+                                <input :type="revealedCredentials ? 'text' : 'password'"
+                                       name="billplz_x_signature_key"
+                                       x-model="billplzForm.x_signature_key"
+                                       placeholder="e.g. S-xxxxxxxxxxxxxxxx"
+                                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 font-mono outline-none focus:ring-2 focus:ring-emerald-500">
+                                <p class="text-[10px] text-gray-400 mt-1">Verifies authenticity of incoming webhooks &amp; redirect callbacks.</p>
+                            </div>
+                        </div>
+
+                        {{-- Connection Test Result Alert Box --}}
+                        <template x-if="billplzTestResult">
+                            <div class="p-3.5 rounded-xl border text-xs"
+                                 :class="billplzTestResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'">
+                                <div class="flex items-start gap-2">
+                                    <template x-if="billplzTestResult.success">
+                                        <svg class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                    </template>
+                                    <template x-if="!billplzTestResult.success">
+                                        <svg class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                    </template>
+                                    <div class="space-y-1">
+                                        <p class="font-bold" x-text="billplzTestResult.message"></p>
+                                        <template x-if="billplzTestResult.details">
+                                            <div class="text-[11px] opacity-90 space-y-0.5 font-mono">
+                                                <p x-show="billplzTestResult.details.collection_title">Collection: <span class="font-semibold" x-text="billplzTestResult.details.collection_title"></span></p>
+                                                <p x-show="billplzTestResult.details.collection_status">Status: <span class="uppercase font-semibold" x-text="billplzTestResult.details.collection_status"></span></p>
+                                                <p x-show="billplzTestResult.details.endpoint">Endpoint: <span x-text="billplzTestResult.details.endpoint"></span></p>
+                                                <p x-show="billplzTestResult.details.error">Error: <span x-text="billplzTestResult.details.error"></span></p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        {{-- Action Buttons --}}
+                        <div class="pt-2 flex flex-wrap items-center justify-between gap-2">
+                            <button type="button"
+                                    @click="testBillplzLiveConnection()"
+                                    :disabled="isTestingBillplz"
+                                    class="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-2xs">
+                                <svg x-show="!isTestingBillplz" class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <svg x-show="isTestingBillplz" class="animate-spin w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                <span x-text="isTestingBillplz ? 'Connecting to Billplz...' : 'Test Connection Live'"></span>
+                            </button>
+
+                            <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-xs transition cursor-pointer">
+                                Save Billplz Credentials
+                            </button>
+                        </div>
+                    </form>
+
+                    {{-- Webhook & Callback URLs reference --}}
+                    <div class="border-t border-gray-100 pt-4 space-y-3">
+                        <p class="text-[11px] font-bold text-gray-700 uppercase tracking-wider">Billplz Integration Endpoints</p>
+                        <div class="space-y-2 text-[11px]">
+                            <div class="p-2.5 bg-slate-900 text-gray-200 rounded-xl font-mono flex items-center justify-between gap-2">
+                                <div class="truncate">
+                                    <span class="text-[10px] text-emerald-400 font-bold block uppercase">Webhook (Callback URL)</span>
+                                    <span class="text-xs break-all">{{ route('billing.billplz.webhook') }}</span>
+                                </div>
+                                <button type="button" @click="copyToClipboard('{{ route('billing.billplz.webhook') }}', 'Webhook URL copied!')" class="shrink-0 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition">
+                                    Copy
+                                </button>
+                            </div>
+
+                            <div class="p-2.5 bg-slate-900 text-gray-200 rounded-xl font-mono flex items-center justify-between gap-2">
+                                <div class="truncate">
+                                    <span class="text-[10px] text-blue-400 font-bold block uppercase">Redirect URL (Return URL)</span>
+                                    <span class="text-xs break-all">{{ route('billing.billplz.return') }}</span>
+                                </div>
+                                <button type="button" @click="copyToClipboard('{{ route('billing.billplz.return') }}', 'Return URL copied!')" class="shrink-0 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold cursor-pointer transition">
+                                    Copy
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-400">All incoming webhooks are validated with SHA256 HMAC X-Signature. Double-receipt generation is blocked by automated idempotency keys.</p>
                     </div>
                 </div>
 
@@ -3313,7 +4062,7 @@
 
             {{-- ── MODAL: CREATE / EDIT FEE STRUCTURE ── --}}
             <div x-show="showFeeModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-                <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-lg p-6 space-y-3.5" @click.away="showFeeModal = false">
+                <div class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 space-y-3.5 max-h-[90vh] overflow-y-auto" @click.away="showFeeModal = false">
                     <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                         <h3 class="font-bold text-sm text-gray-900" x-text="feeModalMode === 'edit' ? 'Edit Academic Fee Structure' : 'Create Academic Fee Structure'"></h3>
                         <button type="button" @click="showFeeModal = false" class="text-gray-400 hover:text-gray-600 font-bold text-sm cursor-pointer">✕</button>
@@ -3325,6 +4074,7 @@
                             <input type="hidden" name="_method" value="PUT">
                         </template>
 
+                        {{-- Row 1: Name + Active toggle --}}
                         <div>
                             <div class="flex items-center justify-between mb-1">
                                 <label class="block font-semibold text-gray-700">Fee Plan Name</label>
@@ -3334,13 +4084,14 @@
                                 </label>
                                 <input type="hidden" name="is_active" :value="feeForm.is_active ? 1 : 0">
                             </div>
-                            <input type="text" name="name" x-model="feeForm.name" placeholder="e.g. SPM Intensive Revision Term Fee" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
+                            <input type="text" name="name" x-model="feeForm.name" placeholder="e.g. Pakej Kombo Gemilang 4 Subjek (Tahunan)" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
                         </div>
 
+                        {{-- Row 2: Amount + Billing Frequency --}}
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block font-semibold text-gray-700 mb-1">Amount (RM)</label>
-                                <input type="number" step="0.01" name="amount" x-model="feeForm.amount" placeholder="250.00" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400 font-mono">
+                                <input type="number" step="0.01" name="amount" x-model="feeForm.amount" placeholder="1980.00" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400 font-mono">
                             </div>
                             <div>
                                 <label class="block font-semibold text-gray-700 mb-1">Billing Frequency</label>
@@ -3353,28 +4104,107 @@
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block font-semibold text-gray-700 mb-1">Education Level</label>
-                            <select name="education_level" x-model="feeForm.education_level" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
-                                <option value="All">All Levels</option>
-                                <option value="Year 1–6">Primary School (Year 1–6)</option>
-                                <option value="Year 1">Year 1</option>
-                                <option value="Year 2">Year 2</option>
-                                <option value="Year 3">Year 3</option>
-                                <option value="Year 4">Year 4</option>
-                                <option value="Year 5">Year 5</option>
-                                <option value="Year 6">Year 6</option>
-                                <option value="Form 1–3">Form 1–3</option>
-                                <option value="Form 1">Form 1</option>
-                                <option value="Form 2">Form 2</option>
-                                <option value="Form 3">Form 3</option>
-                                <option value="Form 4–5">Form 4–5</option>
-                                <option value="Form 4">Form 4</option>
-                                <option value="Form 5">Form 5</option>
-                                <option value="Form 6">Form 6 / Pre-University</option>
-                            </select>
+                        {{-- Row 3: Education Level + Package Type --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Education Level</label>
+                                <select name="education_level" x-model="feeForm.education_level" @change="onEducationLevelChange()" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
+                                    <option value="All">All Levels</option>
+                                    <option value="Year 1–6">Primary School (Year 1–6)</option>
+                                    <option value="Year 1">Year 1</option>
+                                    <option value="Year 2">Year 2</option>
+                                    <option value="Year 3">Year 3</option>
+                                    <option value="Year 4">Year 4</option>
+                                    <option value="Year 5">Year 5</option>
+                                    <option value="Year 6">Year 6</option>
+                                    <option value="Form 1–3">Form 1–3</option>
+                                    <option value="Form 1">Form 1</option>
+                                    <option value="Form 2">Form 2</option>
+                                    <option value="Form 3">Form 3</option>
+                                    <option value="Form 4–5">Form 4–5</option>
+                                    <option value="Form 4">Form 4</option>
+                                    <option value="Form 5">Form 5</option>
+                                    <option value="Form 6">Form 6 / Pre-University</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Package Type</label>
+                                <select name="package_type" x-model="feeForm.package_type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
+                                    <option value="individual">Standard (Per Subject)</option>
+                                    <option value="fixed_bundle">Fixed Bundle</option>
+                                    <option value="pick_n">Pick-N Bundle</option>
+                                    <option value="tiered">Tiered</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
                         </div>
 
+                        {{-- Pick-N: min/max subjects --}}
+                        <div x-show="feeForm.package_type === 'pick_n' || feeForm.package_type === 'tiered'" class="grid grid-cols-2 gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                            <div>
+                                <label class="block font-semibold text-indigo-800 mb-1">Minimum Subjects</label>
+                                <input type="number" name="minimum_subjects" x-model="feeForm.minimum_subjects" min="1" max="20" placeholder="4" class="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-400 font-mono">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-indigo-800 mb-1">Maximum Subjects</label>
+                                <input type="number" name="maximum_subjects" x-model="feeForm.maximum_subjects" min="1" max="20" placeholder="4" class="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-indigo-400 font-mono">
+                            </div>
+                        </div>
+
+                        {{-- Subject Picker (shown for fixed_bundle & pick_n) --}}
+                        <div x-show="feeForm.package_type === 'fixed_bundle' || feeForm.package_type === 'pick_n'">
+                            <div class="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                                <label class="block font-semibold text-gray-700">
+                                    <span x-show="feeForm.package_type === 'fixed_bundle'">Select Subjects Included in the Bundle</span>
+                                    <span x-show="feeForm.package_type === 'pick_n'">Subjects Available for Student Selection</span>
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" @click="selectAllFeeSubjects()" class="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer">Select All</button>
+                                    <span class="text-gray-300 text-xs">|</span>
+                                    <button type="button" @click="clearAllFeeSubjects()" class="text-[10px] text-gray-500 hover:text-gray-700 font-semibold cursor-pointer">Deselect</button>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700" x-text="`${feeForm.selected_subjects.length} selected`"></span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-52 overflow-y-auto border border-gray-200 rounded-xl p-2.5 bg-gray-50">
+                                <template x-for="subj in filteredFeeSubjects()" :key="subj.id">
+                                    <label class="flex items-center gap-2 p-2 rounded-lg cursor-pointer hover:bg-white border border-transparent transition-all select-none"
+                                           :class="isFeeSubjectSelected(subj.id) ? 'bg-white border-blue-300 shadow-xs' : 'hover:border-gray-200'">
+                                        <input type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-1 focus:ring-blue-500 cursor-pointer shrink-0"
+                                               :checked="isFeeSubjectSelected(subj.id)"
+                                               @change="toggleFeeSubject(subj.id)">
+                                        <span class="text-[11px] font-semibold text-gray-800 leading-tight" x-text="subj.form_year ? `${subj.name} - ${subj.form_year}` : subj.name"></span>
+                                    </label>
+                                </template>
+                                <template x-if="filteredFeeSubjects().length === 0">
+                                    <div class="col-span-full py-6 text-center text-xs text-gray-400">
+                                        <p class="font-medium">No subjects found for <span class="font-bold text-gray-700" x-text="feeForm.education_level"></span>.</p>
+                                        <p class="text-[11px] text-gray-400 mt-0.5">Please choose another Education Level or "All Levels".</p>
+                                    </div>
+                                </template>
+                            </div>
+                            {{-- Hidden inputs for selected subjects --}}
+                            <template x-for="(sel, idx) in feeForm.selected_subjects" :key="idx">
+                                <div>
+                                    <input type="hidden" :name="`subjects[${idx}][subject_id]`" :value="sel.subject_id">
+                                    <input type="hidden" :name="`subjects[${idx}][is_required]`" :value="feeForm.package_type === 'fixed_bundle' ? 1 : 0">
+                                    <input type="hidden" :name="`subjects[${idx}][sort_order]`" :value="idx">
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- Promo Effective Dates --}}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Offer Start Date (Optional)</label>
+                                <input type="date" name="effective_from" x-model="feeForm.effective_from" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
+                            </div>
+                            <div>
+                                <label class="block font-semibold text-gray-700 mb-1">Offer End Date (Optional)</label>
+                                <input type="date" name="effective_until" x-model="feeForm.effective_until" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
+                            </div>
+                        </div>
+
+                        {{-- Targeted Student --}}
                         <div>
                             <label class="block font-semibold text-gray-700 mb-1">Targeted Student (Optional)</label>
                             <select name="student_id" x-model="feeForm.student_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400">
@@ -3385,10 +4215,24 @@
                             </select>
                         </div>
 
+                        {{-- Description --}}
                         <div>
                             <label class="block font-semibold text-gray-700 mb-1">Description</label>
-                            <textarea name="description" x-model="feeForm.description" rows="2" placeholder="Brief outline of syllabus covered in this fee structure" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400"></textarea>
+                            <textarea name="description" x-model="feeForm.description" rows="2" placeholder="Brief outline of this package / offer for admin reference" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-gray-400"></textarea>
                         </div>
+
+                        {{-- Helper callout for bundle packages --}}
+                        <template x-if="feeForm.package_type === 'fixed_bundle' || feeForm.package_type === 'pick_n'">
+                            <div class="flex gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+                                <span class="text-base shrink-0">💡</span>
+                                <div>
+                                    <strong x-show="feeForm.package_type === 'fixed_bundle'">Fixed Bundle:</strong>
+                                    <strong x-show="feeForm.package_type === 'pick_n'">Pick-N Bundle:</strong>
+                                    <span x-show="feeForm.package_type === 'fixed_bundle'"> Subjek yang anda pilih di atas akan disertakan terus dalam pakej. Pelajar tidak perlu memilih — akses kesemua subjek tersebut dibuka secara automatik selepas bayaran.</span>
+                                    <span x-show="feeForm.package_type === 'pick_n'"> Pelajar boleh memilih mana-mana subjek daripada senarai yang anda tetapkan di atas, mengikut had Min/Max yang ditetapkan.</span>
+                                </div>
+                            </div>
+                        </template>
 
                         <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
                             <button type="button" @click="showFeeModal = false" class="py-2 px-3.5 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-xl font-semibold text-xs transition cursor-pointer">
@@ -3413,7 +4257,8 @@
                         <h2 class="font-semibold text-lg text-gray-900">System Activity &amp; Audit Logs</h2>
                         <p class="text-xs text-gray-400 font-normal">Searchable live audit events assembled from real database operations</p>
                     </div>
-                    <div>
+                    <div class="flex items-center gap-2">
+
                         <input id="logSearchInput" onkeyup="filterTable('logsTable', this.value)" type="text" placeholder="Search event, user, module..." class="bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-64 font-normal">
                     </div>
                 </div>
@@ -3458,14 +4303,32 @@
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         <div id="tab-users" class="admin-tab-content hidden space-y-6">
             <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-5 overflow-hidden">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
                     <div>
                         <h2 class="font-semibold text-lg text-gray-900">Platform Users &amp; Accounts Directory</h2>
                         <p class="text-xs text-gray-400 font-normal">Manage all system users, credentials, roles, and profiles</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <input id="userSearchInput" onkeyup="filterTable('usersTable', this.value)" type="text" placeholder="Search user..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-44 font-normal">
-                        <button onclick="openCreateUserModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        {{-- Role Filter --}}
+                        <div class="relative inline-flex items-center">
+                            <select id="userRoleFilter" onchange="handleUsersRoleFilter(this.value)" class="appearance-none !bg-none bg-gray-50 hover:bg-gray-100/70 border border-gray-200 rounded-xl pl-3 pr-7 py-1.5 text-xs text-gray-700 font-medium outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer">
+                                <option value="">All Roles</option>
+                                <option value="admin">Admins</option>
+                                <option value="teacher">Teachers</option>
+                                <option value="parent">Parents</option>
+                                <option value="student">Students</option>
+                            </select>
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+
+                        {{-- Search Input --}}
+                        <div class="relative">
+                            <input id="userSearchInput" onkeyup="handleUsersSearch(this.value)" type="text" placeholder="Search user..." class="bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-48 font-normal">
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+
+                        {{-- Add User Button --}}
+                        <button onclick="openCreateUserModal()" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                             <span>Add New User</span>
                         </button>
@@ -3487,7 +4350,7 @@
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             @foreach($allUsers as $u)
-                                <tr class="hover:bg-gray-50/60 transition target-row">
+                                <tr class="hover:bg-gray-50/60 transition target-row user-table-row" data-role="{{ strtolower($u->role) }}">
                                     <td class="py-3 px-4 font-mono text-gray-500 font-normal">#{{ $u->id }}</td>
                                     <td class="py-3 px-4 text-gray-900 font-medium flex items-center gap-2">
                                         <div class="w-6 h-6 rounded bg-blue-600 text-white font-medium text-[10px] flex items-center justify-center shrink-0">
@@ -3520,8 +4383,40 @@
                                     </td>
                                 </tr>
                             @endforeach
+                            <tr id="usersNoResultsRow" class="hidden">
+                                <td colspan="7" class="py-12 text-center text-gray-400 font-normal">
+                                    <svg class="w-8 h-8 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                    <p class="text-sm font-semibold text-gray-700">No users found</p>
+                                    <p class="text-xs text-gray-400 mt-0.5">Try searching with a different keyword or adjusting role filters.</p>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+
+                {{-- Pagination & Count Footer --}}
+                <div id="usersPaginationContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-gray-100 mt-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-3">
+                        {{-- Rows Per Page Dropdown --}}
+                        <div class="relative inline-flex items-center">
+                            <select id="usersPerPageSelect" onchange="setUsersPerPage(this.value)" class="appearance-none !bg-none bg-gray-50 hover:bg-gray-100/70 border border-gray-200 rounded-xl pl-3 pr-7 py-1.5 text-xs font-medium text-gray-700 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition cursor-pointer">
+                                <option value="25" selected>25 rows</option>
+                                <option value="50">50 rows</option>
+                                <option value="100">100 rows</option>
+                                <option value="all">All rows</option>
+                            </select>
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+
+                        <div class="text-gray-500 font-normal">
+                            Showing <span id="usersShowingStart" class="font-semibold text-gray-800">0</span> to <span id="usersShowingEnd" class="font-semibold text-gray-800">0</span> of <span id="usersTotalFiltered" class="font-semibold text-gray-800">0</span> users
+                            <span id="usersTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="usersGrandTotal">0</span> total)</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5" id="usersPaginationButtons">
+                        {{-- Dynamically generated page buttons --}}
+                    </div>
                 </div>
             </div>
         </div>
@@ -3637,6 +4532,7 @@
 
                 {{-- Toolbar: Search + Role Filter --}}
                 <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-3">
+
                     <input id="inactiveUserSearch" onkeyup="filterTable('inactiveUsersTable', this.value)" type="text" placeholder="Search name or email..." class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-gray-400 w-48 font-normal">
                     <div class="flex items-center gap-1.5">
                         <button onclick="filterInactiveByRole('all')" id="filter-inactive-all" class="inactive-role-filter px-2.5 py-1 text-[11px] font-medium rounded-lg border border-gray-300 bg-gray-900 text-white transition">All</button>
@@ -3667,7 +4563,7 @@
                                     if (!$iuInitials) $iuInitials = strtoupper(substr($inactiveUser->role, 0, 2));
                                     $iuReasons = $inactiveUser->inactivity_reasons ?? [];
                                 @endphp
-                                <tr class="hover:bg-gray-50/60 transition inactive-user-row" data-role="{{ $inactiveUser->role }}">
+                                <tr class="hover:bg-gray-50/60 transition target-row inactive-user-row" data-role="{{ $inactiveUser->role }}">
                                     <td class="py-3 px-4">
                                         <div class="flex items-center gap-2.5">
                                             <div class="w-7 h-7 rounded-full bg-gray-200 text-gray-600 font-semibold text-[10px] flex items-center justify-center shrink-0">
@@ -3775,7 +4671,7 @@
                             @forelse($allGigs as $gig)
                                 <tr class="hover:bg-gray-50/60 transition">
                                     <td class="py-3.5 px-4 font-medium text-gray-900">{{ $gig->title }}</td>
-                                    <td class="py-3.5 px-4 font-medium text-blue-600">{{ $gig->subject->name ?? 'General' }}</td>
+                                    <td class="py-3.5 px-4 font-medium text-blue-600">{{ $gig->subject->display_name ?? $gig->subject->name ?? 'General' }}</td>
                                     <td class="py-3.5 px-4 text-gray-700 font-normal">{{ $gig->teacher->user->name ?? 'Open For Claiming' }}</td>
                                     <td class="py-3.5 px-4 text-gray-500 font-normal">{{ $gig->scheduled_at ? $gig->scheduled_at->format('d M Y, H:i') : 'Flexible' }}</td>
                                     <td class="py-3.5 px-4 text-gray-600 font-normal">{{ $gig->duration_minutes ?? 60 }} mins</td>
@@ -4010,6 +4906,13 @@
         @include('admin.partials.content-management-tab')
     </div>
 
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    {{-- TAB 11: EMAIL SETTINGS & ENTERPRISE EMAIL MANAGEMENT HUB           --}}
+    {{-- ══════════════════════════════════════════════════════════════════ --}}
+    <div id="tab-emailsettings" class="admin-tab-content hidden space-y-6">
+        @include('admin.email.tab-content')
+    </div>
+
     {{-- 0b. TEACHER PROFILE & DETAILS MODAL --}}
     <div id="teacherDetailsModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 sm:p-6" onclick="if(event.target === this) closeTeacherDetailsModal()">
         <div class="bg-white rounded-xl max-w-4xl w-full shadow-2xl border border-gray-300 overflow-hidden flex flex-col max-h-[90vh]">
@@ -4085,6 +4988,58 @@
                     </div>
                 </div>
 
+                {{-- Uploaded Documents --}}
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-700">Uploaded Documents</span>
+                        <span id="modalTeacherDetailDocsCountBadge" class="text-[11px] text-gray-500 font-normal">0 Documents</span>
+                    </div>
+                    <div class="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-gray-50 border-b border-gray-200 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                                <tr>
+                                    <th class="py-2.5 px-3.5 border-r border-gray-200">Document Name</th>
+                                    <th class="py-2.5 px-3.5 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 text-gray-700">
+                                <tr>
+                                    <td class="py-2.5 px-3.5 border-r border-gray-200 font-normal">
+                                        Resume / Curriculum Vitae (CV)
+                                    </td>
+                                    <td class="py-2.5 px-3.5 text-right font-normal" id="modalTeacherDocResume">
+                                        <span class="text-gray-400">Not provided</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3.5 border-r border-gray-200 font-normal">
+                                        Highest Academic Qualification Certificate
+                                    </td>
+                                    <td class="py-2.5 px-3.5 text-right font-normal" id="modalTeacherDocCertificate">
+                                        <span class="text-gray-400">Not provided</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3.5 border-r border-gray-200 font-normal">
+                                        Academic Transcript
+                                    </td>
+                                    <td class="py-2.5 px-3.5 text-right font-normal" id="modalTeacherDocTranscript">
+                                        <span class="text-gray-400">Not provided</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3.5 border-r border-gray-200 font-normal">
+                                        Additional Document
+                                    </td>
+                                    <td class="py-2.5 px-3.5 text-right font-normal" id="modalTeacherDocAdditional">
+                                        <span class="text-gray-400">Not provided</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 {{-- 2. Assigned Curriculum Subjects --}}
                 <div>
                     <div class="flex items-center justify-between mb-2">
@@ -4138,6 +5093,75 @@
             {{-- Modal Footer --}}
             <div class="flex items-center justify-end gap-2 px-6 py-3.5 border-t border-gray-200 bg-gray-50 shrink-0">
                 <button type="button" onclick="closeTeacherDetailsModal()" class="px-4 py-2 text-xs font-normal text-gray-600 hover:bg-gray-200/60 rounded-lg transition cursor-pointer">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- TEACHER APPLICATION DOCUMENTS MODAL (SIMPLE POPUP) --}}
+    <div id="teacherDocsModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4" onclick="if(event.target === this) closeTeacherDocsModal()">
+        <div class="bg-white rounded-lg max-w-lg w-full shadow-lg border border-gray-300 overflow-hidden flex flex-col">
+            {{-- Modal Header --}}
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-200 bg-white">
+                <div>
+                    <h3 class="font-medium text-sm text-gray-900">Uploaded Documents</h3>
+                    <p id="teacherDocsApplicantName" class="text-xs text-gray-500 font-normal mt-0.5"></p>
+                </div>
+                <button type="button" onclick="closeTeacherDocsModal()" class="text-gray-400 hover:text-gray-700 text-lg leading-none cursor-pointer p-1" title="Close" aria-label="Close">
+                    &times;
+                </button>
+            </div>
+
+            {{-- Modal Body --}}
+            <div class="p-5">
+                <table class="w-full text-left text-xs border border-gray-200">
+                    <thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-200">
+                        <tr>
+                            <th class="py-2.5 px-3 border-r border-gray-200 font-medium">Document Name</th>
+                            <th class="py-2.5 px-3 text-right font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 text-gray-700">
+                        <tr>
+                            <td class="py-2.5 px-3 border-r border-gray-200 font-normal">
+                                Resume / Curriculum Vitae (CV)
+                            </td>
+                            <td class="py-2.5 px-3 text-right" id="docRowResume">
+                                <span class="text-gray-400 font-normal">Not provided</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 border-r border-gray-200 font-normal">
+                                Highest Academic Qualification Certificate
+                            </td>
+                            <td class="py-2.5 px-3 text-right" id="docRowCertificate">
+                                <span class="text-gray-400 font-normal">Not provided</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 border-r border-gray-200 font-normal">
+                                Academic Transcript
+                            </td>
+                            <td class="py-2.5 px-3 text-right" id="docRowTranscript">
+                                <span class="text-gray-400 font-normal">Not provided</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-2.5 px-3 border-r border-gray-200 font-normal">
+                                Additional Document
+                            </td>
+                            <td class="py-2.5 px-3 text-right" id="docRowAdditional">
+                                <span class="text-gray-400 font-normal">Not provided</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Modal Footer --}}
+            <div class="flex items-center justify-end px-5 py-3 border-t border-gray-200 bg-gray-50">
+                <button type="button" onclick="closeTeacherDocsModal()" class="px-3.5 py-1.5 border border-gray-300 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded transition cursor-pointer">
                     Close
                 </button>
             </div>
@@ -4224,7 +5248,7 @@
                 <h3 class="font-semibold text-base text-gray-900">Edit User Details</h3>
                 <button onclick="closeEditUserModal()" class="text-gray-400 hover:text-gray-600 text-xl font-normal">×</button>
             </div>
-            <form id="editUserForm" method="POST" class="space-y-3.5">
+            <form id="editUserForm" method="POST" onsubmit="submitEditUser(event)" class="space-y-3.5">
                 @csrf
                 @method('PUT')
                 <div>
@@ -4270,7 +5294,7 @@
                 <button onclick="closeResetPasswordModal()" class="text-gray-400 hover:text-gray-600 text-xl font-normal">×</button>
             </div>
             <p class="text-xs text-gray-500 font-normal" id="resetPasswordUserName">Set a new temporary password for user.</p>
-            <form id="resetPasswordForm" method="POST" class="space-y-3.5">
+            <form id="resetPasswordForm" method="POST" onsubmit="submitResetPassword(event)" class="space-y-3.5">
                 @csrf
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">New Password</label>
@@ -4292,7 +5316,7 @@
                 <button onclick="closeDeleteUserModal()" class="text-gray-400 hover:text-gray-600 text-xl font-normal">×</button>
             </div>
             <p class="text-xs text-gray-600 font-normal" id="deleteUserPrompt">Are you sure you want to permanently remove this user account?</p>
-            <form id="deleteUserForm" method="POST" class="pt-2">
+            <form id="deleteUserForm" method="POST" onsubmit="submitDeleteUser(event)" class="pt-2">
                 @csrf
                 @method('DELETE')
                 <div class="flex items-center justify-end gap-2">
@@ -4958,7 +5982,7 @@
                     <label class="block text-xs font-medium text-gray-700 mb-1">Target Subject</label>
                     <select id="create_topic_subject_id" name="subject_id" onchange="onTopicSubjectChange(this.value)" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                         @foreach($allSubjects as $sub)
-                            <option value="{{ $sub->id }}">{{ $sub->name }} ({{ $sub->level }})</option>
+                            <option value="{{ $sub->id }}">{{ $sub->display_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -5022,7 +6046,7 @@
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
                         <select id="edit_topic_subject_id" name="subject_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                             @foreach($allSubjects as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }} ({{ $sub->level }})</option>
+                                <option value="{{ $sub->id }}">{{ $sub->display_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -5150,7 +6174,179 @@
         </div>
     </div>
 
+    {{-- 6c-2. SUBJECT DIAGNOSTIC TEST MANAGER MODAL --}}
+    <div id="diagnosticTestManagerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            {{-- Modal Header (Blue Theme, No Emojis) --}}
+            <div class="flex items-center justify-between p-5 pb-3 border-b border-gray-100 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-base text-gray-900">Subject Diagnostic Test Manager</h3>
+                        <p class="text-[11px] text-gray-400 font-normal" id="diagModalSubjectName">Loading...</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeDiagnosticModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer text-xl">✕</button>
+            </div>
+
+            {{-- Form (Single-page unified scrollable like the old diagnostic form) --}}
+            <form id="createDiagnosticForm" method="POST" enctype="multipart/form-data" class="overflow-y-auto p-5 space-y-3.5 text-xs admin-scrollbar flex-1">
+                @csrf
+
+                {{-- Draft Auto-Saved / Restored Banner (Hidden per user request) --}}
+                <div id="diag_draft_status_banner" class="hidden" style="display: none !important;"></div>
+
+                {{-- Form Error Alert Banner (Prevents data loss on validation/server errors) --}}
+                <div id="diag_form_error_banner" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-2 transition-all">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span id="diag_form_error_text"></span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer">✕</button>
+                </div>
+
+                {{-- 1. Basic Details --}}
+                <div class="space-y-2.5">
+                    <div>
+                        <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Test Title <span class="text-rose-500">*</span></label>
+                        <input type="text" name="title" id="diag_task_title" required oninput="saveDiagnosticDraft()" placeholder="e.g. Diagnostic Assessment: Bahasa Melayu - Year 4" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div>
+                            <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Duration (minutes) <span class="text-rose-500">*</span></label>
+                            <input type="number" name="diagnostic_duration_minutes" id="diag_duration" min="1" max="600" value="20" required oninput="saveDiagnosticDraft()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Total Marks</label>
+                            <input type="number" name="total_marks" id="diag_total_marks" value="100" min="1" max="1000" oninput="saveDiagnosticDraft()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition" placeholder="Auto from questions">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 2. File Attachment with Auto-Read (Blue theme) --}}
+                <div class="pt-2.5 border-t border-gray-100 space-y-2">
+                    <div>
+                        <div class="flex items-center justify-between mb-0.5">
+                            <label class="block font-medium text-[11px] text-gray-700">Attach Assessment Paper (PDF, Word, or Document)</label>
+                            <span id="diag_pdf_badge" class="hidden text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                PDF Auto-Detected
+                            </span>
+                        </div>
+                        <input type="file" name="file" id="diag_task_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg" onchange="autoDetectQuestionsFromPdf('diag', this)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-1.5 text-[11px] outline-none file:mr-2.5 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <p class="text-[10px] text-gray-400 mt-0.5">Selecting a PDF auto-extracts questions. Word documents (.docx/.doc) and slides are also accepted as attachments.</p>
+                        <p id="diag_current_file_note" class="hidden text-[10px] text-blue-600 font-medium mt-0.5"></p>
+
+                        {{-- Scan Progress / Status Banner --}}
+                        <div id="diag_pdf_scan_status" class="hidden mt-1.5 p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-medium flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-3.5 h-3.5 text-blue-600 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                <span id="diag_pdf_scan_text">Reading PDF &amp; auto-detecting questions...</span>
+                            </div>
+                        </div>
+
+                        {{-- Interactive PDF Toggle --}}
+                        <div class="mt-2 p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between">
+                            <div>
+                                <label class="font-bold text-blue-950 block text-[11px]">Enable Interactive PDF Answering</label>
+                                <p class="text-[10px] text-blue-700">Students can write &amp; draw directly on PDF assessments using stylus, touch, or mouse</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="is_interactive_pdf" id="diag_interactive_pdf" onchange="saveDiagnosticDraft()" value="1" checked class="sr-only peer">
+                                <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 3. Answer Key & Question Management ("Then manage the answer") --}}
+                <div id="diag_diagnostic_builder" class="pt-2.5 border-t border-gray-100 space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <div>
+                            <h4 class="font-bold text-xs text-gray-900">Answer Key &amp; Questions</h4>
+                            <p id="diag_questions_badge" class="text-[11px] text-gray-500">0 questions configured</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="addQuestionItem('diag', 'mcq')" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-medium transition cursor-pointer flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>MCQ</span>
+                            </button>
+                            <button type="button" onclick="addQuestionItem('diag', 'fill_in_blank')" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded text-[11px] font-medium transition cursor-pointer flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                <span>Fill-in</span>
+                            </button>
+                            <button type="button" onclick="addBatchQuestions('diag', 'mcq', 5)" class="px-2 py-1 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 rounded text-[10px] font-medium transition cursor-pointer" title="Quickly add 5 MCQ questions">+5 MCQ</button>
+                            <button type="button" onclick="clearAllQuestions('diag')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded text-[10px] font-medium transition cursor-pointer" title="Clear all questions">Clear</button>
+                        </div>
+                    </div>
+
+                    {{-- Scrollable Container for Questions --}}
+                    <div id="diag_questions_list" class="space-y-2 max-h-[340px] overflow-y-auto pr-1 admin-scrollbar">
+                        {{-- Populated by JavaScript renderQuestionsList('diag') --}}
+                    </div>
+
+                    <input type="hidden" name="questions_json" id="diag_questions_json" value="[]">
+                    <input type="hidden" name="total_questions" id="diag_total_questions" value="0">
+
+                    {{-- Syntax reference cheatsheet (collapsible) --}}
+                    <div class="mt-1.5">
+                        <button type="button"
+                                onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180')"
+                                class="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer select-none">
+                            <svg class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                            Fill-in Grading Rule Syntax Reference
+                        </button>
+                        <div class="hidden mt-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[10px]">
+                            <p class="font-bold text-slate-700 mb-1">Answer Rule Syntax (Fill-in-blank only)</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[Answer]</code> <span class="text-slate-600">— Single accepted answer</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A, B, C]</code> <span class="text-slate-600">— Any alternative accepted</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A];[B]</code> <span class="text-slate-600">— All required (partial marks)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">+ [Keyword] @1</code> <span class="text-slate-600">— Criteria marking (+marks each)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[9.8] ±0.1</code> <span class="text-slate-600">— Numerical with tolerance</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">=[Answer]</code> <span class="text-slate-600">— Exact case-sensitive match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">~[Answer]</code> <span class="text-slate-600">— Fuzzy / typo-tolerant match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[MANUAL]</code> <span class="text-slate-600">— Teacher reviews manually</span></div>
+                            </div>
+                            <p class="text-slate-500 mt-1 italic">Leave blank to accept any non-empty student answer. Use the <strong>Test Rule</strong> button on each Fill-in card to preview grading.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- 4. Retroactive Assignment Checkbox --}}
+                <div class="pt-2 border-t border-gray-100 flex items-center gap-2">
+                    <input type="checkbox" name="retroactive" value="1" id="diagCreateRetroactive" class="rounded text-blue-600 focus:ring-blue-500 cursor-pointer">
+                    <label for="diagCreateRetroactive" class="text-xs text-gray-600 cursor-pointer">Automatically assign to all students currently enrolled in this subject</label>
+                </div>
+
+                {{-- 5. Footer Action Buttons (Blue theme, No purple) --}}
+                <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <div>
+                        <button type="button" id="diagDetachBtn" onclick="submitDetachDiagnostic()" class="hidden px-3 py-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition cursor-pointer">
+                            Remove Test from Subject
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="closeDiagnosticModal()" class="px-4 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-xl cursor-pointer">Cancel</button>
+                        <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition cursor-pointer">Save Diagnostic Test</button>
+                    </div>
+                </div>
+            </form>
+
+            <form id="detachDiagnosticForm" method="POST" class="hidden">
+                @csrf
+                @method('DELETE')
+            </form>
+        </div>
+    </div>
+    </div>
+
     {{-- 6d. CREATE LIVE CLASS MODAL --}}
+
     {{-- 6d. CREATE LIVE CLASS MODAL --}}
     <div id="createLiveClassModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto admin-scrollbar">
@@ -5388,30 +6584,33 @@
 
     {{-- 6f. CREATE RECORDED CLASS MODAL --}}
     <div id="createRecordedClassModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4" x-data="{ videoSource: 'file' }">
             <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                 <h3 class="font-semibold text-base text-gray-900">Upload Recorded Class Video</h3>
                 <button onclick="closeCreateRecordedClassModal()" class="text-gray-400 hover:text-gray-600 text-xl font-normal">×</button>
             </div>
-            <form action="{{ route('admin.recorded-classes.store') }}" method="POST" class="space-y-3.5">
+            <form action="{{ route('admin.recorded-classes.store') }}" method="POST" enctype="multipart/form-data" class="space-y-3.5">
                 @csrf
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Course <span class="text-gray-400 font-normal">(Optional)</span></label>
-                        <select name="course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">No Course Linkage</option>
-                            @foreach($allCourses as $c)
-                                <option value="{{ $c->id }}">{{ $c->title }}</option>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Subject <span class="text-rose-500">*</span></label>
+                        <select id="create_recorded_subject_id" name="subject_id" required onchange="filterCoursesBySubject('create')" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                            <option value="">Select Subject Link...</option>
+                            @foreach($allSubjects as $sub)
+                                <option value="{{ $sub->id }}">{{ $sub->display_name }}</option>
                             @endforeach
                         </select>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Syllabus folder in student vault</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Subject Link <span class="text-gray-400 font-normal">(Required)</span></label>
-                        <select name="subject_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            @foreach($allSubjects as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Class / Batch <span class="text-gray-400 font-normal">(Optional)</span></label>
+                        <select id="create_recorded_course_id" name="course_id" onchange="syncSubjectFromCourse('create')" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="" data-subject-id="">All Classes (General Replay)</option>
+                            @foreach($allCourses as $c)
+                                <option value="{{ $c->id }}" data-subject-id="{{ $c->subject_id }}">{{ $c->title }}</option>
                             @endforeach
                         </select>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Notifies specific class students</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -5424,24 +6623,32 @@
                         <input type="text" name="title" required placeholder="e.g. Masterclass #4: Fractions" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Duration (Min)</label>
-                        <input type="number" name="duration_minutes" value="45" min="1" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                {{-- Video Upload / URL Source (MP4 or Video Link) --}}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-gray-700">Video Source</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl text-xs font-semibold">
+                        <button type="button" @click="videoSource = 'file'" :class="videoSource === 'file' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-600 hover:text-gray-900'" class="py-1.5 px-3 rounded-lg text-center transition-all cursor-pointer">
+                            Upload Video (MP4)
+                        </button>
+                        <button type="button" @click="videoSource = 'url'" :class="videoSource === 'url' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-600 hover:text-gray-900'" class="py-1.5 px-3 rounded-lg text-center transition-all cursor-pointer">
+                            Video URL / Link
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Views Count</label>
-                        <input type="number" name="views_count" value="0" min="0" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                    {{-- File upload field --}}
+                    <div x-show="videoSource === 'file'">
+                        <input type="file" name="video_file" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <p class="text-[10px] text-gray-400 mt-1">Supports MP4, WebM, MOV, AVI, MKV video files.</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Thumbnail</label>
-                        <input type="text" name="thumbnail" placeholder="thumb_puremath.jpg" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                    {{-- URL link field --}}
+                    <div x-show="videoSource === 'url'">
+                        <input type="url" name="video_url" placeholder="https://vimeo.com/... or https://youtube.com/..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="text-[10px] text-gray-400 mt-1">Direct video URL, YouTube, or Vimeo embed link.</p>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Video Playback URL</label>
-                    <input type="url" name="video_url" required placeholder="https://vimeo.com/..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
+
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Summary / Details</label>
                     <textarea name="summary" rows="2" placeholder="Topics covered and student instructions..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500"></textarea>
@@ -5456,31 +6663,34 @@
 
     {{-- 6g. EDIT RECORDED CLASS MODAL --}}
     <div id="editRecordedClassModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4" x-data="{ editVideoSource: 'url' }">
             <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                 <h3 class="font-semibold text-base text-gray-900">Edit Class Record</h3>
                 <button onclick="closeEditRecordedClassModal()" class="text-gray-400 hover:text-gray-600 text-xl font-normal">×</button>
             </div>
-            <form id="editRecordedClassForm" method="POST" class="space-y-3.5">
+            <form id="editRecordedClassForm" method="POST" enctype="multipart/form-data" class="space-y-3.5">
                 @csrf
                 @method('PUT')
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Course <span class="text-gray-400 font-normal">(Optional)</span></label>
-                        <select id="edit_recorded_course_id" name="course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">No Course Linkage</option>
-                            @foreach($allCourses as $c)
-                                <option value="{{ $c->id }}">{{ $c->title }}</option>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Subject <span class="text-rose-500">*</span></label>
+                        <select id="edit_recorded_subject_id" name="subject_id" required onchange="filterCoursesBySubject('edit')" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                            <option value="">Select Subject Link...</option>
+                            @foreach($allSubjects as $sub)
+                                <option value="{{ $sub->id }}">{{ $sub->display_name }}</option>
                             @endforeach
                         </select>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Syllabus folder in student vault</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Subject Link <span class="text-gray-400 font-normal">(Required)</span></label>
-                        <select id="edit_recorded_subject_id" name="subject_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                            @foreach($allSubjects as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Class / Batch <span class="text-gray-400 font-normal">(Optional)</span></label>
+                        <select id="edit_recorded_course_id" name="course_id" onchange="syncSubjectFromCourse('edit')" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="" data-subject-id="">All Classes (General Replay)</option>
+                            @foreach($allCourses as $c)
+                                <option value="{{ $c->id }}" data-subject-id="{{ $c->subject_id }}">{{ $c->title }}</option>
                             @endforeach
                         </select>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Notifies specific class students</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
@@ -5493,24 +6703,32 @@
                         <input type="text" id="edit_recorded_title" name="title" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Duration (Min)</label>
-                        <input type="number" id="edit_recorded_duration_minutes" name="duration_minutes" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                {{-- Video Upload / URL Source (MP4 or Video Link) --}}
+                <div class="space-y-2">
+                    <label class="block text-xs font-medium text-gray-700">Video Source</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl text-xs font-semibold">
+                        <button type="button" @click="editVideoSource = 'url'" :class="editVideoSource === 'url' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-600 hover:text-gray-900'" class="py-1.5 px-3 rounded-lg text-center transition-all cursor-pointer">
+                            Video URL / Link
+                        </button>
+                        <button type="button" @click="editVideoSource = 'file'" :class="editVideoSource === 'file' ? 'bg-white text-blue-600 shadow-xs' : 'text-gray-600 hover:text-gray-900'" class="py-1.5 px-3 rounded-lg text-center transition-all cursor-pointer">
+                            Upload New Video (MP4)
+                        </button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Views Count</label>
-                        <input type="number" id="edit_recorded_views_count" name="views_count" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                    {{-- URL link field --}}
+                    <div x-show="editVideoSource === 'url'">
+                        <input type="url" id="edit_recorded_video_url" name="video_url" placeholder="https://vimeo.com/... or https://youtube.com/..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500">
+                        <p class="text-[10px] text-gray-400 mt-1">Direct video URL, YouTube, or Vimeo embed link.</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1">Thumbnail</label>
-                        <input type="text" id="edit_recorded_thumbnail" name="thumbnail" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                    {{-- File upload field --}}
+                    <div x-show="editVideoSource === 'file'">
+                        <input type="file" name="video_file" accept="video/mp4,video/webm,video/ogg,video/quicktime,video/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <p class="text-[10px] text-gray-400 mt-1">Upload a new MP4/WebM video to replace the current playback.</p>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-700 mb-1">Video Playback URL</label>
-                    <input type="url" id="edit_recorded_video_url" name="video_url" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-mono outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
+
                 <div>
                     <label class="block text-xs font-medium text-gray-700 mb-1">Summary / Details</label>
                     <textarea id="edit_recorded_summary" name="summary" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500"></textarea>
@@ -5536,7 +6754,7 @@
                     <label class="block text-xs font-medium text-gray-700 mb-1">Select Course Linkage</label>
                     <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                         @foreach($allCourses as $c)
-                            <option value="{{ $c->id }}">{{ $c->title }} [{{ $c->subject->name ?? 'General' }}]</option>
+                            <option value="{{ $c->id }}">{{ $c->title }} [{{ $c->subject->display_name ?? $c->subject->name ?? 'General' }}]</option>
                         @endforeach
                     </select>
                 </div>
@@ -5570,7 +6788,7 @@
                     <label class="block text-xs font-medium text-gray-700 mb-1">Select Course Linkage</label>
                     <select id="edit_quiz_course_id" name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                         @foreach($allCourses as $c)
-                            <option value="{{ $c->id }}">{{ $c->title }} [{{ $c->subject->name ?? 'General' }}]</option>
+                            <option value="{{ $c->id }}">{{ $c->title }} [{{ $c->subject->display_name ?? $c->subject->name ?? 'General' }}]</option>
                         @endforeach
                     </select>
                 </div>
@@ -5711,7 +6929,7 @@
                         <label class="block text-xs font-medium text-gray-700 mb-1">Subject</label>
                         <select name="subject_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                             @foreach($allSubjects as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                <option value="{{ $sub->id }}">{{ $sub->display_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -5820,6 +7038,12 @@
             <form method="POST" id="createTaskForm" action="{{ route('admin.tasks.store') }}" enctype="multipart/form-data" class="overflow-y-auto pr-1 pt-3 space-y-3 text-xs admin-scrollbar">
                 @csrf
 
+                {{-- Error Banner --}}
+                <div id="create_task_error_banner" class="hidden p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-2">
+                    <span id="create_task_error_text"></span>
+                    <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer">✕</button>
+                </div>
+
                 {{-- 1. Basic Task Details --}}
                 <div class="space-y-2.5">
                     <div>
@@ -5859,10 +7083,14 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
                             <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Total Marks</label>
-                            <input type="number" name="total_marks" id="create_task_total_marks" value="100" min="1" max="1000" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                            <input type="number" name="total_marks" id="create_task_total_marks" value="100" min="1" max="1000" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition" placeholder="Auto from questions">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Timer (Mins)</label>
+                            <input type="number" name="time_limit_minutes" id="create_task_time_limit_minutes" value="20" min="1" max="360" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition" placeholder="e.g. 20">
                         </div>
                         <div>
                             <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Due Date (Optional)</label>
@@ -5875,7 +7103,7 @@
                         <select name="course_id" id="create_task_course_id" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
                             <option value="">None (Global - Open to all students)</option>
                             @foreach($allCourses as $c)
-                                <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->level }} - {{ $c->subject->name ?? 'General' }})</option>
+                                <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->level }} - {{ $c->subject->display_name ?? $c->subject->name ?? 'General' }})</option>
                             @endforeach
                         </select>
                         <p class="text-[10px] text-gray-400 mt-0.5">Leave as "None" for universal diagnostic tests open to all unenrolled/new students.</p>
@@ -5901,6 +7129,18 @@
                                 <span id="create_pdf_scan_text">Reading PDF &amp; auto-detecting questions...</span>
                             </div>
                         </div>
+
+                        {{-- Interactive PDF Toggle --}}
+                        <div class="mt-2 p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-lg flex items-center justify-between">
+                            <div>
+                                <label class="font-bold text-blue-950 block text-[11px]">Enable Interactive PDF Answering</label>
+                                <p class="text-[10px] text-blue-700">Students can write & draw directly on this PDF using Apple Pencil or Touch</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" name="is_interactive_pdf" value="1" checked class="sr-only peer">
+                                <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
                     </div>
 
                     <div>
@@ -5913,7 +7153,7 @@
                 <div id="create_diagnostic_builder" class="pt-2.5 border-t border-gray-100 space-y-2">
                     <div class="flex items-center justify-between gap-2">
                         <div>
-                            <h4 class="font-bold text-xs text-gray-900">Answer Key &amp; Questions</h4>
+                            <h4 class="font-bold text-xs text-gray-900">Answer Key &amp; Question Marks</h4>
                             <p id="create_questions_badge" class="text-[11px] text-gray-500">0 questions configured</p>
                         </div>
                         <div class="flex items-center gap-1">
@@ -5937,6 +7177,32 @@
 
                     <input type="hidden" name="questions_json" id="create_questions_json" value="[]">
                     <input type="hidden" name="total_questions" id="create_total_questions" value="0">
+
+                    {{-- Syntax reference cheatsheet (collapsible) --}}
+                    <div class="mt-1.5">
+                        <button type="button"
+                                onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180')"
+                                class="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer select-none">
+                            <svg class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                            Fill-in Grading Rule Syntax Reference
+                        </button>
+                        <div class="hidden mt-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[10px]">
+                            <p class="font-bold text-slate-700 mb-1">Answer Rule Syntax (Fill-in-blank only)</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[Answer]</code> <span class="text-slate-600">— Single accepted answer</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A, B, C]</code> <span class="text-slate-600">— Any alternative accepted</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A];[B]</code> <span class="text-slate-600">— All required (partial marks)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">+ [Keyword] @1</code> <span class="text-slate-600">— Criteria marking (+marks each)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[9.8] ±0.1</code> <span class="text-slate-600">— Numerical with tolerance</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">=[Answer]</code> <span class="text-slate-600">— Exact case-sensitive match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">~[Answer]</code> <span class="text-slate-600">— Fuzzy / typo-tolerant match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[MANUAL]</code> <span class="text-slate-600">— Teacher reviews manually</span></div>
+                            </div>
+                            <p class="text-slate-500 mt-1 italic">Use the <strong>Test Rule</strong> button on each Fill-in card to preview grading.</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Footer Action Buttons --}}
@@ -5964,6 +7230,12 @@
             <form method="POST" id="editTaskForm" action="" enctype="multipart/form-data" class="overflow-y-auto pr-1 pt-3 space-y-3 text-xs admin-scrollbar">
                 @csrf
                 @method('PUT')
+
+                {{-- Error Banner --}}
+                <div id="edit_task_error_banner" class="hidden p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center justify-between gap-2">
+                    <span id="edit_task_error_text"></span>
+                    <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer">✕</button>
+                </div>
 
                 {{-- 1. Basic Task Details --}}
                 <div class="space-y-2.5">
@@ -6004,10 +7276,14 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
                             <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Total Marks</label>
-                            <input type="number" id="edit_task_total_marks" name="total_marks" min="1" max="1000" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                            <input type="number" id="edit_task_total_marks" name="total_marks" min="1" max="1000" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition" placeholder="Auto from questions">
+                        </div>
+                        <div>
+                            <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Timer (Mins)</label>
+                            <input type="number" id="edit_task_time_limit_minutes" name="time_limit_minutes" min="1" max="360" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition" placeholder="e.g. 20">
                         </div>
                         <div>
                             <label class="block font-medium text-[11px] text-gray-700 mb-0.5">Due Date (Optional)</label>
@@ -6047,7 +7323,7 @@
                 <div id="edit_diagnostic_builder" class="pt-2.5 border-t border-gray-100 space-y-2">
                     <div class="flex items-center justify-between gap-2">
                         <div>
-                            <h4 class="font-bold text-xs text-gray-900">Answer Key &amp; Questions</h4>
+                            <h4 class="font-bold text-xs text-gray-900">Answer Key &amp; Question Marks</h4>
                             <p id="edit_questions_badge" class="text-[11px] text-gray-500">0 questions configured</p>
                         </div>
                         <div class="flex items-center gap-1">
@@ -6071,6 +7347,32 @@
 
                     <input type="hidden" name="questions_json" id="edit_questions_json" value="[]">
                     <input type="hidden" name="total_questions" id="edit_total_questions" value="0">
+
+                    {{-- Syntax reference cheatsheet (collapsible) --}}
+                    <div class="mt-1.5">
+                        <button type="button"
+                                onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('svg').classList.toggle('rotate-180')"
+                                class="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-800 font-medium cursor-pointer select-none">
+                            <svg class="w-3 h-3 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                            Fill-in Grading Rule Syntax Reference
+                        </button>
+                        <div class="hidden mt-1.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-[10px]">
+                            <p class="font-bold text-slate-700 mb-1">Answer Rule Syntax (Fill-in-blank only)</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[Answer]</code> <span class="text-slate-600">— Single accepted answer</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A, B, C]</code> <span class="text-slate-600">— Any alternative accepted</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[A];[B]</code> <span class="text-slate-600">— All required (partial marks)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">+ [Keyword] @1</code> <span class="text-slate-600">— Criteria marking (+marks each)</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[9.8] ±0.1</code> <span class="text-slate-600">— Numerical with tolerance</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">=[Answer]</code> <span class="text-slate-600">— Exact case-sensitive match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">~[Answer]</code> <span class="text-slate-600">— Fuzzy / typo-tolerant match</span></div>
+                                <div><code class="bg-white border border-slate-200 px-1 rounded font-mono">[MANUAL]</code> <span class="text-slate-600">— Teacher reviews manually</span></div>
+                            </div>
+                            <p class="text-slate-500 mt-1 italic">Use the <strong>Test Rule</strong> button on each Fill-in card to preview grading.</p>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Footer Action Buttons --}}
@@ -6220,11 +7522,351 @@
             if (updateHash && !window.location.hash.includes('courses-')) {
                 history.replaceState(null, '', '#' + cleanId);
             }
+
+            if (tabId === 'tab-users' && typeof renderUsersPagination === 'function') {
+                renderUsersPagination();
+            }
+            if (tabId === 'tab-student' && typeof renderStudentDirPagination === 'function') {
+                renderStudentDirPagination();
+            }
+            if (window.OSTablePaginator) {
+                window.OSTablePaginator.renderVisible();
+            }
+        }
+
+        // ── Universal Table Paginator & Filter Engine ────────────────────────
+        window.OSTablePaginator = {
+            instances: {},
+
+            get: function(tableId) {
+                if (!this.instances[tableId]) {
+                    this.instances[tableId] = {
+                        tableId: tableId,
+                        currentPage: 1,
+                        perPage: 10,
+                        searchQuery: '',
+                        rowClass: 'target-row',
+                    };
+                }
+                return this.instances[tableId];
+            },
+
+            setPerPage: function(tableId, val) {
+                const inst = this.get(tableId);
+                inst.perPage = (val === 'all') ? 999999 : parseInt(val, 10);
+                inst.currentPage = 1;
+
+                const topSel = document.getElementById(tableId + 'PerPageSelectTop');
+                const btmSel = document.getElementById(tableId + 'PerPageSelectBottom');
+                if (topSel && topSel.value !== String(val)) topSel.value = String(val);
+                if (btmSel && btmSel.value !== String(val)) btmSel.value = String(val);
+
+                this.render(tableId);
+            },
+
+            setPage: function(tableId, pageNum) {
+                const inst = this.get(tableId);
+                inst.currentPage = pageNum;
+                this.render(tableId);
+
+                const table = document.getElementById(tableId);
+                if (table) {
+                    const rect = table.getBoundingClientRect();
+                    if (rect.top < 0) {
+                        table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            },
+
+            setSearch: function(tableId, query) {
+                const inst = this.get(tableId);
+                inst.searchQuery = (query || '').toLowerCase().trim();
+                inst.currentPage = 1;
+                this.render(tableId);
+            },
+
+            matchesRow: function(tableId, row, query) {
+                // Table-specific custom filter rules
+                if (tableId === 'adminTasksTable') {
+                    const typeFilter = document.getElementById('adminTaskTypeFilter')?.value || 'all';
+                    const type = row.getAttribute('data-task-type') || '';
+                    if (typeFilter !== 'all' && type !== typeFilter) return false;
+                } else if (tableId === 'quizzesTable') {
+                    const subject = document.getElementById('quizSubjectFilter')?.value || 'all';
+                    const rowSubject = row.getAttribute('data-subject');
+                    if (subject !== 'all' && rowSubject !== subject) return false;
+                } else if (tableId === 'diagnosticRosterTable') {
+                    const status = (document.getElementById('diagnosticStatusFilter')?.value || 'all').toLowerCase();
+                    const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+                    if (status !== 'all' && rowStatus !== status) return false;
+                } else if (tableId === 'inactiveUsersTable') {
+                    if (window.currentInactiveRole && window.currentInactiveRole !== 'all') {
+                        const rowRole = row.getAttribute('data-role');
+                        if (rowRole !== window.currentInactiveRole) return false;
+                    }
+                } else if (tableId === 'subjectsTable') {
+                    if (typeof activeKpmLevel !== 'undefined' && activeKpmLevel !== 'all') {
+                        const rowEduType = row.dataset.educationType || '';
+                        const rowStage   = row.dataset.stage || '';
+                        let levelMatch = false;
+                        if (activeKpmLevel === 'kindergarten') levelMatch = (rowEduType === 'kindergarten');
+                        else if (activeKpmLevel === 'primary') levelMatch = (rowEduType === 'primary');
+                        else if (activeKpmLevel === 'lower-secondary') levelMatch = (rowStage === 'Lower Secondary');
+                        else if (activeKpmLevel === 'upper-secondary') levelMatch = (rowStage === 'Upper Secondary');
+                        if (!levelMatch) return false;
+                    }
+                    const cat = document.getElementById('kpmCategoryFilter')?.value || 'all';
+                    const rowCat = row.dataset.category || '';
+                    if (cat !== 'all' && rowCat !== cat) return false;
+                } else if (tableId === 'topicsMasterTable') {
+                    if (typeof activeTopicLevel !== 'undefined' && activeTopicLevel !== 'all') {
+                        const rowEduType = row.getAttribute('data-education-type') || '';
+                        const rowStage = row.getAttribute('data-stage') || '';
+                        let matchesLevel = false;
+                        if (activeTopicLevel === 'kindergarten') matchesLevel = (rowEduType === 'kindergarten');
+                        else if (activeTopicLevel === 'primary') matchesLevel = (rowEduType === 'primary');
+                        else if (activeTopicLevel === 'lower-secondary') matchesLevel = (rowStage === 'Lower Secondary');
+                        else if (activeTopicLevel === 'upper-secondary') matchesLevel = (rowStage === 'Upper Secondary');
+                        if (!matchesLevel) return false;
+                    }
+                    const selectedSubject = document.getElementById('topicSubjectFilter')?.value || 'all';
+                    const rowSubjectId = row.getAttribute('data-subject-id');
+                    if (selectedSubject !== 'all' && rowSubjectId !== selectedSubject) return false;
+                } else if (tableId === 'attendanceTable') {
+                    const status = (document.getElementById('attendanceStatusFilter')?.value || 'all').toLowerCase();
+                    const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
+                    if (status !== 'all' && rowStatus !== status) return false;
+                }
+
+                // Text search match
+                if (!query) return true;
+                const text = row.innerText.toLowerCase();
+                return text.includes(query);
+            },
+
+            render: function(tableId) {
+                const table = document.getElementById(tableId);
+                if (!table) return;
+
+                const inst = this.get(tableId);
+
+                let rows = Array.from(table.querySelectorAll('tbody tr.' + inst.rowClass));
+                if (rows.length === 0) {
+                    rows = Array.from(table.querySelectorAll('tbody tr:not([class*="empty"]):not([class*="no-results"])')).filter(r => !r.querySelector('td[colspan]'));
+                }
+
+                const grandTotal = rows.length;
+                const matchedRows = [];
+
+                rows.forEach(row => {
+                    const matches = this.matchesRow(tableId, row, inst.searchQuery);
+                    if (matches) {
+                        matchedRows.push(row);
+                    } else {
+                        row.style.display = 'none';
+                        if (tableId === 'topicsMasterTable' && row.nextElementSibling && row.nextElementSibling.classList.contains('topic-subtopics-drawer')) {
+                            row.nextElementSibling.style.display = 'none';
+                        }
+                    }
+                });
+
+                const totalMatched = matchedRows.length;
+                const totalPages = Math.max(1, Math.ceil(totalMatched / inst.perPage));
+
+                if (inst.currentPage > totalPages) inst.currentPage = totalPages;
+                if (inst.currentPage < 1) inst.currentPage = 1;
+
+                const startIndex = (inst.currentPage - 1) * inst.perPage;
+                const endIndex = Math.min(startIndex + inst.perPage, totalMatched);
+
+                matchedRows.forEach((row, idx) => {
+                    const isVisible = (idx >= startIndex && idx < endIndex);
+                    row.style.display = isVisible ? '' : 'none';
+                    if (tableId === 'topicsMasterTable' && row.nextElementSibling && row.nextElementSibling.classList.contains('topic-subtopics-drawer')) {
+                        if (!isVisible) {
+                            row.nextElementSibling.style.display = 'none';
+                        }
+                    }
+                });
+
+                const topSel = document.getElementById(tableId + 'PerPageSelectTop');
+                if (topSel) {
+                    const curVal = inst.perPage >= 99999 ? 'all' : String(inst.perPage);
+                    if (topSel.value !== curVal) topSel.value = curVal;
+                }
+
+                this.renderPaginationFooter(tableId, grandTotal, totalMatched, totalPages, startIndex, endIndex, inst);
+            },
+
+            renderPaginationFooter: function(tableId, grandTotal, totalMatched, totalPages, startIndex, endIndex, inst) {
+                let container = document.getElementById(tableId + 'PaginationContainer');
+                const table = document.getElementById(tableId);
+                if (!table) return;
+
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = tableId + 'PaginationContainer';
+                    container.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-gray-50/30 text-xs';
+                    
+                    const overflowWrapper = table.closest('.overflow-x-auto') || table.parentElement;
+                    if (overflowWrapper && overflowWrapper.parentElement) {
+                        overflowWrapper.parentElement.appendChild(container);
+                    } else {
+                        table.parentElement.appendChild(container);
+                    }
+                }
+
+                const startDisplay = totalMatched === 0 ? 0 : startIndex + 1;
+                const endDisplay = endIndex;
+                const isFiltered = totalMatched !== grandTotal;
+
+                let buttonsHtml = '';
+                if (totalPages > 1 && totalMatched > 0) {
+                    const prevDisabled = inst.currentPage === 1;
+                    buttonsHtml += `
+                        <button type="button" onclick="window.OSTablePaginator.setPage('${tableId}', ${inst.currentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+                            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${prevDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                            <span>Prev</span>
+                        </button>
+                    `;
+
+                    const maxVisible = 5;
+                    let startPage = Math.max(1, inst.currentPage - Math.floor(maxVisible / 2));
+                    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                    if (endPage - startPage + 1 < maxVisible) {
+                        startPage = Math.max(1, endPage - maxVisible + 1);
+                    }
+
+                    if (startPage > 1) {
+                        buttonsHtml += `<button type="button" onclick="window.OSTablePaginator.setPage('${tableId}', 1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">1</button>`;
+                        if (startPage > 2) {
+                            buttonsHtml += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                        }
+                    }
+
+                    for (let p = startPage; p <= endPage; p++) {
+                        const isActive = p === inst.currentPage;
+                        buttonsHtml += `
+                            <button type="button" onclick="window.OSTablePaginator.setPage('${tableId}', ${p})"
+                                class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition cursor-pointer ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                                ${p}
+                            </button>
+                        `;
+                    }
+
+                    if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                            buttonsHtml += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                        }
+                        buttonsHtml += `<button type="button" onclick="window.OSTablePaginator.setPage('${tableId}', ${totalPages})" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">${totalPages}</button>`;
+                    }
+
+                    const nextDisabled = inst.currentPage === totalPages;
+                    buttonsHtml += `
+                        <button type="button" onclick="window.OSTablePaginator.setPage('${tableId}', ${inst.currentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+                            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${nextDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                            <span>Next</span>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    `;
+                }
+
+                const perPageVal = inst.perPage >= 99999 ? 'all' : String(inst.perPage);
+
+                container.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="relative inline-flex items-center">
+                            <select id="${tableId}PerPageSelectBottom" onchange="window.OSTablePaginator.setPerPage('${tableId}', this.value)" class="appearance-none !bg-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg pl-2.5 pr-6 py-1 text-xs font-normal text-gray-700 outline-none focus:outline-none focus:border-slate-400 transition cursor-pointer">
+                                <option value="10" ${perPageVal === '10' ? 'selected' : ''}>10 rows</option>
+                                <option value="25" ${perPageVal === '25' ? 'selected' : ''}>25 rows</option>
+                                <option value="50" ${perPageVal === '50' ? 'selected' : ''}>50 rows</option>
+                                <option value="all" ${perPageVal === 'all' ? 'selected' : ''}>All rows</option>
+                            </select>
+                            <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                        <div class="text-gray-500 font-normal">
+                            Showing <span class="font-semibold text-gray-800">${startDisplay}</span> to <span class="font-semibold text-gray-800">${endDisplay}</span> of <span class="font-semibold text-gray-800">${totalMatched}</span> entries
+                            ${isFiltered ? `<span class="text-gray-400 text-[11px]">(filtered from ${grandTotal} total)</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5" id="${tableId}PaginationButtons">
+                        ${buttonsHtml}
+                    </div>
+                `;
+            },
+
+            init: function(tableId, perPage = 10) {
+                const inst = this.get(tableId);
+                inst.perPage = perPage;
+                this.render(tableId);
+            },
+
+            initAll: function() {
+                const tableIds = [
+                    'teacherApplicationsTable',
+                    'teachersTable',
+                    'diagnosticRosterTable',
+                    'masteriesTable',
+                    'coursesTable',
+                    'subjectsTable',
+                    'topicsMasterTable',
+                    'liveClassesTable',
+                    'recordedClassesTable',
+                    'adminTasksTable',
+                    'quizzesTable',
+                    'attendanceTable',
+                    'invoicesTable',
+                    'verificationsTable',
+                    'paymentsTable',
+                    'logsTable',
+                    'inactiveUsersTable',
+                    'blogArticlesTable'
+                ];
+
+                tableIds.forEach(id => {
+                    if (document.getElementById(id)) {
+                        this.init(id, 10);
+                    }
+                });
+            },
+
+            renderVisible: function() {
+                Object.keys(this.instances).forEach(tableId => {
+                    const table = document.getElementById(tableId);
+                    if (table && table.offsetParent !== null) {
+                        this.render(tableId);
+                    }
+                });
+            }
+        };
+
+        // ── Filter Attendance Table Helper ────────────────────────────────────
+        function filterAttendanceTable() {
+            if (window.OSTablePaginator && window.OSTablePaginator.instances['attendanceTable']) {
+                window.OSTablePaginator.setSearch('attendanceTable', document.getElementById('attendanceSearchInput')?.value || '');
+            }
         }
 
         // ── Instant Filter for Any Table ──────────────────────────────────────
         function filterTable(tableId, query) {
-            const q = query.toLowerCase();
+            if (tableId === 'usersTable') {
+                if (typeof handleUsersSearch === 'function') {
+                    handleUsersSearch(query);
+                }
+                return;
+            }
+            if (tableId === 'studentDirectoryTable') {
+                if (typeof handleStudentDirSearch === 'function') {
+                    handleStudentDirSearch(query);
+                }
+                return;
+            }
+            if (window.OSTablePaginator && window.OSTablePaginator.instances[tableId]) {
+                window.OSTablePaginator.setSearch(tableId, query);
+                return;
+            }
+            const q = (query || '').toLowerCase();
             document.querySelectorAll('#' + tableId + ' .target-row').forEach(row => {
                 const text = row.innerText.toLowerCase();
                 row.style.display = text.includes(q) ? '' : 'none';
@@ -6234,17 +7876,15 @@
         // ── Admin Tasks & Diagnostic Tests (Phase-by-Phase) ─────────────────
         const diagnosticQuestions = {
             create: [],
-            edit: []
+            edit: [],
+            diag: []
         };
 
         function toggleDiagnosticFields(prefix, type) {
             const builder = document.getElementById(prefix + '_diagnostic_builder');
             if (builder) {
-                if (type === 'Diagnostic Test') {
-                    builder.classList.remove('hidden');
-                } else {
-                    builder.classList.add('hidden');
-                }
+                // Keep builder accessible for all task types (Diagnostic Test, Exam, Assessment, Assignment)
+                builder.classList.remove('hidden');
             }
         }
 
@@ -6272,6 +7912,7 @@
             document.getElementById('edit_task_type').value = task.type || 'Diagnostic Test';
             document.getElementById('edit_task_target_level').value = task.target_level || 'All Levels';
             document.getElementById('edit_task_total_marks').value = task.total_marks || 100;
+            document.getElementById('edit_task_time_limit_minutes').value = task.time_limit_minutes || 20;
             document.getElementById('edit_task_due_date').value = task.due_date ? task.due_date.substring(0, 10) : '';
             document.getElementById('edit_task_instructions').value = task.instructions || '';
             document.getElementById('editTaskSubtitle').innerText = 'Editing: ' + (task.title || 'Task');
@@ -6280,9 +7921,15 @@
 
             // Populate questions list for edit modal
             if (Array.isArray(questionsList) && questionsList.length > 0) {
-                diagnosticQuestions.edit = JSON.parse(JSON.stringify(questionsList));
+                diagnosticQuestions.edit = JSON.parse(JSON.stringify(questionsList)).map(q => ({
+                    ...q,
+                    marks: parseFloat(q.marks) || 1
+                }));
             } else if (Array.isArray(task.questions_data) && task.questions_data.length > 0) {
-                diagnosticQuestions.edit = JSON.parse(JSON.stringify(task.questions_data));
+                diagnosticQuestions.edit = JSON.parse(JSON.stringify(task.questions_data)).map(q => ({
+                    ...q,
+                    marks: parseFloat(q.marks) || 1
+                }));
             } else {
                 const fallbackList = [];
                 let num = 1;
@@ -6294,7 +7941,8 @@
                             number: num++,
                             type: 'mcq',
                             title: 'Question ' + i,
-                            correct_answer: keyMap[i] || keyMap[String(i)] || 'A'
+                            correct_answer: keyMap[i] || keyMap[String(i)] || 'A',
+                            marks: 1
                         });
                     }
                 }
@@ -6306,12 +7954,13 @@
                             number: num++,
                             type: 'fill_in_blank',
                             title: 'Question B' + j,
-                            correct_answer: bMap[j] || bMap[String(j)] || ''
+                            correct_answer: bMap[j] || bMap[String(j)] || '',
+                            marks: 1
                         });
                     }
                 }
                 if (fallbackList.length === 0) {
-                    fallbackList.push({ number: 1, type: 'mcq', title: 'Question 1', correct_answer: 'A' });
+                    fallbackList.push({ number: 1, type: 'mcq', title: 'Question 1', correct_answer: 'A', marks: 1 });
                 }
                 diagnosticQuestions.edit = fallbackList;
             }
@@ -6331,7 +7980,8 @@
                 number: qNum,
                 type: type,
                 title: 'Question ' + qNum,
-                correct_answer: type === 'mcq' ? 'A' : ''
+                correct_answer: type === 'mcq' ? 'A' : '',
+                marks: 1
             });
             renderQuestionsList(prefix);
             const container = document.getElementById(prefix + '_questions_list');
@@ -6349,13 +7999,102 @@
                     number: qNum,
                     type: type,
                     title: 'Question ' + qNum,
-                    correct_answer: type === 'mcq' ? defaultOptions[(qNum - 1) % 4] : ''
+                    correct_answer: type === 'mcq' ? defaultOptions[(qNum - 1) % 4] : '',
+                    marks: 1
                 });
             }
             renderQuestionsList(prefix);
             const container = document.getElementById(prefix + '_questions_list');
             if (container) {
                 setTimeout(() => container.scrollTop = container.scrollHeight, 60);
+            }
+        }
+
+        function updateQuestionMarks(prefix, index, val) {
+            const q = diagnosticQuestions[prefix][index];
+            if (!q) return;
+            q.marks = parseFloat(val) || 1;
+            syncQuestionsState(prefix);
+        }
+
+        function detectRuleType(rule) {
+            const t = (rule || '').trim();
+            if (!t) return { label: 'Any Answer', color: 'gray' };
+            if (/^\[MANUAL\]$/i.test(t))       return { label: 'Manual', color: 'purple' };
+            if (/^=\[.+\]$/.test(t))            return { label: 'Exact Match', color: 'red' };
+            if (/^~\[.+\]$/.test(t))            return { label: 'Fuzzy Match', color: 'yellow' };
+            if (/^\[[\d\.]+\]\s*[±+\-]/.test(t))return { label: 'Numerical ±', color: 'indigo' };
+            if (/^\+\s*\[.+\]\s*@[\d\.]+/.test(t)) return { label: 'Criteria', color: 'orange' };
+            if (/\[.+\]\s*;\s*\[.+\]/.test(t)) return { label: 'Multi-Required', color: 'teal' };
+            if (/^\[.+\]$/.test(t))             return { label: 'Alternatives', color: 'blue' };
+            return { label: 'Legacy', color: 'gray' };
+        }
+
+        const ruleColorMap = {
+            gray:   'bg-gray-100 text-gray-600 border-gray-200',
+            purple: 'bg-purple-50 text-purple-700 border-purple-200',
+            red:    'bg-red-50 text-red-700 border-red-200',
+            yellow: 'bg-amber-50 text-amber-700 border-amber-200',
+            indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            orange: 'bg-orange-50 text-orange-700 border-orange-200',
+            teal:   'bg-teal-50 text-teal-700 border-teal-200',
+            blue:   'bg-blue-50 text-blue-700 border-blue-200',
+        };
+
+        async function testGradingRulePreview(prefix, index) {
+            const q = diagnosticQuestions[prefix][index];
+            if (!q) return;
+            const rule = q.correct_answer || '';
+            const testInput = document.getElementById(`${prefix}_q_test_input_${index}`);
+            const resultEl  = document.getElementById(`${prefix}_q_test_result_${index}`);
+            if (!testInput || !resultEl) return;
+            const sampleAnswer = testInput.value.trim();
+            if (!sampleAnswer) {
+                resultEl.innerHTML = `<span class="text-amber-600 text-[10px]">⚠ Enter a sample answer to test.</span>`;
+                return;
+            }
+            resultEl.innerHTML = `<span class="text-blue-600 text-[10px] animate-pulse">Testing...</span>`;
+            try {
+                const resp = await fetch('{{ route("admin.diagnostic.test-rule") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        rule: rule,
+                        student_answer: sampleAnswer,
+                        max_marks: q.marks || 1,
+                        question_type: 'fill_in_blank'
+                    })
+                });
+                const data = await resp.json();
+                if (!data.success) throw new Error(data.message || 'Error');
+
+                let scoreColor = data.is_correct ? 'emerald' : (data.is_partial ? 'amber' : 'red');
+                let scoreIcon  = data.is_correct ? '✓' : (data.is_partial ? '◑' : '✗');
+                let badgeText  = data.is_manual ? 'Manual Review' : (data.is_correct ? 'Correct' : (data.is_partial ? 'Partial' : 'Incorrect'));
+
+                let warningHtml = '';
+                if (data.rule_errors && data.rule_errors.length) {
+                    warningHtml = `<div class="mt-1 text-[10px] text-red-600">⚠ ${data.rule_errors.join('; ')}</div>`;
+                } else if (data.rule_warnings && data.rule_warnings.length) {
+                    warningHtml = `<div class="mt-1 text-[10px] text-amber-600">ℹ ${data.rule_warnings.join('; ')}</div>`;
+                }
+
+                resultEl.innerHTML = `
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-${scoreColor}-50 text-${scoreColor}-700 border border-${scoreColor}-200">
+                            ${scoreIcon} ${badgeText}
+                        </span>
+                        <span class="text-[10px] text-gray-600">Score: <strong>${data.score}/${data.max_marks}</strong></span>
+                        <span class="text-[10px] text-gray-500 italic truncate max-w-[220px]">${escapeHtml(data.feedback || '')}</span>
+                    </div>
+                    ${warningHtml}
+                `;
+            } catch(e) {
+                resultEl.innerHTML = `<span class="text-red-600 text-[10px]">Error: ${escapeHtml(e.message)}</span>`;
             }
         }
 
@@ -6412,6 +8151,16 @@
             if (!q) return;
             q.correct_answer = val;
             syncQuestionsState(prefix);
+            // Live-update rule-type badge in card
+            const badgeEl = document.getElementById(`${prefix}_q_rule_badge_${index}`);
+            if (badgeEl) {
+                const rt = detectRuleType(val);
+                badgeEl.textContent = rt.label;
+                badgeEl.className = `text-[9px] font-bold px-1.5 py-0.5 rounded border ${ruleColorMap[rt.color] || ruleColorMap.gray}`;
+            }
+            // Clear previous test result when rule changes
+            const resultEl = document.getElementById(`${prefix}_q_test_result_${index}`);
+            if (resultEl) resultEl.innerHTML = '';
         }
 
         function updateQuestionTitle(prefix, index, val) {
@@ -6440,13 +8189,24 @@
             
             const mcqCount = list.filter(q => q.type === 'mcq').length;
             const fillCount = list.filter(q => q.type === 'fill_in_blank').length;
+            const totalMarksSum = list.reduce((sum, item) => sum + (parseFloat(item.marks) || 1), 0);
+
+            // Auto-update total marks field when questions are configured
+            const marksInput = document.getElementById(prefix === 'diag' ? 'diag_total_marks' : (prefix + '_task_total_marks'));
+            if (marksInput && list.length > 0) {
+                marksInput.value = totalMarksSum;
+            }
             
             if (badge) {
                 if (list.length === 0) {
                     badge.textContent = '0 questions configured';
                 } else {
-                    badge.textContent = `${list.length} questions configured (${mcqCount} MCQ, ${fillCount} Fill-in)`;
+                    badge.textContent = `${list.length} questions configured (${mcqCount} MCQ, ${fillCount} Fill-in) • ${totalMarksSum} Total Marks`;
                 }
+            }
+
+            if (prefix === 'diag' && typeof saveDiagnosticDraft === 'function') {
+                saveDiagnosticDraft();
             }
         }
 
@@ -6469,74 +8229,99 @@
             let html = '';
             list.forEach((q, idx) => {
                 const isMcq = q.type === 'mcq';
-                const cardBorder = isMcq ? 'border-gray-200 bg-white' : 'border-indigo-100 bg-white';
-                const tagColor = isMcq ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                const cardBorder = isMcq ? 'border-gray-200 bg-white' : 'border-blue-100 bg-white';
+                const tagColor = isMcq ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-blue-50 text-blue-700 border-blue-200';
+                const qMarks = parseFloat(q.marks) || 1;
+                const ruleInfo = !isMcq ? detectRuleType(q.correct_answer || '') : null;
+                const ruleColors = ruleInfo ? (ruleColorMap[ruleInfo.color] || ruleColorMap.gray) : '';
 
                 html += `
-                    <div id="${prefix}_q_card_${idx}" class="p-2 sm:p-2.5 rounded-xl border ${cardBorder} shadow-2xs hover:border-gray-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                        {{-- Left: Question number tag, label, and type switcher --}}
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="w-6 h-6 rounded-md font-mono font-bold text-[10px] flex items-center justify-center shrink-0 border ${tagColor}">
-                                ${String(q.number).padStart(2, '0')}
-                            </span>
-                            <input type="text"
-                                   value="${escapeHtml(q.title || 'Question ' + q.number)}"
-                                   oninput="updateQuestionTitle('${prefix}', ${idx}, this.value)"
-                                   placeholder="Question ${q.number}"
-                                   class="bg-transparent text-[11px] font-semibold text-gray-800 outline-none hover:bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1.5 py-0.5 w-28 border border-transparent hover:border-gray-200 transition">
+                    <div id="${prefix}_q_card_${idx}" class="p-2 sm:p-2.5 rounded-xl border ${cardBorder} shadow-2xs hover:border-gray-300 transition-all space-y-1.5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            {{-- Left: Question number tag, label, and type switcher --}}
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-6 h-6 rounded-md font-mono font-bold text-[10px] flex items-center justify-center shrink-0 border ${tagColor}">
+                                    ${String(q.number).padStart(2, '0')}
+                                </span>
+                                <input type="text"
+                                       value="${escapeHtml(q.title || 'Question ' + q.number)}"
+                                       oninput="updateQuestionTitle('${prefix}', ${idx}, this.value)"
+                                       placeholder="Question ${q.number}"
+                                       class="bg-transparent text-[11px] font-semibold text-gray-800 outline-none hover:bg-gray-50 focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-1.5 py-0.5 w-28 border border-transparent hover:border-gray-200 transition">
 
-                            {{-- Type Switcher --}}
-                            <div class="inline-flex rounded border border-gray-200 bg-gray-100 p-0.5 text-[10px]">
+                                {{-- Type Switcher --}}
+                                <div class="inline-flex rounded border border-gray-200 bg-gray-100 p-0.5 text-[10px]">
+                                    <button type="button"
+                                            onclick="setQuestionType('${prefix}', ${idx}, 'mcq')"
+                                            class="rounded px-2 py-0.5 transition cursor-pointer font-medium ${isMcq ? 'bg-white text-gray-900 shadow-2xs font-bold' : 'text-gray-500 hover:text-gray-900'}">
+                                        MCQ
+                                    </button>
+                                    <button type="button"
+                                            onclick="setQuestionType('${prefix}', ${idx}, 'fill_in_blank')"
+                                            class="rounded px-2 py-0.5 transition cursor-pointer font-medium ${!isMcq ? 'bg-white text-gray-900 shadow-2xs font-bold' : 'text-gray-500 hover:text-gray-900'}">
+                                        Fill-in
+                                    </button>
+                                </div>
+                            </div>
+
+                            {{-- Right: Answer selector / input, Marks field & Delete button --}}
+                            <div class="flex items-center justify-between sm:justify-end gap-2 flex-1">
+                                ${isMcq ? `
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] font-semibold text-gray-500">Answer:</span>
+                                        <div class="flex items-center gap-1">
+                                            ${['A', 'B', 'C', 'D'].map(opt => {
+                                                const isSel = (q.correct_answer || 'A').toUpperCase() === opt;
+                                                return `
+                                                    <button type="button"
+                                                            data-opt="${opt}"
+                                                            onclick="setQuestionOption('${prefix}', ${idx}, '${opt}')"
+                                                            class="mcq-square-btn w-7 h-7 rounded-lg font-black text-xs cursor-pointer transition flex items-center justify-center border ${isSel ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-400/40' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}">
+                                                        ${opt}
+                                                    </button>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                        <span class="mcq-status-text text-[10px] font-bold text-emerald-600 hidden sm:inline">✓ ${(q.correct_answer || 'A').toUpperCase()}</span>
+                                    </div>
+                                ` : `
+                                    <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                                        <span id="${prefix}_q_rule_badge_${idx}" class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${ruleColors} whitespace-nowrap shrink-0">${ruleInfo ? ruleInfo.label : ''}</span>
+                                        <input type="text"
+                                               value="${escapeHtml(q.correct_answer || '')}"
+                                               oninput="updateQuestionAnswer('${prefix}', ${idx}, this.value)"
+                                               placeholder='e.g. [Solid] or [Solid, Liquid] or + [keyword] @1'
+                                               class="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[11px] text-gray-800 outline-none focus:ring-1 focus:ring-blue-500 font-mono">
+                                    </div>
+                                `}
+
+                                {{-- Marks Input (High Visibility Pill) --}}
+                                <div class="flex items-center gap-1 bg-amber-50 border border-amber-200/90 rounded-lg px-2 py-0.5 shrink-0" title="Marks awarded for this question">
+                                    <label class="text-[10px] text-amber-800 font-bold whitespace-nowrap">Marks:</label>
+                                    <input type="number"
+                                           value="${qMarks}"
+                                           min="0.5" step="0.5"
+                                           oninput="updateQuestionMarks('${prefix}', ${idx}, this.value)"
+                                           class="w-12 bg-white border border-amber-300 rounded px-1 py-0.5 text-[11px] text-amber-950 font-bold text-center outline-none focus:ring-1 focus:ring-amber-500">
+                                </div>
+
                                 <button type="button"
-                                        onclick="setQuestionType('${prefix}', ${idx}, 'mcq')"
-                                        class="rounded px-2 py-0.5 transition cursor-pointer font-medium ${isMcq ? 'bg-white text-gray-900 shadow-2xs font-bold' : 'text-gray-500 hover:text-gray-900'}">
-                                    MCQ
-                                </button>
-                                <button type="button"
-                                        onclick="setQuestionType('${prefix}', ${idx}, 'fill_in_blank')"
-                                        class="rounded px-2 py-0.5 transition cursor-pointer font-medium ${!isMcq ? 'bg-white text-gray-900 shadow-2xs font-bold' : 'text-gray-500 hover:text-gray-900'}">
-                                    Fill-in
+                                        onclick="removeQuestionItem('${prefix}', ${idx})"
+                                        class="w-6 h-6 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer shrink-0"
+                                        title="Delete question">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
                             </div>
                         </div>
 
-                        {{-- Right: Answer selector / input & Delete button --}}
-                        <div class="flex items-center justify-between sm:justify-end gap-2.5 flex-1">
-                            ${isMcq ? `
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[11px] font-semibold text-gray-500">Answer:</span>
-                                    <div class="flex items-center gap-1">
-                                        ${['A', 'B', 'C', 'D'].map(opt => {
-                                            const isSel = (q.correct_answer || 'A').toUpperCase() === opt;
-                                            return `
-                                                <button type="button"
-                                                        data-opt="${opt}"
-                                                        onclick="setQuestionOption('${prefix}', ${idx}, '${opt}')"
-                                                        class="mcq-square-btn w-7 h-7 rounded-lg font-black text-xs cursor-pointer transition flex items-center justify-center border ${isSel ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-2 ring-blue-400/40' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}">
-                                                    ${opt}
-                                                </button>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                    <span class="mcq-status-text text-[10px] font-bold text-emerald-600 hidden sm:inline">✓ ${(q.correct_answer || 'A').toUpperCase()}</span>
-                                </div>
-                            ` : `
-                                <div class="flex items-center gap-2 flex-1 max-w-xs">
-                                    <input type="text"
-                                           value="${escapeHtml(q.correct_answer || '')}"
-                                           oninput="updateQuestionAnswer('${prefix}', ${idx}, this.value)"
-                                           placeholder="Expected answer (e.g. term1, term2)"
-                                           class="w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 text-[11px] text-gray-800 outline-none focus:ring-1 focus:ring-blue-500 font-medium">
-                                </div>
-                            `}
-
-                            <button type="button"
-                                    onclick="removeQuestionItem('${prefix}', ${idx})"
-                                    class="w-6 h-6 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer shrink-0"
-                                    title="Delete question">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                            </button>
+                        ${!isMcq ? `
+                        {{-- Fill-in rule preview tester --}}
+                        <div class="flex items-center gap-1.5 pt-1 border-t border-blue-50">
+                            <input id="${prefix}_q_test_input_${idx}" type="text" placeholder="Type a sample student answer to test..." class="flex-1 min-w-0 bg-white border border-gray-200 rounded px-2 py-0.5 text-[10px] text-gray-700 outline-none focus:ring-1 focus:ring-blue-400">
+                            <button type="button" onclick="testGradingRulePreview('${prefix}', ${idx})" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold rounded transition cursor-pointer whitespace-nowrap">Test Rule</button>
                         </div>
+                        <div id="${prefix}_q_test_result_${idx}" class="text-[10px] min-h-[1rem]"></div>
+                        ` : ''}
                     </div>
                 `;
             });
@@ -6548,11 +8333,26 @@
         async function autoDetectQuestionsFromPdf(prefix, fileInput) {
             if (!fileInput.files || fileInput.files.length === 0) return;
             const file = fileInput.files[0];
-            if (!file.name.toLowerCase().endsWith('.pdf')) return;
-
+            const isPdf = file.name.toLowerCase().endsWith('.pdf');
             const statusEl = document.getElementById(prefix + '_pdf_scan_status');
             const textEl   = document.getElementById(prefix + '_pdf_scan_text');
             const badgeEl  = document.getElementById(prefix + '_pdf_badge');
+
+            if (!isPdf) {
+                if (statusEl) {
+                    statusEl.classList.remove('hidden');
+                    statusEl.className = 'mt-1.5 p-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-medium flex items-center justify-between gap-2';
+                    statusEl.innerHTML = `
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-blue-600 font-bold">ℹ</span>
+                            <span>Document attached: <strong>${escapeHtml(file.name)}</strong>. (Auto-detection is exclusive to PDF files, but your file & all questions entered will be saved!)</span>
+                        </div>
+                        <button type="button" onclick="this.parentElement.classList.add('hidden')" class="text-blue-700 hover:text-blue-900 font-bold text-xs cursor-pointer">✕</button>
+                    `;
+                }
+                if (badgeEl) badgeEl.classList.add('hidden');
+                return;
+            }
 
             if (statusEl) {
                 statusEl.classList.remove('hidden');
@@ -7227,6 +9027,10 @@
         }
 
         function filterAdminTasks() {
+            if (window.OSTablePaginator && window.OSTablePaginator.instances['adminTasksTable']) {
+                window.OSTablePaginator.setSearch('adminTasksTable', document.getElementById('adminTaskSearch')?.value || '');
+                return;
+            }
             const query = (document.getElementById('adminTaskSearch')?.value || '').toLowerCase();
             const typeFilter = document.getElementById('adminTaskTypeFilter')?.value || 'all';
 
@@ -7364,18 +9168,35 @@
                             </div>
                         ` : ''}
 
-                        <div class="pt-2 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs bg-gray-50/50 p-2.5 rounded-lg">
+                        ${sub.graded_file_url ? `
                             <div class="flex items-center gap-2">
-                                <label class="font-medium text-gray-700 whitespace-nowrap">Score:</label>
-                                <input type="number" id="grade_score_${sub.student_id}" value="${sub.score !== null ? sub.score : ''}" placeholder="Score" min="0" max="${currentActiveTask.total_marks}" class="w-20 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500">
-                                <span class="text-gray-400 font-normal">/ ${currentActiveTask.total_marks}</span>
+                                <a href="${sub.graded_file_url}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold transition">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <span>Graded Task: <strong>${escapeHtml(sub.graded_file_name || 'Download Graded Task')}</strong></span>
+                                </a>
                             </div>
-                            <div class="flex-1">
-                                <input type="text" id="grade_feedback_${sub.student_id}" value="${escapeHtml(sub.teacher_feedback || '')}" placeholder="Admin feedback & evaluation comments..." class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                        ` : ''}
+
+                        <div class="pt-2 border-t border-gray-100 flex flex-col gap-2 text-xs bg-gray-50/50 p-2.5 rounded-lg">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center gap-2">
+                                    <label class="font-medium text-gray-700 whitespace-nowrap">Score:</label>
+                                    <input type="number" id="grade_score_${sub.student_id}" value="${sub.score !== null ? sub.score : ''}" placeholder="Score" min="0" max="${currentActiveTask.total_marks}" class="w-20 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                                    <span class="text-gray-400 font-normal">/ ${currentActiveTask.total_marks}</span>
+                                </div>
+                                <div class="flex-1">
+                                    <input type="text" id="grade_feedback_${sub.student_id}" value="${escapeHtml(sub.teacher_feedback || '')}" placeholder="Admin feedback & evaluation comments..." class="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-blue-500">
+                                </div>
                             </div>
-                            <button type="button" onclick="submitInlineGrade(${currentActiveTask.id}, ${sub.student_id}, this)" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-medium text-xs rounded-lg shadow-2xs transition shrink-0 cursor-pointer">
-                                Save Grade
-                            </button>
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-gray-200/50">
+                                <div class="flex items-center gap-2 flex-1">
+                                    <label class="text-[11px] text-gray-500 font-semibold whitespace-nowrap">Upload Graded Task:</label>
+                                    <input type="file" id="grade_file_${sub.student_id}" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.png,.jpg,.jpeg" class="text-[11px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300">
+                                </div>
+                                <button type="button" onclick="submitInlineGrade(${currentActiveTask.id}, ${sub.student_id}, this)" class="px-3 py-1 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-medium text-xs rounded-lg shadow-2xs transition shrink-0 cursor-pointer">
+                                    Save Grade
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -7386,6 +9207,7 @@
         function submitInlineGrade(assignmentId, studentId, btn) {
             const scoreInput = document.getElementById('grade_score_' + studentId);
             const feedbackInput = document.getElementById('grade_feedback_' + studentId);
+            const fileInput = document.getElementById('grade_file_' + studentId);
             const score = scoreInput ? scoreInput.value : '';
             const feedback = feedbackInput ? feedbackInput.value : '';
 
@@ -7406,6 +9228,9 @@
             formData.append('_token', token);
             formData.append('score', score);
             formData.append('teacher_feedback', feedback);
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                formData.append('graded_file', fileInput.files[0]);
+            }
 
             fetch('/admin/tasks/' + assignmentId + '/grade/' + studentId, {
                 method: 'POST',
@@ -7415,6 +9240,10 @@
                 }
             })
             .then(res => {
+                if (!res.ok) throw new Error('Server returned ' + res.status);
+                return res.json();
+            })
+            .then(data => {
                 btn.innerText = '✓ Saved!';
                 btn.classList.remove('bg-slate-800');
                 btn.classList.add('bg-emerald-600');
@@ -7424,14 +9253,15 @@
                     s.score = Number(score);
                     s.teacher_feedback = feedback;
                     s.status = 'graded';
+                    if (data.graded_file_name) {
+                        s.graded_file_name = data.graded_file_name;
+                        s.graded_file_url = data.graded_file_url;
+                    }
                 }
                 updateSubmissionCounts();
                 setTimeout(() => {
-                    btn.innerText = origText;
-                    btn.classList.add('bg-slate-800');
-                    btn.classList.remove('bg-emerald-600');
-                    btn.disabled = false;
-                }, 1800);
+                    renderSubmissionsList();
+                }, 1200);
             })
             .catch(err => {
                 alert('Error saving grade: ' + err.message);
@@ -7464,6 +9294,47 @@
         }
         function closeEditUserModal() { document.getElementById('editUserModal').classList.add('hidden'); }
 
+        async function submitEditUser(event) {
+            event.preventDefault();
+            const form = document.getElementById('editUserForm');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Saving...';
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    closeEditUserModal();
+                    window.location.href = '{{ route("admin.dashboard") }}#users';
+                    window.location.reload();
+                } else {
+                    let errMsg = data.message || data.error || 'Failed to update user.';
+                    if (data.errors) {
+                        errMsg = Object.values(data.errors).flat().join('\n');
+                    }
+                    alert(errMsg);
+                }
+            } catch (e) {
+                console.error(e);
+                form.submit();
+            } finally {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
         function openResetPasswordModal(userId, userName) {
             document.getElementById('resetPasswordUserName').innerText = 'Set a new temporary password for ' + userName + '.';
             document.getElementById('resetPasswordForm').action = '/admin/users/' + userId + '/reset-password';
@@ -7471,12 +9342,414 @@
         }
         function closeResetPasswordModal() { document.getElementById('resetPasswordModal').classList.add('hidden'); }
 
+        async function submitResetPassword(event) {
+            event.preventDefault();
+            const form = document.getElementById('resetPasswordForm');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Updating...';
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    closeResetPasswordModal();
+                    alert(data.message || 'Password updated successfully.');
+                } else {
+                    alert(data.message || data.error || 'Failed to update password.');
+                }
+            } catch (e) {
+                console.error(e);
+                form.submit();
+            } finally {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
         function openDeleteUserModal(userId, userName) {
             document.getElementById('deleteUserPrompt').innerText = 'Are you sure you want to permanently remove "' + userName + '"?';
             document.getElementById('deleteUserForm').action = '/admin/users/' + userId;
             document.getElementById('deleteUserModal').classList.remove('hidden');
         }
         function closeDeleteUserModal() { document.getElementById('deleteUserModal').classList.add('hidden'); }
+
+        async function submitDeleteUser(event) {
+            event.preventDefault();
+            const form = document.getElementById('deleteUserForm');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Deleting...';
+            submitBtn.disabled = true;
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json().catch(() => ({}));
+                if (response.ok) {
+                    closeDeleteUserModal();
+                    window.location.href = '{{ route("admin.dashboard") }}#users';
+                    window.location.reload();
+                } else {
+                    alert(data.message || data.error || 'Failed to delete user.');
+                }
+            } catch (e) {
+                console.error(e);
+                form.submit();
+            } finally {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+
+        // ── Users & Staff Table Pagination & Dynamic Filtering (25, 50, 100) ──
+        let usersCurrentPage = 1;
+        let usersPerPage = 25;
+        let usersSearchQuery = '';
+        let usersSelectedRole = '';
+
+        function setUsersPerPage(val) {
+            usersPerPage = val === 'all' ? 999999 : parseInt(val, 10);
+            usersCurrentPage = 1;
+            renderUsersPagination();
+        }
+
+        function handleUsersSearch(val) {
+            usersSearchQuery = (val || '').toLowerCase().trim();
+            usersCurrentPage = 1;
+            renderUsersPagination();
+        }
+
+        function handleUsersRoleFilter(role) {
+            usersSelectedRole = (role || '').toLowerCase().trim();
+            usersCurrentPage = 1;
+            renderUsersPagination();
+        }
+
+        function setUsersPage(pageNum) {
+            usersCurrentPage = pageNum;
+            renderUsersPagination();
+            const table = document.getElementById('usersTable');
+            if (table) {
+                const rect = table.getBoundingClientRect();
+                if (rect.top < 0) {
+                    table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function renderUsersPagination() {
+            const table = document.getElementById('usersTable');
+            if (!table) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr.target-row'));
+            const grandTotal = rows.length;
+
+            const matchedRows = [];
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const role = (row.getAttribute('data-role') || '').toLowerCase();
+                const matchesQuery = !usersSearchQuery || text.includes(usersSearchQuery);
+                const matchesRole = !usersSelectedRole || role === usersSelectedRole;
+
+                if (matchesQuery && matchesRole) {
+                    matchedRows.push(row);
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const totalMatched = matchedRows.length;
+            const totalPages = Math.max(1, Math.ceil(totalMatched / usersPerPage));
+
+            if (usersCurrentPage > totalPages) usersCurrentPage = totalPages;
+            if (usersCurrentPage < 1) usersCurrentPage = 1;
+
+            const startIndex = (usersCurrentPage - 1) * usersPerPage;
+            const endIndex = Math.min(startIndex + usersPerPage, totalMatched);
+
+            matchedRows.forEach((row, idx) => {
+                if (idx >= startIndex && idx < endIndex) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const noResultsRow = document.getElementById('usersNoResultsRow');
+            if (noResultsRow) {
+                noResultsRow.classList.toggle('hidden', totalMatched > 0);
+            }
+
+            const showingStartEl = document.getElementById('usersShowingStart');
+            const showingEndEl = document.getElementById('usersShowingEnd');
+            const totalFilteredEl = document.getElementById('usersTotalFiltered');
+            const unfilteredWrapper = document.getElementById('usersTotalUnfiltered');
+            const grandTotalEl = document.getElementById('usersGrandTotal');
+
+            if (showingStartEl) showingStartEl.innerText = totalMatched === 0 ? 0 : (startIndex + 1);
+            if (showingEndEl) showingEndEl.innerText = endIndex;
+            if (totalFilteredEl) totalFilteredEl.innerText = totalMatched;
+            if (grandTotalEl) grandTotalEl.innerText = grandTotal;
+            if (unfilteredWrapper) {
+                unfilteredWrapper.classList.toggle('hidden', totalMatched === grandTotal);
+            }
+
+            renderUsersPaginationControls(totalPages, totalMatched);
+        }
+
+        function renderUsersPaginationControls(totalPages, totalMatched) {
+            const container = document.getElementById('usersPaginationButtons');
+            if (!container) return;
+
+            if (totalMatched === 0 || totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous Button
+            const prevDisabled = usersCurrentPage === 1;
+            html += `
+                <button type="button" onclick="setUsersPage(${usersCurrentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+                    class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${prevDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Prev</span>
+                </button>
+            `;
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, usersCurrentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage + 1 < maxVisible) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button type="button" onclick="setUsersPage(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const isActive = p === usersCurrentPage;
+                html += `
+                    <button type="button" onclick="setUsersPage(${p})"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition cursor-pointer ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                }
+                html += `<button type="button" onclick="setUsersPage(${totalPages})" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">${totalPages}</button>`;
+            }
+
+            // Next Button
+            const nextDisabled = usersCurrentPage === totalPages;
+            html += `
+                <button type="button" onclick="setUsersPage(${usersCurrentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+                    class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${nextDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                    <span>Next</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // ── Student Directory Table Pagination & Dynamic Filtering ─────────
+        let studentDirCurrentPage = 1;
+        let studentDirPerPage = 10;
+        let studentDirSearchQuery = '';
+
+        function setStudentDirPerPage(val) {
+            studentDirPerPage = val === 'all' ? 999999 : parseInt(val, 10);
+            studentDirCurrentPage = 1;
+
+            const topSelect = document.getElementById('studentDirPerPageSelect');
+            const bottomSelect = document.getElementById('studentDirPerPageSelectBottom');
+            if (topSelect && topSelect.value !== val) topSelect.value = val;
+            if (bottomSelect && bottomSelect.value !== val) bottomSelect.value = val;
+
+            renderStudentDirPagination();
+        }
+
+        function handleStudentDirSearch(val) {
+            studentDirSearchQuery = (val || '').toLowerCase().trim();
+            studentDirCurrentPage = 1;
+            renderStudentDirPagination();
+        }
+
+        function setStudentDirPage(pageNum) {
+            studentDirCurrentPage = pageNum;
+            renderStudentDirPagination();
+            const table = document.getElementById('studentDirectoryTable');
+            if (table) {
+                const rect = table.getBoundingClientRect();
+                if (rect.top < 0) {
+                    table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        }
+
+        function renderStudentDirPagination() {
+            const table = document.getElementById('studentDirectoryTable');
+            if (!table) return;
+
+            const rows = Array.from(table.querySelectorAll('tbody tr.student-dir-row'));
+            const grandTotal = rows.length;
+
+            const matchedRows = [];
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                const matchesQuery = !studentDirSearchQuery || text.includes(studentDirSearchQuery);
+
+                if (matchesQuery) {
+                    matchedRows.push(row);
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const totalMatched = matchedRows.length;
+            const totalPages = Math.max(1, Math.ceil(totalMatched / studentDirPerPage));
+
+            if (studentDirCurrentPage > totalPages) studentDirCurrentPage = totalPages;
+            if (studentDirCurrentPage < 1) studentDirCurrentPage = 1;
+
+            const startIndex = (studentDirCurrentPage - 1) * studentDirPerPage;
+            const endIndex = Math.min(startIndex + studentDirPerPage, totalMatched);
+
+            matchedRows.forEach((row, idx) => {
+                if (idx >= startIndex && idx < endIndex) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            const noResultsRow = document.getElementById('studentDirNoResultsRow');
+            if (noResultsRow) {
+                noResultsRow.classList.toggle('hidden', totalMatched > 0 || grandTotal === 0);
+            }
+
+            const showingStartEl = document.getElementById('studentDirShowingStart');
+            const showingEndEl = document.getElementById('studentDirShowingEnd');
+            const totalFilteredEl = document.getElementById('studentDirTotalFiltered');
+            const unfilteredWrapper = document.getElementById('studentDirTotalUnfiltered');
+            const grandTotalEl = document.getElementById('studentDirGrandTotal');
+
+            if (showingStartEl) showingStartEl.innerText = totalMatched === 0 ? 0 : (startIndex + 1);
+            if (showingEndEl) showingEndEl.innerText = endIndex;
+            if (totalFilteredEl) totalFilteredEl.innerText = totalMatched;
+            if (grandTotalEl) grandTotalEl.innerText = grandTotal;
+            if (unfilteredWrapper) {
+                unfilteredWrapper.classList.toggle('hidden', totalMatched === grandTotal);
+            }
+
+            renderStudentDirPaginationControls(totalPages, totalMatched);
+        }
+
+        function renderStudentDirPaginationControls(totalPages, totalMatched) {
+            const container = document.getElementById('studentDirPaginationButtons');
+            if (!container) return;
+
+            if (totalMatched === 0 || totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous Button
+            const prevDisabled = studentDirCurrentPage === 1;
+            html += `
+                <button type="button" onclick="setStudentDirPage(${studentDirCurrentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+                    class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${prevDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Prev</span>
+                </button>
+            `;
+
+            // Page numbers
+            const maxVisible = 5;
+            let startPage = Math.max(1, studentDirCurrentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage + 1 < maxVisible) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button type="button" onclick="setStudentDirPage(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const isActive = p === studentDirCurrentPage;
+                html += `
+                    <button type="button" onclick="setStudentDirPage(${p})"
+                        class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition cursor-pointer ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                        ${p}
+                    </button>
+                `;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+                }
+                html += `<button type="button" onclick="setStudentDirPage(${totalPages})" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">${totalPages}</button>`;
+            }
+
+            // Next Button
+            const nextDisabled = studentDirCurrentPage === totalPages;
+            html += `
+                <button type="button" onclick="setStudentDirPage(${studentDirCurrentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+                    class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${nextDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+                    <span>Next</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderUsersPagination();
+            renderStudentDirPagination();
+            if (window.OSTablePaginator) {
+                window.OSTablePaginator.initAll();
+            }
+        });
 
         // ── Edit Invoice Modal ────────────────────────────────────────────────
         function openEditInvoiceModal(inv) {
@@ -7743,6 +10016,29 @@
                     }
                 }
 
+                // Uploaded Documents
+                const docs = data.documents || {};
+                const setModalDoc = (id, url) => {
+                    const docNode = document.getElementById(id);
+                    if (!docNode) return;
+                    if (url && typeof url === 'string' && url.trim() !== '') {
+                        docNode.innerHTML = '<a href="' + encodeURI(url) + '" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline font-normal">View Document</a>';
+                    } else {
+                        docNode.innerHTML = '<span class="text-gray-400 font-normal">Not provided</span>';
+                    }
+                };
+
+                setModalDoc('modalTeacherDocResume', docs.resume);
+                setModalDoc('modalTeacherDocCertificate', docs.certificate);
+                setModalDoc('modalTeacherDocTranscript', docs.transcript);
+                setModalDoc('modalTeacherDocAdditional', docs.additional_document);
+
+                const totalDocs = [docs.resume, docs.certificate, docs.transcript, docs.additional_document].filter(v => v && typeof v === 'string' && v.trim() !== '').length;
+                const docsBadge = document.getElementById('modalTeacherDetailDocsCountBadge');
+                if (docsBadge) {
+                    docsBadge.textContent = totalDocs + (totalDocs === 1 ? ' Document' : ' Documents');
+                }
+
                 // 1. Assigned Curriculum Subjects Table
                 const subjectsContainer = document.getElementById('modalTeacherDetailSubjectsContainer');
                 const subjectsBadge = document.getElementById('modalTeacherDetailSubjectsCountBadge');
@@ -7824,6 +10120,49 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        // ── Teacher Application Documents Modal Handler ───────────────────────
+        function openTeacherDocsModal(el) {
+            try {
+                const name = el.getAttribute('data-applicant-name') || 'Applicant';
+                const resume = el.getAttribute('data-resume');
+                const cert = el.getAttribute('data-certificate');
+                const transcript = el.getAttribute('data-transcript');
+                const addl = el.getAttribute('data-additional');
+
+                const nameEl = document.getElementById('teacherDocsApplicantName');
+                if (nameEl) nameEl.textContent = name;
+
+                const setDocLink = (id, url) => {
+                    const td = document.getElementById(id);
+                    if (!td) return;
+                    if (url && url.trim() !== '') {
+                        td.innerHTML = '<a href="' + url + '" target="_blank" class="text-blue-600 hover:underline font-normal">View Document</a>';
+                    } else {
+                        td.innerHTML = '<span class="text-gray-400 font-normal">Not provided</span>';
+                    }
+                };
+
+                setDocLink('docRowResume', resume);
+                setDocLink('docRowCertificate', cert);
+                setDocLink('docRowTranscript', transcript);
+                setDocLink('docRowAdditional', addl);
+
+                const modal = document.getElementById('teacherDocsModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                }
+            } catch (err) {
+                console.error('Error opening teacher documents modal:', err);
+            }
+        }
+
+        function closeTeacherDocsModal() {
+            const modal = document.getElementById('teacherDocsModal');
+            if (modal) modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
         }
 
         // ── Manage Teacher Subjects & Classes Modal ───────────────────────────
@@ -7917,7 +10256,7 @@
 
                 groupSubjects.forEach(subject => {
                     const isChecked = (teacher.subject_ids || []).includes(subject.id);
-                    const displayName = subject.display_name || (subject.name + (subject.form_year ? ' (' + subject.form_year + ')' : ''));
+                    const displayName = subject.display_name || (subject.name + (subject.form_year ? ' - ' + subject.form_year : ''));
                     const tagText = group.tag(subject);
                     const label = document.createElement('label');
                     label.className = (isChecked ? checkedClass : uncheckedClass) + ' teacher-subject-item';
@@ -7959,7 +10298,7 @@
                 groupItems.forEach(s => {
                     const opt = document.createElement('option');
                     opt.value = s.id;
-                    opt.textContent = s.display_name || (s.name + (s.form_year ? ' (' + s.form_year + ')' : ''));
+                    opt.textContent = s.display_name || (s.name + (s.form_year ? ' - ' + s.form_year : ''));
                     optgroup.appendChild(opt);
                 });
                 classSubjectSelect.appendChild(optgroup);
@@ -8224,6 +10563,10 @@
         }
 
         function filterKpmSubjectsTable() {
+            if (window.OSTablePaginator && window.OSTablePaginator.instances['subjectsTable']) {
+                window.OSTablePaginator.setSearch('subjectsTable', document.getElementById('subjectSearchInput')?.value || '');
+                return;
+            }
             const query = (document.getElementById('subjectSearchInput')?.value || '').toLowerCase().trim();
             const cat = document.getElementById('kpmCategoryFilter')?.value || 'all';
 
@@ -8545,7 +10888,368 @@
         }
         function closeEditSubjectModal() { document.getElementById('editSubjectModal').classList.add('hidden'); }
 
+        // ── DIAGNOSTIC TEST MANAGER MODAL ────────────────────────────────────────
+        let currentDiagSubjectId = null;
+
+        function saveDiagnosticDraft() {
+            if (!currentDiagSubjectId) return;
+            const title = document.getElementById('diag_task_title')?.value || '';
+            const duration = document.getElementById('diag_duration')?.value || 20;
+            const marks = document.getElementById('diag_total_marks')?.value || 100;
+            const interactive = document.getElementById('diag_interactive_pdf')?.checked ?? true;
+            const questions = diagnosticQuestions.diag || [];
+
+            const draft = {
+                subject_id: currentDiagSubjectId,
+                title: title,
+                duration: duration,
+                total_marks: marks,
+                is_interactive_pdf: interactive,
+                questions: questions,
+                saved_at: new Date().toISOString()
+            };
+
+            try {
+                localStorage.setItem('olympia_diag_draft_' + currentDiagSubjectId, JSON.stringify(draft));
+            } catch (e) {}
+        }
+
+        function clearDiagnosticDraft() {
+            if (!currentDiagSubjectId) return;
+            try {
+                localStorage.removeItem('olympia_diag_draft_' + currentDiagSubjectId);
+            } catch (e) {}
+            const banner = document.getElementById('diag_draft_status_banner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        function openDiagnosticModal(data) {
+            currentDiagSubjectId = data.id;
+            const modal = document.getElementById('diagnosticTestManagerModal');
+            document.getElementById('diagModalSubjectName').textContent = data.name || 'Subject';
+
+            const form = document.getElementById('createDiagnosticForm');
+            form.action = '/admin/subjects/' + data.id + '/diagnostic-test/create';
+
+            // Reset error banner
+            const errBanner = document.getElementById('diag_form_error_banner');
+            if (errBanner) errBanner.classList.add('hidden');
+
+            document.getElementById('diag_task_title').value = data.test_title || ('Diagnostic Assessment: ' + (data.name || ''));
+            document.getElementById('diag_duration').value = data.diagnostic_duration_minutes || 20;
+            document.getElementById('diag_total_marks').value = data.total_marks || (data.total_questions || 100);
+
+            // Reset file input & scan progress indicators
+            const fileInput = document.getElementById('diag_task_file');
+            if (fileInput) fileInput.value = '';
+            const statusEl = document.getElementById('diag_pdf_scan_status');
+            if (statusEl) statusEl.classList.add('hidden');
+            const badgeEl = document.getElementById('diag_pdf_badge');
+            if (badgeEl) badgeEl.classList.add('hidden');
+
+            const fileNote = document.getElementById('diag_current_file_note');
+            if (fileNote) {
+                if (data.file_name) {
+                    fileNote.textContent = 'Current attached file: ' + data.file_name + ' (uploading a new file will replace it)';
+                    fileNote.classList.remove('hidden');
+                } else {
+                    fileNote.classList.add('hidden');
+                }
+            }
+
+            const interactiveCheckbox = document.getElementById('diag_interactive_pdf');
+            if (interactiveCheckbox) {
+                interactiveCheckbox.checked = data.is_interactive_pdf !== false;
+            }
+
+            // Populate questions list for diagnostic test from server
+            if (Array.isArray(data.questions_data) && data.questions_data.length > 0) {
+                diagnosticQuestions.diag = JSON.parse(JSON.stringify(data.questions_data));
+            } else if (data.answer_key_map && Object.keys(data.answer_key_map).length > 0) {
+                const fallbackList = [];
+                let num = 1;
+                const totalA = data.total_questions || Object.keys(data.answer_key_map).length || 5;
+                for (let i = 1; i <= totalA; i++) {
+                    fallbackList.push({
+                        number: num++,
+                        type: 'mcq',
+                        title: 'Question ' + i,
+                        correct_answer: data.answer_key_map[i] || data.answer_key_map[String(i)] || 'A'
+                    });
+                }
+                if (data.section_b_answer_key_map) {
+                    const bMap = data.section_b_answer_key_map;
+                    const totalB = data.section_b_questions || Object.keys(bMap).length || 0;
+                    for (let j = 1; j <= totalB; j++) {
+                        fallbackList.push({
+                            number: num++,
+                            type: 'fill_in_blank',
+                            title: 'Question B' + j,
+                            correct_answer: bMap[j] || bMap[String(j)] || ''
+                        });
+                    }
+                }
+                diagnosticQuestions.diag = fallbackList;
+            } else {
+                diagnosticQuestions.diag = [];
+                addBatchQuestions('diag', 'mcq', 5);
+            }
+
+            // Check for saved draft in localStorage
+            const draftBanner = document.getElementById('diag_draft_status_banner');
+            const draftText = document.getElementById('diag_draft_status_text');
+            try {
+                const draftRaw = localStorage.getItem('olympia_diag_draft_' + data.id);
+                if (draftRaw) {
+                    const draft = JSON.parse(draftRaw);
+                    if (draft && Array.isArray(draft.questions) && draft.questions.length > 0) {
+                        if (draft.title) document.getElementById('diag_task_title').value = draft.title;
+                        if (draft.duration) document.getElementById('diag_duration').value = draft.duration;
+                        if (draft.total_marks) document.getElementById('diag_total_marks').value = draft.total_marks;
+                        if (interactiveCheckbox && draft.is_interactive_pdf !== undefined) {
+                            interactiveCheckbox.checked = draft.is_interactive_pdf;
+                        }
+                        diagnosticQuestions.diag = draft.questions;
+                    }
+                }
+            } catch (e) {}
+
+            renderQuestionsList('diag');
+
+            const detachBtn = document.getElementById('diagDetachBtn');
+            if (detachBtn) {
+                if (data.diagnostic_assignment_id) {
+                    detachBtn.classList.remove('hidden');
+                } else {
+                    detachBtn.classList.add('hidden');
+                }
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeDiagnosticModal() {
+            document.getElementById('diagnosticTestManagerModal').classList.add('hidden');
+            const form = document.getElementById('createDiagnosticForm');
+            if (form) form.reset();
+            diagnosticQuestions.diag = [];
+            const detachBtn = document.getElementById('diagDetachBtn');
+            if (detachBtn) detachBtn.classList.add('hidden');
+            const errBanner = document.getElementById('diag_form_error_banner');
+            if (errBanner) errBanner.classList.add('hidden');
+            currentDiagSubjectId = null;
+        }
+
+        function submitDetachDiagnostic() {
+            if (!currentDiagSubjectId) return;
+            if (confirm('Detach and remove this diagnostic test from the subject? The test itself will not be deleted.')) {
+                const form = document.getElementById('detachDiagnosticForm');
+                form.action = '/admin/subjects/' + currentDiagSubjectId + '/diagnostic-test';
+                form.submit();
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Setup AJAX submit for Diagnostic Test Manager so form errors never wipe questions
+            const diagForm = document.getElementById('createDiagnosticForm');
+            if (diagForm) {
+                diagForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const errBanner = document.getElementById('diag_form_error_banner');
+                    const errText = document.getElementById('diag_form_error_text');
+                    if (errBanner) errBanner.classList.add('hidden');
+
+                    syncQuestionsState('diag');
+
+                    const submitBtn = diagForm.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn ? submitBtn.innerHTML : 'Save Diagnostic Test';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = `
+                            <span class="inline-flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                                <span>Saving...</span>
+                            </span>
+                        `;
+                    }
+
+                    try {
+                        const formData = new FormData(diagForm);
+                        const response = await fetch(diagForm.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && result.success) {
+                            if (currentDiagSubjectId) {
+                                try { localStorage.removeItem('olympia_diag_draft_' + currentDiagSubjectId); } catch (err) {}
+                            }
+                            window.location.hash = 'courses-subjects';
+                            window.location.reload();
+                        } else {
+                            let msg = result.message || 'An error occurred while saving the diagnostic test.';
+                            if (result.errors) {
+                                msg = Object.values(result.errors).flat().join('<br>');
+                            }
+                            if (errBanner && errText) {
+                                errText.innerHTML = msg;
+                                errBanner.classList.remove('hidden');
+                                diagForm.scrollTop = 0;
+                            } else {
+                                alert(msg);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Diagnostic test submit error:', err);
+                        if (errBanner && errText) {
+                            errText.innerHTML = 'A network or server error occurred. Your questions and inputs have been preserved. Please try clicking Save again.';
+                            errBanner.classList.remove('hidden');
+                            diagForm.scrollTop = 0;
+                        } else {
+                            alert('Network error. Your questions and input were preserved.');
+                        }
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+                        }
+                    }
+                });
+            }
+
+            // Setup AJAX submit for Create Task Form
+            const createTaskForm = document.getElementById('createTaskForm');
+            if (createTaskForm) {
+                createTaskForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const errBanner = document.getElementById('create_task_error_banner');
+                    const errText = document.getElementById('create_task_error_text');
+                    if (errBanner) errBanner.classList.add('hidden');
+
+                    syncQuestionsState('create');
+
+                    const submitBtn = createTaskForm.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn ? submitBtn.innerHTML : 'Publish Task';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = `<span>Saving...</span>`;
+                    }
+
+                    try {
+                        const formData = new FormData(createTaskForm);
+                        const response = await fetch(createTaskForm.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && result.success) {
+                            try { localStorage.removeItem('olympia_task_draft_create'); } catch (err) {}
+                            window.location.hash = 'courses-tasks';
+                            window.location.reload();
+                        } else {
+                            let msg = result.message || 'An error occurred while saving the task.';
+                            if (result.errors) {
+                                msg = Object.values(result.errors).flat().join('<br>');
+                            }
+                            if (errBanner && errText) {
+                                errText.innerHTML = msg;
+                                errBanner.classList.remove('hidden');
+                                createTaskForm.scrollTop = 0;
+                            } else {
+                                alert(msg);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Task submit error:', err);
+                        if (errBanner && errText) {
+                            errText.innerHTML = 'A network or server error occurred. Your questions and inputs have been preserved. Please try clicking Save again.';
+                            errBanner.classList.remove('hidden');
+                            createTaskForm.scrollTop = 0;
+                        } else {
+                            alert('Network error. Your questions and input were preserved.');
+                        }
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+                        }
+                    }
+                });
+            }
+
+            // Setup AJAX submit for Edit Task Form
+            const editTaskForm = document.getElementById('editTaskForm');
+            if (editTaskForm) {
+                editTaskForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const errBanner = document.getElementById('edit_task_error_banner');
+                    const errText = document.getElementById('edit_task_error_text');
+                    if (errBanner) errBanner.classList.add('hidden');
+
+                    syncQuestionsState('edit');
+
+                    const submitBtn = editTaskForm.querySelector('button[type="submit"]');
+                    const originalBtnText = submitBtn ? submitBtn.innerHTML : 'Save Changes';
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.innerHTML = `<span>Saving...</span>`;
+                    }
+
+                    try {
+                        const formData = new FormData(editTaskForm);
+                        const response = await fetch(editTaskForm.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            }
+                        });
+
+                        const result = await response.json();
+                        if (response.ok && result.success) {
+                            window.location.hash = 'courses-tasks';
+                            window.location.reload();
+                        } else {
+                            let msg = result.message || 'An error occurred while updating the task.';
+                            if (result.errors) {
+                                msg = Object.values(result.errors).flat().join('<br>');
+                            }
+                            if (errBanner && errText) {
+                                errText.innerHTML = msg;
+                                errBanner.classList.remove('hidden');
+                                editTaskForm.scrollTop = 0;
+                            } else {
+                                alert(msg);
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Task update error:', err);
+                        if (errBanner && errText) {
+                            errText.innerHTML = 'A network or server error occurred. Your questions and inputs have been preserved. Please try clicking Save again.';
+                            errBanner.classList.remove('hidden');
+                            editTaskForm.scrollTop = 0;
+                        } else {
+                            alert('Network error. Your questions and input were preserved.');
+                        }
+                    } finally {
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalBtnText;
+                        }
+                    }
+                });
+            }
             const initialSubjectEdu = document.querySelector('#createSubjectModal [name="subjects[0][education_type]"]');
             if (initialSubjectEdu) {
                 handleEducationTypeChange(initialSubjectEdu);
@@ -8835,6 +11539,10 @@
         }
 
         function filterTopicsTable() {
+            if (window.OSTablePaginator && window.OSTablePaginator.instances['topicsMasterTable']) {
+                window.OSTablePaginator.setSearch('topicsMasterTable', document.getElementById('topicSearchInput')?.value || '');
+                return;
+            }
             const query = (document.getElementById('topicSearchInput')?.value || '').toLowerCase().trim();
             const selectedSubject = document.getElementById('topicSubjectFilter')?.value || 'all';
             const rows = document.querySelectorAll('.topic-main-row');
@@ -8903,7 +11611,7 @@
                 teacher_name: {!! json_encode($c->teacher->user->name ?? '') !!},
                 title: {!! json_encode($c->title) !!},
                 subject_id: {{ $c->subject_id ?? 'null' }},
-                subject_name: {!! json_encode($c->subject->name ?? '') !!},
+                subject_name: {!! json_encode($c->subject->display_name ?? $c->subject->name ?? '') !!},
                 level: {!! json_encode($c->level ?? '') !!},
                 stage: {!! json_encode($c->subject->stage ?? '') !!},
                 education_type: {!! json_encode($c->subject->education_type ?? '') !!},
@@ -8936,7 +11644,7 @@
             {
                 id: {{ $t->id }},
                 subject_id: {{ $t->subject_id }},
-                subject_name: {!! json_encode($t->subject->name ?? 'General') !!},
+                subject_name: {!! json_encode($t->subject->display_name ?? $t->subject->name ?? 'General') !!},
                 stage: {!! json_encode($t->subject->stage ?? ucfirst($t->subject->education_type ?? 'General')) !!},
                 education_type: {!! json_encode($t->subject->education_type ?? '') !!},
                 chapter_number: {{ $t->chapter_number ?? 1 }},
@@ -9505,17 +12213,56 @@
         function closeEditLiveClassModal() { document.getElementById('editLiveClassModal').classList.add('hidden'); }
 
         // ── Recorded Class CRUD Modals ────────────────────────────────────────
-        function openCreateRecordedClassModal() { document.getElementById('createRecordedClassModal').classList.remove('hidden'); }
+        function filterCoursesBySubject(mode) {
+            const subjectSelect = document.getElementById(mode + '_recorded_subject_id');
+            const courseSelect = document.getElementById(mode + '_recorded_course_id');
+            if (!subjectSelect || !courseSelect) return;
+            const subjectId = subjectSelect.value;
+            const options = courseSelect.querySelectorAll('option');
+
+            options.forEach(opt => {
+                if (!opt.value) {
+                    opt.hidden = false;
+                    return;
+                }
+                const optSubId = opt.getAttribute('data-subject-id');
+                if (!subjectId || optSubId == subjectId) {
+                    opt.hidden = false;
+                } else {
+                    opt.hidden = true;
+                    if (courseSelect.value == opt.value) {
+                        courseSelect.value = '';
+                    }
+                }
+            });
+        }
+
+        function syncSubjectFromCourse(mode) {
+            const courseSelect = document.getElementById(mode + '_recorded_course_id');
+            if (!courseSelect) return;
+            const selectedOpt = courseSelect.options[courseSelect.selectedIndex];
+            const subjectId = selectedOpt ? selectedOpt.getAttribute('data-subject-id') : null;
+            if (subjectId) {
+                const subjectSelect = document.getElementById(mode + '_recorded_subject_id');
+                if (subjectSelect) {
+                    subjectSelect.value = subjectId;
+                    filterCoursesBySubject(mode);
+                }
+            }
+        }
+
+        function openCreateRecordedClassModal() {
+            filterCoursesBySubject('create');
+            document.getElementById('createRecordedClassModal').classList.remove('hidden');
+        }
         function closeCreateRecordedClassModal() { document.getElementById('createRecordedClassModal').classList.add('hidden'); }
 
         function openEditRecordedClassModal(recordedClass) {
-            document.getElementById('edit_recorded_course_id').value = recordedClass.course_id || '';
             document.getElementById('edit_recorded_subject_id').value = recordedClass.subject_id || '';
+            filterCoursesBySubject('edit');
+            document.getElementById('edit_recorded_course_id').value = recordedClass.course_id || '';
             document.getElementById('edit_recorded_topic_name').value = recordedClass.topic_name || '';
             document.getElementById('edit_recorded_title').value = recordedClass.title || '';
-            document.getElementById('edit_recorded_duration_minutes').value = recordedClass.duration_minutes || 45;
-            document.getElementById('edit_recorded_views_count').value = recordedClass.views_count || 0;
-            document.getElementById('edit_recorded_thumbnail').value = recordedClass.thumbnail || '';
             document.getElementById('edit_recorded_video_url').value = recordedClass.video_url || '';
             document.getElementById('edit_recorded_summary').value = recordedClass.summary || '';
             document.getElementById('editRecordedClassForm').action = '/admin/recorded-classes/' + recordedClass.id;
@@ -9544,7 +12291,7 @@
             currentQuizQuestions = questions || [];
             
             document.getElementById('manageQuestionsTitle').innerText = 'Manage Questions for: ' + quiz.title;
-            document.getElementById('manageQuestionsSubtitle').innerText = (quiz.course && quiz.course.subject ? quiz.course.subject.name : 'General') + ' • Expected: ' + quiz.total_questions + ' questions';
+            document.getElementById('manageQuestionsSubtitle').innerText = (quiz.course && quiz.course.subject ? (quiz.course.subject.display_name || quiz.course.subject.name) : 'General') + ' • Expected: ' + quiz.total_questions + ' questions';
             
             prepareAddQuestion();
             renderModalQuestionsList();
@@ -9683,6 +12430,10 @@
         }
 
         function filterQuizzes() {
+            if (window.OSTablePaginator && window.OSTablePaginator.instances['quizzesTable']) {
+                window.OSTablePaginator.setSearch('quizzesTable', document.getElementById('quizSearchInput')?.value || '');
+                return;
+            }
             const query = document.getElementById('quizSearchInput').value.toLowerCase();
             const subject = document.getElementById('quizSubjectFilter').value;
             const rows = document.querySelectorAll('#quizzesTable .quiz-row');
@@ -9727,6 +12478,10 @@
             if (updateHash) {
                 history.replaceState(null, '', '#' + subTabId);
             }
+
+            if (window.OSTablePaginator) {
+                window.OSTablePaginator.renderVisible();
+            }
         }
 
         // ── Gigs Modals ───────────────────────────────────────────────────────
@@ -9744,6 +12499,8 @@
                 if (rawHash.startsWith('courses-') && document.getElementById('panel-' + rawHash)) {
                     activeTab = 'tab-courses';
                     activeSubTab = rawHash;
+                } else if (rawHash.startsWith('emailsettings-')) {
+                    activeTab = 'tab-emailsettings';
                 } else if (document.getElementById('tab-' + rawHash)) {
                     activeTab = 'tab-' + rawHash;
                     if (activeTab === 'tab-courses') {
@@ -10049,6 +12806,7 @@ function copyInactiveEmails() {
 
 // Role filter for inactive users table
 function filterInactiveByRole(role) {
+    window.currentInactiveRole = role;
     // Update active filter button
     document.querySelectorAll('.inactive-role-filter').forEach(btn => {
         btn.classList.remove('bg-gray-900', 'text-white', 'border-gray-300');
@@ -10060,6 +12818,15 @@ function filterInactiveByRole(role) {
         activeBtn.classList.remove('text-gray-600', 'border-gray-200');
     }
 
+    // Clear the text search when switching roles
+    const searchInput = document.getElementById('inactiveUserSearch');
+    if (searchInput) searchInput.value = '';
+
+    if (window.OSTablePaginator && window.OSTablePaginator.instances['inactiveUsersTable']) {
+        window.OSTablePaginator.setSearch('inactiveUsersTable', '');
+        return;
+    }
+
     // Filter rows
     document.querySelectorAll('.inactive-user-row').forEach(row => {
         if (role === 'all' || row.getAttribute('data-role') === role) {
@@ -10068,14 +12835,14 @@ function filterInactiveByRole(role) {
             row.classList.add('hidden');
         }
     });
-
-    // Clear the text search when switching roles
-    const searchInput = document.getElementById('inactiveUserSearch');
-    if (searchInput) searchInput.value = '';
 }
 
 // ── Student Diagnostic Table Filter & Modal Scripts ─────────────────────────
 function filterDiagnosticTable() {
+    if (window.OSTablePaginator && window.OSTablePaginator.instances['diagnosticRosterTable']) {
+        window.OSTablePaginator.setSearch('diagnosticRosterTable', document.getElementById('diagnosticSearchInput')?.value || '');
+        return;
+    }
     const search = (document.getElementById('diagnosticSearchInput')?.value || '').toLowerCase().trim();
     const status = (document.getElementById('diagnosticStatusFilter')?.value || 'all').toLowerCase();
 
@@ -10095,9 +12862,29 @@ function filterDiagnosticTable() {
     });
 }
 
-function openPersonalUploadModal(studentId, studentName, studentLevel) {
-    document.getElementById('personalUploadStudentId').value = studentId;
-    document.getElementById('personalUploadStudentName').textContent = studentName + (studentLevel ? ' (' + studentLevel + ')' : '');
+function openPersonalUploadModal(studentId, studentName, studentLevel, redirectTab = '#student') {
+    const idInput = document.getElementById('personalUploadStudentId');
+    if (idInput) idInput.value = studentId;
+
+    const nameSpan = document.getElementById('personalUploadStudentName');
+    if (nameSpan) nameSpan.textContent = studentName + (studentLevel ? ' (' + studentLevel + ')' : '');
+
+    const redirectInput = document.getElementById('personalUploadRedirectTab');
+    if (redirectInput) redirectInput.value = redirectTab;
+
+    const levelInput = document.getElementById('personalUploadTargetLevel');
+    if (levelInput) levelInput.value = studentLevel || 'All Levels';
+
+    clearPersonalUploadFile();
+
+    const form = document.getElementById('personalUploadForm');
+    if (form) {
+        form.reset();
+        if (idInput) idInput.value = studentId;
+        if (redirectInput) redirectInput.value = redirectTab;
+        if (levelInput) levelInput.value = studentLevel || 'All Levels';
+    }
+
     const modal = document.getElementById('personalUploadModal');
     if (modal) modal.classList.remove('hidden');
 }
@@ -10105,6 +12892,36 @@ function openPersonalUploadModal(studentId, studentName, studentLevel) {
 function closePersonalUploadModal() {
     const modal = document.getElementById('personalUploadModal');
     if (modal) modal.classList.add('hidden');
+    clearPersonalUploadFile();
+}
+
+function handlePersonalUploadFileChange(input) {
+    const file = input.files && input.files[0];
+    const previewContainer = document.getElementById('personalUploadFilePreview');
+    const dropzonePrompt = document.getElementById('personalUploadDropzonePrompt');
+    const fileNameEl = document.getElementById('personalUploadFileName');
+    const fileSizeEl = document.getElementById('personalUploadFileSize');
+
+    if (file) {
+        if (fileNameEl) fileNameEl.textContent = file.name;
+        if (fileSizeEl) {
+            const sizeInMb = (file.size / (1024 * 1024)).toFixed(2);
+            fileSizeEl.textContent = sizeInMb > 0.05 ? `${sizeInMb} MB` : `${(file.size / 1024).toFixed(1)} KB`;
+        }
+        if (previewContainer) previewContainer.classList.remove('hidden');
+        if (dropzonePrompt) dropzonePrompt.classList.add('hidden');
+    } else {
+        clearPersonalUploadFile();
+    }
+}
+
+function clearPersonalUploadFile() {
+    const fileInput = document.getElementById('personalUploadFileInput');
+    if (fileInput) fileInput.value = '';
+    const previewContainer = document.getElementById('personalUploadFilePreview');
+    if (previewContainer) previewContainer.classList.add('hidden');
+    const dropzonePrompt = document.getElementById('personalUploadDropzonePrompt');
+    if (dropzonePrompt) dropzonePrompt.classList.remove('hidden');
 }
 
 async function openDiagnosticBreakdownModal(studentAssignmentId) {
@@ -10238,60 +13055,133 @@ function closeDiagnosticBreakdownModal() {
 </div>
 
 {{-- ══ PERSONAL TASK / NOTES DOCUMENT UPLOAD MODAL ══ --}}
-<div id="personalUploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 sm:p-6" onclick="if(event.target === this) closePersonalUploadModal()">
-    <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
+<div id="personalUploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 overflow-y-auto" onclick="if(event.target === this) closePersonalUploadModal()">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-xl border border-gray-100 my-auto flex flex-col max-h-[92vh]">
         {{-- Header --}}
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-3 shrink-0">
             <div>
-                <h3 class="font-heading font-black text-lg text-gray-900">Upload Task / Notes Document</h3>
-                <p class="text-xs text-gray-400 mt-0.5">Assign personal document for <span id="personalUploadStudentName" class="font-bold text-gray-900"></span></p>
+                <h3 class="font-bold text-sm sm:text-base text-gray-900">Upload Task / Notes Document</h3>
+                <p class="text-[11px] text-gray-500 mt-0.5">Assign personal document for <span id="personalUploadStudentName" class="font-bold text-gray-900"></span></p>
             </div>
-            <button type="button" onclick="closePersonalUploadModal()" class="w-8 h-8 rounded-xl border border-gray-200 hover:border-gray-400 text-gray-400 hover:text-gray-900 flex items-center justify-center transition cursor-pointer text-base">✕</button>
+            <button type="button" onclick="closePersonalUploadModal()" class="w-7 h-7 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm font-light transition cursor-pointer" title="Close">✕</button>
         </div>
 
         {{-- Form --}}
-        <form method="POST" action="{{ route('admin.tasks.store') }}" enctype="multipart/form-data" class="p-6 space-y-4 text-xs">
+        <form method="POST" id="personalUploadForm" action="{{ route('admin.tasks.store') }}" enctype="multipart/form-data" class="overflow-y-auto pr-0.5 pt-3.5 space-y-3.5 text-xs admin-scrollbar">
             @csrf
             <input type="hidden" name="student_id" id="personalUploadStudentId">
-            <input type="hidden" name="redirect_tab" value="#students">
+            <input type="hidden" name="redirect_tab" id="personalUploadRedirectTab" value="#student">
+            <input type="hidden" name="target_level" id="personalUploadTargetLevel" value="All Levels">
 
+            {{-- 1. Document Title --}}
             <div>
-                <label class="block font-bold text-gray-700 mb-1">Document / Task Title <span class="text-rose-500">*</span></label>
-                <input type="text" name="title" required placeholder="e.g. Modul Pengukuhan / Diagnostic Follow-Up Notes" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Document / Task Title <span class="text-rose-500">*</span></label>
+                <input type="text" name="title" id="personal_upload_title" required placeholder="e.g. Modul Pengukuhan / Diagnostic Follow-Up Notes" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            {{-- 2. Type & Due Date --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                    <label class="block font-bold text-gray-700 mb-1">Type</label>
-                    <select name="type" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-medium">
-                        <option value="Assignment">Assignment</option>
+                    <label class="block font-medium text-[11px] text-gray-700 mb-1">Document Type <span class="text-rose-500">*</span></label>
+                    <select name="type" id="personal_upload_type" required class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                        <option value="Assignment" selected>Assignment</option>
                         <option value="Assessment">Assessment</option>
                         <option value="Remedial Notes">Remedial Notes</option>
                         <option value="Homework">Homework</option>
+                        <option value="Module">Module / Worksheet</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block font-bold text-gray-700 mb-1">Due Date (Optional)</label>
-                    <input type="date" name="due_date" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                    <label class="block font-medium text-[11px] text-gray-700 mb-1">Due Date (Optional)</label>
+                    <input type="date" name="due_date" id="personal_upload_due_date" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
                 </div>
             </div>
 
-            <div>
-                <label class="block font-bold text-gray-700 mb-1">Upload Document (PDF, Word, Image) <span class="text-rose-500">*</span></label>
-                <input type="file" name="file" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg" class="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border border-gray-200 rounded-xl p-1 bg-gray-50">
+            {{-- 3. Course Linkage & Total Marks --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                    <label class="block font-medium text-[11px] text-gray-700 mb-1">Subject / Course (Optional)</label>
+                    <select name="course_id" id="personal_upload_course_id" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                        <option value="">None (Direct Student Assignment)</option>
+                        @foreach($allCourses as $c)
+                            <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->level }} - {{ $c->subject->display_name ?? $c->subject->name ?? 'General' }})</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-medium text-[11px] text-gray-700 mb-1">Total Marks</label>
+                    <input type="number" name="total_marks" id="personal_upload_total_marks" value="100" min="1" max="1000" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition">
+                </div>
             </div>
 
+            {{-- 4. Sleek File Dropzone --}}
             <div>
-                <label class="block font-bold text-gray-700 mb-1">Instructions / Personal Notes</label>
-                <textarea name="instructions" rows="3" placeholder="Write specific guidance, personal advice, or task instructions for this student..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-blue-500 font-medium resize-none"></textarea>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Upload Document (PDF, Word, Excel, PPT, Image) <span class="text-rose-500">*</span></label>
+                
+                {{-- Dropzone Area --}}
+                <div class="relative border-2 border-dashed border-gray-200 hover:border-blue-400 bg-gray-50/70 hover:bg-blue-50/20 rounded-xl p-4 transition cursor-pointer text-center group"
+                     onclick="document.getElementById('personalUploadFileInput').click()"
+                     ondragover="event.preventDefault(); this.classList.add('border-blue-500', 'bg-blue-50/30')"
+                     ondragleave="event.preventDefault(); this.classList.remove('border-blue-500', 'bg-blue-50/30')"
+                     ondrop="event.preventDefault(); this.classList.remove('border-blue-500', 'bg-blue-50/30'); if(event.dataTransfer.files.length){ document.getElementById('personalUploadFileInput').files = event.dataTransfer.files; handlePersonalUploadFileChange(document.getElementById('personalUploadFileInput')); }">
+                    
+                    <input type="file" name="file" id="personalUploadFileInput" required accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg" class="hidden" onchange="handlePersonalUploadFileChange(this)">
+
+                    {{-- Empty Dropzone Prompt --}}
+                    <div id="personalUploadDropzonePrompt" class="space-y-1.5 pointer-events-none">
+                        <div class="w-9 h-9 mx-auto rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        </div>
+                        <div class="text-xs font-semibold text-gray-700">
+                            <span class="text-blue-600 underline">Click to browse</span> or drag and drop file here
+                        </div>
+                        <p class="text-[10px] text-gray-400">PDF, Word, Excel, PowerPoint, or Image up to 30MB</p>
+                    </div>
+
+                    {{-- Selected File Preview --}}
+                    <div id="personalUploadFilePreview" class="hidden flex items-center justify-between p-2.5 bg-white rounded-lg border border-blue-200 text-left shadow-xs">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div class="truncate">
+                                <p id="personalUploadFileName" class="text-xs font-semibold text-gray-800 truncate">document.pdf</p>
+                                <p id="personalUploadFileSize" class="text-[10px] text-gray-400">0 KB</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="event.stopPropagation(); clearPersonalUploadFile()" class="p-1 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer" title="Remove file">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-                <button type="button" onclick="closePersonalUploadModal()" class="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 font-bold transition cursor-pointer">
-                    Batal
+            {{-- 5. Interactive PDF Answering Toggle --}}
+            <div class="p-2.5 bg-blue-50/70 border border-blue-200/80 rounded-xl flex items-center justify-between">
+                <div>
+                    <label class="font-bold text-blue-950 block text-[11px]">Enable Interactive PDF Answering</label>
+                    <p class="text-[10px] text-blue-700">Student can write &amp; draw directly on this PDF using stylus or touch</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="is_interactive_pdf" value="1" checked class="sr-only peer">
+                    <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+
+            {{-- 6. Instructions / Notes --}}
+            <div>
+                <label class="block font-medium text-[11px] text-gray-700 mb-1">Instructions / Personal Notes (Optional)</label>
+                <textarea name="instructions" id="personal_upload_instructions" rows="2" placeholder="Write specific guidance, personal advice, or task instructions for this student..." class="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition resize-none"></textarea>
+            </div>
+
+            {{-- Footer Action Buttons --}}
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 shrink-0">
+                <button type="button" onclick="closePersonalUploadModal()" class="px-3.5 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-lg font-medium transition cursor-pointer">
+                    Cancel
                 </button>
-                <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold transition shadow-xs cursor-pointer">
-                    Upload &amp; Assign Document
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg shadow-xs transition cursor-pointer flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span>Upload &amp; Assign Document</span>
                 </button>
             </div>
         </form>

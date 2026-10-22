@@ -18,8 +18,8 @@
                                      (r.topic_name && r.topic_name.toLowerCase().includes(this.searchQuery.toLowerCase()));
                 const matchesClass = this.selectedClass === 'all' || (r.course && r.course.level === this.selectedClass);
                 const matchesSubject = this.selectedSubject === 'all' || 
-                                       (r.subject && r.subject.name === this.selectedSubject) || 
-                                       (r.course && r.course.subject && r.course.subject.name === this.selectedSubject);
+                                       (r.subject && (r.subject.display_name === this.selectedSubject || r.subject.name === this.selectedSubject)) || 
+                                       (r.course && r.course.subject && (r.course.subject.display_name === this.selectedSubject || r.course.subject.name === this.selectedSubject));
                 return matchesQuery && matchesClass && matchesSubject;
             });
         }
@@ -116,7 +116,7 @@
                 </div>
 
                 <div>
-                    <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                    <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                         <option value="all">Class: All Levels</option>
                         @foreach($courses->pluck('level')->unique() as $lvl)
                             <option value="{{ $lvl }}">{{ $lvl }}</option>
@@ -125,10 +125,10 @@
                 </div>
 
                 <div>
-                    <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                    <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                         <option value="all">Subject: All Subjects</option>
                         @foreach($subjects as $s)
-                            <option value="{{ $s->name }}">{{ $s->name }}</option>
+                            <option value="{{ $s->display_name ?? $s->name }}">{{ $s->display_name ?? $s->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -225,9 +225,9 @@
             </div>
         </template>
 
-        {{-- ── 4. UPLOAD RECORDING DRAWER MODAL ── --}}
-        <div x-show="showUploadModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showUploadModal = false" class="w-full max-w-xl bg-white h-full p-6 space-y-6 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 4. UPLOAD RECORDING MODAL ── --}}
+        <div x-show="showUploadModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showUploadModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-6 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h3 class="font-heading font-black text-lg text-gray-900">Upload New Class Recording</h3>
@@ -253,10 +253,10 @@
 
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Assign to Class *</label>
-                                <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     <option value="">Select class</option>
                                     @foreach($courses as $c)
-                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -313,9 +313,9 @@
             </div>
         </div>
 
-        {{-- ── 5. EDIT RECORDING DRAWER MODAL ── --}}
-        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs">
-            <div @click.away="showEditModal = false" class="w-full max-w-xl bg-white h-full p-6 space-y-6 shadow-2xl overflow-y-auto transform transition-all">
+        {{-- ── 5. EDIT RECORDING MODAL ── --}}
+        <div x-show="showEditModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="showEditModal = false" class="bg-white rounded-3xl shadow-2xl border border-gray-100 w-full max-w-2xl p-6 sm:p-7 space-y-6 my-auto max-h-[90vh] overflow-y-auto transform transition-all">
                 
                 <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                     <h3 class="font-heading font-black text-lg text-gray-900">Edit Class Recording</h3>
@@ -342,9 +342,9 @@
 
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Assign to Class *</label>
-                                <select name="course_id" required x-model="editingRecording.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                                <select name="course_id" required x-model="editingRecording.course_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                     @foreach($courses as $c)
-                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? 'Subject' }} - {{ $c->level }})</option>
+                                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
                                     @endforeach
                                 </select>
                             </div>

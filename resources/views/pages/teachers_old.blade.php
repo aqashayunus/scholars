@@ -23,7 +23,7 @@
                     {{-- Dropdown 1: Education Level / Type --}}
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-charcoal mb-2">Education Level</label>
-                        <select x-model="selectedLevel" @change="selectedSubject = 'all'" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-charcoal focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer outline-none">
+                        <select x-model="selectedLevel" @change="selectedSubject = 'all'" class="w-full bg-white border border-gray-200 rounded-2xl pl-4 pr-10 py-3 text-xs sm:text-sm font-semibold text-charcoal focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer outline-none">
                             <option value="all">All Education Levels</option>
                             <option value="kindergarten">Kindergarten (Ages 4–6)</option>
                             <option value="primary">Primary Education (Year 4–6)</option>
@@ -34,7 +34,7 @@
                     {{-- Dropdown 2: Subject (Filtered by Education Level) --}}
                     <div>
                         <label class="block text-xs font-bold uppercase tracking-wider text-charcoal mb-2">Subject</label>
-                        <select x-model="selectedSubject" class="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-xs sm:text-sm font-semibold text-charcoal focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer outline-none">
+                        <select x-model="selectedSubject" class="w-full bg-white border border-gray-200 rounded-2xl pl-4 pr-10 py-3 text-xs sm:text-sm font-semibold text-charcoal focus:ring-2 focus:ring-primary focus:border-primary transition-all cursor-pointer outline-none">
                             <option value="all">All Subjects</option>
                             
                             {{-- Kindergarten Subjects --}}
@@ -202,7 +202,7 @@
                         <a href="{{ route('teacher.show', $loop->iteration) }}" class="btn-secondary btn-sm text-xs cursor-pointer">
                             View Detail
                         </a>
-                        <a href="{{ route('free-trial') }}" class="btn-primary btn-sm text-xs">
+                        <a href="{{ route('register') }}" class="btn-primary btn-sm text-xs">
                             Book Class
                         </a>
                     </div>
@@ -217,7 +217,7 @@
         <div class="max-w-4xl mx-auto px-4 text-center">
             <h2 class="font-heading font-bold text-3xl text-charcoal mb-3">Start Learning With Our Expert Teachers</h2>
             <p class="text-muted text-base mb-6">Join thousands of students scoring A+ in SPM & IGCSE with Olympian Scholars.</p>
-            <a href="{{ route('free-trial') }}" class="btn-primary btn-lg inline-flex">Book Your Free Trial Class</a>
+            <a href="{{ route('register') }}" class="btn-primary btn-lg inline-flex">Register Now</a>
         </div>
     </section>
 </x-app-layout>

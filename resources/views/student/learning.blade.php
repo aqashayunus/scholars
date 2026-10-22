@@ -37,7 +37,7 @@
                         <select id="subject-select" 
                                 x-model="activeSubject" 
                                 @change="activeTab = 'overview'"
-                                class="bg-gray-50 border border-gray-200 text-gray-900 font-heading font-extrabold text-sm sm:text-base rounded-2xl px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer appearance-none w-full shadow-2xs transition-all">
+                                class="bg-gray-50 !bg-none border border-gray-200 text-gray-900 font-heading font-extrabold text-sm sm:text-base rounded-2xl px-4 py-2.5 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer appearance-none w-full shadow-2xs transition-all">
                             <template x-for="subj in subjects" :key="subj.id">
                                 <option :value="subj.name" x-text="subj.name"></option>
                             </template>
@@ -167,7 +167,7 @@
                 @endphp
                 @foreach($allMaterials ?? [] as $mat)
                     @php
-                        $subjName = $mat->course->subject->name ?? 'General';
+                        $subjName = $mat->course->subject->display_name ?? $mat->course->subject->name ?? 'General';
                         $ext = strtoupper($mat->file_type ?: 'PDF');
                     @endphp
                     <div x-show="activeSubject === '{{ $subjName }}'" class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4 hover:bg-gray-100/70 transition-all">
@@ -210,7 +210,7 @@
                 @foreach($allQuizzes ?? [] as $qz)
                     @if($qz->questions->count() > 0)
                         @php
-                            $subjName = $qz->course->subject->name ?? 'General';
+                            $subjName = $qz->course->subject->display_name ?? $qz->course->subject->name ?? 'General';
                         @endphp
                         <div x-show="activeSubject === '{{ $subjName }}'" class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between gap-4">
                             <div>
@@ -233,17 +233,54 @@
 
             {{-- 4. RECORDED CLASSES PANEL --}}
             <div x-show="activeTab === 'recordings'" x-cloak class="p-6 space-y-3">
-                <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                @forelse($recordings as $rec)
+                    @php
+                        $recSubjId = $rec->subject_id;
+                        $recCourseId = $rec->course_id;
+                        $recSubjName = $rec->subject->display_name ?? $rec->subject->name ?? '';
+                        $isMp4 = str_contains(strtolower($rec->video_url), '.mp4') || str_contains($rec->video_url, 'storage/recordings');
+                    @endphp
+                    <div x-show="activeSubjectData.subject_id == {{ (int) $recSubjId }} || (activeSubjectData.course_id && activeSubjectData.course_id == {{ (int) ($recCourseId ?? 0) }}) || activeSubject === @js($recSubjName)" 
+                         class="p-4 bg-gray-50 hover:bg-blue-50/40 rounded-2xl border border-gray-100 hover:border-blue-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                                <svg class="w-5 h-5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 flex-wrap mb-0.5">
+                                    <h4 class="font-heading font-extrabold text-sm text-gray-900 group-hover:text-blue-600 transition-colors">{{ $rec->title }}</h4>
+                                    @if($rec->topic_name)
+                                        <span class="px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-600 font-bold text-[10px]">{{ $rec->topic_name }}</span>
+                                    @endif
+                                    @if($isMp4)
+                                        <span class="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-bold text-[9px] uppercase tracking-wider">MP4 Video</span>
+                                    @else
+                                        <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[9px] uppercase tracking-wider">Web Link</span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-gray-500">
+                                    Uploaded {{ $rec->created_at ? $rec->created_at->format('d M Y') : 'Recently' }}
+                                    @if($rec->summary)
+                                        • <span class="text-gray-400">{{ Str::limit($rec->summary, 80) }}</span>
+                                    @endif
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 class="font-heading font-extrabold text-sm text-gray-900">Recorded Class – Chapter 2 Overview</h4>
-                            <p class="text-xs text-gray-500">Recorded 08 Aug 2026 • 90 Minutes</p>
-                        </div>
+                        <a href="{{ route('student.recordings.show', $rec->id) }}" class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors shrink-0 inline-flex items-center gap-1.5 shadow-2xs">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            <span>Play Video</span>
+                        </a>
                     </div>
-                    <button class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors shrink-0">Play Video</button>
+                @empty
+                @endforelse
+
+                {{-- Empty state when no videos for the selected subject --}}
+                <div x-show="activeSubjectData.videoCount === 0" class="p-8 text-center bg-gray-50 rounded-2xl border border-gray-100">
+                    <div class="w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </div>
+                    <p class="font-heading font-black text-sm text-gray-700">No recorded classes uploaded yet for this subject.</p>
+                    <p class="text-xs text-gray-400 mt-0.5">When new recorded sessions or replays are uploaded, they will appear here.</p>
                 </div>
             </div>
 

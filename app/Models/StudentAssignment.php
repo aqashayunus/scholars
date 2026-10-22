@@ -19,6 +19,8 @@ class StudentAssignment extends Model
         'teacher_feedback',
         'file_path',
         'file_name',
+        'graded_file_path',
+        'graded_file_name',
     ];
     protected $casts = [
         'submitted_at'       => 'datetime',
@@ -51,9 +53,23 @@ class StudentAssignment extends Model
 
     public function student()    { return $this->belongsTo(Student::class); }
     public function assignment() { return $this->belongsTo(Assignment::class); }
+    public function interactiveSubmission() { return $this->hasOne(StudentAssignmentSubmission::class, 'student_assignment_id'); }
 
     public function getFileUrlAttribute(): ?string
     {
-        return $this->file_path ? asset('storage/' . $this->file_path) : null;
+        if (!$this->file_path && !$this->interactiveSubmission?->final_pdf_path) {
+            return null;
+        }
+
+        return route('student-assignments.download', $this->id);
+    }
+
+    public function getGradedFileUrlAttribute(): ?string
+    {
+        if (!$this->graded_file_path) {
+            return null;
+        }
+
+        return route('student-assignments.download-graded', $this->id);
     }
 }

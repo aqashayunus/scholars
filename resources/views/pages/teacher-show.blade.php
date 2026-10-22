@@ -277,8 +277,8 @@
                             </div>
                         </div>
 
-                        <a href="{{ route('free-trial') }}" class="btn-primary w-full justify-center mb-3 py-3.5 text-sm font-extrabold shadow-md">
-                            Book Free Trial Now
+                        <a href="{{ route('register') }}" class="btn-primary w-full justify-center mb-3 py-3.5 text-sm font-extrabold shadow-md">
+                            Enroll in Class Now
                         </a>
                         <a href="https://wa.me/60123456789" target="_blank" class="btn-secondary w-full justify-center py-3 text-xs font-bold flex items-center gap-2">
                             <span>WhatsApp Educator Team</span>

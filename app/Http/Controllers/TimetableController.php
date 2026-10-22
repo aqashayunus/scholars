@@ -6,6 +6,7 @@ use App\Models\AcademicEvent;
 use App\Models\Assignment;
 use App\Models\ClassRequest;
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentAttendance;
@@ -58,7 +59,7 @@ class TimetableController extends Controller
             ->with('courses.subject')
             ->firstOrFail();
 
-        $courses = $teacher->courses;
+        $courses = $teacher->courses()->withCount('enrollments')->with('subject')->get();
         $subjects = $courses->pluck('subject')->filter()->unique('id')->values();
 
         // Summary stats for timetable header
@@ -72,7 +73,7 @@ class TimetableController extends Controller
         $upcomingCount = LiveClass::where(function ($q) use ($courseIds, $teacher) {
                 $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
             })
-            ->where('scheduled_at', '>=', now())
+            ->activeOrUpcoming()
             ->count();
 
         $rescheduledCount = LiveClass::where(function ($q) use ($courseIds, $teacher) {
@@ -214,7 +215,7 @@ class TimetableController extends Controller
             $classes = $classQuery->get();
             foreach ($classes as $lc) {
                 $course = $lc->course;
-                $subject = $course?->subject?->name ?? 'Teaching Session';
+                $subject = $course?->subject?->display_name ?? $course?->subject?->name ?? 'Teaching Session';
                 $teacherName = $lc->teacher?->user?->name ?? $course?->teacher?->user?->name ?? 'Assigned Instructor';
                 $duration = (int) ($lc->duration_minutes ?: 60);
                 $endTime = $lc->scheduled_at->copy()->addMinutes($duration);
@@ -350,6 +351,9 @@ class TimetableController extends Controller
             'status'           => 'upcoming',
         ]);
 
+        // Dispatch notifications to enrolled students & linked parents
+        $this->notifyStudentsAndParentsOfNewClass($liveClass);
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -430,8 +434,34 @@ class TimetableController extends Controller
         ]);
 
         $course = Course::findOrFail($validated['course_id']);
-        $teacherId = $validated['teacher_id'] ?: $course->teacher_id;
+        $teacherId = (!empty($validated['teacher_id'])) ? $validated['teacher_id'] : $course->teacher_id;
         $scheduledAt = Carbon::parse($validated['scheduled_date'] . ' ' . $validated['scheduled_time']);
+
+        // Auto-sync eligible students to this course if it currently has 0 enrollments
+        if ($course->enrollments()->count() === 0) {
+            $subjectName = $course->subject?->name;
+            $candidateStudentIds = collect();
+
+            if ($subjectName) {
+                $matchingCourseIds = Course::whereHas('subject', fn($sq) => $sq->where('name', $subjectName))->pluck('id');
+                $candidateStudentIds = Enrollment::whereIn('course_id', $matchingCourseIds)->pluck('student_id');
+            }
+
+            if ($candidateStudentIds->isEmpty()) {
+                if ($course->level === 'Primary' || str_contains(strtolower($course->level ?? ''), 'year')) {
+                    $candidateStudentIds = Student::where('education_level', 'Primary')->orWhereNull('education_level')->pluck('id');
+                } else {
+                    $candidateStudentIds = Student::pluck('id');
+                }
+            }
+
+            foreach ($candidateStudentIds->unique() as $stId) {
+                Enrollment::firstOrCreate(
+                    ['student_id' => $stId, 'course_id' => $course->id],
+                    ['status' => 'active', 'progress_pct' => 0, 'completed_lessons' => 0, 'enrolled_at' => now()]
+                );
+            }
+        }
 
         $liveClass = LiveClass::create([
             'course_id'        => $course->id,
@@ -453,6 +483,9 @@ class TimetableController extends Controller
                 'message' => "A new live class session '{$liveClass->title}' has been scheduled for {$scheduledAt->format('d M Y, h:i A')}.",
             ]);
         }
+
+        // Dispatch notifications to enrolled students & linked parents
+        $this->notifyStudentsAndParentsOfNewClass($liveClass);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -552,7 +585,7 @@ class TimetableController extends Controller
         $end = $start->copy()->addMinutes($liveClass->duration_minutes ?? 60);
 
         $title = $liveClass->title;
-        $subject = $liveClass->course->subject->name ?? 'Course';
+        $subject = $liveClass->course->subject->display_name ?? $liveClass->course->subject->name ?? 'Course';
         $teacher = $liveClass->course->teacher->user->name ?? 'Olympian Scholars Instructor';
         $description = "Subject: {$subject}\\nInstructor: {$teacher}\\nLink: " . ($liveClass->meeting_url ?? 'N/A');
 
@@ -584,9 +617,7 @@ class TimetableController extends Controller
 
     private function appendStudentClassEvents(Student $student, Carbon $start, Carbon $end, array &$events, ?string $childLabel = null, ?string $overrideColor = null, ?array $childTheme = null): void
     {
-        $classes = LiveClass::whereHas('course', function ($q) use ($student) {
-                $q->whereHas('enrollments', fn($q2) => $q2->where('student_id', $student->id));
-            })
+        $classes = StudentDashboardController::getStudentLiveClassesQuery($student)
             ->whereBetween('scheduled_at', [$start, $end])
             ->with(['course.subject', 'course.teacher.user'])
             ->get();
@@ -598,7 +629,7 @@ class TimetableController extends Controller
 
         foreach ($classes as $lc) {
             $course = $lc->course;
-            $subject = $course?->subject?->name ?? 'Academic Class';
+            $subject = $course?->subject?->display_name ?? $course?->subject?->name ?? 'Academic Class';
             $teacherName = $lc->teacher?->user?->name ?? $course?->teacher?->user?->name ?? 'Instructor';
             $attStatus = $attendances[$lc->id] ?? null;
 
@@ -646,7 +677,7 @@ class TimetableController extends Controller
 
         foreach ($classes as $lc) {
             $course = $lc->course;
-            $subject = $course?->subject?->name ?? 'Teaching Session';
+            $subject = $course?->subject?->display_name ?? $course?->subject?->name ?? 'Teaching Session';
             $duration = (int) ($lc->duration_minutes ?: 60);
             $endTime = $lc->scheduled_at->copy()->addMinutes($duration);
             $studentCount = $course?->enrollments?->count() ?? 0;
@@ -690,7 +721,7 @@ class TimetableController extends Controller
                 'id'           => 'task_' . $a->id . '_' . $student->id,
                 'type'         => 'assignment',
                 'title'        => 'Due: ' . $a->title,
-                'subject_name' => $a->course->subject->name ?? 'Course Task',
+                'subject_name' => $a->course->subject->display_name ?? $a->course->subject->name ?? 'Course Task',
                 'course_title' => $a->course->title ?? '',
                 'start'        => $dueDate->toIso8601String(),
                 'end'          => $dueDate->copy()->addHour()->toIso8601String(),
@@ -748,6 +779,52 @@ class TimetableController extends Controller
                     'type'    => 'class_reminder',
                     'title'   => "Child's Class Rescheduled ({$student->user->name})",
                     'message' => "{$liveClass->title} for {$student->user->name} has been moved to {$newTimeStr} by {$teacherName}. Reason: \"{$reason}\".",
+                ]);
+            }
+        }
+    }
+
+    private function notifyStudentsAndParentsOfNewClass(LiveClass $liveClass): void
+    {
+        $liveClass->loadMissing(['course.subject', 'teacher.user', 'course.teacher.user', 'course.enrollments.student.user']);
+        $subjectName = $liveClass->course?->subject?->name ?? 'Class';
+        $timeStr = $liveClass->scheduled_at ? $liveClass->scheduled_at->format('D, d M Y, h:i A') : 'TBD';
+        $teacherName = $liveClass->teacher?->user?->name ?? $liveClass->course?->teacher?->user?->name ?? 'Instructor';
+
+        $enrollments = $liveClass->course?->enrollments ?? collect();
+
+        foreach ($enrollments as $enrollment) {
+            $student = $enrollment->student;
+            if (!$student) continue;
+
+            // 1. Notify Student
+            if ($student->user) {
+                UserNotification::create([
+                    'user_id' => $student->user->id,
+                    'type'    => 'class_reminder',
+                    'title'   => "New Class Scheduled: {$liveClass->title}",
+                    'message' => "A new {$subjectName} live class '{$liveClass->title}' with {$teacherName} has been scheduled for {$timeStr}.",
+                ]);
+            }
+
+            // 2. Notify Linked Parent(s)
+            $parentUserIds = [];
+            if ($student->parent_user_id) {
+                $parentUserIds[] = $student->parent_user_id;
+            }
+            $pivotParents = DB::table('parent_student')
+                ->where('student_id', $student->id)
+                ->where('status', 'active')
+                ->pluck('parent_user_id')
+                ->toArray();
+            $parentUserIds = array_unique(array_merge($parentUserIds, $pivotParents));
+
+            foreach ($parentUserIds as $parentId) {
+                UserNotification::create([
+                    'user_id' => $parentId,
+                    'type'    => 'class_reminder',
+                    'title'   => "New Class Scheduled for {$student->user->name}",
+                    'message' => "A new live class session '{$liveClass->title}' ({$subjectName}) has been scheduled for {$student->user->name} on {$timeStr}.",
                 ]);
             }
         }

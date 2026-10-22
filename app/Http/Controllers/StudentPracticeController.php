@@ -26,7 +26,7 @@ class StudentPracticeController extends Controller
         $subjects  = Subject::where('is_active', true)->get();
 
         // Personal study streak & confidence stats (non-competitive)
-        $studyStreakDays = 5;
+        $studyStreakDays = $student->streak_days ?? 1;
         $totalQuestionsSolved = 142;
         $averageAccuracy = 84; // %
 

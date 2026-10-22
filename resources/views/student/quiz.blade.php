@@ -22,16 +22,32 @@
                         ← Back to My Learning
                     </a>
                     <h2 class="font-heading font-black text-xl text-gray-900">{{ isset($quiz) ? $quiz->title : 'Smart Practice Drill' }}</h2>
-                    <p class="text-xs text-gray-500 font-medium">{{ isset($quiz) ? ($quiz->course->subject->name ?? 'General') . ' • ' . ($quiz->course->name ?? '') : 'General Subject Practice' }} • <span x-text="questions.length"></span> Questions</p>
+                    <p class="text-xs text-gray-500 font-medium">{{ isset($quiz) ? ($quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General') . ' • ' . ($quiz->course->name ?? '') : 'General Subject Practice' }} • <span x-text="questions.length"></span> Questions</p>
                 </div>
 
-                {{-- Timer Badge --}}
-                <div class="flex items-center gap-3 shrink-0">
+                {{-- Autosave & Timer Badges --}}
+                <div class="flex items-center gap-2.5 shrink-0">
+                    {{-- Autosave Status Badge --}}
+                    <div class="px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-xs flex items-center gap-1.5 shadow-2xs">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                        <span x-text="saveStatus === 'saving' ? 'Saving...' : 'Auto-saved'"></span>
+                    </div>
+
+                    {{-- Timer Badge --}}
                     <div class="px-4 py-2 rounded-2xl bg-amber-50 border border-amber-100 text-amber-700 font-mono font-black text-sm flex items-center gap-2">
                         <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <span x-text="formatTimer()"></span>
                     </div>
                 </div>
+            </div>
+
+            {{-- Progress Restored Notice --}}
+            <div x-show="hasRestoredProgress" x-cloak class="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-blue-900 font-medium">
+                <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px] shrink-0">✓</span>
+                    <span><strong>Quiz progress restored:</strong> Resumed at question <strong x-text="currentQuestion + 1"></strong> with your previously answered questions.</span>
+                </div>
+                <button type="button" @click="hasRestoredProgress = false" class="text-blue-500 hover:text-blue-800 font-bold text-xs cursor-pointer">✕</button>
             </div>
 
             {{-- PROGRESS BAR --}}
@@ -305,6 +321,8 @@
                 earnedXP: 0,
                 timerSeconds: {{ isset($quiz) && $quiz->questions->count() > 0 ? ($quiz->questions->count() * 60) : 300 }},
                 timerInterval: null,
+                hasRestoredProgress: false,
+                saveStatus: 'saved',
                 
                 questions: [
                     @if(isset($quiz) && $quiz->questions->count() > 0)
@@ -313,7 +331,7 @@
                             id: {{ $q->id }},
                             type: "{{ $q->type }}",
                             image_path: "{{ $q->image_path }}",
-                            subject: "{{ $quiz->course->subject->name ?? 'General' }}",
+                            subject: "{{ $quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General' }}",
                             topic: "{{ $quiz->title }}",
                             question: @json($q->question_text ?? ''),
                             options: [
@@ -347,13 +365,51 @@
                 ],
 
                 init() {
+                    // Restore saved progress from localStorage
+                    try {
+                        const savedRaw = localStorage.getItem('quiz_progress_' + this.quizId);
+                        if (savedRaw) {
+                            const parsed = JSON.parse(savedRaw);
+                            if (parsed && parsed.answers && Object.keys(parsed.answers).length > 0) {
+                                this.selectedAnswers = parsed.answers;
+                                if (typeof parsed.currentQuestion === 'number' && parsed.currentQuestion < this.questions.length) {
+                                    this.currentQuestion = parsed.currentQuestion;
+                                }
+                                if (typeof parsed.timerSeconds === 'number' && parsed.timerSeconds > 10) {
+                                    this.timerSeconds = parsed.timerSeconds;
+                                }
+                                this.hasRestoredProgress = true;
+                            }
+                        }
+                    } catch (e) {}
+
                     this.timerInterval = setInterval(() => {
                         if (this.timerSeconds > 0 && !this.isCompleted) {
                             this.timerSeconds--;
+                            // Periodically persist timer
+                            if (this.timerSeconds % 10 === 0) {
+                                this.saveProgress();
+                            }
                         } else if (this.timerSeconds === 0) {
                             this.submitQuiz();
                         }
                     }, 1000);
+                },
+
+                saveProgress() {
+                    if (this.isCompleted) return;
+                    this.saveStatus = 'saving';
+                    try {
+                        localStorage.setItem('quiz_progress_' + this.quizId, JSON.stringify({
+                            answers: this.selectedAnswers,
+                            currentQuestion: this.currentQuestion,
+                            timerSeconds: this.timerSeconds,
+                            savedAt: new Date().toISOString()
+                        }));
+                        setTimeout(() => { this.saveStatus = 'saved'; }, 300);
+                    } catch (e) {
+                        this.saveStatus = 'saved';
+                    }
                 },
 
                 formatTimer() {
@@ -366,6 +422,7 @@
                     if (this.isReviewing) return;
                     this.selectedAnswers[this.currentQuestion] = optionId;
                     this.requireAnswerAlert = false;
+                    this.saveProgress();
                 },
 
                 nextQuestion() {
@@ -376,6 +433,7 @@
                     this.requireAnswerAlert = false;
                     if (this.currentQuestion < this.questions.length - 1) {
                         this.currentQuestion++;
+                        this.saveProgress();
                     }
                 },
 
@@ -383,6 +441,7 @@
                     this.requireAnswerAlert = false;
                     if (this.currentQuestion > 0) {
                         this.currentQuestion--;
+                        this.saveProgress();
                     }
                 },
 
@@ -408,6 +467,9 @@
                     this.isCompleted = true;
                     this.showModal = true;
                     clearInterval(this.timerInterval);
+                    try {
+                        localStorage.removeItem('quiz_progress_' + this.quizId);
+                    } catch (e) {}
 
                     // Save results to database if it's a dynamic quiz
                     if (this.quizId > 0) {

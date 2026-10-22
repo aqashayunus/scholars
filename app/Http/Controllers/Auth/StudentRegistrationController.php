@@ -29,7 +29,9 @@ class StudentRegistrationController extends Controller
             ->orderBy('name', 'asc')
             ->get();
 
-        $feeStructures = FeeStructure::where('is_active', true)
+        $feeStructures = FeeStructure::with('subjects')
+            ->availableForRegistration()
+            ->whereNull('student_id')
             ->orderBy('amount', 'desc')
             ->get();
 
@@ -72,6 +74,8 @@ class StudentRegistrationController extends Controller
             'state'            => ['required', 'string', 'max:50'],
             'programme'        => ['required', 'string', 'max:50'],
             'level'            => ['nullable', 'string', 'max:100'],
+            'levels'           => ['nullable', 'array'],
+            'levels.*'         => ['string', 'max:50'],
             'school_name'      => ['nullable', 'string', 'max:255'],
             'fee_structure_id' => ['nullable', 'integer', 'exists:fee_structures,id'],
             'subjects'         => ['nullable', 'array'],
@@ -95,6 +99,18 @@ class StudentRegistrationController extends Controller
             'password.regex'          => 'Password must contain at least one uppercase letter, one number, and one special character.',
             'programme.required'      => 'Please select an education level.',
         ]);
+
+        // Normalise multiple levels or single level
+        $inputLevels = $request->input('levels');
+        if (!empty($inputLevels) && is_array($inputLevels)) {
+            $validated['levels'] = array_values(array_filter($inputLevels));
+            $validated['level']  = implode(', ', $validated['levels']);
+        } elseif (!empty($validated['level'])) {
+            $validated['levels'] = array_values(array_filter(array_map('trim', explode(',', $validated['level']))));
+        } else {
+            $validated['level']  = 'Form 5';
+            $validated['levels'] = ['Form 5'];
+        }
 
         // Normalise IC and check uniqueness
         $icHash = Student::hashIc($validated['ic_number']);
@@ -133,7 +149,7 @@ class StudentRegistrationController extends Controller
                     'level'          => $validated['level'] ?? 'Form 5',
                     'school_name'    => $validated['school_name'] ?? null,
                     'total_points'   => 0,
-                    'streak_days'    => 0,
+                    'streak_days'    => 1,
                 ]);
 
                 // 3. Enroll student in selected subjects
@@ -146,6 +162,23 @@ class StudentRegistrationController extends Controller
 
                 return $student;
             });
+
+            // Trigger automated email communication (sent synchronously for immediate greeting delivery)
+            try {
+                \App\Services\Email\EmailAutomationService::trigger(
+                    'registration_received',
+                    [
+                        'user'         => $student->user,
+                        'student'      => $student,
+                        'parent_name'  => $student->user->name,
+                        'student_name' => $student->user->name,
+                    ],
+                    "student_reg_{$student->id}",
+                    true
+                );
+            } catch (\Throwable $emailErr) {
+                \Illuminate\Support\Facades\Log::warning('[StudentRegistration] Email trigger failed: ' . $emailErr->getMessage());
+            }
 
             // Flash masked IC for success page
             session()->flash('reg_ic_masked', Student::maskedIc($validated['ic_number']));
@@ -186,6 +219,7 @@ class StudentRegistrationController extends Controller
 
         // Determine education type and stage from level or student
         $effectiveLevel = $level ?: ($student->level ?? null);
+        $levels = $effectiveLevel ? array_values(array_filter(array_map('trim', explode(',', $effectiveLevel)))) : [];
         $educationType = null;
         $isLowerSecondary = false;
         $isUpperSecondary = false;
@@ -195,10 +229,13 @@ class StudentRegistrationController extends Controller
                 $educationType = 'primary';
             } elseif (str_contains($effectiveLevel, 'Form') || str_contains($effectiveLevel, 'Tingkatan')) {
                 $educationType = 'secondary';
-                if (in_array($effectiveLevel, ['Form 1', 'Form 2', 'Form 3'])) {
-                    $isLowerSecondary = true;
-                } else {
-                    $isUpperSecondary = true;
+                foreach ($levels as $lvl) {
+                    if (in_array($lvl, ['Form 1', 'Form 2', 'Form 3'])) {
+                        $isLowerSecondary = true;
+                    }
+                    if (in_array($lvl, ['Form 4', 'Form 5'])) {
+                        $isUpperSecondary = true;
+                    }
                 }
             } elseif (str_contains($effectiveLevel, 'Kindergarten') || str_contains($effectiveLevel, 'Tadika') || str_contains($effectiveLevel, 'Preschool')) {
                 $educationType = 'kindergarten';
@@ -209,65 +246,90 @@ class StudentRegistrationController extends Controller
             $subjectName = trim($subjectName);
             if (empty($subjectName)) continue;
 
+            $concatHyphen = DB::connection()->getDriverName() === 'sqlite'
+                ? "name || ' - ' || form_year"
+                : "CONCAT(name, ' - ', form_year)";
             $concatExpr = DB::connection()->getDriverName() === 'sqlite'
                 ? "name || ' (' || form_year || ')'"
                 : "CONCAT(name, ' (', form_year, ')')";
 
-            // Match by name, slug, or formatted "Name (Form Year)"
-            $query = Subject::where('is_active', true)
-                ->where(function($q) use ($subjectName, $concatExpr) {
+            // Match by name, slug, or formatted "Name - Form Year" / "Name (Form Year)"
+            $baseQuery = Subject::where('is_active', true)
+                ->where(function($q) use ($subjectName, $concatHyphen, $concatExpr) {
                     $q->where('name', $subjectName)
                       ->orWhere('slug', Str::slug($subjectName))
+                      ->orWhere(DB::raw($concatHyphen), $subjectName)
                       ->orWhere(DB::raw($concatExpr), $subjectName);
                 });
 
-            // Priority 1: Match exact year/form (e.g. Year 4, Form 1)
-            if ($effectiveLevel) {
-                $query->where(function($q) use ($effectiveLevel, $educationType, $isLowerSecondary, $isUpperSecondary) {
-                    $q->where('form_year', $effectiveLevel);
+            // Priority 1: Match on form_year in the student's selected levels (e.g. Form 4, Form 5)
+            $subject = null;
+            if (!empty($levels)) {
+                $exactQuery = (clone $baseQuery)->whereIn('form_year', $levels);
+                if ($educationType) {
+                    $exactQuery->where('education_type', $educationType);
+                }
+                $subject = $exactQuery->first();
+            }
+
+            // Priority 2: Shared band or stage (e.g. Form 4–5 or Upper Secondary) if no exact form_year matched
+            if (!$subject && $effectiveLevel) {
+                $stageQuery = clone $baseQuery;
+                $stageQuery->where(function($q) use ($isLowerSecondary, $isUpperSecondary) {
                     if ($isLowerSecondary) {
-                        $q->orWhere('form_year', 'Form 1–3')->orWhere('stage', 'Lower Secondary');
+                        $q->where('form_year', 'Form 1–3')->orWhere('stage', 'Lower Secondary');
                     } elseif ($isUpperSecondary) {
-                        $q->orWhere('form_year', 'Form 4–5')->orWhere('stage', 'Upper Secondary');
+                        $q->where('form_year', 'Form 4–5')->orWhere('stage', 'Upper Secondary');
                     }
                 });
+                if ($educationType) {
+                    $stageQuery->where('education_type', $educationType);
+                }
+                $subject = $stageQuery->first();
             }
 
-            if ($educationType) {
-                $query->where('education_type', $educationType);
+            // Priority 3: Fallback by education_type if specified
+            if (!$subject && $educationType) {
+                $subject = (clone $baseQuery)->where('education_type', $educationType)->first();
             }
 
-            $subject = $query->first();
-
-            // Fallback if not found with specific level filter
+            // Priority 4: Fallback across all active subjects
             if (!$subject) {
-                $subject = Subject::where('is_active', true)
-                    ->where(function($q) use ($subjectName, $concatExpr) {
-                        $q->where('name', $subjectName)
-                          ->orWhere('slug', Str::slug($subjectName))
-                          ->orWhere(DB::raw($concatExpr), $subjectName);
-                    })
-                    ->first();
+                $subject = (clone $baseQuery)->first();
             }
 
             if (!$subject) {
+                $defaultLevel = !empty($levels) ? $levels[0] : ($effectiveLevel ?: 'Form 5');
                 $subject = Subject::create([
                     'name'           => $subjectName,
-                    'slug'           => Str::slug($subjectName . ' ' . ($effectiveLevel ?: 'Form 5')) ?: 'subj-' . Str::random(5),
+                    'slug'           => Str::slug($subjectName . ' ' . $defaultLevel) ?: 'subj-' . Str::random(5),
                     'education_type' => $educationType ?: 'secondary',
                     'stage'          => $isLowerSecondary ? 'Lower Secondary' : 'Upper Secondary',
-                    'form_year'      => $effectiveLevel ?: 'Form 5',
+                    'form_year'      => $defaultLevel,
                     'category'       => 'Core',
                     'is_active'      => true,
                 ]);
             }
 
             $course = null;
-            if ($level) {
+            if ($subject && $subject->form_year) {
                 $course = Course::where('subject_id', $subject->id)
-                    ->where(function($q) use ($level) {
-                        $q->where('level', $level)
-                          ->orWhere('title', 'like', "%{$level}%");
+                    ->where(function($q) use ($subject) {
+                        $q->where('level', $subject->form_year)
+                          ->orWhere('title', 'like', "%{$subject->form_year}%");
+                    })
+                    ->first();
+            }
+            if (!$course && !empty($levels)) {
+                $course = Course::where('subject_id', $subject->id)
+                    ->where(function($q) use ($levels) {
+                        foreach ($levels as $idx => $lvl) {
+                            if ($idx === 0) {
+                                $q->where('level', $lvl)->orWhere('title', 'like', "%{$lvl}%");
+                            } else {
+                                $q->orWhere('level', $lvl)->orWhere('title', 'like', "%{$lvl}%");
+                            }
+                        }
                     })
                     ->first();
             }
@@ -278,9 +340,9 @@ class StudentRegistrationController extends Controller
                 $course = Course::create([
                     'subject_id'    => $subject->id,
                     'teacher_id'    => $defaultTeacher?->id ?? 1,
-                    'title'         => $subject->name,
-                    'description'   => 'Comprehensive learning course for ' . $subject->name,
-                    'level'         => $level ?: 'SPM',
+                    'title'         => $subject->display_name ?: $subject->name,
+                    'description'   => 'Comprehensive learning course for ' . ($subject->display_name ?: $subject->name),
+                    'level'         => $subject->form_year ?: ($levels[0] ?? ($effectiveLevel ?: 'SPM')),
                     'status'        => 'published',
                     'total_lessons' => 12,
                 ]);
@@ -290,6 +352,14 @@ class StudentRegistrationController extends Controller
                 ['student_id' => $student->id, 'course_id' => $course->id],
                 ['status' => 'active', 'enrolled_at' => now(), 'progress_pct' => 0, 'completed_lessons' => 0]
             );
+
+            // Auto-assign the subject's diagnostic test if one is configured
+            if ($subject->diagnostic_assignment_id) {
+                \App\Models\StudentAssignment::firstOrCreate(
+                    ['student_id' => $student->id, 'assignment_id' => $subject->diagnostic_assignment_id],
+                    ['status' => 'pending']
+                );
+            }
         }
 
         // Automatically link all global diagnostic tasks + course assignments to the student

@@ -8,6 +8,7 @@ class Assignment extends Model
 {
     protected $fillable = [
         'course_id',
+        'subject_id',
         'is_global',
         'target_level',
         'created_by_admin',
@@ -29,12 +30,14 @@ class Assignment extends Model
         'section_b_answer_key',
         'section_b_questions',
         'questions_data',
+        'is_interactive_pdf',
     ];
     protected $casts = [
         'due_date'             => 'date',
         'exam_date'            => 'date',
         'is_global'            => 'boolean',
         'created_by_admin'     => 'boolean',
+        'is_interactive_pdf'   => 'boolean',
         'answer_key'           => 'array',
         'total_questions'      => 'integer',
         'time_limit_minutes'   => 'integer',
@@ -123,6 +126,7 @@ class Assignment extends Model
                     'type'           => $type,
                     'title'          => !empty($q['title']) ? $q['title'] : "Soalan {$qNum}",
                     'correct_answer' => $type === 'mcq' ? strtoupper($ans) : $ans,
+                    'marks'          => (float) ($q['marks'] ?? 1.0),
                     'image'          => $q['image'] ?? null,
                     'page_number'    => $q['page_number'] ?? ($q['page'] ?? 1),
                     'prompt'         => $q['prompt'] ?? null,
@@ -149,6 +153,7 @@ class Assignment extends Model
                 'type'           => 'mcq',
                 'title'          => "Soalan {$i}",
                 'correct_answer' => $answerKeyMap[(string)$i] ?? '',
+                'marks'          => 1.0,
             ];
         }
 
@@ -160,6 +165,7 @@ class Assignment extends Model
                 'type'           => 'fill_in_blank',
                 'title'          => "Soalan B{$j}",
                 'correct_answer' => $sectionBMap[(string)$j] ?? '',
+                'marks'          => 1.0,
             ];
         }
 
@@ -181,9 +187,16 @@ class Assignment extends Model
         return count(array_filter($this->getQuestionsList(), fn($q) => ($q['type'] ?? '') === 'fill_in_blank'));
     }
 
-    public function course()  { return $this->belongsTo(Course::class); }
-    public function results() { return $this->hasMany(StudentAssignment::class); }
-    public function studentAssignments() { return $this->hasMany(StudentAssignment::class); }
+    public function getTotalPossibleMarks(): float
+    {
+        return (float) array_sum(array_map(fn($q) => (float) ($q['marks'] ?? 1.0), $this->getQuestionsList()));
+    }
+
+    public function course()   { return $this->belongsTo(Course::class); }
+    public function subject()  { return $this->belongsTo(Subject::class); }
+    public function results()  { return $this->hasMany(StudentAssignment::class); }
+    public function studentAssignments()        { return $this->hasMany(StudentAssignment::class); }
+    public function interactiveSubmissions()    { return $this->hasMany(StudentAssignmentSubmission::class); }
 
     protected static function booted()
     {

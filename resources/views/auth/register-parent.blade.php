@@ -70,12 +70,17 @@ function parentRegData() {
         })) !!},
         allFeeStructures: {!! json_encode($feeStructures->map(function($f) {
             return [
-                'id'              => $f->id,
-                'name'            => $f->name,
-                'description'     => $f->description,
-                'amount'          => (float) $f->amount,
-                'education_level' => $f->education_level,
-                'frequency'       => $f->frequency,
+                'id'               => $f->id,
+                'name'             => $f->name,
+                'description'      => $f->description,
+                'amount'           => (float) $f->amount,
+                'education_level'  => $f->education_level,
+                'frequency'        => $f->frequency,
+                'package_type'     => $f->package_type ?? 'individual',
+                'minimum_subjects' => $f->minimum_subjects,
+                'maximum_subjects' => $f->maximum_subjects,
+                'subject_names'    => $f->subjects->pluck('name')->unique()->values()->toArray(),
+                'subject_ids'      => $f->subjects->pluck('id')->unique()->values()->toArray(),
             ];
         })) !!},
         bundleDiscountPct: {{ $bundleElectiveDiscountPct }},
@@ -117,16 +122,26 @@ function parentRegData() {
             if (this.postcode) {
                 this.autoDetectPostcode(this.postcode);
             }
-            this.$watch('selectedEducationType', () => {
-                if (!this.levelsForType().includes(this.selectedLevel)) {
-                    this.selectedLevel = '';
+            this.$watch('selectedEducationType', (newVal, oldVal) => {
+                if (oldVal !== undefined && newVal !== oldVal) {
+                    if (!this.levelsForType().includes(this.selectedLevel)) {
+                        this.selectedLevel = '';
+                    }
+                    this.selectedSubjects = [];
+                    this.syncFeeStructureForLevel();
                 }
-                this.pruneSelectedSubjects();
-                this.syncFeeStructureForLevel();
             });
-            this.$watch('selectedLevel', () => {
-                this.pruneSelectedSubjects();
-                this.syncFeeStructureForLevel();
+            this.$watch('selectedLevel', (newVal, oldVal) => {
+                if (oldVal !== undefined && newVal !== oldVal) {
+                    this.pruneSelectedSubjects();
+                    this.syncFeeStructureForLevel();
+                    if (this.selectedPlanType === 'package' && this.selectedSubjects.length === 0) {
+                        const fs = this.getCurrentFeeStructure();
+                        if (fs) {
+                            this.selectFeeStructure(fs);
+                        }
+                    }
+                }
             });
         },
 
@@ -182,14 +197,36 @@ function parentRegData() {
             this.selectedFeeStructureId = fs.id;
             this.selectedPlanType = 'package';
 
-            const coreList = this.coreSubjects();
-            if (coreList.length > 0) {
-                coreList.forEach(s => {
-                    if (!this.selectedSubjects.includes(s.name)) {
-                        this.selectedSubjects.push(s.name);
-                    }
-                });
+            const validNames = this.filteredSubjects().map(s => s.name);
+
+            if (fs.package_type === 'fixed_bundle' && fs.subject_names && fs.subject_names.length > 0) {
+                // Fixed bundle: admin fixed the subjects, select those matching current student level
+                const bundleForLevel = fs.subject_names.filter(name => validNames.includes(name));
+                this.selectedSubjects = bundleForLevel.length > 0
+                    ? [...new Set(bundleForLevel)]
+                    : [...new Set(this.coreSubjects().map(s => s.name))];
+            } else if (fs.package_type === 'pick_n') {
+                // Pick-N: if nothing selected yet or selected more than max, pick top subjects
+                const pool = (fs.subject_names && fs.subject_names.length > 0)
+                    ? this.filteredSubjects().filter(s => fs.subject_names.includes(s.name))
+                    : this.filteredSubjects();
+                const max = fs.maximum_subjects || 4;
+                const currentValid = this.selectedSubjects.filter(name => validNames.includes(name));
+                if (currentValid.length === 0 || currentValid.length > max) {
+                    this.selectedSubjects = pool.slice(0, max).map(s => s.name);
+                } else {
+                    this.selectedSubjects = [...new Set(currentValid)];
+                }
+            } else {
+                // Standard package or individual: auto-select core subjects for current level
+                const coreList = this.coreSubjects().map(s => s.name);
+                const currentValid = this.selectedSubjects.filter(name => validNames.includes(name));
+                this.selectedSubjects = [...new Set([...currentValid, ...coreList])];
             }
+        },
+
+        enrolledCount() {
+            return this.filteredSubjects().filter(s => this.selectedSubjects.includes(s.name)).length;
         },
 
         coreSubjects() {
@@ -214,7 +251,36 @@ function parentRegData() {
                     electiveCount: 0,
                     regularTotal: regularTotal,
                     savings: 0,
-                    finalTotal: regularTotal
+                    finalTotal: regularTotal,
+                    totalCount: selectedList.length
+                };
+            }
+
+            const effectivePackageBase = fs.amount;
+
+            if (fs.package_type === 'fixed_bundle' || fs.package_type === 'pick_n') {
+                const regularTotal = selectedList.reduce((sum, s) => sum + (s.monthly_fee || 0), 0);
+                const max = fs.maximum_subjects || (fs.subject_names && fs.subject_names.length > 0 ? fs.subject_names.length : 4);
+                const extraCount = Math.max(0, selectedList.length - max);
+                let extraCost = 0;
+                if (extraCount > 0) {
+                    const discountFactor = 1 - (this.bundleDiscountPct / 100);
+                    const extras = selectedList.slice(max);
+                    extraCost = extras.reduce((sum, s) => sum + Math.round((s.monthly_fee || 0) * discountFactor * 100) / 100, 0);
+                }
+                const finalTotal = effectivePackageBase + extraCost;
+                const savings = Math.max(0, regularTotal - finalTotal);
+
+                return {
+                    isPackage: true,
+                    packageName: fs.name,
+                    basePrice: effectivePackageBase,
+                    coreCount: Math.min(selectedList.length, max),
+                    electiveCount: extraCount,
+                    regularTotal: regularTotal,
+                    savings: savings,
+                    finalTotal: finalTotal,
+                    totalCount: selectedList.length
                 };
             }
 
@@ -226,7 +292,6 @@ function parentRegData() {
             const discountFactor = 1 - (this.bundleDiscountPct / 100);
             const electiveDiscounted = electiveSelected.reduce((sum, s) => sum + Math.round((s.monthly_fee || 0) * discountFactor * 100) / 100, 0);
 
-            const effectivePackageBase = fs.amount;
             const finalTotal = effectivePackageBase + electiveDiscounted;
             const subtotal = coreRegular + electiveRegular;
             const savings = Math.max(0, subtotal - finalTotal);
@@ -239,7 +304,8 @@ function parentRegData() {
                 electiveCount: electiveSelected.length,
                 regularTotal: subtotal,
                 savings: savings,
-                finalTotal: finalTotal
+                finalTotal: finalTotal,
+                totalCount: selectedList.length
             };
         },
 
@@ -973,14 +1039,14 @@ function parentRegData() {
 
         pruneSelectedSubjects() {
             const availableNames = new Set(this.filteredSubjects().map(s => s.name));
-            this.selectedSubjects = this.selectedSubjects.filter(name => availableNames.has(name));
+            this.selectedSubjects = [...new Set(this.selectedSubjects.filter(name => availableNames.has(name)))];
         },
 
         toggleSubject(name) {
             if (this.selectedSubjects.includes(name)) {
                 this.selectedSubjects = this.selectedSubjects.filter(s => s !== name);
             } else {
-                this.selectedSubjects.push(name);
+                this.selectedSubjects = [...new Set([...this.selectedSubjects, name])];
             }
         },
 
@@ -1103,7 +1169,7 @@ function parentRegData() {
         {{-- Logo --}}
         <div class="text-center mb-8">
             <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-2 group">
-                <img src="{{ asset('images/logo.png') }}" alt="Olympian Scholars" class="h-16 w-auto object-contain transition-transform group-hover:scale-105">
+                <img src="{{ asset('images/logo-vertical.png') }}" alt="Olympian Scholars" class="h-24 w-auto object-contain transition-transform group-hover:scale-105">
             </a>
         </div>
 
@@ -1173,7 +1239,7 @@ function parentRegData() {
                         Citizenship / Nationality <span class="text-red-500">*</span>
                     </label>
                     <select id="nationality_type" name="nationality_type" x-model="nationalityType" required
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                            class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                         <option value="local">Local</option>
                         <option value="international">International</option>
                     </select>
@@ -1220,7 +1286,7 @@ function parentRegData() {
                 <div>
                     <label for="relationship" class="block text-sm font-semibold text-charcoal mb-1.5">Relationship to Child <span class="text-red-500">*</span></label>
                     <select id="relationship" name="relationship" required
-                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                            class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                         <option value="">-- Select Relationship --</option>
                         @foreach($relationships as $rel)
                             <option value="{{ $rel }}" {{ old('relationship') === $rel ? 'selected' : '' }}>{{ $rel }}</option>
@@ -1280,7 +1346,7 @@ function parentRegData() {
                             {{-- Local State Dropdown --}}
                             <div x-show="nationalityType === 'local'">
                                 <select id="state" name="state" x-model="state"
-                                        class="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                                        class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                                     <option value="">-- Select State --</option>
                                     @foreach($malaysianStates as $st)
                                         <option value="{{ $st }}" {{ old('state') === $st ? 'selected' : '' }}>{{ $st }}</option>
@@ -1333,21 +1399,49 @@ function parentRegData() {
 
                 <div>
                     <label for="password" class="block text-sm font-semibold text-charcoal mb-1.5">Password <span class="text-red-500">*</span></label>
-                    <input id="password" name="password" type="password" required autocomplete="new-password"
-                           x-model="parentPassword"
-                           @input="if (parentPasswordError) validateParentPassword()"
-                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
-                           placeholder="Min 8 characters">
+                    <div class="relative" x-data="{ show: false }">
+                        <input id="password" name="password" :type="show ? 'text' : 'password'" required autocomplete="new-password"
+                               x-model="parentPassword"
+                               @input="if (parentPasswordError) validateParentPassword()"
+                               class="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                               placeholder="Min 8 characters">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-charcoal focus:outline-none transition-colors"
+                                :title="show ? 'Hide password' : 'Show password'"
+                                aria-label="Toggle password visibility">
+                            <svg x-show="!show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="show" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-xs text-muted mt-1">Must contain uppercase, number, and special character.</p>
                 </div>
 
                 <div>
                     <label for="password_confirmation" class="block text-sm font-semibold text-charcoal mb-1.5">Confirm Password <span class="text-red-500">*</span></label>
-                    <input id="password_confirmation" name="password_confirmation" type="password" required autocomplete="new-password"
-                           x-model="parentPasswordConfirmation"
-                           @input="if (parentPasswordError) validateParentPassword()"
-                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
-                           placeholder="Re-enter your password">
+                    <div class="relative" x-data="{ show: false }">
+                        <input id="password_confirmation" name="password_confirmation" :type="show ? 'text' : 'password'" required autocomplete="new-password"
+                               x-model="parentPasswordConfirmation"
+                               @input="if (parentPasswordError) validateParentPassword()"
+                               class="w-full px-4 py-2.5 pr-10 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all"
+                               placeholder="Re-enter your password">
+                        <button type="button" @click="show = !show"
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-charcoal focus:outline-none transition-colors"
+                                :title="show ? 'Hide password' : 'Show password'"
+                                aria-label="Toggle password visibility">
+                            <svg x-show="!show" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg x-show="show" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="button" @click="nextStep()"
@@ -1484,7 +1578,7 @@ function parentRegData() {
                     <div>
                         <label for="level" class="block text-sm font-semibold text-charcoal mb-1.5">Form / Year</label>
                         <select id="level" name="level" x-model="selectedLevel"
-                                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
+                                class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none text-sm transition-all">
                             <option value="">-- Select Form / Year --</option>
                             <template x-for="lvl in levelsForType()" :key="lvl">
                                 <option :value="lvl" x-text="lvl"></option>
@@ -1514,7 +1608,15 @@ function parentRegData() {
                                      class="p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2">
                                     <div>
                                         <div class="flex items-center justify-between gap-1 mb-1">
-                                            <span class="px-2 py-0.5 rounded-md bg-blue-100 text-primary text-[10px] font-bold uppercase tracking-wider">Bundle Plan</span>
+                                            <div class="flex items-center gap-1">
+                                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider"
+                                                      :class="fs.package_type === 'fixed_bundle' ? 'bg-amber-100 text-amber-800' : (fs.package_type === 'pick_n' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-primary')"
+                                                      x-text="fs.package_type === 'fixed_bundle' ? '📦 Fixed Bundle' : (fs.package_type === 'pick_n' ? ('🎯 Pilih ' + (fs.maximum_subjects || 4) + ' Subjek') : 'Bundle Plan')">
+                                                </span>
+                                                <template x-if="fs.frequency === 'yearly'">
+                                                    <span class="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[9px] font-bold uppercase tracking-wider">Tahunan</span>
+                                                </template>
+                                            </div>
                                             <span class="text-[10px] font-semibold text-gray-400" x-text="fs.education_level"></span>
                                         </div>
                                         <h4 class="font-heading font-bold text-xs text-charcoal leading-tight" x-text="fs.name"></h4>
@@ -1544,6 +1646,41 @@ function parentRegData() {
                                 </div>
                             </div>
                         </div>
+
+                        {{-- Package Guidance Callout --}}
+                        <template x-if="selectedPlanType === 'package' && getCurrentFeeStructure()">
+                            <div class="p-3 rounded-2xl border text-xs transition-all"
+                                 :class="getCurrentFeeStructure().package_type === 'fixed_bundle' ? 'bg-amber-50/80 border-amber-200 text-amber-900' : (getCurrentFeeStructure().package_type === 'pick_n' ? 'bg-indigo-50/80 border-indigo-200 text-indigo-900' : 'bg-blue-50/80 border-blue-200 text-blue-900')">
+                                <template x-if="getCurrentFeeStructure().package_type === 'fixed_bundle'">
+                                    <div class="flex items-start gap-2">
+                                        <span class="text-base shrink-0">📦</span>
+                                        <div>
+                                            <p class="font-bold">Pakej Subjek Tetap (Fixed Bundle):</p>
+                                            <p class="mt-0.5 text-[11px] text-amber-800 leading-relaxed">
+                                                Pakej ini telah menetapkan <strong x-text="(getCurrentFeeStructure().subject_names || []).length"></strong> subjek yang telah dipilih secara automatik.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="getCurrentFeeStructure().package_type === 'pick_n'">
+                                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                                        <div class="flex items-start gap-2">
+                                            <span class="text-base shrink-0">🎯</span>
+                                            <div>
+                                                <p class="font-bold">Pakej Pilihan Pelajar (Pick-N):</p>
+                                                <p class="mt-0.5 text-[11px] text-indigo-800 leading-relaxed">
+                                                    Pilih mana-mana subjek sehingga had <strong x-text="getCurrentFeeStructure().maximum_subjects || 4"></strong> subjek.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="px-2.5 py-1 rounded-full font-bold text-xs shadow-2xs"
+                                              :class="enrolledCount() === (getCurrentFeeStructure().maximum_subjects || 4) ? 'bg-emerald-600 text-white' : 'bg-indigo-200 text-indigo-900'"
+                                              x-text="`${enrolledCount()}/${getCurrentFeeStructure().maximum_subjects || 4} Subjek Dipilih`">
+                                        </span>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
 
                     {{-- Core Subjects --}}
@@ -1566,7 +1703,7 @@ function parentRegData() {
                                          :class="selectedSubjects.includes(subject.name)
                                              ? 'border-primary text-primary bg-primary-50 font-semibold shadow-xs'
                                              : 'border-gray-200 text-muted hover:border-gray-300'">
-                                        <span class="text-xs truncate font-medium" x-text="subject.name"></span>
+                                        <span class="text-xs truncate font-medium" x-text="subject.display_name || (subject.form_year ? `${subject.name} - ${subject.form_year}` : subject.name)"></span>
                                         <span class="text-[9px] px-1 py-0.5 rounded font-bold shrink-0"
                                               :class="selectedPlanType === 'package' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600'"
                                               x-text="selectedPlanType === 'package' ? 'Included' : ('RM ' + Number(subject.monthly_fee).toFixed(0))">
@@ -1597,7 +1734,7 @@ function parentRegData() {
                                              :class="selectedSubjects.includes(subject.name)
                                                  ? 'border-primary text-primary bg-primary-50 font-semibold shadow-xs'
                                                  : 'border-gray-200 text-muted hover:border-gray-300'">
-                                            <span class="text-xs truncate font-medium" x-text="subject.name"></span>
+                                            <span class="text-xs truncate font-medium" x-text="subject.display_name || (subject.form_year ? `${subject.name} - ${subject.form_year}` : subject.name)"></span>
                                             <span class="text-[9px] px-1 py-0.5 rounded font-bold shrink-0 bg-gray-100 text-gray-700"
                                                   x-text="'RM ' + Number(selectedPlanType === 'package' ? subject.monthly_fee * (1 - bundleDiscountPct/100) : subject.monthly_fee).toFixed(0)">
                                             </span>
@@ -1613,6 +1750,10 @@ function parentRegData() {
                         <div class="flex items-center justify-between">
                             <span class="text-gray-500">Plan:</span>
                             <span class="font-bold text-gray-900" x-text="calculatedPricing().packageName"></span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-500">Subjects Enrolled:</span>
+                            <span class="font-semibold text-gray-800" x-text="enrolledCount() + ' Subject(s)'"></span>
                         </div>
                         <template x-if="calculatedPricing().savings > 0">
                             <div class="flex items-center justify-between text-emerald-700 font-semibold bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/60">

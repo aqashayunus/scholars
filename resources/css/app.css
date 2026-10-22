@@ -58,9 +58,29 @@
         scrollbar-width: thin;
         scrollbar-color: #cbd5e1 #f8fafc;
     }
+
+    /* ── Fix Double Dropdown Arrows on Custom Selects (@tailwindcss/forms collision) ── */
+    select.appearance-none,
+    select[class*="appearance-none"] {
+        background-image: none !important;
+    }
 }
 
 @layer components {
+
+    /* ── Touch & Tap Optimization (iPad & Mobile) ── */
+    a, button, [role="button"] {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    @media (hover: none) {
+        .btn-primary:hover,
+        .btn-secondary:hover,
+        .btn-accent:hover {
+            transform: none !important;
+        }
+    }
 
     /* ── Buttons ── */
     .btn-primary {
@@ -221,4 +241,23 @@
     .glass {
         @apply bg-white/10 backdrop-blur-md border border-white/20;
     }
+}
+
+/* ── Dropdown Select Arrow Collision Prevention ── */
+/* Ensure all single-select dropdowns maintain adequate right padding and chevron spacing */
+select:not([multiple]):not(.appearance-none) {
+    padding-right: 2.5rem !important;
+    background-position: right 0.75rem center !important;
+}
+
+select.text-xs:not([multiple]):not(.appearance-none),
+select.text-\[11px\]:not([multiple]):not(.appearance-none),
+select.text-\[10px\]:not([multiple]):not(.appearance-none) {
+    padding-right: 2.25rem !important;
+    background-position: right 0.625rem center !important;
+}
+
+select.form-input:not([multiple]):not(.appearance-none) {
+    padding-right: 2.75rem !important;
+    background-position: right 0.85rem center !important;
 }

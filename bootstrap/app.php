@@ -11,6 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustProxies(at: '*');
+        $middleware->validateCsrfTokens(except: [
+            'logout',
+            'billing/billplz/webhook',
+            'billing/gateway/webhook',
+        ]);
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureUserIsActive::class);
 
         $middleware->alias([

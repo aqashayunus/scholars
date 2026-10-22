@@ -8,15 +8,109 @@
         $attentionList = $course->enrollments->filter(function($e) {
             return ($e->progress_pct < 60 && $e->progress_pct > 0);
         });
+
+        // Build active session attendance list
+        $sessionAttendances = ($activeSession && $activeSession->attendances) 
+            ? $activeSession->attendances->keyBy('student_id') 
+            : collect();
+
+        $initialAttendance = $course->enrollments->map(function($e) use ($sessionAttendances) {
+            $studentId = $e->student_id;
+            $att = $sessionAttendances->get($studentId);
+            return [
+                'id'        => $studentId,
+                'name'      => $e->student->user->name ?? 'Student #' . $studentId,
+                'email'     => $e->student->user->email ?? '',
+                'status'    => $att ? $att->status : 'pending_verification',
+                'joined_at' => ($att && $att->joined_at) ? $att->joined_at->format('g:i A') : 'Not Joined',
+                'verified'  => ($att && $att->verified_at) ? true : false,
+                'remarks'   => $att ? ($att->remarks ?? '') : '',
+            ];
+        })->values();
     @endphp
 
-    <div x-data="{ 
-        tab: 'overview', 
-        selectedStudent: null, 
-        showUploadModal: false, 
-        showTaskModal: false,
-        attendanceRecords: {{ $course->enrollments->map(fn($e) => ['id' => $e->student->id ?? $e->id, 'name' => $e->student->user->name ?? 'Student', 'status' => 'Present'])->toJson() }}
-    }" class="space-y-6">
+    <script>
+        function classWorkspaceData() {
+            return {
+                tab: 'overview', 
+                selectedStudent: null, 
+                showUploadModal: false, 
+                showTaskModal: false,
+                activeSessionId: {{ $activeSession ? $activeSession->id : 'null' }},
+                attendanceRecords: @json($initialAttendance),
+                isSavingAttendance: false,
+                attendanceSaveSuccess: '',
+                attendanceSaveError: '',
+                markAllPresent() {
+                    this.attendanceRecords.forEach(function(r) { r.status = 'attended'; });
+                },
+                async saveAttendance() {
+                    if (!this.activeSessionId) {
+                        alert('No active class session selected.');
+                        return;
+                    }
+                    this.isSavingAttendance = true;
+                    this.attendanceSaveSuccess = '';
+                    this.attendanceSaveError = '';
+                    try {
+                        const res = await fetch(`/teacher/classes/${this.activeSessionId}/attendance`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({
+                                records: this.attendanceRecords.map(function(r) {
+                                    return {
+                                        student_id: r.id,
+                                        status: r.status,
+                                        remarks: r.remarks || null
+                                    };
+                                })
+                            })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            this.attendanceSaveSuccess = data.message || 'Attendance verified and saved successfully!';
+                            setTimeout(() => { this.attendanceSaveSuccess = ''; }, 4500);
+                        } else {
+                            this.attendanceSaveError = data.message || 'Failed to save attendance.';
+                        }
+                    } catch (err) {
+                        this.attendanceSaveError = 'Network error while saving attendance.';
+                    } finally {
+                        this.isSavingAttendance = false;
+                    }
+                },
+                async reviewCorrection(requestId, action) {
+                    if (!confirm(`Are you sure you want to ${action} this correction request?`)) return;
+                    try {
+                        const res = await fetch(`/teacher/attendance/corrections/${requestId}/review`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            },
+                            body: JSON.stringify({ action: action })
+                        });
+                        const data = await res.json();
+                        if (res.ok && data.success) {
+                            alert('Correction request ' + action + ' successfully.');
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Failed to review request.');
+                        }
+                    } catch (e) {
+                        alert('Network error.');
+                    }
+                }
+            };
+        }
+    </script>
+
+    <div x-data="classWorkspaceData()" class="space-y-6">
 
         {{-- ── WORKSPACE HEADER BAR ── --}}
         <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -24,13 +118,20 @@
                 <div class="flex items-center gap-2 text-xs font-bold text-gray-400 mb-1">
                     <a href="{{ route('teacher.classes') }}" class="hover:text-blue-600">My Classes</a>
                     <span>/</span>
-                    <span class="text-gray-700">{{ $course->level }} {{ $course->subject->name ?? '' }} – {{ $course->title }}</span>
+                    <span class="text-gray-700">{{ $course->subject->display_name ?? ($course->level . ' ' . ($course->subject->name ?? '')) }} – {{ $course->title }}</span>
                 </div>
-                <h1 class="font-heading font-black text-2xl text-gray-900">{{ $course->level }} {{ $course->subject->name ?? '' }} – {{ $course->title }}</h1>
+                <h1 class="font-heading font-black text-2xl text-gray-900">{{ $course->subject->display_name ?? ($course->level . ' ' . ($course->subject->name ?? '')) }} – {{ $course->title }}</h1>
                 <p class="text-xs text-gray-500 font-medium mt-0.5">Teacher: {{ $teacher->user->name ?? 'Teacher' }} • {{ $enrollmentCount }} {{ Str::plural('Student', $enrollmentCount) }}</p>
             </div>
 
             <div class="flex items-center gap-2">
+                @if(isset($isLiveRunning) && $isLiveRunning && isset($liveSession) && $liveSession && $liveSession->meeting_url)
+                    <a href="{{ $liveSession->meeting_url }}" target="_blank" class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-full shadow-sm hover:shadow transition-all inline-flex items-center gap-2 cursor-pointer">
+                        <span class="w-2 h-2 rounded-full bg-white shrink-0"></span>
+                        <span>Join class</span>
+                        <svg class="w-3.5 h-3.5 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                    </a>
+                @endif
                 <a href="{{ route('teacher.classes') }}" class="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer">
                     ← Back to Classes
                 </a>
@@ -91,21 +192,28 @@
                     
                     {{-- Current Topic & Next Class Cards --}}
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="p-5 bg-blue-50/60 rounded-3xl border border-blue-100/80 space-y-2">
-                            <span class="text-[10px] font-black text-blue-600 uppercase tracking-wider block">Current Subject / Stage</span>
-                            <h3 class="font-heading font-black text-xl text-gray-900">{{ $topics->first()?->title ?? $course->subject->name ?? 'Standard Syllabus' }}</h3>
-                            <p class="text-xs text-gray-500">{{ $course->level }} • {{ $course->subject->category ?? 'Core Curriculum' }}</p>
+                        <div class="p-5 bg-blue-50/60 rounded-3xl border border-blue-100/80 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-black text-blue-600 uppercase tracking-wider block">Current Subject / Stage</span>
+                                <h4 class="font-heading font-black text-base text-gray-900">{{ $course->subject->display_name ?? $course->subject->name ?? $topics->first()?->title ?? 'Standard Syllabus' }}</h4>
+                                <p class="text-xs text-gray-500 font-semibold">{{ $course->level }} • {{ $course->subject->category ?? 'Core Curriculum' }}</p>
+                            </div>
                         </div>
 
-                        <div class="p-5 bg-purple-50/60 rounded-3xl border border-purple-100/80 space-y-2">
-                            <span class="text-[10px] font-black text-purple-600 uppercase tracking-wider block">Next Scheduled Class</span>
-                            @if(isset($nextClass) && $nextClass)
-                                <h4 class="font-heading font-black text-base text-gray-900">{{ $nextClass->scheduled_at->format('l, d M Y • h:i A') }}</h4>
-                                <p class="text-xs text-gray-500 font-semibold">Session: {{ $nextClass->title }}</p>
-                            @else
-                                <h4 class="font-heading font-black text-base text-gray-700">No Live Class Scheduled</h4>
-                                <p class="text-xs text-gray-400">Schedule a new live class via the Classes tab.</p>
-                            @endif
+                        <div class="p-5 bg-blue-50/60 rounded-3xl border border-blue-100/80 space-y-2 flex flex-col justify-between">
+                            <div>
+                                <span class="text-[10px] font-black text-blue-600 uppercase tracking-wider block">Next Scheduled Class</span>
+                                @if(isset($nextClass) && $nextClass)
+                                    <h4 class="font-heading font-black text-base text-gray-900">{{ $nextClass->scheduled_at->format('l, d M Y • h:i A') }}</h4>
+                                    <p class="text-xs text-gray-500 font-semibold">Session: {{ $nextClass->title }}</p>
+                                @elseif(isset($liveSession) && $liveSession)
+                                    <h4 class="font-heading font-black text-base text-gray-900">{{ $liveSession->scheduled_at ? $liveSession->scheduled_at->format('l, d M Y • h:i A') : 'Ongoing Session' }}</h4>
+                                    <p class="text-xs text-gray-500 font-semibold">Session: {{ $liveSession->title }}</p>
+                                @else
+                                    <h4 class="font-heading font-black text-base text-gray-700">No Live Class Scheduled</h4>
+                                    <p class="text-xs text-gray-400">Schedule a new live class via the Classes tab.</p>
+                                @endif
+                            </div>
                         </div>
                     </div>
 
@@ -273,7 +381,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="font-bold block mb-1">Type *</label>
-                                <select name="type" required class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 outline-none font-bold cursor-pointer">
+                                <select name="type" required class="w-full px-3.5 py-2.5 pr-9 bg-gray-50 rounded-xl border border-gray-200 outline-none font-bold cursor-pointer">
                                     <option value="Notes">Notes</option>
                                     <option value="Worksheet">Worksheet</option>
                                     <option value="Slides">Slides</option>
@@ -375,39 +483,195 @@
         </div>
 
         {{-- ── TAB 5: ATTENDANCE TAB ── --}}
-        <div x-show="tab === 'attendance'" x-cloak class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-5">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div x-show="tab === 'attendance'" x-cloak class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-6">
+            
+            {{-- Header & Active Session Info --}}
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-5">
                 <div>
-                    <h3 class="font-heading font-black text-lg text-gray-900">Attendance Tracker</h3>
-                    <p class="text-xs text-gray-500 font-medium">Session Attendance & Check-in</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">ATTENDANCE HUB</span>
+                        @if($activeSession)
+                            <span class="text-[10px] font-bold text-gray-500">• {{ $activeSession->scheduled_at->format('d M Y, g:i A') }} ({{ $activeSession->duration_minutes }} min)</span>
+                        @endif
+                    </div>
+                    <h3 class="font-heading font-black text-xl text-gray-900 mt-1">
+                        {{ $activeSession ? $activeSession->title : 'No Session Selected' }}
+                    </h3>
+                    <p class="text-xs text-gray-500 font-medium mt-0.5">
+                        Students who click Join are recorded as join attempts. Teacher verification provides official status.
+                    </p>
                 </div>
-                <button class="py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-xl transition-colors cursor-pointer">Mark All Present</button>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    {{-- Session Switcher if multiple live classes --}}
+                    @if($course->liveClasses->count() > 1)
+                        <form method="GET" action="{{ route('teacher.classes.show', $course->id) }}" class="inline">
+                            <select onchange="this.form.submit()" name="session_id" class="text-xs font-bold py-2 pl-3 pr-8 bg-gray-50 border border-gray-200 rounded-xl outline-none cursor-pointer min-w-[160px]">
+                                @foreach($course->liveClasses->sortByDesc('scheduled_at') as $lc)
+                                    <option value="{{ $lc->id }}" {{ ($activeSession && $activeSession->id === $lc->id) ? 'selected' : '' }}>
+                                        {{ $lc->scheduled_at->format('d M') }} — {{ Str::limit($lc->title, 25) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </form>
+                    @endif
+
+                    @if($activeSession && $activeSession->meeting_url)
+                        <a href="{{ $activeSession->meeting_url }}" target="_blank" class="inline-flex items-center gap-1.5 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>Join Live Meeting</span>
+                        </a>
+                    @endif
+
+                    <button type="button" @click="markAllPresent()" class="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-xs rounded-xl transition-colors cursor-pointer border border-emerald-200">
+                        Mark All Present
+                    </button>
+                </div>
             </div>
 
-            <div class="space-y-3">
-                <template x-for="rec in attendanceRecords" :key="rec.id">
-                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
-                        <span class="font-bold text-xs text-gray-900" x-text="rec.name"></span>
+            {{-- Save Status Alerts --}}
+            <template x-if="attendanceSaveSuccess">
+                <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center justify-between">
+                    <span x-text="attendanceSaveSuccess"></span>
+                    <button type="button" @click="attendanceSaveSuccess = ''" class="text-emerald-600 hover:text-emerald-900">✕</button>
+                </div>
+            </template>
+            <template x-if="attendanceSaveError">
+                <div class="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-xs font-bold flex items-center justify-between">
+                    <span x-text="attendanceSaveError"></span>
+                    <button type="button" @click="attendanceSaveError = ''" class="text-red-600 hover:text-red-900">✕</button>
+                </div>
+            </template>
 
-                        <div class="flex items-center gap-2">
-                            <button @click="rec.status = 'Present'" :class="rec.status === 'Present' ? 'bg-emerald-600 text-white' : 'bg-white text-gray-600 border border-gray-200'" class="px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer">Present</button>
-                            <button @click="rec.status = 'Late'" :class="rec.status === 'Late' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-200'" class="px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer">Late</button>
-                            <button @click="rec.status = 'Absent'" :class="rec.status === 'Absent' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border border-gray-200'" class="px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all cursor-pointer">Absent</button>
+            @if(!$activeSession)
+                <div class="p-8 text-center bg-gray-50 rounded-2xl border border-gray-100 text-xs text-gray-500 font-medium">
+                    No live class session has been scheduled for this course yet.
+                </div>
+            @else
+                {{-- Attendance Records List --}}
+                <div class="space-y-3">
+                    <template x-for="(rec, index) in attendanceRecords" :key="rec.id">
+                        <div class="p-4 bg-gray-50 hover:bg-gray-100/60 rounded-2xl border border-gray-100 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            
+                            {{-- Student Info & Join State --}}
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-extrabold text-xs flex items-center justify-center shrink-0">
+                                    <span x-text="rec.name.substring(0, 2).toUpperCase()"></span>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-extrabold text-sm text-gray-900" x-text="rec.name"></span>
+                                        <template x-if="rec.verified">
+                                            <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">Verified</span>
+                                        </template>
+                                    </div>
+                                    <div class="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
+                                        <span x-text="rec.email"></span>
+                                        <span>•</span>
+                                        <span :class="rec.joined_at !== 'Not Joined' ? 'text-emerald-600 font-semibold' : 'text-gray-400'"
+                                              x-text="rec.joined_at !== 'Not Joined' ? 'Joined: ' + rec.joined_at : 'Never clicked join'"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Status Buttons & Remarks --}}
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="inline-flex rounded-xl shadow-2xs p-1 bg-white border border-gray-200 gap-1">
+                                    <button type="button" @click="rec.status = 'attended'"
+                                            :class="rec.status === 'attended' ? 'bg-emerald-600 text-white shadow-xs font-black' : 'text-gray-600 hover:bg-gray-50 font-bold'"
+                                            class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer">
+                                        Present
+                                    </button>
+                                    <button type="button" @click="rec.status = 'late'"
+                                            :class="rec.status === 'late' ? 'bg-amber-500 text-white shadow-xs font-black' : 'text-gray-600 hover:bg-gray-50 font-bold'"
+                                            class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer">
+                                        Late
+                                    </button>
+                                    <button type="button" @click="rec.status = 'absent'"
+                                            :class="rec.status === 'absent' ? 'bg-red-600 text-white shadow-xs font-black' : 'text-gray-600 hover:bg-gray-50 font-bold'"
+                                            class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer">
+                                        Absent
+                                    </button>
+                                    <button type="button" @click="rec.status = 'excused'"
+                                            :class="rec.status === 'excused' ? 'bg-blue-600 text-white shadow-xs font-black' : 'text-gray-600 hover:bg-gray-50 font-bold'"
+                                            class="px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer">
+                                        Excused
+                                    </button>
+                                </div>
+
+                                <input type="text" x-model="rec.remarks" placeholder="Optional remark (e.g. sick, audio issue)..."
+                                       class="text-xs p-2 bg-white rounded-xl border border-gray-200 outline-none w-48 focus:ring-1 focus:ring-blue-500 font-medium">
+                            </div>
                         </div>
-                    </div>
-                </template>
-                @if($course->enrollments->isEmpty())
-                    <div class="py-8 text-center text-gray-400 font-semibold text-xs">
-                        No students enrolled in this class yet.
+                    </template>
+
+                    @if($course->enrollments->isEmpty())
+                        <div class="py-8 text-center text-gray-400 font-semibold text-xs">
+                            No students enrolled in this class yet.
+                        </div>
+                    @endif
+                </div>
+
+                @if($course->enrollments->isNotEmpty())
+                    <div class="pt-3 flex items-center justify-between border-t border-gray-100">
+                        <span class="text-xs text-gray-500 font-medium">
+                            Changes take effect immediately and notify absent students/parents.
+                        </span>
+                        <button type="button" @click="saveAttendance()" :disabled="isSavingAttendance"
+                                class="py-3 px-6 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-2xl shadow-sm transition-all cursor-pointer inline-flex items-center gap-2">
+                            <svg x-show="isSavingAttendance" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span x-text="isSavingAttendance ? 'Saving Attendance...' : 'Save & Verify Attendance'"></span>
+                        </button>
                     </div>
                 @endif
-            </div>
-
-            @if($course->enrollments->isNotEmpty())
-            <div class="pt-2 text-right">
-                <button class="py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl shadow-sm transition-colors cursor-pointer">Save Attendance</button>
-            </div>
             @endif
+
+            {{-- ── PENDING CORRECTION REQUESTS SECTION ── --}}
+            @if(isset($correctionRequests) && $correctionRequests->isNotEmpty())
+                <div class="mt-8 pt-6 border-t border-gray-100 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h4 class="font-heading font-black text-base text-gray-900">Attendance Correction Requests</h4>
+                            <p class="text-xs text-gray-500">Student appeals for missed or contested attendance.</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 font-extrabold text-xs border border-amber-200">
+                            {{ $correctionRequests->where('status', 'pending')->count() }} Pending
+                        </span>
+                    </div>
+
+                    <div class="space-y-3">
+                        @foreach($correctionRequests as $cr)
+                            <div class="p-4 bg-amber-50/40 rounded-2xl border border-amber-200/70 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-xs text-gray-900">{{ $cr->student->user->name ?? 'Student' }}</span>
+                                        <span class="text-[10px] text-gray-500">• {{ $cr->liveClass->title ?? 'Session' }} ({{ $cr->liveClass->scheduled_at ? $cr->liveClass->scheduled_at->format('d M') : '' }})</span>
+                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase {{ $cr->status === 'approved' ? 'bg-emerald-100 text-emerald-800' : ($cr->status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800') }}">
+                                            {{ $cr->status }}
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-gray-700 italic">"{{ $cr->reason }}"</p>
+                                    <p class="text-[10px] text-gray-500">Requested: <strong>{{ ucfirst($cr->requested_status) }}</strong> • Submitted {{ $cr->created_at->diffForHumans() }}</p>
+                                </div>
+
+                                @if($cr->status === 'pending')
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <button type="button" @click="reviewCorrection({{ $cr->id }}, 'approved')"
+                                                class="py-1.5 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition cursor-pointer">
+                                            Approve
+                                        </button>
+                                        <button type="button" @click="reviewCorrection({{ $cr->id }}, 'rejected')"
+                                                class="py-1.5 px-3.5 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl transition cursor-pointer">
+                                            Decline
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
         </div>
 
         {{-- ── TAB 6: PERFORMANCE TAB (Real Dynamic Data) ── --}}
@@ -431,7 +695,7 @@
             </div>
 
             <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm space-y-4">
-                <h3 class="font-heading font-black text-base text-gray-900">Topic Mastery Breakdown ({{ $course->subject->name ?? 'Curriculum' }})</h3>
+                <h3 class="font-heading font-black text-base text-gray-900">Topic Mastery Breakdown ({{ $course->subject->display_name ?? $course->subject->name ?? 'Curriculum' }})</h3>
 
                 @if($topics->isNotEmpty())
                     <div class="space-y-4 text-xs font-bold">

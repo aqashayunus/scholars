@@ -17,12 +17,12 @@
                 $faqs = [
                     ['q'=>'How do online classes work?','a'=>'All classes are conducted via HD video conferencing. Students join a live session with their teacher and classmates, can ask questions in real time, and access recordings afterward.'],
                     ['q'=>'What subjects are available?','a'=>'We currently offer Mathematics, Additional Mathematics, Science, Physics, Chemistry, Biology, Bahasa Melayu, and English, all aligned with the SPM and IGCSE syllabus.'],
-                    ['q'=>'How much does it cost?','a'=>'Our Monthly Plan starts from ' . ($pricingPlans['monthly_price'] ?? 'RM 99') . ($pricingPlans['monthly_per'] ?? '/month') . ' per subject. We also offer Subject Packages (' . ($pricingPlans['subject_price'] ?? 'From RM 150') . ($pricingPlans['subject_per'] ?? '/subject') . ') and Premium Membership (' . ($pricingPlans['premium_price'] ?? 'From RM 199') . ($pricingPlans['premium_per'] ?? '/month') . ' for unlimited subjects). All plans include a free trial.'],
-                    ['q'=>'Is there a free trial?','a'=>'Yes! Every new student gets one free trial class with no commitment required. Simply fill in the Free Trial form and we\'ll schedule your session within 24 hours.'],
+                    ['q'=>'How much does it cost?','a'=>'Our comprehensive monthly packages start from RM129/month for Primary (Year 4–6), RM199/month for Lower Secondary (Form 1–3), and RM229/month for Upper Secondary (Form 4–5) with our Early Bird promotion (RM20 off the standard rate for the first month). We also offer single-subject tuition starting from RM49/month. All packages include a 1-hour free trial class and zero registration fees.'],
+                    ['q'=>'Is there a free trial?','a'=>'Yes! Every new student is entitled to a 1-hour free trial class with no commitment required. Simply fill in the registration form and we will schedule your session.'],
                     ['q'=>'Can parents monitor their child\'s progress?','a'=>'Absolutely. Every student account is linked to a Parent Portal where you can view attendance, homework status, assignment scores, teacher feedback, and payment history anytime.'],
                     ['q'=>'What if my child misses a class?','a'=>'All live classes are recorded and made available in the student portal within 24 hours, so no one ever falls behind.'],
-                    ['q'=>'Are your teachers qualified?','a'=>'All our teachers hold relevant university degrees and have 8-14 years of SPM/IGCSE teaching experience. They are carefully vetted and continuously trained.'],
-                    ['q'=>'How do I contact support?','a'=>'You can reach us via email at hello@olympianscholars.my or WhatsApp at +60 12-345 6789. We respond within 4 business hours.'],
+                    ['q'=>'Are your teachers qualified?','a'=>'All our teachers hold relevant university degrees and have extensive KSSR, UASA, and SPM teaching experience. They are carefully vetted and continuously trained.'],
+                    ['q'=>'How do I contact support?','a'=>'You can reach us via email at info@olympianscholars.com or WhatsApp. We respond promptly during business hours.'],
                 ];
             @endphp
             <div class="space-y-3">
@@ -40,7 +40,7 @@
             </div>
             <div class="text-center mt-10">
                 <p class="text-muted mb-4">Still have questions?</p>
-                <a href="{{ route('free-trial') }}" class="btn-primary">Contact Us</a>
+                <a href="https://wa.me/60123456789" target="_blank" class="btn-primary">Contact Us via WhatsApp</a>
             </div>
         </div>
     </section>

@@ -11,12 +11,12 @@
             <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/3 rounded-full blur-3xl"></div>
             {{-- Subtle grid pattern --}}
-            <div class="absolute inset-0 opacity-5" style="background-image: url('data:image/svg+xml,<svg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"><g fill=\"none\" fill-rule=\"evenodd\"><g fill=\"%23ffffff\" fill-opacity=\"1\"><rect x=\"0\" y=\"0\" width=\"1\" height=\"60\"/><rect x=\"0\" y=\"0\" width=\"60\" height=\"1\"/></g></g></svg>');"></div>
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(rgba(255,255,255,0.15) 1px, transparent 1px); background-size: 24px 24px;"></div>
         </div>
 
         {{-- Background picture strictly on the right side with left edge mask & mobile contrast overlay --}}
         <div class="absolute top-0 right-0 w-full lg:w-[55%] h-full overflow-hidden pointer-events-none z-0" style="-webkit-mask-image: linear-gradient(to right, transparent 0%, black 35%, black 100%); mask-image: linear-gradient(to right, transparent 0%, black 35%, black 100%);">
-            <img src="{{ asset('images/hero-students.jpg') }}" alt="Olympian Scholars Students" class="w-full h-full object-cover object-center filter brightness-95 lg:brightness-105 contrast-105">
+            <img src="{{ asset('images/hero-students.jpg') }}?v={{ filemtime(public_path('images/hero-students.jpg')) }}" alt="Olympian Scholars Students" class="w-full h-full object-cover object-center filter brightness-95 lg:brightness-105 contrast-105">
             <div class="absolute inset-0 bg-gradient-to-r from-primary-950 via-primary-950/90 to-primary-950/75 lg:bg-gradient-to-t lg:from-primary-950/80 lg:via-transparent lg:to-primary-950/30"></div>
         </div>
 
@@ -37,7 +37,7 @@
                     </p>
 
                     <div class="flex flex-wrap gap-4 mb-10">
-                        <a href="{{ route('free-trial') }}" class="btn-accent text-base px-8 py-4 shadow-lg shadow-accent/20 hover:scale-105 transition-all">
+                        <a href="{{ route('register') }}" class="btn-accent text-base px-8 py-4 shadow-lg shadow-accent/20 hover:scale-105 transition-all">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
@@ -180,9 +180,9 @@
                     };
                 @endphp
                 <div class="flex-none w-[170px] sm:w-[190px]">
-                    <a href="{{ route('subject.show', $subject) }}" @click.prevent="openSubjectModal('{{ $subject->name }}')" class="group relative overflow-hidden rounded-2xl p-3 text-center flex flex-col items-center justify-between h-[130px] sm:h-[140px] shadow-md hover:shadow-2xl border border-white/20 hover:-translate-y-1 transition-all duration-300 block cursor-pointer">
+                    <a href="{{ route('subject.show', $subject) }}" @click.prevent="openSubjectModal('{{ $subject->display_name ?? $subject->name }}')" class="group relative overflow-hidden rounded-2xl p-3 text-center flex flex-col items-center justify-between h-[130px] sm:h-[140px] shadow-md hover:shadow-2xl border border-white/20 hover:-translate-y-1 transition-all duration-300 block cursor-pointer">
                         {{-- Background Picture --}}
-                        <img src="{{ $bgImg }}" alt="{{ $subject->name }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                        <img src="{{ $bgImg }}" alt="{{ $subject->display_name ?? $subject->name }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
                         {{-- Original Gradient Overlay (Dark bottom for text clarity, transparent top for photo) --}}
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20 group-hover:opacity-80 transition-opacity duration-300"></div>
 
@@ -193,7 +193,7 @@
 
                         {{-- Subject Name --}}
                         <h3 class="relative z-10 font-heading font-black text-white text-xs sm:text-sm group-hover:text-amber-300 transition-colors tracking-tight line-clamp-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                            {{ $subject->name }}
+                            {{ $subject->display_name ?? $subject->name }}
                         </h3>
 
                         {{-- Bottom Badge --}}
@@ -217,20 +217,67 @@
             <div class="text-center mb-14">
                 <p class="section-label mb-2">Why Choose Us</p>
                 <h2 class="section-title">Why Olympian Scholars?</h2>
-                <p class="section-subtitle mt-4">Empowering every learner through subject specialist educators, premium resources, and personalised learning.</p>
+                <p class="font-heading font-bold text-accent text-lg sm:text-xl mt-2">60 Strengths, Summarised into 6 Core Pillars</p>
+                <p class="section-subtitle mt-1">Learn Today. Excel Tomorrow.</p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 @php
                     $whys = [
-                        ['icon' => 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222', 'title' => 'Subject Specialist<br>Educators', 'desc' => 'Learn from highly qualified subject specialists committed to academic excellence and student success.'],
-                        ['icon' => 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', 'title' => 'Premium Learning<br>Resources', 'desc' => 'Unlock exclusive digital resources designed to simplify learning and strengthen examination readiness.'],
-                        ['icon' => 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z', 'title' => 'Personalised Digital<br>Learning', 'desc' => 'Experience flexible, engaging, and technology-enabled learning tailored to every student\'s needs.'],
-                        ['icon' => 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6', 'title' => 'Personalised Learning<br>Journey', 'desc' => 'Follow a structured learning pathway with continuous progress monitoring and personalised academic support.'],
-                        ['icon' => 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', 'title' => 'Examination<br>Excellence', 'desc' => 'Build confidence through strategic exam preparation, targeted practice, and performance-driven learning.'],
-                        ['icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z', 'title' => 'Parent<br>Partnership', 'desc' => 'Stay connected with your child\'s learning through transparent communication and real-time academic updates.'],
-                        ['icon' => 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z', 'title' => 'Future-Ready<br>Skills', 'desc' => 'Empower students with essential skills for lifelong learning, leadership, and future success.'],
-                        ['icon' => 'M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z', 'title' => 'Proven<br>Results', 'desc' => 'Delivering measurable academic growth through quality education and continuous learner development.'],
+                        [
+                            'icon' => 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222',
+                            'title' => 'Academic<br>Excellence',
+                            'points' => [
+                                '- Structured academic pathway',
+                                '- Mastery-based learning support',
+                                '- Exam-focused progress development',
+                            ],
+                        ],
+                        [
+                            'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+                            'title' => 'Teacher<br>Excellence',
+                            'points' => [
+                                '- Qualified subject specialists',
+                                '- Mentoring and guided support',
+                                '- Engaging teaching approach',
+                            ],
+                        ],
+                        [
+                            'icon' => 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z',
+                            'title' => 'Learning<br>Experience',
+                            'points' => [
+                                '- Personalised learning journey',
+                                '- Interactive online classes',
+                                '- Confidence and skill building',
+                            ],
+                        ],
+                        [
+                            'icon' => 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+                            'title' => 'Learning<br>Resources',
+                            'points' => [
+                                '- Exclusive learning modules',
+                                '- Revision materials and practice',
+                                '- Digital content library',
+                            ],
+                        ],
+                        [
+                            'icon' => 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+                            'title' => 'Digital<br>Innovation',
+                            'points' => [
+                                '- Smart online learning ecosystem',
+                                '- AI-supported learning tools',
+                                '- Flexible access anytime, anywhere',
+                            ],
+                        ],
+                        [
+                            'icon' => 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
+                            'title' => 'Parent & Student<br>Success',
+                            'points' => [
+                                '- Ongoing progress communication',
+                                '- Academic and motivational support',
+                                '- Growth, achievement and future readiness',
+                            ],
+                        ],
                     ];
                 @endphp
                 @foreach ($whys as $why)
@@ -240,8 +287,12 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $why['icon'] }}"/>
                         </svg>
                     </div>
-                    <h3 class="font-heading font-bold text-charcoal text-base mb-2 leading-snug group-hover:text-primary transition-colors">{!! $why['title'] !!}</h3>
-                    <p class="text-muted text-sm leading-relaxed">{{ $why['desc'] }}</p>
+                    <h3 class="font-heading font-bold text-charcoal text-base mb-3 leading-snug group-hover:text-primary transition-colors">{!! $why['title'] !!}</h3>
+                    <ul class="text-muted text-sm leading-relaxed space-y-1.5">
+                        @foreach ($why['points'] as $point)
+                        <li>{{ $point }}</li>
+                        @endforeach
+                    </ul>
                 </div>
                 @endforeach
             </div>

@@ -35,7 +35,7 @@
                 @endforeach
             </div>
             <div class="text-center mt-12">
-                <a href="{{ route('free-trial') }}" class="btn-primary">Start Your Success Story</a>
+                <a href="{{ route('register') }}" class="btn-primary">Start Your Success Story</a>
             </div>
         </div>
     </section>

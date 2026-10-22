@@ -24,19 +24,35 @@ class Subject extends Model
         'color',
         'order',
         'is_active',
-        'monthly_fee',    // Admin-configurable monthly fee for this subject (authoritative pricing source)
+        'monthly_fee',                 // Admin-configurable monthly fee for this subject (authoritative pricing source)
+        'diagnostic_assignment_id',    // FK → assignments.id: the one diagnostic test for this subject
+        'diagnostic_duration_minutes', // Admin-configurable test duration (default 20 min)
     ];
 
     protected $casts = [
-        'is_active'   => 'boolean',
-        'order'       => 'integer',
-        'monthly_fee' => 'decimal:2',
+        'is_active'                    => 'boolean',
+        'order'                        => 'integer',
+        'monthly_fee'                  => 'decimal:2',
+        'diagnostic_assignment_id'     => 'integer',
+        'diagnostic_duration_minutes'  => 'integer',
+    ];
+
+    protected $appends = [
+        'display_name',
     ];
 
     // ── Relationships ────────────────────────────────────────────────────────
     public function courses()
     {
         return $this->hasMany(Course::class);
+    }
+
+    /**
+     * The diagnostic test assignment attached to this subject.
+     */
+    public function diagnosticTest()
+    {
+        return $this->belongsTo(Assignment::class, 'diagnostic_assignment_id');
     }
 
     /**
@@ -80,10 +96,49 @@ class Subject extends Model
         return $this->hasMany(LearningMaterial::class);
     }
 
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    /**
+     * Whether this subject has a diagnostic test attached.
+     */
+    public function hasDiagnosticTest(): bool
+    {
+        return !is_null($this->diagnostic_assignment_id);
+    }
+
+    /**
+     * Effective duration (minutes) — uses subject override, then assignment's time_limit, then 20 min default.
+     */
+    public function getDiagnosticDurationAttribute(): int
+    {
+        if ($this->diagnostic_duration_minutes) {
+            return $this->diagnostic_duration_minutes;
+        }
+        if ($this->diagnosticTest && $this->diagnosticTest->time_limit_minutes) {
+            return $this->diagnosticTest->time_limit_minutes;
+        }
+        return 20;
+    }
+
     // ── Query Scopes ─────────────────────────────────────────────────────────
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Subjects that do NOT yet have a diagnostic test assigned.
+     */
+    public function scopeMissingDiagnostic($query)
+    {
+        return $query->whereNull('diagnostic_assignment_id');
+    }
+
+    /**
+     * Subjects that have a diagnostic test assigned.
+     */
+    public function scopeWithDiagnostic($query)
+    {
+        return $query->whereNotNull('diagnostic_assignment_id');
     }
 
     public function scopeKindergarten($query)
@@ -156,7 +211,13 @@ class Subject extends Model
     // ── Accessors & Helpers ──────────────────────────────────────────────────
     public function getDisplayNameAttribute(): string
     {
-        return $this->form_year ? "{$this->name} ({$this->form_year})" : $this->name;
+        $name = (string) ($this->name ?? '');
+        return ($this->form_year && $name !== '') ? "{$name} - {$this->form_year}" : $name;
+    }
+
+    public function getFullTitleAttribute(): string
+    {
+        return $this->display_name;
     }
     public function getCurriculumBadgeAttribute(): string
     {

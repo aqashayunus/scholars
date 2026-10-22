@@ -56,23 +56,77 @@
         </div>
 
         {{-- ── DIAGNOSTIC ASSESSMENT NOTICE ── --}}
-        @if(isset($pendingDiagnostic) && $pendingDiagnostic)
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="flex items-center gap-3.5">
-                <div class="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </div>
-                <div>
-                    <h2 class="font-heading font-black text-base sm:text-lg text-white">{{ $pendingDiagnostic->assignment->title ?? 'Diagnostic Assessment' }}</h2>
-                    <p class="text-xs text-blue-100 mt-0.5 font-medium">Please complete this diagnostic assessment to evaluate your academic level. Scores will be calculated immediately.</p>
-                </div>
-            </div>
+        @php
+            $pDiagnostics = isset($pendingDiagnostics) && $pendingDiagnostics->isNotEmpty() ? $pendingDiagnostics : (isset($pendingDiagnostic) && $pendingDiagnostic ? collect([$pendingDiagnostic]) : collect());
+        @endphp
+        @if($pDiagnostics->isNotEmpty())
+            @if($pDiagnostics->count() === 1)
+                @php $diagItem = $pDiagnostics->first(); @endphp
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center text-white shrink-0">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
+                        <div>
+                            @if($diagItem->assignment?->subject)
+                                <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white mb-1">
+                                    {{ $diagItem->assignment->subject->display_name }}
+                                </span>
+                            @endif
+                            <h2 class="font-heading font-black text-base sm:text-lg text-white">{{ $diagItem->assignment->title ?? 'Diagnostic Assessment' }}</h2>
+                            <p class="text-xs text-blue-100 mt-0.5 font-medium">Please complete this diagnostic assessment to evaluate your academic level. Scores will be calculated immediately.</p>
+                        </div>
+                    </div>
 
-            <a href="{{ route('student.diagnostic.take', $pendingDiagnostic->assignment_id) }}" class="shrink-0 w-full sm:w-auto py-2.5 px-5 bg-white text-blue-900 hover:bg-blue-50 rounded-2xl text-xs font-black shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
-                <span>Start Test Now</span>
-                <span>→</span>
-            </a>
-        </div>
+                    <a href="{{ route('student.diagnostic.take', $diagItem->assignment_id) }}" class="shrink-0 w-full sm:w-auto py-2.5 px-5 bg-white text-blue-900 hover:bg-blue-50 rounded-2xl text-xs font-black shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+                        <span>Start Test Now</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                    </a>
+                </div>
+            @else
+                <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 border border-indigo-900/50">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div>
+                                <h2 class="font-heading font-black text-base sm:text-lg text-white">Subject Diagnostic Assessments</h2>
+                                <p class="text-xs text-indigo-200/80 font-normal">Complete the diagnostic assessment for each of your enrolled subjects.</p>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 self-start sm:self-auto">
+                            {{ $pDiagnostics->count() }} Assessments Pending
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                        @foreach($pDiagnostics as $diag)
+                            <div class="bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-3 transition">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        @if($diag->assignment?->subject)
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/30 text-indigo-200 border border-indigo-400/20">
+                                                {{ $diag->assignment->subject->name }}
+                                            </span>
+                                        @endif
+                                        <span class="text-[10px] text-gray-400 flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                            {{ $diag->assignment?->subject?->diagnostic_duration ?? ($diag->assignment?->time_limit_minutes ?: 20) }} mins
+                                        </span>
+                                    </div>
+                                    <h3 class="font-heading font-bold text-sm text-white truncate" title="{{ $diag->assignment->title }}">{{ $diag->assignment->title }}</h3>
+                                    <p class="text-[11px] text-gray-400 mt-0.5">{{ $diag->assignment->total_questions ?? 0 }} Questions</p>
+                                </div>
+                                <a href="{{ route('student.diagnostic.take', $diag->assignment_id) }}" class="shrink-0 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-sm cursor-pointer">
+                                    <span>Start</span>
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </a>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         @endif
 
         {{-- ── 2. TOP ROW: 3 KEY PERFORMANCE CARDS ── --}}
@@ -326,7 +380,7 @@
                             @if($hasClass)
                                 <div class="mt-2">
                                     <span class="text-[10px] font-black text-white block bg-blue-700/90 rounded-lg py-1 px-1 truncate" title="{{ $firstClass->title }}">
-                                        {{ $firstClass->course->subject->name ?? 'Class' }} {{ $firstClass->scheduled_at->format('g A') }}
+                                        {{ $firstClass->course->subject->display_name ?? $firstClass->course->subject->name ?? 'Class' }} {{ $firstClass->scheduled_at->format('g A') }}
                                     </span>
                                 </div>
                             @else
@@ -342,7 +396,7 @@
                             </div>
                             <div class="mt-2">
                                 <span class="text-[10px] font-bold text-blue-800 block bg-blue-100 rounded-lg py-1 px-1 truncate" title="{{ $firstClass->title }}">
-                                    {{ $firstClass->course->subject->name ?? 'Class' }} {{ $firstClass->scheduled_at->format('g A') }}
+                                    {{ $firstClass->course->subject->display_name ?? $firstClass->course->subject->name ?? 'Class' }} {{ $firstClass->scheduled_at->format('g A') }}
                                 </span>
                             </div>
                         </div>
@@ -375,7 +429,7 @@
                 @if($upcomingClass)
                     <div class="space-y-2.5 text-sm text-gray-600">
                         <p><strong class="text-gray-900">Title:</strong> {{ $upcomingClass->title }}</p>
-                        <p><strong class="text-gray-900">Course:</strong> {{ $upcomingClass->course->title ?? 'SPM Curriculum' }} ({{ $upcomingClass->course->subject->name ?? 'General' }})</p>
+                        <p><strong class="text-gray-900">Course:</strong> {{ $upcomingClass->course->title ?? 'SPM Curriculum' }} ({{ $upcomingClass->course->subject->display_name ?? $upcomingClass->course->subject->name ?? 'General' }})</p>
                         <p><strong class="text-gray-900">Teacher:</strong> {{ $upcomingClass->course->teacher->user->name ?? 'Instructor' }}</p>
                         <p><strong class="text-gray-900">Date & Time:</strong> {{ $upcomingClass->scheduled_at ? $upcomingClass->scheduled_at->format('l, d F Y, g:i A') . ' (' . ($upcomingClass->duration_minutes ?? 60) . ' min)' : 'Scheduled' }}</p>
                         <p><strong class="text-gray-900">Platform:</strong> Olympian Interactive Live Room</p>

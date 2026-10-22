@@ -42,7 +42,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                 <div class="flex items-center gap-2 bg-gray-50 px-3.5 py-2.5 rounded-2xl border border-gray-200/70 w-full sm:w-auto min-w-0">
                     <span class="text-xs font-bold text-gray-500 shrink-0">Viewing:</span>
-                    <select onchange="window.location.href='{{ route('parent.dashboard') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1 pr-6 outline-none truncate w-full sm:max-w-[240px]">
+                    <select onchange="window.location.href='{{ route('parent.dashboard') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1.5 pr-8 outline-none truncate w-full sm:max-w-[280px]">
                         @forelse ($children as $ch)
                             <option value="{{ $ch->id }}" {{ $child && $child->id === $ch->id ? 'selected' : '' }}>
                                 {{ $ch->user->name ?? 'Student' }} – {{ $ch->level ?? 'N/A' }} ({{ ($ch->is_restricted ?? false) ? 'Overdue 🔒' : 'Paid ✓' }})
@@ -371,7 +371,7 @@
                             @endphp
                             <div class="p-2.5 lg:p-3.5 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-2">
                                 <div>
-                                    <h4 class="text-[11px] lg:text-xs font-extrabold text-gray-900">{{ $lc->course->subject->name ?? 'N/A' }}</h4>
+                                    <h4 class="text-[11px] lg:text-xs font-extrabold text-gray-900">{{ $lc->course->subject->display_name ?? $lc->course->subject->name ?? 'N/A' }}</h4>
                                     <p class="text-[10px] lg:text-[11px] text-gray-500 font-medium mt-0.5">
                                         {{ $isToday ? 'Today' : $lc->scheduled_at->format('D, j M') }} • {{ $lc->scheduled_at->format('g:i A') }}
                                     </p>
@@ -577,7 +577,7 @@
 
                         <div class="space-y-1">
                             <label class="text-gray-700 block font-bold text-xs">Relationship to Child <span class="text-red-500">*</span></label>
-                            <select name="relationship" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 p-3 text-xs">
+                            <select name="relationship" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 px-3.5 py-2.5 pr-9 text-xs">
                                 <option value="Father">Father</option>
                                 <option value="Mother">Mother</option>
                                 <option value="Guardian" selected>Guardian</option>
@@ -629,7 +629,7 @@
                         <div class="grid grid-cols-2 gap-2">
                             <div class="space-y-1">
                                 <label class="text-gray-700 block font-bold text-xs">Education Level <span class="text-red-500">*</span></label>
-                                <select name="level" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 p-2.5 text-xs">
+                                <select name="level" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 px-3.5 py-2.5 pr-9 text-xs">
                                     <optgroup label="Secondary School (Form 1–5)">
                                         <option value="Form 5">Form 5</option>
                                         <option value="Form 4">Form 4</option>
@@ -655,7 +655,7 @@
 
                             <div class="space-y-1">
                                 <label class="text-gray-700 block font-bold text-xs">Relationship <span class="text-red-500">*</span></label>
-                                <select name="relationship" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 p-2.5 text-xs">
+                                <select name="relationship" required class="w-full rounded-2xl border-gray-200 focus:border-blue-500 focus:ring-blue-500 px-3.5 py-2.5 pr-9 text-xs">
                                     <option value="Father">Father</option>
                                     <option value="Mother">Mother</option>
                                     <option value="Guardian" selected>Guardian</option>
