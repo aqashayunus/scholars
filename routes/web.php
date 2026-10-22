@@ -611,6 +611,26 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::post('/email-settings', [BillingController::class, 'updateEmailSettings'])->name('email-settings.update');
     });
 
+    // ── Communication & Enterprise Email Management ──
+    Route::prefix('email-management')->name('email.')->group(function () {
+        Route::post('/audience-preview', [\App\Http\Controllers\Admin\EmailManagementController::class, 'previewAudience'])->name('audience.preview');
+        Route::post('/template-preview', [\App\Http\Controllers\Admin\EmailManagementController::class, 'previewTemplate'])->name('template.preview');
+        Route::post('/templates', [\App\Http\Controllers\Admin\EmailManagementController::class, 'storeTemplate'])->name('templates.store');
+        Route::put('/templates/{template}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateTemplate'])->name('templates.update');
+        Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\Admin\EmailManagementController::class, 'duplicateTemplate'])->name('templates.duplicate');
+        Route::post('/templates/{template}/toggle', [\App\Http\Controllers\Admin\EmailManagementController::class, 'toggleTemplate'])->name('templates.toggle');
+        Route::delete('/templates/{template}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'archiveTemplate'])->name('templates.destroy');
+        Route::post('/send-test', [\App\Http\Controllers\Admin\EmailManagementController::class, 'sendTestEmail'])->name('send-test');
+        Route::post('/campaigns', [\App\Http\Controllers\Admin\EmailManagementController::class, 'storeCampaign'])->name('campaigns.store');
+        Route::post('/campaigns/{campaign}/cancel', [\App\Http\Controllers\Admin\EmailManagementController::class, 'cancelCampaign'])->name('campaigns.cancel');
+        Route::post('/automations/{automation}/toggle', [\App\Http\Controllers\Admin\EmailManagementController::class, 'toggleAutomation'])->name('automations.toggle');
+        Route::put('/automations/{automation}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateAutomation'])->name('automations.update');
+        Route::post('/automations/{automation}/test', [\App\Http\Controllers\Admin\EmailManagementController::class, 'testAutomation'])->name('automations.test');
+        Route::post('/logs/{log}/retry', [\App\Http\Controllers\Admin\EmailManagementController::class, 'retryLog'])->name('logs.retry');
+        Route::get('/logs/export-csv', [\App\Http\Controllers\Admin\EmailManagementController::class, 'exportLogsCsv'])->name('logs.export-csv');
+        Route::post('/settings', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateSettings'])->name('settings.update');
+    });
+
     // ── Admin Master Timetable & Academic Calendar Management ──
     Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'adminIndex'])->name('timetable');
     Route::post('/classes/quick-create', [\App\Http\Controllers\TimetableController::class, 'adminQuickCreateSession'])->name('classes.quick-create');

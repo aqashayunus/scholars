@@ -1,0 +1,490 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\EmailAutomation;
+use App\Models\EmailTemplate;
+use Illuminate\Database\Seeder;
+
+class EmailTemplateSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $templates = [
+            // ── GREETINGS & ONBOARDING ────────────────────────────
+            [
+                'name'      => 'Password Reset Request',
+                'key'       => 'auth_password_reset',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Reset Your Password — Olympian Scholars',
+                'body'      => "Dear {{recipient_name}},\n\nWe received a request to reset the password for your Olympian Scholars account.\n\nClick the button below to choose a secure new password. For your security, this password reset link will expire in {{expire_minutes}} minutes.\n\nIf you did not make this request, you may safely ignore this message. Your account remains completely secure.",
+                'cta_label' => 'Reset My Password',
+                'cta_url'   => '{{reset_url}}',
+            ],
+            [
+                'name'      => 'Registration Received',
+                'key'       => 'greetings_registration_received',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Registration Received — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nGreetings from Olympia Scholars.\n\nThank you for registering with us. We have successfully received the application details for {{student_name}}.\n\nOur academic admissions team is currently reviewing your registration. You will receive an official notification once the account details and enrollment status have been verified.\n\nIf you have any questions regarding the application, please do not reply to this email directly. You may reach our admissions team at {{support_email}}.",
+                'cta_label' => 'Visit Portal',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Registration Approved',
+                'key'       => 'greetings_registration_approved',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Registration Approved — Welcome to Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe are delighted to inform you that the registration for {{student_name}} has been officially approved.\n\nYour parent account is now active, allowing you to view course schedules, track academic milestones, and manage fee invoices through the Olympia Scholars Portal.\n\nPlease log in to complete profile verification and review available learning schedules.",
+                'cta_label' => 'Log In to Parent Portal',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Welcome to Olympia Scholars',
+                'key'       => 'greetings_welcome_olympia',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Welcome to Olympia Scholars — Your Academic Journey Begins',
+                'body'      => "Dear {{student_name}},\n\nWelcome to Olympia Scholars! We are excited to support you on your academic journey.\n\nYour student account is now fully provisioned. You can access your interactive lessons, practice quizzes, digital notes, and live timetables directly on the Olympia Scholars Learning Platform.\n\nStudent Reference ID: {{student_id}}\nStudent Portal: {{portal_url}}\n\nWe wish you great success in your learning journey with us.",
+                'cta_label' => 'Access Learning Platform',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Account Activation Confirmation',
+                'key'       => 'greetings_account_activated',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Account Activated Successfully — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThis is to confirm that your Olympia Scholars account has been activated successfully.\n\nYou now have full access to our digital administrative tools, academic tracking, and real-time class announcements.\n\nAccount Email: {{parent_email}}\nDate Activated: {{current_date}}\n\nIf you did not initiate this activation, please contact our support desk immediately at {{support_email}}.",
+                'cta_label' => 'Go to Dashboard',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Parent-Student Account Linked',
+                'key'       => 'greetings_parent_student_linked',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Student Profile Successfully Linked — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe would like to confirm that the student profile for {{student_name}} (Student ID: {{student_id}}) has been successfully linked to your parent account.\n\nYou may now view attendance summaries, homework submissions, teacher evaluations, and academic reports directly from your parent dashboard.",
+                'cta_label' => 'View Linked Student Profile',
+                'cta_url'   => '{{portal_url}}',
+            ],
+
+            // ── PAYMENT & INVOICES ────────────────────────────────
+            [
+                'name'      => 'New Invoice Issued',
+                'key'       => 'payment_invoice_issued',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'New Invoice Issued: {{invoice_number}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nA new official invoice has been issued for {{student_name}}.\n\nInvoice Details:\n* Invoice Reference: {{invoice_number}}\n* Total Amount: {{invoice_amount}}\n* Due Date: {{due_date}}\n* Current Status: {{payment_status}}\n\nPlease review your invoice and arrange payment before the due date to ensure uninterrupted access to live classes and study materials.",
+                'cta_label' => 'View & Pay Invoice',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Payment Confirmation',
+                'key'       => 'payment_confirmation',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'Official Payment Receipt: {{receipt_number}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThank you for your payment. We have verified and received your tuition fee payment for {{student_name}}.\n\nPayment Summary:\n* Receipt Number: {{receipt_number}}\n* Invoice Reference: {{invoice_number}}\n* Amount Received: {{amount_paid}}\n* Payment Date: {{payment_date}}\n* Outstanding Balance: {{outstanding_amount}}\n\nYour official receipt has been archived and is available for download at any time from your billing ledger.",
+                'cta_label' => 'View Payment Ledger',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Upcoming Payment Reminder',
+                'key'       => 'payment_reminder_upcoming',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'Friendly Reminder: Invoice {{invoice_number}} Due Soon — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThis is a gentle reminder that tuition invoice {{invoice_number}} for {{student_name}} is approaching its due date.\n\n* Invoice Number: {{invoice_number}}\n* Outstanding Amount: {{outstanding_amount}}\n* Due Date: {{due_date}}\n\nTo ensure your child's access to upcoming live classes and online assignments continues without interruption, kindly settle the balance on or before the due date.",
+                'cta_label' => 'Settle Outstanding Balance',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Overdue Payment Notice',
+                'key'       => 'payment_overdue_notice',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'Urgent Notice: Invoice {{invoice_number}} is Past Due — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nOur records show that invoice {{invoice_number}} for {{student_name}} is now past its scheduled due date of {{due_date}}.\n\n* Outstanding Amount: {{outstanding_amount}}\n* Current Status: OVERDUE\n\nPlease arrange settlement at your earliest convenience to avoid automated learning platform access restrictions.\n\nIf you have already made payment within the last 24 hours, please allow us a short window to verify the transaction.",
+                'cta_label' => 'Pay Overdue Invoice',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Partial Payment Confirmation',
+                'key'       => 'payment_partial_confirmation',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'Partial Payment Recorded: {{invoice_number}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe have recorded a partial payment for {{student_name}}'s invoice {{invoice_number}}.\n\n* Amount Received: {{amount_paid}}\n* Remaining Outstanding Balance: {{outstanding_amount}}\n* Due Date: {{due_date}}\n\nPlease ensure the remaining balance is settled by the designated date to keep the account fully up to date.",
+                'cta_label' => 'View Balance & Invoices',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Outstanding Balance Settled',
+                'key'       => 'payment_balance_settled',
+                'category'  => EmailTemplate::CATEGORY_PAYMENT,
+                'subject'   => 'Invoice Fully Settled: {{invoice_number}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe are pleased to inform you that invoice {{invoice_number}} for {{student_name}} has been settled in full.\n\n* Total Amount Paid: {{amount_paid}}\n* Remaining Balance: RM 0.00\n* Status: FULLY PAID\n\nThank you for your prompt support. Your student's academic account remains in excellent standing.",
+                'cta_label' => 'View Account Status',
+                'cta_url'   => '{{portal_url}}',
+            ],
+
+            // ── RESTRICTIONS & ACCESS ─────────────────────────────
+            [
+                'name'      => 'Upcoming Restriction Warning',
+                'key'       => 'restriction_warning',
+                'category'  => EmailTemplate::CATEGORY_RESTRICTION,
+                'subject'   => 'Important Notice: Pending Account Restriction Warning — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe wish to notify you that the academic account for {{student_name}} has an overdue balance that is approaching the restriction threshold.\n\n* Invoice Number: {{invoice_number}}\n* Outstanding Balance: {{outstanding_amount}}\n\nUnder institution policy, student learning platform access (live classes, study materials, quizzes, and homework submission) will be temporarily restricted if the outstanding balance is not settled.\n\nWe encourage you to settle the outstanding balance today to prevent any disruption to your child's lessons.",
+                'cta_label' => 'Resolve Balance Now',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Account Access Restricted',
+                'key'       => 'restriction_applied',
+                'category'  => EmailTemplate::CATEGORY_RESTRICTION,
+                'subject'   => 'Notice: Learning Platform Access Restricted — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nPlease be informed that academic access for {{student_name}} has been temporarily restricted due to an overdue balance.\n\n* Outstanding Amount: {{outstanding_amount}}\n* Earliest Overdue Invoice: {{invoice_number}}\n\nDuring this temporary restriction, access to live classes, recordings, and interactive assignments is suspended. Billing and payment portals remain accessible so you can settle the outstanding fee at any time.\n\nAccess will be automatically restored immediately upon receipt of payment.",
+                'cta_label' => 'Pay to Restore Access',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Account Access Restored',
+                'key'       => 'restriction_restored',
+                'category'  => EmailTemplate::CATEGORY_RESTRICTION,
+                'subject'   => 'Access Restored: Account in Good Standing — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe are pleased to inform you that payment has been successfully verified, and full learning platform access for {{student_name}} has been restored.\n\n{{student_name}} may immediately log in to attend upcoming live sessions, submit assignments, and review classroom materials.\n\nThank you for settling your account.",
+                'cta_label' => 'Return to Learning Platform',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Account Access Updated',
+                'key'       => 'restriction_reversed',
+                'category'  => EmailTemplate::CATEGORY_RESTRICTION,
+                'subject'   => 'Account Status Updated by Administration — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThis is an official notification that the account access status for {{student_name}} has been updated by the administration team.\n\nLearning platform permissions have been refreshed and your student may access their academic dashboard as usual.\n\nIf you have any questions, please feel free to reach out to our team at {{support_email}}.",
+                'cta_label' => 'Check Student Dashboard',
+                'cta_url'   => '{{portal_url}}',
+            ],
+
+            // ── CLASSES & TIMETABLES ──────────────────────────────
+            [
+                'name'      => 'Class Enrollment Confirmation',
+                'key'       => 'class_enrollment_confirmation',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'Class Enrollment Confirmed: {{class_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\n{{student_name}} has been successfully assigned to the following class:\n\n* Class: {{class_name}}\n* Subject: {{subject_name}}\n* Educator: {{teacher_name}}\n\nYou may view the complete weekly timetable and upcoming session dates in the student and parent portals.",
+                'cta_label' => 'View Class Schedule',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Learning Platform Access',
+                'key'       => 'class_learning_access',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'Classroom Access Ready: {{class_name}} — Olympia Scholars',
+                'body'      => "Dear {{student_name}},\n\nYour digital classroom for {{class_name}} is now ready.\n\nYou can access your class link, digital syllabus, downloadable notes, and upcoming interactive exercises through your portal.\n\nPlease ensure your device camera and microphone are tested prior to your first scheduled session.",
+                'cta_label' => 'Join Class Portal',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Upcoming Class Reminder',
+                'key'       => 'class_reminder_upcoming',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'Reminder: Upcoming Live Class on {{class_date}} — Olympia Scholars',
+                'body'      => "Dear {{student_name}},\n\nThis is a reminder that your live session for {{class_name}} is scheduled soon:\n\n* Date: {{class_date}}\n* Time: {{class_time}}\n* Educator: {{teacher_name}}\n* Session Link: {{meeting_url}}\n\nPlease join the room 5 minutes prior to the start time with your study materials ready.",
+                'cta_label' => 'Join Live Session',
+                'cta_url'   => '{{meeting_url}}',
+            ],
+            [
+                'name'      => 'Class Schedule Updated',
+                'key'       => 'class_schedule_updated',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'Schedule Update: {{class_name}} — Olympia Scholars',
+                'body'      => "Dear Parents and Students,\n\nPlease take note of an updated schedule for {{class_name}}.\n\n* Updated Date: {{class_date}}\n* Updated Time: {{class_time}}\n* Educator: {{teacher_name}}\n\nYour master calendar has been updated automatically with this new timing.",
+                'cta_label' => 'View Master Timetable',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Class Cancellation Notice',
+                'key'       => 'class_cancelled',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'Notice: Class Cancelled for {{class_date}} — Olympia Scholars',
+                'body'      => "Dear Parents and Students,\n\nWe regret to inform you that the scheduled live session for {{class_name}} on {{class_date}} has been cancelled due to unavoidable circumstances.\n\nA replacement session or recorded tutorial will be communicated by our administration team shortly. We apologise for any inconvenience caused.",
+                'cta_label' => 'Check Announcements',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Teacher Announcement',
+                'key'       => 'class_teacher_announcement',
+                'category'  => EmailTemplate::CATEGORY_CLASS,
+                'subject'   => 'New Announcement for {{class_name}} — Olympia Scholars',
+                'body'      => "Dear Students and Parents,\n\nYour educator {{teacher_name}} has posted a new announcement regarding {{class_name}}.\n\nPlease check your student dashboard or class messages to read the complete details and prepare any necessary work.",
+                'cta_label' => 'Read Class Announcement',
+                'cta_url'   => '{{portal_url}}',
+            ],
+
+            // ── ACADEMIC & PROGRESS ───────────────────────────────
+            [
+                'name'      => 'Assignment Submission Confirmation',
+                'key'       => 'academic_submission_confirmation',
+                'category'  => EmailTemplate::CATEGORY_ACADEMIC,
+                'subject'   => 'Submission Received: {{assessment_name}} — Olympia Scholars',
+                'body'      => "Dear {{student_name}},\n\nYour submission for {{assessment_name}} has been successfully uploaded and received.\n\nSubmission Date: {{current_date}}\n\nYour educator will review your work and provide structured feedback shortly. You can track grading status directly on your tasks page.",
+                'cta_label' => 'View My Submissions',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Assessment Feedback Available',
+                'key'       => 'academic_feedback_available',
+                'category'  => EmailTemplate::CATEGORY_ACADEMIC,
+                'subject'   => 'Educator Feedback Available: {{assessment_name}} — Olympia Scholars',
+                'body'      => "Dear {{student_name}},\n\nYour educator has reviewed and graded your work for {{assessment_name}}.\n\n* Grade/Score: {{score}}\n* Date Graded: {{current_date}}\n\nPlease log in to review detailed annotations, model answers, and teacher suggestions for improvement.",
+                'cta_label' => 'Review Educator Feedback',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Assessment Results Released',
+                'key'       => 'academic_results_released',
+                'category'  => EmailTemplate::CATEGORY_ACADEMIC,
+                'subject'   => 'Results Released: {{assessment_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nOfficial results for {{student_name}} on {{assessment_name}} are now published.\n\n* Student ID: {{student_id}}\n* Assessment: {{assessment_name}}\n* Score: {{score}}\n\nYou may view the performance breakdown and mastery analysis in the parent progress tab.",
+                'cta_label' => 'View Detailed Performance',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Monthly Academic Progress Report',
+                'key'       => 'academic_monthly_report',
+                'category'  => EmailTemplate::CATEGORY_ACADEMIC,
+                'subject'   => 'Monthly Academic Progress Report for {{student_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThe monthly academic progress report for {{student_name}} is now ready for review.\n\nThis comprehensive report covers attendance rates, syllabus mastery, homework completion, and quiz scores across all enrolled subjects.\n\nWe encourage you to review the report with your child to celebrate milestones and plan future study goals.",
+                'cta_label' => 'Download Progress Report',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Attendance Notification',
+                'key'       => 'academic_attendance_concern',
+                'category'  => EmailTemplate::CATEGORY_ACADEMIC,
+                'subject'   => 'Attendance Notice for {{student_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThis is an official notice regarding the attendance record of {{student_name}}.\n\nConsistent attendance is vital for academic comprehension and syllabus mastery. If there were technical difficulties or an approved leave of absence, please inform our academic team or submit an attendance correction via the parent portal.",
+                'cta_label' => 'Review Attendance Record',
+                'cta_url'   => '{{portal_url}}',
+            ],
+
+            // ── RENEWALS & ENGAGEMENT ─────────────────────────────
+            [
+                'name'      => 'Programme Renewal Reminder',
+                'key'       => 'renewal_programme_reminder',
+                'category'  => EmailTemplate::CATEGORY_RENEWAL,
+                'subject'   => 'Programme Renewal Notice: {{programme_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nWe hope {{student_name}} has enjoyed learning with Olympia Scholars.\n\nThe current enrollment period for {{programme_name}} will be concluding soon. To maintain priority seat allocation and retain assigned educators for the upcoming academic term, please submit your re-enrollment renewal through the parent portal.",
+                'cta_label' => 'Renew Enrollment',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Programme Expiry Notice',
+                'key'       => 'renewal_programme_expiry',
+                'category'  => EmailTemplate::CATEGORY_RENEWAL,
+                'subject'   => 'Programme Term Concluded: {{programme_name}} — Olympia Scholars',
+                'body'      => "Dear {{parent_name}},\n\nThis is to notify you that the learning term for {{programme_name}} has now concluded.\n\nWe congratulate {{student_name}} on their commitment throughout this learning cycle. If you wish to continue into the next academic phase or enroll in additional subject modules, our education consultants are ready to assist you.",
+                'cta_label' => 'Explore Next Term Packages',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Student Inactivity Follow-up',
+                'key'       => 'renewal_student_inactivity',
+                'category'  => EmailTemplate::CATEGORY_RENEWAL,
+                'subject'   => 'We Miss You! Continuing Your Studies — Olympia Scholars',
+                'body'      => "Dear {{student_name}},\n\nWe noticed that you have not logged in to the Olympia Scholars platform recently.\n\nNew interactive lessons and revision notes have been posted for your subjects. Log in today to resume your learning streak and connect with your teachers.",
+                'cta_label' => 'Resume Learning',
+                'cta_url'   => '{{portal_url}}',
+            ],
+            [
+                'name'      => 'Feedback Request',
+                'key'       => 'renewal_feedback_request',
+                'category'  => EmailTemplate::CATEGORY_RENEWAL,
+                'subject'   => 'Share Your Feedback: Olympia Scholars Experience',
+                'body'      => "Dear {{parent_name}},\n\nAt Olympia Scholars, we are committed to providing the highest quality education and mentor guidance.\n\nWe would appreciate it if you could take two minutes to share your thoughts on {{student_name}}'s learning progress and our teaching mentors.\n\nYour insights directly help us elevate our curriculum and support your child even better.",
+                'cta_label' => 'Submit Quick Feedback',
+                'cta_url'   => '{{portal_url}}',
+            ],
+        ];
+
+        foreach ($templates as $t) {
+            EmailTemplate::updateOrCreate(
+                ['key' => $t['key']],
+                [
+                    'name'       => $t['name'],
+                    'category'   => $t['category'],
+                    'subject'    => $t['subject'],
+                    'body'       => $t['body'],
+                    'cta_label'  => $t['cta_label'] ?? null,
+                    'cta_url'    => $t['cta_url'] ?? null,
+                    'status'     => EmailTemplate::STATUS_ACTIVE,
+                    'created_by' => 1,
+                    'updated_by' => 1,
+                ]
+            );
+        }
+
+        // ── Seed Automations linking to these templates ─────────
+        $automations = [
+            [
+                'key'           => 'password_reset',
+                'name'          => 'Password Reset Notification',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When a user requests password reset from login screen',
+                'description'   => 'Dispatches official password reset link with time-limited security token.',
+                'template_key'  => 'auth_password_reset',
+            ],
+            [
+                'key'           => 'registration_received',
+                'name'          => 'Registration Received Notification',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When parent or student submits online registration',
+                'description'   => 'Sends immediate acknowledgment with application reference to the parent.',
+                'template_key'  => 'greetings_registration_received',
+            ],
+            [
+                'key'           => 'registration_approved',
+                'name'          => 'Registration Approved & Welcome',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When administrator approves student/parent registration',
+                'description'   => 'Confirms account activation and provides portal login credentials.',
+                'template_key'  => 'greetings_registration_approved',
+            ],
+            [
+                'key'           => 'account_activated',
+                'name'          => 'Account Activation Confirmation',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When student or parent first activates account',
+                'description'   => 'Sends confirmation receipt of activation and security details.',
+                'template_key'  => 'greetings_account_activated',
+            ],
+            [
+                'key'           => 'parent_student_linked',
+                'name'          => 'Parent-Student Account Confirmation',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When parent verifies student IC or child is connected',
+                'description'   => 'Notifies parent that the student profile is officially linked.',
+                'template_key'  => 'greetings_parent_student_linked',
+            ],
+            [
+                'key'           => 'invoice_issued',
+                'name'          => 'New Invoice Generated',
+                'category'      => EmailTemplate::CATEGORY_PAYMENT,
+                'trigger_event' => 'When new tuition invoice is created or generated',
+                'description'   => 'Dispatches official invoice breakdown, due date, and payment instructions.',
+                'template_key'  => 'payment_invoice_issued',
+            ],
+            [
+                'key'           => 'payment_confirmed',
+                'name'          => 'Payment Confirmation & Receipt',
+                'category'      => EmailTemplate::CATEGORY_PAYMENT,
+                'trigger_event' => 'When payment transaction is verified and approved',
+                'description'   => 'Issues official receipt number and updated ledger balance.',
+                'template_key'  => 'payment_confirmation',
+            ],
+            [
+                'key'           => 'partial_payment',
+                'name'          => 'Partial Payment Confirmation',
+                'category'      => EmailTemplate::CATEGORY_PAYMENT,
+                'trigger_event' => 'When partial tuition payment is recorded',
+                'description'   => 'Acknowledges received amount and highlights remaining balance.',
+                'template_key'  => 'payment_partial_confirmation',
+            ],
+            [
+                'key'           => 'payment_reminder_upcoming',
+                'name'          => 'Upcoming Payment Reminder',
+                'category'      => EmailTemplate::CATEGORY_PAYMENT,
+                'trigger_event' => 'Scheduled reminder before invoice due date (e.g. 3-7 days)',
+                'description'   => 'Sends courteous reminder with invoice link to parent.',
+                'template_key'  => 'payment_reminder_upcoming',
+            ],
+            [
+                'key'           => 'payment_overdue',
+                'name'          => 'Overdue Payment Notice',
+                'category'      => EmailTemplate::CATEGORY_PAYMENT,
+                'trigger_event' => 'When invoice passes due date without full settlement',
+                'description'   => 'Urgent reminder to settle balance before restriction takes effect.',
+                'template_key'  => 'payment_overdue_notice',
+            ],
+            [
+                'key'           => 'restriction_warning',
+                'name'          => 'Account Restriction Warning',
+                'category'      => EmailTemplate::CATEGORY_RESTRICTION,
+                'trigger_event' => 'When overdue invoice approaches cutoff grace period',
+                'description'   => 'Warns parent of impending automated learning platform restriction.',
+                'template_key'  => 'restriction_warning',
+            ],
+            [
+                'key'           => 'account_restricted',
+                'name'          => 'Account Access Restricted',
+                'category'      => EmailTemplate::CATEGORY_RESTRICTION,
+                'trigger_event' => 'When system applies overdue access restriction',
+                'description'   => 'Notifies parent that academic portal access has been temporarily restricted.',
+                'template_key'  => 'restriction_applied',
+            ],
+            [
+                'key'           => 'access_restored',
+                'name'          => 'Account Access Restored',
+                'category'      => EmailTemplate::CATEGORY_RESTRICTION,
+                'trigger_event' => 'When overdue payment is settled and restriction lifted',
+                'description'   => 'Celebrates account restoration and welcomes student back to classes.',
+                'template_key'  => 'restriction_restored',
+            ],
+            [
+                'key'           => 'class_enrollment',
+                'name'          => 'Class Enrollment Confirmation',
+                'category'      => EmailTemplate::CATEGORY_CLASS,
+                'trigger_event' => 'When student is enrolled in a new course/class',
+                'description'   => 'Sends class subject, teacher name, and timetable information.',
+                'template_key'  => 'class_enrollment_confirmation',
+            ],
+            [
+                'key'           => 'upcoming_class_reminder',
+                'name'          => 'Upcoming Live Class Reminder',
+                'category'      => EmailTemplate::CATEGORY_CLASS,
+                'trigger_event' => '24 hours before scheduled live session',
+                'description'   => 'Sends session date, time, and live room meeting URL.',
+                'template_key'  => 'class_reminder_upcoming',
+            ],
+            [
+                'key'           => 'class_schedule_update',
+                'name'          => 'Class Reschedule or Update',
+                'category'      => EmailTemplate::CATEGORY_CLASS,
+                'trigger_event' => 'When educator or admin reschedules a live class',
+                'description'   => 'Alerts students and parents of updated date/time.',
+                'template_key'  => 'class_schedule_updated',
+            ],
+            [
+                'key'           => 'assignment_submitted',
+                'name'          => 'Assignment Submission Confirmation',
+                'category'      => EmailTemplate::CATEGORY_ACADEMIC,
+                'trigger_event' => 'When student submits online task or diagnostic test',
+                'description'   => 'Confirms safe receipt of student work to student and parent.',
+                'template_key'  => 'academic_submission_confirmation',
+            ],
+            [
+                'key'           => 'assessment_graded',
+                'name'          => 'Assessment Feedback Available',
+                'category'      => EmailTemplate::CATEGORY_ACADEMIC,
+                'trigger_event' => 'When teacher grades homework or diagnostic test',
+                'description'   => 'Notifies student that marks and feedback annotations are available.',
+                'template_key'  => 'academic_feedback_available',
+            ],
+        ];
+
+        foreach ($automations as $a) {
+            $tpl = EmailTemplate::where('key', $a['template_key'])->first();
+            EmailAutomation::updateOrCreate(
+                ['key' => $a['key']],
+                [
+                    'name'              => $a['name'],
+                    'category'          => $a['category'],
+                    'trigger_event'     => $a['trigger_event'],
+                    'description'       => $a['description'],
+                    'email_template_id' => $tpl?->id,
+                    'is_enabled'        => true,
+                    'delay_minutes'     => 0,
+                ]
+            );
+        }
+    }
+}
