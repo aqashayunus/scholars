@@ -8,15 +8,27 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('chat_audit_logs', function (Blueprint $table) {
-            $table->unsignedBigInteger('conversation_id')->nullable()->change();
-        });
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
+        if (Schema::hasTable('chat_audit_logs')) {
+            Schema::table('chat_audit_logs', function (Blueprint $table) {
+                $table->unsignedBigInteger('conversation_id')->nullable()->change();
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('chat_audit_logs', function (Blueprint $table) {
-            $table->unsignedBigInteger('conversation_id')->nullable(false)->change();
-        });
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
+        if (Schema::hasTable('chat_audit_logs')) {
+            Schema::table('chat_audit_logs', function (Blueprint $table) {
+                $table->unsignedBigInteger('conversation_id')->nullable(false)->change();
+            });
+        }
     }
 };

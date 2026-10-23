@@ -99,7 +99,7 @@ class UserManagementService
         if ($user->role === 'student' && !$user->studentProfile) {
             Student::create(['user_id' => $user->id, 'level' => 'SPM', 'total_points' => 0]);
         } elseif ($user->role === 'teacher' && !$user->teacherProfile) {
-            Teacher::create(['user_id' => $user->id, 'specialization' => 'General Academic', 'rating' => 5.0, 'experience_years' => 1]);
+            Teacher::create(['user_id' => $user->id, 'specialization' => 'General Academic', 'qualification' => 'Certified Educator', 'rating' => 5.0, 'experience_years' => 1]);
         }
 
         try {
