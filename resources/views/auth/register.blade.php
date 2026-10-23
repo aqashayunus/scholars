@@ -11,14 +11,8 @@
     <div class="w-full max-w-2xl">
         {{-- Logo --}}
         <div class="text-center mb-10">
-            <a href="{{ route('home') }}" class="inline-flex items-center gap-3">
-                <div class="w-12 h-12 bg-gradient-brand rounded-2xl flex items-center justify-center">
-                    <span class="text-white font-heading font-bold text-base">OS</span>
-                </div>
-                <div class="text-left">
-                    <span class="font-heading font-bold text-primary text-xl block leading-none">Olympian</span>
-                    <span class="font-heading font-bold text-accent text-sm block">Scholars</span>
-                </div>
+            <a href="{{ route('home') }}" class="inline-flex flex-col items-center gap-3 group">
+                <img src="{{ asset('images/logo-vertical.png') }}" alt="Olympian Scholars" class="h-24 sm:h-28 w-auto object-contain transition-transform group-hover:scale-105">
             </a>
             <h1 class="font-heading font-bold text-3xl text-charcoal mt-8 mb-2">How would you like to join?</h1>
             <p class="text-muted text-sm">Choose your registration type to get started.</p>

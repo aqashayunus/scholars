@@ -1,9 +1,9 @@
 <x-app-layout>
-    <x-slot name="title">{{ $subject->name }}</x-slot>
+    <x-slot name="title">{{ $subject->display_name ?? $subject->name }}</x-slot>
 
     @php
-        $subjectName = $subject->name;
-        $subjectLevel = $subject->level ?? 'SPM & IGCSE';
+        $subjectName = $subject->display_name ?? $subject->name;
+        $subjectLevel = $subject->form_year ?? ($subject->level ?? 'SPM & IGCSE');
         
         // Educators query
         $educators = $subject->teachers->count() > 0 
@@ -189,8 +189,8 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-4">
-                        <a href="{{ route('free-trial') }}" class="btn-accent text-base px-8 py-3.5 shadow-lg shadow-accent/20 hover:scale-105 transition-all">
-                            Book Free Trial <span class="ml-1.5">&rarr;</span>
+                        <a href="{{ route('register') }}" class="btn-accent text-base px-8 py-3.5 shadow-lg shadow-accent/20 hover:scale-105 transition-all">
+                            Register Now <span class="ml-1.5">&rarr;</span>
                         </a>
                         <a href="#class-schedule" class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/30 text-white font-semibold px-7 py-3.5 rounded-full hover:bg-white/20 transition-all">
                             View Class Schedule

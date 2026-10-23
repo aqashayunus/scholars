@@ -4,29 +4,14 @@
     {{-- ══════════════════════════════════════════════
          SECTION 1: HERO SECTION
     ══════════════════════════════════════════════ --}}
-    <section class="bg-gradient-to-br from-primary-950 via-primary-900 to-navy text-white relative overflow-hidden py-16 lg:py-24">
-        <div class="absolute inset-0 pointer-events-none">
-            <div class="absolute -top-32 -right-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
-            <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-accent/10 rounded-full blur-3xl"></div>
-        </div>
-
-        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            {{-- Main Page Title --}}
-            <h1 class="font-heading font-bold text-4xl md:text-5xl text-white mb-4">
-                Empowering <span style="color: #f59e0b;">Future Success</span>
-            </h1>
-
-            {{-- Subtitle Text --}}
-            <p class="text-white/80 text-lg max-w-3xl mx-auto">
-                Inspiring every student to reach their full potential through quality education, expert guidance, and personalised learning.
-            </p>
-        </div>
-
-        {{-- Curved Bottom Divider --}}
+    <section class="bg-gradient-to-br from-primary-950 via-primary-900 to-navy text-white py-10 md:py-12 text-center relative overflow-hidden">
         <div class="absolute -bottom-1 left-0 right-0 overflow-hidden leading-none pointer-events-none z-10">
-            <svg viewBox="0 0 1440 48" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-10 block">
-                <path d="M0,20 Q720,48 1440,20 L1440,48 L0,48 Z" fill="#ffffff"></path>
+            <svg viewBox="0 0 1440 48" fill="none" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-8 md:h-10 block">
+                <path d="M0,20 Q720,48 1440,20 L1440,48 L0,48 Z" fill="#ffffff"/>
             </svg>
+        </div>
+        <div class="relative max-w-3xl mx-auto px-4">
+            <h1 class="font-heading font-bold text-3xl md:text-4xl text-white mb-2">Empowering Future Success</h1>
         </div>
     </section>
 

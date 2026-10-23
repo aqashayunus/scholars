@@ -289,7 +289,7 @@
                                class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-xl text-slate-100 placeholder-slate-400 focus:outline-none focus:border-primary">
                     </div>
                     <select x-model="adminStatusFilter" @change="loadContacts()"
-                            class="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-xl px-2 py-1.5 focus:outline-none focus:border-primary">
+                            class="text-xs bg-slate-800 border border-slate-700 text-slate-300 rounded-xl pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-primary min-w-[105px]">
                         <option value="">All Status</option>
                         <option value="open">Open</option>
                         <option value="pending">Pending</option>
@@ -536,6 +536,12 @@
                 </div>
             </div>
 
+            {{-- Directory Error Notification --}}
+            <div x-show="directoryError" x-cloak class="p-3 bg-rose-50 border-b border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-2">
+                <span x-text="directoryError" class="flex-1 font-medium"></span>
+                <button @click="directoryError = null" class="text-rose-500 hover:text-rose-800 font-bold text-sm px-1">&times;</button>
+            </div>
+
             {{-- Directory Contact List --}}
             <div class="flex-1 overflow-y-auto divide-y divide-slate-100">
                 <div x-show="loadingDirectory" class="flex justify-center py-10">
@@ -547,7 +553,8 @@
 
                 <template x-for="item in filteredDirectory" :key="item.contact_id">
                     <button @click="startNewConversationWith(item)"
-                            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white text-left transition-colors group">
+                            :disabled="startingContactId !== null"
+                            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-white text-left transition-colors group disabled:opacity-60">
                         <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-white text-xs font-bold shadow-sm"
                              :class="{
                                 'bg-primary':     item.contact_role === 'teacher',
@@ -560,9 +567,17 @@
                             <p class="text-xs font-semibold text-slate-800 truncate" x-text="item.contact_name"></p>
                             <p class="text-[10px] text-slate-400 truncate" x-text="item.context_label || item.contact_role"></p>
                         </div>
-                        <svg class="w-4 h-4 text-slate-300 group-hover:text-primary transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                        </svg>
+                        <template x-if="startingContactId === item.contact_id">
+                            <svg class="w-4 h-4 animate-spin text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                            </svg>
+                        </template>
+                        <template x-if="startingContactId !== item.contact_id">
+                            <svg class="w-4 h-4 text-slate-300 group-hover:text-primary transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </template>
                     </button>
                 </template>
 
@@ -612,7 +627,7 @@
                 <div x-show="!monitoringMode" class="flex items-center gap-1">
                     <select x-model="activeConvStatus"
                             @change="updateConvStatus($event.target.value)"
-                            class="text-[10px] font-semibold bg-slate-800 text-slate-200 border border-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:border-primary">
+                            class="text-[10px] font-semibold bg-slate-800 text-slate-200 border border-slate-700 rounded-lg pl-2 pr-6 py-1 focus:outline-none focus:border-primary">
                         <option value="open">Open</option>
                         <option value="pending">Pending</option>
                         <option value="resolved">Resolved</option>
@@ -896,6 +911,8 @@ function OlympiaChatWidget() {
         directory: [],
         loadingDirectory: false,
         directorySearch: '',
+        startingContactId: null,
+        directoryError: null,
 
         // Active chat state
         activeContact: null,
@@ -1011,13 +1028,19 @@ function OlympiaChatWidget() {
         },
 
         // ── DIRECTORY & NEW CHAT ─────────────────────────────────────────────
+        getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') 
+                || window.__CHAT_CONFIG__.csrf;
+        },
+
         openDirectoryView() {
             this.view = 'directory';
             this.directorySearch = '';
+            this.directoryError = null;
             this.loadingDirectory = true;
 
             fetch(window.__CHAT_CONFIG__.directory, {
-                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.getCsrfToken() }
             })
             .then(r => r.json())
             .then(data => {
@@ -1028,24 +1051,45 @@ function OlympiaChatWidget() {
         },
 
         startNewConversationWith(contact) {
+            const targetId = contact.contact_id || contact.id;
+            if (!targetId || this.startingContactId) return;
+
+            this.startingContactId = targetId;
+            this.directoryError = null;
             this.activeContact = contact;
+
             fetch(window.__CHAT_CONFIG__.findOrCreate, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf,
+                    'X-CSRF-TOKEN': this.getCsrfToken(),
                 },
-                body: JSON.stringify({ contact_id: contact.contact_id || contact.id })
+                body: JSON.stringify({ contact_id: targetId })
             })
-            .then(r => r.json())
+            .then(async r => {
+                const data = await r.json().catch(() => null);
+                if (!r.ok) {
+                    throw new Error(data?.error || data?.message || `Failed to initiate chat (HTTP ${r.status})`);
+                }
+                return data;
+            })
             .then(data => {
-                if (data.conversation_id) {
+                if (data && data.conversation_id) {
                     contact.conversation_id = data.conversation_id;
+                    this.loadContacts();
                     this.openConversation(contact);
+                } else {
+                    throw new Error(data?.error || 'Could not initiate conversation.');
                 }
             })
-            .catch(() => {});
+            .catch(err => {
+                console.error('[Chat Widget] startNewConversationWith error:', err);
+                this.directoryError = err.message || 'Could not start conversation. Please try again.';
+            })
+            .finally(() => {
+                this.startingContactId = null;
+            });
         },
 
         // ── OPEN CONVERSATION ────────────────────────────────────────────────

@@ -109,7 +109,7 @@ class="olympia-timetable-wrapper space-y-6">
         <div class="pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3 text-xs">
             <div class="flex items-center gap-2">
                 <span class="font-medium text-gray-500 text-xs shrink-0">Teacher:</span>
-                <select x-model="selectedTeacherId" @change="fetchEvents()" class="rounded-xl border-gray-200 text-xs py-1.5 px-3 bg-white focus:ring-gray-900 focus:border-gray-900 font-normal text-gray-700 shadow-2xs">
+                <select x-model="selectedTeacherId" @change="fetchEvents()" class="rounded-xl border-gray-200 text-xs py-1.5 pl-3 pr-8 bg-white focus:ring-gray-900 focus:border-gray-900 font-normal text-gray-700 shadow-2xs min-w-[140px]">
                     <option value="">All Teachers</option>
                     @foreach($teachers as $t)
                         <option value="{{ $t->id }}">{{ $t->user->name ?? 'Teacher #' . $t->id }}</option>
@@ -119,10 +119,10 @@ class="olympia-timetable-wrapper space-y-6">
 
             <div class="flex items-center gap-2">
                 <span class="font-medium text-gray-500 text-xs shrink-0">Course:</span>
-                <select x-model="selectedCourseId" @change="fetchEvents()" class="rounded-xl border-gray-200 text-xs py-1.5 px-3 bg-white focus:ring-gray-900 focus:border-gray-900 font-normal text-gray-700 shadow-2xs">
+                <select x-model="selectedCourseId" @change="fetchEvents()" class="rounded-xl border-gray-200 text-xs py-1.5 pl-3 pr-8 bg-white focus:ring-gray-900 focus:border-gray-900 font-normal text-gray-700 shadow-2xs min-w-[140px]">
                     <option value="">All Courses</option>
                     @foreach($courses as $c)
-                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? '' }})</option>
+                        <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? $c->subject->name ?? '' }})</option>
                     @endforeach
                 </select>
             </div>
@@ -959,7 +959,10 @@ class="olympia-timetable-wrapper space-y-6">
                     <select x-model="quickCreateForm.course_id" required class="w-full rounded-xl border-gray-200 text-xs font-normal p-2.5 focus:ring-gray-900 focus:border-gray-900">
                         <option value="">Select Course...</option>
                         @foreach($courses as $c)
-                            <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? '' }})</option>
+                            @php
+                                $enrollmentCount = $c->enrollments_count ?? ($c->relationLoaded('enrollments') ? $c->enrollments->count() : $c->enrollments()->count());
+                            @endphp
+                            <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? $c->subject->name ?? '' }}) — {{ $enrollmentCount }} {{ \Illuminate\Support\Str::plural('student', $enrollmentCount) }} enrolled</option>
                         @endforeach
                     </select>
                 </div>
@@ -1049,7 +1052,10 @@ class="olympia-timetable-wrapper space-y-6">
                         <select x-model="quickCreateForm.course_id" required class="w-full rounded-xl border-gray-200 text-xs font-normal p-2.5 focus:ring-gray-900 focus:border-gray-900">
                             <option value="">Select Course...</option>
                             @foreach($courses as $c)
-                                <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->name ?? '' }})</option>
+                                @php
+                                    $enrollmentCount = $c->enrollments_count ?? ($c->relationLoaded('enrollments') ? $c->enrollments->count() : $c->enrollments()->count());
+                                @endphp
+                                <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? $c->subject->name ?? '' }}) — {{ $enrollmentCount }} {{ \Illuminate\Support\Str::plural('student', $enrollmentCount) }} enrolled</option>
                             @endforeach
                         </select>
                     </div>

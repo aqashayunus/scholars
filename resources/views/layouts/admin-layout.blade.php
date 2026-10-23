@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Admin Portal' }} | {{ \App\Models\Setting::get('platform_name', config('app.name')) }}</title>
+    
+    {{-- Favicon --}}
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon-32x32.png') }}?v={{ time() }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}?v={{ time() }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo-icon.png') }}?v={{ time() }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}?v={{ time() }}">
+    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}?v={{ time() }}">
+
     <style>[x-cloak] { display: none !important; }</style>
     
     {{-- Google Font: Inter --}}
@@ -18,6 +26,12 @@
         /* ── Inter Typography Everywhere ──────────────── */
         *, html, body, button, input, select, textarea, table, th, td, h1, h2, h3, h4, h5, h6, p, span, a {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        /* ── Fix Double Dropdown Arrows on Custom Selects (@tailwindcss/forms collision) ── */
+        select.appearance-none,
+        select[class*="appearance-none"] {
+            background-image: none !important;
         }
 
         /* ── Base & Scrollbars ────────────────────────── */
@@ -195,8 +209,8 @@
 
                 {{-- Left Text: Admin Portal --}}
                 <div class="flex items-center gap-2.5">
-                    <img src="{{ asset('images/logo-white.png') }}" alt="Olympian Scholars" class="h-8 w-auto object-contain">
-                    <span class="font-semibold text-base tracking-tight text-white">Admin Portal</span>
+                    <img src="{{ asset('images/logo-horizontal-white.png') }}" alt="Olympian Scholars" class="h-9 sm:h-10 w-auto object-contain">
+                    <span class="text-[10px] font-bold text-blue-300 bg-blue-500/20 border border-blue-400/30 px-2 py-0.5 rounded-md uppercase tracking-wider">Admin</span>
                 </div>
 
 
@@ -252,12 +266,9 @@
             <nav class="px-3 space-y-1 pb-6" @click="if (window.innerWidth < 1024) mobileMenuOpen = false">
                 
                 {{-- Dashboard Link --}}
-                <a href="{{ route('admin.dashboard') }}#overview" onclick="if(typeof switchTab==='function') switchTab('tab-overview')" class="sidebar-admin-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }} flex items-center justify-between" id="nav-overview">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                        <span>Dashboard</span>
-                    </div>
-                    <span class="w-2 h-2 rounded-full bg-orange-400 animate-pulse"></span>
+                <a href="{{ route('admin.dashboard') }}#overview" onclick="if(typeof switchTab==='function') switchTab('tab-overview')" class="sidebar-admin-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}" id="nav-overview">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                    <span>Dashboard</span>
                 </a>
 
                 {{-- Users & Staff --}}
@@ -267,9 +278,19 @@
                 </a>
 
                 {{-- Curriculum & Classes --}}
-                <a href="{{ route('admin.dashboard') }}#courses" onclick="if(typeof switchTab==='function') switchTab('tab-courses')" class="sidebar-admin-link" id="nav-courses">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                    <span>Curriculum &amp; Classes</span>
+                @php
+                    $missingSubjectDiagCount = $missingSubjectDiagnosticCount ?? \App\Models\Subject::where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
+                    $pendingTasksToGrade = \App\Models\StudentAssignment::where('status', 'submitted')->count();
+                    $curriculumAlertTotal = $missingSubjectDiagCount + $pendingTasksToGrade;
+                @endphp
+                <a href="{{ route('admin.dashboard') }}#courses" onclick="if(typeof switchTab==='function') switchTab('tab-courses')" class="sidebar-admin-link flex items-center justify-between" id="nav-courses">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                        <span>Curriculum &amp; Classes</span>
+                    </div>
+                    @if($curriculumAlertTotal > 0)
+                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none" title="{{ $missingSubjectDiagCount }} subjects missing diagnostic test, {{ $pendingTasksToGrade }} tasks awaiting grading">{{ $curriculumAlertTotal }}</span>
+                    @endif
                 </a>
 
                 {{-- Master Timetable & Calendar Management --}}
@@ -306,10 +327,37 @@
                     <span>Engagement</span>
                 </a>
 
+                {{-- Attendance Management --}}
+                @php
+                    $pendingAttendanceCorrectionsCount = \App\Models\AttendanceCorrectionRequest::where('status', 'pending')->count();
+                @endphp
+                <a href="{{ route('admin.dashboard') }}#attendance" onclick="if(typeof switchTab==='function') switchTab('tab-attendance')" class="sidebar-admin-link flex items-center justify-between" id="nav-attendance">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        <span>Attendance</span>
+                    </div>
+                    @if($pendingAttendanceCorrectionsCount > 0)
+                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none" title="{{ $pendingAttendanceCorrectionsCount }} attendance appeals pending review">{{ $pendingAttendanceCorrectionsCount }}</span>
+                    @endif
+                </a>
+
                 {{-- Financials & Revenue --}}
-                <a href="{{ route('admin.dashboard') }}#financials" onclick="if(typeof switchTab==='function') switchTab('tab-financials')" class="sidebar-admin-link" id="nav-financials">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Financials &amp; Sales</span>
+                @php
+                    $pendingVerificationsCount = \App\Models\Payment::where('status', 'pending')->count()
+                        + \App\Models\Invoice::where('status', 'pending_verification')
+                            ->whereDoesntHave('payments', fn($q) => $q->where('status', 'pending'))
+                            ->count();
+                @endphp
+                <a href="{{ route('admin.dashboard') }}#financials" onclick="if(typeof switchTab==='function') switchTab('tab-financials')"
+                   class="sidebar-admin-link flex items-center justify-between"
+                   id="nav-financials">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Financials &amp; Sales</span>
+                    </div>
+                    @if($pendingVerificationsCount > 0)
+                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none">{{ $pendingVerificationsCount }}</span>
+                    @endif
                 </a>
 
                 {{-- Recent Audit Logs --}}
@@ -334,6 +382,20 @@
                 <a href="{{ route('admin.dashboard') }}#content" onclick="if(typeof switchTab==='function') switchTab('tab-content')" class="sidebar-admin-link" id="nav-content">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
                     <span>Content &amp; Media</span>
+                </a>
+
+                {{-- Email Settings & Communication Hub --}}
+                @php
+                    $failedEmailsCount = \App\Models\EmailLog::where('status', \App\Models\EmailLog::STATUS_FAILED)->where('created_at', '>=', now()->subDays(7))->count();
+                @endphp
+                <a href="{{ route('admin.dashboard') }}#emailsettings" onclick="if(typeof switchTab==='function') switchTab('tab-emailsettings')" class="sidebar-admin-link flex items-center justify-between" id="nav-emailsettings">
+                    <div class="flex items-center gap-3">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span>Email Settings</span>
+                    </div>
+                    @if($failedEmailsCount > 0)
+                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none" title="{{ $failedEmailsCount }} failed email delivery logs in last 7 days">{{ $failedEmailsCount }}</span>
+                    @endif
                 </a>
 
                 {{-- System Settings --}}
