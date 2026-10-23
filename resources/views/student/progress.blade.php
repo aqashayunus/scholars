@@ -75,7 +75,7 @@
                             @endphp
                             <div>
                                 <div class="flex justify-between mb-1">
-                                    <span class="text-gray-800">{{ $en->course->subject->name ?? ($en->course->title ?? 'Subject') }}</span>
+                                    <span class="text-gray-800">{{ $en->course->subject->display_name ?? $en->course->subject->name ?? ($en->course->title ?? 'Subject') }}</span>
                                     <span class="{{ $colors[1] }}">{{ $pct }}%</span>
                                 </div>
                                 <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="{{ $colors[0] }} h-1.5 rounded-full" style="width: {{ $pct }}%"></div></div>
@@ -98,14 +98,14 @@
                                 <div class="mt-2 space-y-2">
                                     <p class="text-xs font-bold text-gray-900 flex items-center gap-1.5">
                                         <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                        {{ $na->course->subject->name ?? $na->course->title }}
+                                        {{ $na->course->subject->display_name ?? $na->course->subject->name ?? $na->course->title }}
                                     </p>
                                     <div class="w-full bg-red-50 rounded-full h-2">
                                         <div class="bg-red-500 h-2 rounded-full" style="width: {{ (int)($na->progress_pct ?? 0) }}%"></div>
                                     </div>
                                     <p class="text-[11px] font-extrabold text-red-600 text-right">Progress: {{ (int)($na->progress_pct ?? 0) }}%</p>
                                 </div>
-                                <p class="text-[11px] text-gray-500 mt-2">Recommended: Continue lessons in <strong>{{ $na->course->subject->name ?? $na->course->title }}</strong></p>
+                                <p class="text-[11px] text-gray-500 mt-2">Recommended: Continue lessons in <strong>{{ $na->course->subject->display_name ?? $na->course->subject->name ?? $na->course->title }}</strong></p>
                             @endforeach
                         @else
                             <div class="text-center py-4 text-gray-400 text-xs">

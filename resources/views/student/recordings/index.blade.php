@@ -20,7 +20,7 @@
         </a>
         @foreach($subjects as $sub)
         <a href="{{ route('student.recordings', ['subject' => $sub->slug]) }}" class="px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition-all {{ request('subject') === $sub->slug ? 'bg-primary text-white shadow-md' : 'bg-white border border-gray-200 text-slate-700 hover:bg-slate-50' }}">
-            {{ $sub->name }}
+            {{ $sub->display_name ?? $sub->name }}
         </a>
         @endforeach
     </div>
