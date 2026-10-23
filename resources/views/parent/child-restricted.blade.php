@@ -21,7 +21,7 @@
             @if(isset($children) && $children->count() > 1)
                 <div class="flex items-center gap-2 bg-gray-50 px-3.5 py-2 rounded-2xl border border-gray-200 text-xs">
                     <span class="font-bold text-gray-500">Switch Child:</span>
-                    <select onchange="window.location.href='{{ route('parent.dashboard') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer outline-none">
+                    <select onchange="window.location.href='{{ route('parent.dashboard') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer outline-none pl-1.5 pr-8 py-0.5 truncate max-w-[200px]">
                         @foreach ($children as $ch)
                             <option value="{{ $ch->id }}" {{ isset($child) && $child->id === $ch->id ? 'selected' : '' }}>
                                 {{ $ch->user->name ?? 'Student' }}

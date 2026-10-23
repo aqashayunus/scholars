@@ -41,7 +41,7 @@
                 
                 {{-- Top: Official Olympian Scholars Logo --}}
                 <div class="mb-3">
-                    <img src="{{ asset('images/logo.png') }}" 
+                    <img src="{{ asset('images/logo-horizontal.png') }}" 
                          alt="Olympian Scholars" 
                          class="h-14 sm:h-16 w-auto object-contain">
                 </div>

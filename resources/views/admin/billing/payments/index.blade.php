@@ -11,7 +11,7 @@
 
         {{-- Filters --}}
         <form method="GET" class="flex flex-wrap gap-3">
-            <select name="status" class="text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-indigo-300 outline-none bg-white">
+            <select name="status" class="text-sm border border-gray-200 rounded-xl pl-3.5 pr-8 py-2 focus:ring-2 focus:ring-indigo-300 outline-none bg-white min-w-[160px]">
                 <option value="">All Statuses</option>
                 <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending Verification</option>
                 <option value="successful" {{ request('status') === 'successful' ? 'selected' : '' }}>Successful</option>

@@ -16,7 +16,7 @@
             @if ($children->count() > 1)
                 <div class="flex items-center gap-2 bg-gray-50 px-3.5 py-2.5 rounded-2xl border border-gray-200/70 w-full sm:w-auto min-w-0">
                     <span class="text-xs font-bold text-gray-500 shrink-0">Viewing:</span>
-                    <select onchange="window.location.href='{{ route('parent.classes') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1 pr-6 outline-none truncate w-full sm:max-w-[220px]">
+                    <select onchange="window.location.href='{{ route('parent.classes') }}?child_id=' + this.value" class="bg-transparent border-0 text-xs font-extrabold text-gray-900 focus:ring-0 cursor-pointer py-0 pl-1.5 pr-8 outline-none truncate w-full sm:max-w-[250px]">
                         @foreach ($children as $ch)
                             <option value="{{ $ch->id }}" {{ $child && $child->id === $ch->id ? 'selected' : '' }}>
                                 {{ $ch->user->name ?? 'Student' }} – {{ $ch->level ?? 'N/A' }}
@@ -39,7 +39,7 @@
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Next Class</p>
                     @if ($nextClass)
                         <p class="text-sm font-black text-gray-900 mt-0.5">
-                            {{ $nextClass->course->subject->name ?? 'N/A' }} •
+                            {{ $nextClass->course->subject->display_name ?? $nextClass->course->subject->name ?? 'N/A' }} •
                             <span class="text-blue-600 font-extrabold">{{ $nextClass->scheduled_at->isToday() ? 'Today, ' : $nextClass->scheduled_at->format('j M, ') }}{{ $nextClass->scheduled_at->format('g:i A') }}</span>
                         </p>
                     @else
@@ -104,7 +104,7 @@
                             {{ $lc->scheduled_at->format('d') }}<br><span class="text-[9px] font-bold">{{ $lc->scheduled_at->format('M') }}</span>
                         </div>
                         <div>
-                            <p class="text-sm font-black text-gray-900">{{ $lc->title ?? ($lc->course->subject->name ?? 'N/A') }}</p>
+                            <p class="text-sm font-black text-gray-900">{{ $lc->course?->subject?->display_name ?? $lc->title ?? ($lc->course?->subject?->name ?? 'N/A') }}</p>
                             @if ($teacher)
                                 <p class="text-xs text-gray-500 font-medium">Teacher: <strong class="text-gray-700">{{ $teacher }}</strong></p>
                             @endif
@@ -160,7 +160,7 @@
                             @endphp
                             <tr>
                                 <td class="py-3 px-4">{{ $att->liveClass->scheduled_at->format('j M Y') }}</td>
-                                <td class="py-3 px-4">{{ $att->liveClass->course->subject->name ?? 'N/A' }}</td>
+                                <td class="py-3 px-4">{{ $att->liveClass->course->subject->display_name ?? $att->liveClass->course->subject->name ?? 'N/A' }}</td>
                                 <td class="py-3 px-4">{{ $att->liveClass->title ?? '–' }}</td>
                                 <td class="py-3 px-4 text-right font-black {{ $statusColor }}">{{ ucfirst($att->status) }}</td>
                             </tr>
@@ -182,7 +182,7 @@
                     @endphp
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="font-bold text-sm text-gray-900">{{ $lc->title ?? ($lc->course->subject->name ?? 'N/A') }}</h4>
+                            <h4 class="font-bold text-sm text-gray-900">{{ $lc->course?->subject?->display_name ?? $lc->title ?? ($lc->course?->subject?->name ?? 'N/A') }}</h4>
                             <p class="text-xs text-gray-500 mt-0.5">{{ $lc->scheduled_at->format('j M Y') }} • {{ $lc->duration_minutes ?? '–' }} min</p>
                             <span class="text-[10px] font-black {{ $attended ? 'text-emerald-600' : 'text-red-500' }}">
                                 {{ $attended ? '✓ Attended' : '✗ Absent' }}
