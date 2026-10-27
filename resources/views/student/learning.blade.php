@@ -15,7 +15,130 @@
             activeSubject: '{{ $subjectsData[0]['name'] ?? 'Mathematics' }}', 
             activeTab: 'overview',
             get activeSubjectData() {
-                return this.subjects.find(s => s.name === this.activeSubject) || (this.subjects.length > 0 ? this.subjects[0] : { name: 'Subject', teacher: 'Instructor', level: 'SPM', progress: 0, notesCount: 0, practiceCount: 0, videoCount: 0, topics: [] });
+                return this.subjects.find(s => s.name === this.activeSubject) || (this.subjects.length > 0 ? this.subjects[0] : { name: 'Subject', teacher: 'Instructor', teachers: ['Instructor'], level: 'SPM', progress: 0, notesCount: 0, practiceCount: 0, videoCount: 0, topics: [], description: '' });
+            },
+            formatDescription(text) {
+                if (!text) return '';
+
+                const escapeHtml = (str) => {
+                    return String(str)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                };
+
+                // Helper to format inline syntax: bold, italic, strike, monospace
+                const formatInline = (raw) => {
+                    let str = escapeHtml(raw);
+                    // Monospace: `text`
+                    str = str.replace(/`([^`\n]+)`/g, '<code class="px-1.5 py-0.5 rounded bg-gray-100 text-blue-700 font-mono text-xs border border-gray-200/60">$1</code>');
+                    // Bold: **text** or *text*
+                    str = str.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="font-bold text-gray-900">$1</strong>');
+                    str = str.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<strong class="font-bold text-gray-900">$1</strong>');
+                    // Italic: _text_
+                    str = str.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em class="italic">$1</em>');
+                    // Strikethrough: ~~text~~ or ~text~
+                    str = str.replace(/~~([^~\n]+)~~/g, '<del class="line-through text-gray-400">$1</del>');
+                    str = str.replace(/(?<!~)~([^~\n]+)~(?!~)/g, '<del class="line-through text-gray-400">$1</del>');
+                    return str;
+                };
+
+                // Process HTML <table>...</table> blocks before splitting
+                let tablePlaceholders = {};
+                let tableIdx = 0;
+
+                let processed = text.replace(/<table\b[^>]*>([\s\S]*?)<\/table>/gi, (match, inner) => {
+                    // Style <thead>
+                    inner = inner.replace(/<thead\b[^>]*>/gi, '<thead class="bg-gray-100 text-gray-800 font-extrabold uppercase text-[11px] border-b border-gray-200">');
+                    // Style <tbody>
+                    inner = inner.replace(/<tbody\b[^>]*>/gi, '<tbody class="divide-y divide-gray-100 bg-white">');
+                    // Style <th>
+                    inner = inner.replace(/<th\b[^>]*>([\s\S]*?)<\/th>/gi, (m, c) => {
+                        return `<th class="py-2.5 px-3.5 border-b border-gray-200 font-extrabold">${c.trim()}</th>`;
+                    });
+                    // Style <td>
+                    inner = inner.replace(/<td\b[^>]*>([\s\S]*?)<\/td>/gi, (m, c) => {
+                        return `<td class="py-2.5 px-3.5 border-b border-gray-100 text-gray-700 font-medium">${formatInline(c.trim())}</td>`;
+                    });
+                    // Style <tr>
+                    inner = inner.replace(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi, (m, c) => {
+                        return `<tr class="hover:bg-gray-50/60 transition">${c}</tr>`;
+                    });
+
+                    let tableBody = inner;
+                    if (!/<tbody\b/i.test(inner)) {
+                        tableBody = `<tbody class="divide-y divide-gray-100 bg-white">${inner}</tbody>`;
+                    }
+
+                    let styledTable = `<div class="overflow-x-auto my-3"><table class="w-full text-xs text-left border border-gray-200 rounded-xl overflow-hidden shadow-2xs">${tableBody}</table></div>`;
+                    let key = `###TABLE_PLACEHOLDER_${tableIdx}###`;
+                    tablePlaceholders[key] = styledTable;
+                    tableIdx++;
+                    return `\n\n${key}\n\n`;
+                });
+
+                let cleanText = processed.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+                let blocks = cleanText.split(/\n{2,}/);
+
+                let htmlBlocks = blocks.map(block => {
+                    let trimmed = block.trim();
+                    if (!trimmed) return '';
+
+                    if (tablePlaceholders[trimmed]) {
+                        return tablePlaceholders[trimmed];
+                    }
+
+                    let lines = trimmed.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    if (lines.length === 0) return '';
+
+                    // 1. Tab-delimited table (e.g., copied from Excel/Word with tabs)
+                    let isTabTable = lines.length > 1 && lines.every(l => l.includes('\t'));
+                    if (isTabTable) {
+                        let tableHtml = '<div class="overflow-x-auto my-3"><table class="w-full text-xs text-left border border-gray-200 rounded-xl overflow-hidden shadow-2xs">';
+                        lines.forEach((line, idx) => {
+                            let cols = line.split('\t').map(c => c.trim());
+                            if (idx === 0) {
+                                tableHtml += '<thead class="bg-gray-100 text-gray-800 font-extrabold uppercase text-[11px] border-b border-gray-200"><tr>';
+                                cols.forEach(c => tableHtml += `<th class="py-2.5 px-3.5">${formatInline(c)}</th>`);
+                                tableHtml += '</tr></thead><tbody class="divide-y divide-gray-100 bg-white">';
+                            } else {
+                                tableHtml += '<tr class="hover:bg-gray-50/60 transition">';
+                                cols.forEach((c, cIdx) => {
+                                    let cellClass = cIdx === 0 ? 'font-bold text-gray-900' : 'text-gray-600 font-medium';
+                                    tableHtml += `<td class="py-2.5 px-3.5 ${cellClass}">${formatInline(c)}</td>`;
+                                });
+                                tableHtml += '</tr>';
+                            }
+                        });
+                        tableHtml += '</tbody></table></div>';
+                        return tableHtml;
+                    }
+
+                    // 2. Section Heading (single line < 60 chars not ending with punctuation or list)
+                    if (lines.length === 1 && lines[0].length < 60 && !['.', ',', ';', ':'].includes(lines[0].slice(-1)) && !/^[-•*\d]/.test(lines[0])) {
+                        return `<h4 class="font-heading font-black text-gray-900 text-sm sm:text-base pt-2 mb-1">${formatInline(lines[0])}</h4>`;
+                    }
+
+                    // 3. Regular block (paragraphs, bullet lists, numbered lists)
+                    let blockHtml = '<div class="space-y-1.5 text-sm text-gray-600 leading-relaxed font-normal">';
+                    lines.forEach(l => {
+                        let bulletMatch = l.match(/^[-•*]\s+(.*)$/);
+                        let numMatch = l.match(/^(\d+)\.\s+(.*)$/);
+                        if (bulletMatch) {
+                            blockHtml += `<div class="flex items-start gap-2 ml-2 text-gray-700 font-medium"><span class="text-blue-600 font-bold shrink-0">•</span><span>${formatInline(bulletMatch[1])}</span></div>`;
+                        } else if (numMatch) {
+                            blockHtml += `<div class="flex items-start gap-2 ml-2 text-gray-700 font-medium"><span class="font-bold text-gray-900 shrink-0">${numMatch[1]}.</span><span>${formatInline(numMatch[2])}</span></div>`;
+                        } else {
+                            blockHtml += `<p>${formatInline(l)}</p>`;
+                        }
+                    });
+                    blockHtml += '</div>';
+                    return blockHtml;
+                });
+
+                return htmlBlocks.join('');
             }
         }));
     });
@@ -56,15 +179,11 @@
             {{-- Subject Header Bar --}}
             <div class="bg-gradient-to-r from-primary-950 via-primary-900 to-navy text-white p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3.5">
-                    <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center font-heading font-black text-xl shrink-0 shadow-sm">
-                        <span x-text="activeSubjectData.name.substr(0, 1)"></span>
-                    </div>
                     <div>
                         <div class="flex items-center gap-2">
                             <h2 class="font-heading font-black text-2xl text-white tracking-tight" x-text="activeSubjectData.name"></h2>
-                            <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase">Active Workspace</span>
                         </div>
-                        <p class="text-xs text-gray-300 font-medium mt-0.5" x-text="`Teacher: ${activeSubjectData.teacher} • KPM ${activeSubjectData.stage || 'Curriculum'} (${activeSubjectData.form_year || 'Standard'}) • ${activeSubjectData.category || 'Core'}${activeSubjectData.stream_package ? ' • ' + activeSubjectData.stream_package : ''}`"></p>
+                        <p class="text-xs text-gray-300 font-medium mt-0.5" x-text="`${(activeSubjectData.teachers && activeSubjectData.teachers.length > 1) ? 'Teachers: ' + activeSubjectData.teachers.join(', ') : 'Teacher: ' + (activeSubjectData.teacher || 'Instructor')} • KPM ${activeSubjectData.stage || 'Curriculum'} (${activeSubjectData.form_year || 'Standard'}) • ${activeSubjectData.category || 'Core'}${activeSubjectData.stream_package ? ' • ' + activeSubjectData.stream_package : ''}`"></p>
                     </div>
                 </div>
             </div>
@@ -114,50 +233,70 @@
             {{-- Workspace Tab Content Panels --}}
 
             {{-- 1. OVERVIEW PANEL --}}
-            <div x-show="activeTab === 'overview'" class="p-6 space-y-8">
+            <div x-show="activeTab === 'overview'" class="p-6 sm:p-8 space-y-6">
                 
-                <template x-for="(topic, index) in activeSubjectData.topics" :key="index">
-                    <div class="space-y-6 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="p-5 bg-blue-50/60 rounded-2xl border border-blue-100">
-                                <span class="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block">Topic</span>
-                                <h4 class="font-heading font-black text-gray-900 text-lg" x-text="topic.name"></h4>
-                            </div>
-
-                            <div class="p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                                <div class="flex justify-between items-center text-xs font-bold mb-1.5">
-                                    <span class="text-gray-500">Topic Completion</span>
-                                    <span class="text-blue-600 font-black text-sm" x-text="`${topic.progress}%`"></span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2">
-                                    <div class="bg-blue-600 h-2 rounded-full" :style="`width: ${topic.progress}%`"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{-- Topic Mastery --}}
-                        <div class="space-y-3">
-                            <h4 class="font-heading font-extrabold text-sm text-gray-900">Topic Progress Breakdown</h4>
-                            <div class="space-y-2.5">
-                                <template x-for="(breakdown, bIndex) in topic.breakdowns" :key="bIndex">
-                                    <div class="p-3 bg-gray-50/80 rounded-2xl border border-gray-100 flex items-center justify-between gap-3">
-                                        <span class="text-xs font-bold text-gray-900" x-text="breakdown.name"></span>
-                                        <span :class="breakdown.badgeClass" class="px-3 py-1 rounded-xl font-extrabold text-xs border shrink-0" x-text="breakdown.status"></span>
-                                    </div>
-                                </template>
-                            </div>
+                {{-- Subject Explanation & Curriculum Scope --}}
+                <div class="space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <h3 class="font-heading font-black text-gray-900 text-lg sm:text-xl" x-text="activeSubjectData.name"></h3>
+                        <div class="flex items-center gap-2 text-xs font-bold text-gray-500">
+                            <span x-show="activeSubjectData.stage" x-text="activeSubjectData.stage"></span>
+                            <span x-show="activeSubjectData.stage && activeSubjectData.form_year">•</span>
+                            <span x-show="activeSubjectData.form_year" x-text="activeSubjectData.form_year"></span>
+                            <span x-show="activeSubjectData.category">•</span>
+                            <span x-show="activeSubjectData.category" class="text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100 font-extrabold" x-text="activeSubjectData.category"></span>
                         </div>
                     </div>
-                </template>
 
-                {{-- Teacher Feedback --}}
-                <div class="p-5 bg-blue-50/80 rounded-2xl border border-blue-100 space-y-1">
-                    <span class="text-[10px] font-black text-blue-800 uppercase tracking-wider block">Teacher Recommendation</span>
-                    <p class="text-xs text-blue-950 italic leading-relaxed">
-                        "Great consistency in reviewing notes! Keep practicing structured questions before next class."
-                    </p>
-                    <p class="text-right text-xs font-extrabold text-blue-800" x-text="`— ${activeSubjectData.teacher}`"></p>
+                    <div class="space-y-3" 
+                         x-html="formatDescription(activeSubjectData.description) || ('<p class=\'text-sm text-gray-600 leading-relaxed font-normal\'>Curriculum syllabus for ' + activeSubjectData.name + ' aligned with national curriculum standards, focused on core subject competencies and structured learning modules.</p>')">
+                    </div>
                 </div>
+
+                {{-- Subject Instructor & Resource Overview --}}
+                <div x-show="activeSubjectData.teacher || (activeSubjectData.teachers && activeSubjectData.teachers.length > 0)" class="pt-4 border-t border-gray-100 flex flex-wrap items-start justify-between gap-3 text-xs">
+                    <div>
+                        <span class="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block mb-1"
+                              x-text="(activeSubjectData.teachers && activeSubjectData.teachers.length > 1) ? 'Assigned Instructors' : 'Assigned Instructor'">
+                        </span>
+                        
+                        {{-- Single Teacher --}}
+                        <template x-if="!activeSubjectData.teachers || activeSubjectData.teachers.length <= 1">
+                            <span class="font-bold text-gray-800" x-text="activeSubjectData.teacher || (activeSubjectData.teachers && activeSubjectData.teachers[0]) || 'Instructor'"></span>
+                        </template>
+
+                        {{-- Multiple Teachers as Bullet Point List --}}
+                        <template x-if="activeSubjectData.teachers && activeSubjectData.teachers.length > 1">
+                            <ul class="space-y-1 mt-1">
+                                <template x-for="tName in activeSubjectData.teachers" :key="tName">
+                                    <li class="flex items-center gap-2 font-bold text-gray-800 text-xs">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>
+                                        <span x-text="tName"></span>
+                                    </li>
+                                </template>
+                            </ul>
+                        </template>
+                    </div>
+                    <div class="flex items-center gap-4 text-gray-500 font-semibold self-start sm:self-center">
+                        <span x-show="activeSubjectData.notesCount !== undefined" x-text="`${activeSubjectData.notesCount} Study Material${activeSubjectData.notesCount === 1 ? '' : 's'}`"></span>
+                        <span x-show="activeSubjectData.practiceCount !== undefined">•</span>
+                        <span x-show="activeSubjectData.practiceCount !== undefined" x-text="`${activeSubjectData.practiceCount} Practice Drill${activeSubjectData.practiceCount === 1 ? '' : 's'}`"></span>
+                        <span x-show="activeSubjectData.videoCount !== undefined">•</span>
+                        <span x-show="activeSubjectData.videoCount !== undefined" x-text="`${activeSubjectData.videoCount} Class Video${activeSubjectData.videoCount === 1 ? '' : 's'}`"></span>
+                    </div>
+                </div>
+
+                {{-- Simple Progress Bar at the Bottom --}}
+                <div class="pt-4 border-t border-gray-100 space-y-2">
+                    <div class="flex justify-between items-center text-xs font-bold">
+                        <span class="text-gray-600 uppercase tracking-wider text-[11px] font-extrabold">Subject Progress</span>
+                        <span class="text-blue-600 font-black text-sm" x-text="`${activeSubjectData.progress || 0}%`"></span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500" :style="`width: ${activeSubjectData.progress || 0}%`"></div>
+                    </div>
+                </div>
+
             </div>
 
             {{-- 2. LESSONS & NOTES PANEL --}}

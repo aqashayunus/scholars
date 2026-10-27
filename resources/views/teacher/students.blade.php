@@ -1,8 +1,42 @@
 <x-teacher-layout>
     <x-slot name="title">Students - Teacher Portal</x-slot>
 
+    @php
+        $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
+        $fallbackCourses = $teacher->courses;
+        if ($assignedSubjectIds->isNotEmpty()) {
+            $subjectCourses = \App\Models\Course::whereIn('subject_id', $assignedSubjectIds)->with('subject')->get();
+            $fallbackCourses = $fallbackCourses->merge($subjectCourses)->unique('id');
+        }
+
+        $filterClasses = $filterClasses ?? $fallbackCourses->map(function ($c) use ($fallbackCourses) {
+            if ($c->subject?->display_name) {
+                return $c->subject->display_name;
+            }
+            $sameTitleCount = $fallbackCourses->where('title', $c->title)->count();
+            if ($sameTitleCount > 1 && $c->level) {
+                return $c->title . ' (' . $c->level . ')';
+            }
+            return $c->title ?: ($c->subject?->display_name ?? $c->subject?->name);
+        })->merge(
+            $teacher->subjects ? $teacher->subjects->map(fn($s) => $s->display_name ?: $s->name) : collect()
+        )->filter()->unique()->values();
+
+        $filterForms = $filterForms ?? ($teacher->subjects ? $teacher->subjects->pluck('form_year')->filter() : collect())
+            ->merge($fallbackCourses->pluck('level'))
+            ->merge($teacher->subjects ? $teacher->subjects->pluck('level') : collect())
+            ->merge(collect($mappedStudents)->pluck('class'))
+            ->filter()->unique()->values();
+
+        $filterSubjects = $filterSubjects ?? ($teacher->subjects ? $teacher->subjects->pluck('name') : collect())
+            ->merge($fallbackCourses->map(fn($c) => $c->subject?->name ?: ($c->subject?->display_name ?: $c->title)))
+            ->merge(collect($mappedStudents)->flatMap(fn($s) => $s['subject_names'] ?? []))
+            ->filter()->unique()->values();
+
+        $filterStatuses = $filterStatuses ?? collect(['Good', 'Needs Attention', 'Intervention']);
+    @endphp
+
     <div x-data="{ 
-        tab: 'all',
         searchQuery: '',
         selectedClass: 'all',
         selectedForm: 'all',
@@ -10,24 +44,61 @@
         selectedStatus: 'all',
         selectedStudent: null,
         students: {{ \Illuminate\Support\Js::from($mappedStudents) }},
+        perPage: 10,
+        currentPage: 1,
         get filteredStudents() {
             return this.students.filter(s => {
-                const matchesTab = this.tab === 'all' || 
-                                   (this.tab === 'attention' && s.category === 'attention') ||
-                                   (this.tab === 'catchup' && s.catchup !== 'None') ||
-                                   (this.tab === 'intervention' && s.category === 'intervention') ||
-                                   (this.tab === 'good' && s.category === 'good');
+                const query = this.searchQuery.trim().toLowerCase();
+                const matchesQuery = !query || 
+                                     (s.name && s.name.toLowerCase().includes(query)) || 
+                                     (s.id && s.id.toLowerCase().includes(query)) ||
+                                     (s.student_id && s.student_id.toString().includes(query));
 
-                const matchesQuery = !this.searchQuery || 
-                                     s.name.toLowerCase().includes(this.searchQuery.toLowerCase()) || 
-                                     s.id.toLowerCase().includes(this.searchQuery.toLowerCase());
+                const matchesClass = this.selectedClass === 'all' || 
+                                     s.class === this.selectedClass ||
+                                     (Array.isArray(s.class_names) && s.class_names.includes(this.selectedClass)) ||
+                                     (Array.isArray(s.course_titles) && s.course_titles.includes(this.selectedClass)) ||
+                                     (s.class && s.class.toLowerCase().includes(this.selectedClass.toLowerCase()));
 
-                const matchesClass = this.selectedClass === 'all' || s.class === this.selectedClass;
-                const matchesSubject = this.selectedSubject === 'all' || s.subject === this.selectedSubject;
-                const matchesStatus = this.selectedStatus === 'all' || s.status === this.selectedStatus;
+                const matchesForm = this.selectedForm === 'all' || 
+                                    (Array.isArray(s.course_levels) && s.course_levels.includes(this.selectedForm)) ||
+                                    (s.class && s.class.toLowerCase().includes(this.selectedForm.toLowerCase()));
 
-                return matchesTab && matchesQuery && matchesClass && matchesSubject && matchesStatus;
+                const matchesSubject = this.selectedSubject === 'all' || 
+                                       s.subject === this.selectedSubject ||
+                                       (Array.isArray(s.subject_names) && s.subject_names.includes(this.selectedSubject)) ||
+                                       (s.subject && s.subject.toLowerCase().includes(this.selectedSubject.toLowerCase()));
+
+                const matchesStatus = this.selectedStatus === 'all' || 
+                                      s.status === this.selectedStatus ||
+                                      (this.selectedStatus === 'Needs Attention' && (s.status === 'Needs Attention' || s.category === 'attention' || s.category === 'catchup')) ||
+                                      (this.selectedStatus === 'Intervention' && (s.status === 'Intervention' || s.category === 'intervention')) ||
+                                      (this.selectedStatus === 'Good' && s.status === 'Good');
+
+                return matchesQuery && matchesClass && matchesForm && matchesSubject && matchesStatus;
             });
+        },
+        get totalPages() {
+            return Math.max(1, Math.ceil(this.filteredStudents.length / this.perPage));
+        },
+        get paginatedStudents() {
+            if (this.currentPage > this.totalPages) {
+                this.currentPage = 1;
+            }
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredStudents.slice(start, start + this.perPage);
+        },
+        get startIndex() {
+            if (this.filteredStudents.length === 0) return 0;
+            return (this.currentPage - 1) * this.perPage + 1;
+        },
+        get endIndex() {
+            return Math.min(this.currentPage * this.perPage, this.filteredStudents.length);
+        },
+        goToPage(p) {
+            if (p >= 1 && p <= this.totalPages) {
+                this.currentPage = p;
+            }
         },
         resetFilters() {
             this.searchQuery = '';
@@ -35,7 +106,34 @@
             this.selectedForm = 'all';
             this.selectedSubject = 'all';
             this.selectedStatus = 'all';
-            this.tab = 'all';
+            this.currentPage = 1;
+        },
+        exportCSV() {
+            if (!this.filteredStudents.length) return;
+            let rows = [
+                ['Student ID', 'Student Name', 'Class/Level', 'Subjects', 'Attendance (%)', 'Progress (%)', 'Pending Tasks', 'Latest Assessment', 'Status']
+            ];
+            this.filteredStudents.forEach(s => {
+                rows.push([
+                    s.id,
+                    '&quot;' + (s.name || '').replace(/&quot;/g, '&quot;&quot;') + '&quot;',
+                    '&quot;' + (s.class || '').replace(/&quot;/g, '&quot;&quot;') + '&quot;',
+                    '&quot;' + (s.subject || '').replace(/&quot;/g, '&quot;&quot;') + '&quot;',
+                    (s.attendance || 0) + '%',
+                    (s.progress || 0) + '%',
+                    '&quot;' + (s.pendingTasks || '0 Pending') + '&quot;',
+                    '&quot;' + (s.latestAssessment || '–') + '&quot;',
+                    s.status || 'Good'
+                ]);
+            });
+            let csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => e.join(',')).join('\n');
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'students_roster_' + new Date().toISOString().slice(0, 10) + '.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     }" class="space-y-6">
 
@@ -46,7 +144,7 @@
                 <p class="text-xs text-gray-500 font-medium mt-0.5">View and monitor students across all the classes you teach.</p>
             </div>
 
-            <button class="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-extrabold shadow-2xs transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5">
+            <button type="button" @click="exportCSV()" class="py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl text-xs font-extrabold shadow-2xs transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5" title="Export filtered students roster to CSV">
                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 <span>Export</span>
             </button>
@@ -73,7 +171,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-black text-amber-900" x-text="students.filter(s => s.category === 'attention').length"></p>
+                    <p class="text-2xl font-black text-amber-900" x-text="students.filter(s => s.status === 'Needs Attention' || s.category === 'attention' || s.category === 'catchup').length"></p>
                     <p class="text-xs font-bold text-amber-800/80">Need Attention</p>
                     <p class="text-[11px] text-amber-700 font-medium">Require your action</p>
                 </div>
@@ -85,7 +183,7 @@
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-black text-emerald-600" x-text="students.filter(s => s.category === 'intervention').length"></p>
+                    <p class="text-2xl font-black text-emerald-600" x-text="students.filter(s => s.status === 'Intervention' || s.category === 'intervention').length"></p>
                     <p class="text-xs font-bold text-gray-400">Intervention Active</p>
                     <p class="text-[11px] text-gray-500 font-medium">Students under support</p>
                 </div>
@@ -97,7 +195,7 @@
             <div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
                 {{-- Search Bar --}}
                 <div class="relative flex-1 min-w-[220px]">
-                    <input type="text" x-model="searchQuery" placeholder="Search student by name or ID..." class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" x-model="searchQuery" @input="currentPage = 1" placeholder="Search student by name or ID..." class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
 
@@ -105,68 +203,50 @@
                 <div class="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-2.5">
                     {{-- Class Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[145px]">
-                        <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                        <select x-model="selectedClass" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                             <option value="all">Class: All Classes</option>
-                            <option value="Form 4A">Form 4A</option>
-                            <option value="Form 4B">Form 4B</option>
-                            <option value="Year 6A">Year 6A</option>
+                            @foreach($filterClasses as $cls)
+                                <option value="{{ $cls }}">{{ $cls }}</option>
+                            @endforeach
                         </select>
                     </div>
 
                     {{-- Form Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[135px]">
-                        <select x-model="selectedForm" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                        <select x-model="selectedForm" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                             <option value="all">Year / Form: All</option>
-                            <option value="Form 4">Form 4</option>
-                            <option value="Year 6">Year 6</option>
+                            @foreach($filterForms as $frm)
+                                <option value="{{ $frm }}">{{ $frm }}</option>
+                            @endforeach
                         </select>
                     </div>
 
                     {{-- Subject Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[155px]">
-                        <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                        <select x-model="selectedSubject" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                             <option value="all">Subject: All Subjects</option>
-                            <option value="Mathematics">Mathematics</option>
-                            <option value="Physics">Physics</option>
-                            <option value="Science">Science</option>
+                            @foreach($filterSubjects as $sbj)
+                                <option value="{{ $sbj }}">{{ $sbj }}</option>
+                            @endforeach
                         </select>
                     </div>
 
                     {{-- Status Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[155px]">
-                        <select x-model="selectedStatus" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                        <select x-model="selectedStatus" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
                             <option value="all">Status: All Status</option>
-                            <option value="Needs Attention">Needs Attention</option>
-                            <option value="Good">Good</option>
-                            <option value="Intervention">Intervention</option>
+                            @foreach($filterStatuses as $st)
+                                <option value="{{ $st }}">{{ $st }}</option>
+                            @endforeach
                         </select>
                     </div>
 
                     {{-- Reset --}}
-                    <button @click="resetFilters()" class="col-span-2 sm:col-span-4 xl:col-auto py-2.5 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1">
+                    <button type="button" @click="resetFilters()" class="col-span-2 sm:col-span-4 xl:col-auto py-2.5 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1" title="Reset all search queries and filters">
                         <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Reset</span>
                     </button>
                 </div>
-            </div>
-
-            {{-- 5 Sub-Tabs Filter Bar --}}
-            <div class="flex flex-wrap gap-4 text-xs font-extrabold border-t border-gray-100 pt-4">
-                <button @click="tab = 'all'" :class="tab === 'all' ? 'text-blue-600 border-b-2 border-blue-600 pb-2 -mb-4' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                    <span x-text="'All Students (' + students.length + ')'"></span>
-                </button>
-                <button @click="tab = 'attention'" :class="tab === 'attention' ? 'text-blue-600 border-b-2 border-blue-600 pb-2 -mb-4' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                    <span x-text="'Needs Attention (' + students.filter(s => s.category === 'attention').length + ')'"></span>
-                </button>
-                <button @click="tab = 'catchup'" :class="tab === 'catchup' ? 'text-blue-600 border-b-2 border-blue-600 pb-2 -mb-4' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                    <span x-text="'Catch-Up Pending (' + students.filter(s => s.catchup !== 'None').length + ')'"></span>
-                </button>
-                <button @click="tab = 'intervention'" :class="tab === 'intervention' ? 'text-blue-600 border-b-2 border-blue-600 pb-2 -mb-4' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                    <span x-text="'Intervention (' + students.filter(s => s.category === 'intervention').length + ')'"></span>
-                </button>
-                <button @click="tab = 'good'" :class="tab === 'good' ? 'text-blue-600 border-b-2 border-blue-600 pb-2 -mb-4' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                    <span x-text="'Good Progress (' + students.filter(s => s.category === 'good').length + ')'"></span>
-                </button>
             </div>
         </div>
 
@@ -187,7 +267,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 font-medium">
-                        <template x-for="st in filteredStudents" :key="st.id">
+                        <template x-for="st in paginatedStudents" :key="st.id">
                             <tr @click="selectedStudent = st" class="hover:bg-gray-50/80 cursor-pointer transition-colors">
                                 <td class="py-3.5 px-4">
                                     <div class="flex items-center gap-3">
@@ -231,21 +311,62 @@
                                 </td>
                             </tr>
                         </template>
+                        <tr x-show="students.length === 0">
+                            <td colspan="8" class="py-12 text-center text-gray-400 font-medium">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                    <p class="text-sm font-bold text-gray-700">No students enrolled yet</p>
+                                    <p class="text-xs text-gray-400">Students enrolled in your assigned courses will appear here automatically.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr x-show="students.length > 0 && filteredStudents.length === 0">
+                            <td colspan="8" class="py-10 text-center text-gray-400 font-semibold">
+                                No students found matching your search or filters. Click <button type="button" @click="resetFilters()" class="text-blue-600 underline font-bold cursor-pointer hover:text-blue-700">Reset Filters</button> to view all students.
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-xs">
-                <span class="text-gray-400 font-semibold" x-text="'Showing 1 to ' + filteredStudents.length + ' of 86 students'"></span>
-                
-                <div class="flex items-center gap-1">
-                    <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 font-bold">‹</button>
-                    <button class="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-bold">1</button>
-                    <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 font-bold">2</button>
-                    <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 font-bold">3</button>
-                    <span class="px-1 text-gray-400 font-bold">...</span>
-                    <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 font-bold">18</button>
-                    <button class="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 font-bold">›</button>
+
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100 text-xs">
+                <div class="flex flex-wrap items-center gap-3 text-gray-500 font-medium">
+                    <span x-show="filteredStudents.length > 0"
+                          x-text="'Showing ' + startIndex + ' to ' + endIndex + ' of ' + filteredStudents.length + ' student' + (filteredStudents.length === 1 ? '' : 's') + (students.length !== filteredStudents.length ? ' (filtered from ' + students.length + ' total)' : '')"></span>
+                    <span x-show="filteredStudents.length === 0" class="text-gray-400 font-semibold">
+                        Showing 0 of 0 students
+                    </span>
+
+                    {{-- Rows per page selector --}}
+                    <div class="flex items-center gap-1.5 pl-3 border-l border-gray-200">
+                        <span class="text-gray-400 text-[11px]">Show</span>
+                        <select x-model.number="perPage" @change="currentPage = 1" class="bg-gray-50 border border-gray-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="10">10 rows</option>
+                            <option value="25">25 rows</option>
+                            <option value="50">50 rows</option>
+                            <option value="100">100 rows</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Functional Pagination --}}
+                <div class="flex items-center gap-1" x-show="totalPages > 1">
+                    <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Previous Page">
+                        ‹
+                    </button>
+                    <template x-for="p in totalPages" :key="p">
+                        <button type="button" @click="goToPage(p)"
+                                :class="currentPage === p ? 'bg-blue-600 text-white font-black shadow-2xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold'"
+                                class="px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer"
+                                x-text="p">
+                        </button>
+                    </template>
+                    <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Next Page">
+                        ›
+                    </button>
                 </div>
             </div>
         </div>

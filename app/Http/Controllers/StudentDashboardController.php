@@ -270,7 +270,23 @@ class StudentDashboardController extends Controller
             $subject = $course->subject;
             if (!$subject) continue;
 
-            $teacherName = $course->teacher->user->name ?? 'Instructor';
+            $teacherList = collect();
+            if ($subject->teachers()->exists()) {
+                foreach ($subject->teachers()->with('user')->get() as $t) {
+                    if ($t->user && !empty($t->user->name)) {
+                        $teacherList->push($t->user->name);
+                    }
+                }
+            }
+            if ($course->teacher && $course->teacher->user && !empty($course->teacher->user->name)) {
+                $teacherList->push($course->teacher->user->name);
+            }
+            $teacherList = $teacherList->unique()->values();
+            if ($teacherList->isEmpty()) {
+                $teacherList = collect(['Instructor']);
+            }
+            $primaryTeacher = $teacherList->first();
+            $allTeachers = $teacherList->all();
             
             // Build topics and subtopic breakdowns
             $topicsData = [];
@@ -335,6 +351,13 @@ class StudentDashboardController extends Controller
             $courseMaterialsCount = \App\Models\LearningMaterial::where('course_id', $course->id)->where('status', 'Published')->count();
             $notesCount = $courseMaterialsCount > 0 ? $courseMaterialsCount : 0;
 
+            $description = $subject->description ?: ($course->description ?: null);
+            if (empty($description)) {
+                $curriculumInfo = array_filter([$subject->stage, $subject->form_year, $subject->category]);
+                $curriculumStr = !empty($curriculumInfo) ? ' (' . implode(' • ', $curriculumInfo) . ')' : '';
+                $description = "Curriculum syllabus for {$subject->name}{$curriculumStr}, covering fundamental topics, learning modules, and structured assessments.";
+            }
+
             $subjectsData[] = [
                 'id'             => $subject->slug,
                 'subject_id'     => $subject->id,
@@ -346,7 +369,9 @@ class StudentDashboardController extends Controller
                 'form_year'      => $subject->form_year ?? 'Form 4–5',
                 'category'       => $subject->category ?? 'Core',
                 'stream_package' => $subject->stream_package,
-                'teacher'        => $teacherName,
+                'description'    => $description,
+                'teacher'        => $primaryTeacher,
+                'teachers'       => $allTeachers,
                 'level'          => $course->level ?? $subject->level ?? 'SPM',
                 'progress'       => $overallSubjectProgress,
                 'notesCount'     => $notesCount,

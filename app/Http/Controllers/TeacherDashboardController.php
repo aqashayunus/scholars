@@ -27,6 +27,10 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use App\Models\TeacherApplication;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class TeacherDashboardController extends Controller
 {
@@ -37,7 +41,7 @@ class TeacherDashboardController extends Controller
     /** Load the Teacher record for the logged-in user. */
     private function getTeacher(bool $withEnrollments = true): Teacher
     {
-        $with = ['courses.subject'];
+        $with = ['courses.subject', 'subjects'];
         if ($withEnrollments) {
             $with[] = 'courses.enrollments.student.user';
             $with[] = 'courses.assignments.results.student.user';
@@ -47,6 +51,29 @@ class TeacherDashboardController extends Controller
         return Teacher::where('user_id', auth()->id())
                       ->with($with)
                       ->firstOrFail();
+    }
+
+    /**
+     * Get all courses associated with the teacher (directly owned courses + courses of their assigned subjects).
+     */
+    private function getTeacherCourses(Teacher $teacher)
+    {
+        $courses = $teacher->courses;
+        $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
+
+        if ($assignedSubjectIds->isNotEmpty()) {
+            $subjectCourses = Course::whereIn('subject_id', $assignedSubjectIds)
+                ->with([
+                    'subject',
+                    'enrollments.student.user',
+                    'assignments.results.student.user',
+                    'quizzes.results.student.user',
+                ])
+                ->get();
+            $courses = $courses->merge($subjectCourses)->unique('id');
+        }
+
+        return $courses;
     }
 
     /**
@@ -98,7 +125,9 @@ class TeacherDashboardController extends Controller
         $studentsData = [];
         $colors = ['bg-blue-600', 'bg-purple-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-indigo-600', 'bg-teal-600'];
 
-        foreach ($teacher->courses as $course) {
+        $allCourses = $this->getTeacherCourses($teacher);
+
+        foreach ($allCourses as $course) {
             foreach ($course->enrollments as $enrollment) {
                 $student = $enrollment->student;
                 if (!$student || !$student->user) continue;
@@ -108,12 +137,35 @@ class TeacherDashboardController extends Controller
                 if (isset($studentsData[$sid])) continue;
 
                 // Courses enrolled with this teacher
-                $studentCourses = $teacher->courses->filter(function($c) use ($student) {
+                $studentCourses = $allCourses->filter(function($c) use ($student) {
                     return $c->enrollments->contains('student_id', $student->id);
                 });
 
-                $subjectsList = $studentCourses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? $c->title)->filter()->unique()->values()->join(', ');
+                $subjectsList = $studentCourses->map(fn($c) => $c->subject->name ?? $c->subject->display_name ?? $c->title)->filter()->unique()->values()->join(', ');
                 $levelsList   = $studentCourses->pluck('level')->filter()->unique()->values()->join(', ');
+
+                $courseTitles = $studentCourses->pluck('title')->filter()->unique()->values();
+                $courseLevels = $studentCourses->pluck('level')->filter()->unique()->values();
+                $subjectNames = $studentCourses->map(fn($c) => $c->subject?->name ?: ($c->subject?->display_name ?: $c->title))->filter()->unique()->values();
+
+                $classNames = $studentCourses->flatMap(function($c) {
+                    $names = [$c->title];
+                    if ($c->level) {
+                        $names[] = $c->title . ' (' . $c->level . ')';
+                        $names[] = $c->level . ' - ' . $c->title;
+                        $names[] = $c->level;
+                    }
+                    if ($c->subject?->name) {
+                        $names[] = $c->subject->name;
+                    }
+                    if ($c->subject?->display_name) {
+                        $names[] = $c->subject->display_name;
+                    }
+                    if ($c->subject?->form_year) {
+                        $names[] = $c->subject->form_year;
+                    }
+                    return $names;
+                })->filter()->unique()->values();
 
                 // Attendance across student's enrolled courses with this teacher
                 $pastClasses = LiveClass::whereIn('course_id', $studentCourses->pluck('id'))
@@ -221,7 +273,11 @@ class TeacherDashboardController extends Controller
                     'initials'         => $initials,
                     'avatar_color'     => $color,
                     'class'            => $levelsList ?: $course->level,
-                    'subject'          => $subjectsList ?: ($course->subject->display_name ?? $course->subject->name ?? 'General'),
+                    'subject'          => $subjectsList ?: ($course->subject->name ?? $course->subject->display_name ?? 'General'),
+                    'course_titles'    => $courseTitles->all(),
+                    'course_levels'    => $courseLevels->all(),
+                    'subject_names'    => $subjectNames->all(),
+                    'class_names'      => $classNames->all(),
                     'attendance'       => $attPct,
                     'attended_count'   => $attAttended,
                     'absent_count'     => $attAbsent,
@@ -630,7 +686,51 @@ class TeacherDashboardController extends Controller
         $teacher        = $this->getTeacher();
         $mappedStudents = $this->buildStudentData($teacher);
 
-        return view('teacher.students', compact('teacher', 'mappedStudents'));
+        $courses = $this->getTeacherCourses($teacher);
+
+        // Dynamic Classes: unique course titles or course names taught by this teacher + registered subjects
+        $filterClasses = $courses->map(function ($c) use ($courses) {
+            if ($c->subject?->display_name) {
+                return $c->subject->display_name;
+            }
+            $sameTitleCount = $courses->where('title', $c->title)->count();
+            if ($sameTitleCount > 1 && $c->level) {
+                return $c->title . ' (' . $c->level . ')';
+            }
+            return $c->title ?: ($c->subject?->display_name ?? $c->subject?->name);
+        })->merge(
+            $teacher->subjects ? $teacher->subjects->map(fn($s) => $s->display_name ?: $s->name) : collect()
+        )->filter()->unique()->values();
+
+        // Dynamic Year / Form levels: from assigned subjects and courses
+        $filterForms = ($teacher->subjects ? $teacher->subjects->pluck('form_year')->filter() : collect())
+            ->merge($courses->pluck('level'))
+            ->merge($teacher->subjects ? $teacher->subjects->pluck('level') : collect())
+            ->merge(collect($mappedStudents)->pluck('class'))
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Dynamic Subjects: from assigned subjects and courses
+        $filterSubjects = ($teacher->subjects ? $teacher->subjects->pluck('name') : collect())
+            ->merge($courses->map(function ($c) {
+                return $c->subject?->name ?: ($c->subject?->display_name ?: $c->title);
+            }))
+            ->merge(
+                collect($mappedStudents)->flatMap(fn($s) => $s['subject_names'] ?? [])
+            )->filter()->unique()->values();
+
+        // Dynamic Statuses:
+        $filterStatuses = collect(['Good', 'Needs Attention', 'Intervention']);
+
+        return view('teacher.students', compact(
+            'teacher',
+            'mappedStudents',
+            'filterClasses',
+            'filterForms',
+            'filterSubjects',
+            'filterStatuses'
+        ));
     }
 
     public function learningMaterials()
@@ -2097,5 +2197,496 @@ class TeacherDashboardController extends Controller
         $recording->delete();
 
         return redirect()->back()->with('success', 'Recording removed successfully.');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TEACHER PROFILE & DOCUMENT MANAGEMENT
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Resolve a file path across multiple common storage locations.
+     */
+    public function resolveDocumentFilePath(?string $filePath): ?string
+    {
+        if (empty($filePath)) {
+            return null;
+        }
+
+        $cleanPath = ltrim($filePath, '/\\');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+        if (str_starts_with($cleanPath, 'public/')) {
+            $cleanPath = substr($cleanPath, 7);
+        }
+
+        $filename = basename($cleanPath);
+
+        $candidates = [
+            Storage::disk('public')->path($cleanPath),
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            storage_path('app/' . $cleanPath),
+            base_path('storage/app/public/' . $cleanPath),
+            storage_path('app/private/' . $cleanPath),
+            storage_path('app/public/teacher_applications/resumes/' . $filename),
+            storage_path('app/public/teacher_applications/certificates/' . $filename),
+            storage_path('app/public/teacher_applications/transcripts/' . $filename),
+            storage_path('app/public/teacher_applications/additional_documents/' . $filename),
+            public_path('storage/teacher_applications/resumes/' . $filename),
+            public_path('storage/teacher_applications/certificates/' . $filename),
+            public_path('storage/teacher_applications/transcripts/' . $filename),
+            public_path('storage/teacher_applications/additional_documents/' . $filename),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && file_exists($candidate) && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Accurately determine document MIME type based on extension and file inspection.
+     */
+    protected function detectDocumentMimeType(string $filePath): string
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $extMap = [
+            'pdf'  => 'application/pdf',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'doc'  => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+
+        if (isset($extMap[$ext])) {
+            return $extMap[$ext];
+        }
+
+        $detected = @mime_content_type($filePath);
+        if ($detected && $detected !== 'application/x-empty') {
+            return $detected;
+        }
+
+        return 'application/octet-stream';
+    }
+
+    /**
+     * Ensure storage directory permissions and mirror to public/storage if unlinked.
+     */
+    protected function ensurePublicStorageMirror(?string $relativePath): void
+    {
+        if (empty($relativePath)) {
+            return;
+        }
+
+        try {
+            $cleanPath = ltrim($relativePath, '/\\');
+            $source = storage_path('app/public/' . $cleanPath);
+
+            if (file_exists($source)) {
+                @chmod($source, 0644);
+                $dir = dirname($source);
+                $publicBase = storage_path('app/public');
+                while ($dir && strlen($dir) >= strlen($publicBase)) {
+                    @chmod($dir, 0755);
+                    $parent = dirname($dir);
+                    if ($parent === $dir) break;
+                    $dir = $parent;
+                }
+            }
+
+            $publicStorage = public_path('storage');
+            if (is_dir($publicStorage) && !is_link($publicStorage)) {
+                $destination = public_path('storage/' . $cleanPath);
+                $destDir = dirname($destination);
+
+                if (!is_dir($destDir)) {
+                    @mkdir($destDir, 0755, true);
+                }
+
+                if (file_exists($source) && !file_exists($destination)) {
+                    @copy($source, $destination);
+                    @chmod($destination, 0644);
+                }
+            }
+        } catch (\Throwable $e) {}
+    }
+
+    /**
+     * Get or create the TeacherApplication record for the authenticated teacher.
+     */
+    protected function getTeacherApplication(User $user, Teacher $teacher): TeacherApplication
+    {
+        $application = TeacherApplication::where('user_id', $user->id)->first();
+
+        if (!$application && !empty($user->email)) {
+            $application = TeacherApplication::where('email', $user->email)->first();
+            if ($application) {
+                $application->update(['user_id' => $user->id]);
+            }
+        }
+
+        if (!$application) {
+            $application = TeacherApplication::create([
+                'user_id'            => $user->id,
+                'full_name'          => $user->name,
+                'email'              => $user->email,
+                'phone'              => $user->phone ?? '',
+                'qualification'      => $teacher->qualification ?? 'Certified Educator',
+                'experience_years'   => $teacher->experience_years ?? 3,
+                'preferred_subjects' => $teacher->specialization ?? 'General Education',
+                'teaching_level'     => 'Form 4–5 (SPM)',
+                'status'             => 'approved',
+            ]);
+        }
+
+        return $application;
+    }
+
+    /**
+     * Display the Teacher Profile and Document Management page.
+     */
+    public function profile(Request $request)
+    {
+        $teacher = $this->getTeacher(false);
+        $teacher->load(['user', 'subjects', 'courses.subject', 'courses.enrollments']);
+        $user = auth()->user();
+        $application = $this->getTeacherApplication($user, $teacher);
+
+        $documents = [
+            'resume' => [
+                'type'        => 'resume',
+                'title'       => 'Resume / Curriculum Vitae (CV)',
+                'description' => 'Comprehensive summary of your teaching background, credentials, and achievements.',
+                'path'        => $application->resume_path,
+                'required'    => true,
+                'accept'      => '.pdf,.doc,.docx',
+                'mimes_label' => 'PDF, DOC, DOCX (Max 10MB)',
+            ],
+            'certificate' => [
+                'type'        => 'certificate',
+                'title'       => 'Highest Academic Qualification Certificate',
+                'description' => 'Official Bachelor\'s, Master\'s, Diploma, or PhD graduation certificate.',
+                'path'        => $application->certificate_path,
+                'required'    => false,
+                'accept'      => '.pdf,.jpg,.jpeg,.png',
+                'mimes_label' => 'PDF, JPG, PNG (Max 10MB)',
+            ],
+            'transcript' => [
+                'type'        => 'transcript',
+                'title'       => 'Academic Transcript',
+                'description' => 'Complete statement of academic results or university grade transcripts.',
+                'path'        => $application->transcript_path,
+                'required'    => false,
+                'accept'      => '.pdf,.jpg,.jpeg,.png',
+                'mimes_label' => 'PDF, JPG, PNG (Max 10MB)',
+            ],
+            'additional_document' => [
+                'type'        => 'additional_document',
+                'title'       => 'Additional Supporting Document',
+                'description' => 'Teaching licenses, professional certifications, awards, or letters of reference.',
+                'path'        => $application->additional_document_path,
+                'required'    => false,
+                'accept'      => '.pdf,.doc,.docx,.jpg,.jpeg,.png',
+                'mimes_label' => 'PDF, DOC, DOCX, JPG, PNG (Max 10MB)',
+            ],
+        ];
+
+        $uploadedCount = 0;
+        foreach ($documents as $key => &$doc) {
+            $resolved = $doc['path'] ? $this->resolveDocumentFilePath($doc['path']) : null;
+            $doc['exists_on_disk'] = !empty($resolved) && file_exists($resolved);
+            $doc['resolved_path']  = $resolved;
+            $doc['filename']       = $doc['path'] ? basename($doc['path']) : null;
+            $doc['filesize']       = ($doc['exists_on_disk']) ? round(filesize($resolved) / 1024, 1) . ' KB' : null;
+            if ($doc['exists_on_disk'] && filesize($resolved) >= 1048576) {
+                $doc['filesize']   = round(filesize($resolved) / 1048576, 2) . ' MB';
+            }
+            $doc['extension']      = $doc['filename'] ? strtolower(pathinfo($doc['filename'], PATHINFO_EXTENSION)) : null;
+
+            if (!empty($doc['path'])) {
+                $uploadedCount++;
+            }
+        }
+        unset($doc);
+
+        $activeTab = $request->query('tab', session('active_tab', 'documents'));
+
+        return view('teacher.profile', compact('teacher', 'user', 'application', 'documents', 'uploadedCount', 'activeTab'));
+    }
+
+    /**
+     * Upload or replace a teacher credential document.
+     */
+    public function uploadDocument(Request $request)
+    {
+        $type = $request->input('document_type');
+        $validTypes = ['resume', 'certificate', 'transcript', 'additional_document'];
+
+        if (!in_array($type, $validTypes)) {
+            return redirect()->route('teacher.profile', ['tab' => 'documents'])
+                ->withErrors(['document' => 'Invalid document type selected.']);
+        }
+
+        $rules = [
+            'document_type' => ['required', 'string', 'in:resume,certificate,transcript,additional_document'],
+        ];
+
+        if ($type === 'resume') {
+            $rules['file'] = ['required', 'file', 'mimes:pdf,doc,docx', 'max:10240'];
+            $folder = 'teacher_applications/resumes';
+            $field = 'resume_path';
+            $label = 'Resume / CV';
+        } elseif ($type === 'certificate') {
+            $rules['file'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
+            $folder = 'teacher_applications/certificates';
+            $field = 'certificate_path';
+            $label = 'Qualification Certificate';
+        } elseif ($type === 'transcript') {
+            $rules['file'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
+            $folder = 'teacher_applications/transcripts';
+            $field = 'transcript_path';
+            $label = 'Academic Transcript';
+        } else {
+            $rules['file'] = ['required', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:10240'];
+            $folder = 'teacher_applications/additional_documents';
+            $field = 'additional_document_path';
+            $label = 'Additional Document';
+        }
+
+        $request->validate($rules, [
+            'file.required' => "Please select a file to upload for your {$label}.",
+            'file.mimes'    => "The {$label} must be a valid file format.",
+            'file.max'      => "The {$label} file size must not exceed 10MB.",
+        ]);
+
+        $teacher = $this->getTeacher(false);
+        $user = auth()->user();
+        $application = $this->getTeacherApplication($user, $teacher);
+
+        // Delete previous physical file if it exists
+        $oldPath = $application->{$field};
+        if ($oldPath) {
+            $resolvedOld = $this->resolveDocumentFilePath($oldPath);
+            if ($resolvedOld && file_exists($resolvedOld)) {
+                @unlink($resolvedOld);
+            }
+        }
+
+        // Store new file
+        $newPath = $request->file('file')->store($folder, 'public');
+        $this->ensurePublicStorageMirror($newPath);
+
+        $application->update([
+            $field => $newPath,
+        ]);
+
+        return redirect()->route('teacher.profile', ['tab' => 'documents'])
+            ->with('success', "Your {$label} was uploaded and saved successfully!");
+    }
+
+    /**
+     * Delete/remove an optional document.
+     */
+    public function deleteDocument($type)
+    {
+        $validMap = [
+            'resume'              => 'resume_path',
+            'certificate'         => 'certificate_path',
+            'transcript'          => 'transcript_path',
+            'additional_document' => 'additional_document_path',
+            'additional'          => 'additional_document_path',
+        ];
+
+        $field = $validMap[$type] ?? null;
+        if (!$field) {
+            abort(404, 'Invalid document type.');
+        }
+
+        $teacher = $this->getTeacher(false);
+        $user = auth()->user();
+        $application = $this->getTeacherApplication($user, $teacher);
+
+        $path = $application->{$field};
+        if ($path) {
+            $resolved = $this->resolveDocumentFilePath($path);
+            if ($resolved && file_exists($resolved)) {
+                @unlink($resolved);
+            }
+            $application->update([$field => null]);
+        }
+
+        $label = ucwords(str_replace('_', ' ', $type));
+        return redirect()->route('teacher.profile', ['tab' => 'documents'])
+            ->with('success', "{$label} has been removed from your profile.");
+    }
+
+    /**
+     * Inline preview of teacher document.
+     */
+    public function viewDocument($type)
+    {
+        return $this->streamTeacherDocument($type, false);
+    }
+
+    /**
+     * Download teacher document.
+     */
+    public function downloadDocument($type)
+    {
+        return $this->streamTeacherDocument($type, true);
+    }
+
+    /**
+     * Stream or download teacher document file.
+     */
+    protected function streamTeacherDocument(string $type, bool $forceDownload)
+    {
+        $validMap = [
+            'resume'              => 'resume_path',
+            'certificate'         => 'certificate_path',
+            'transcript'          => 'transcript_path',
+            'additional_document' => 'additional_document_path',
+            'additional'          => 'additional_document_path',
+        ];
+
+        $field = $validMap[$type] ?? null;
+        if (!$field) {
+            abort(404, 'Invalid document category.');
+        }
+
+        $teacher = $this->getTeacher(false);
+        $user = auth()->user();
+        $application = $this->getTeacherApplication($user, $teacher);
+
+        $filePath = $application->{$field};
+        if (!$filePath) {
+            abort(404, 'No document uploaded for this category.');
+        }
+
+        $resolved = $this->resolveDocumentFilePath($filePath);
+        if (!$resolved || !file_exists($resolved)) {
+            abort(404, 'The requested document file could not be found on server storage.');
+        }
+
+        $mime = $this->detectDocumentMimeType($resolved);
+        $filename = basename($resolved);
+        $cleanDownloadName = str_replace('_', ' ', $type) . '_' . ($user->name ?? 'document') . '.' . pathinfo($resolved, PATHINFO_EXTENSION);
+
+        if ($forceDownload) {
+            return response()->download($resolved, $cleanDownloadName, [
+                'Content-Type' => $mime,
+            ]);
+        }
+
+        return response()->file($resolved, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control'       => 'no-cache, private',
+        ]);
+    }
+
+    /**
+     * Update teacher profile details (personal, contact, bio).
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+        $teacher = $this->getTeacher(false);
+
+        $validated = $request->validate([
+            'name'               => ['required', 'string', 'min:2', 'max:255'],
+            'phone'              => ['nullable', 'string', 'max:50'],
+            'qualification'      => ['required', 'string', 'max:255'],
+            'experience_years'   => ['required', 'integer', 'min:0', 'max:50'],
+            'specialization'     => ['nullable', 'string', 'max:255'],
+            'teaching_style'     => ['nullable', 'string', 'max:255'],
+            'bio'                => ['nullable', 'string', 'max:2000'],
+            'address_line_1'     => ['nullable', 'string', 'max:255'],
+            'address_line_2'     => ['nullable', 'string', 'max:255'],
+            'city'               => ['nullable', 'string', 'max:100'],
+            'state'              => ['nullable', 'string', 'max:100'],
+            'postcode'           => ['nullable', 'string', 'max:20'],
+            'avatar'             => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'remove_avatar'      => ['nullable', 'boolean'],
+        ]);
+
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = null;
+            $teacher->photo = null;
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $this->ensurePublicStorageMirror($path);
+            $user->avatar = $path;
+            $teacher->photo = $path;
+        }
+
+        $user->name           = $validated['name'];
+        $user->phone          = $validated['phone'] ?? $user->phone;
+        $user->address_line_1 = $validated['address_line_1'] ?? $user->address_line_1;
+        $user->address_line_2 = $validated['address_line_2'] ?? $user->address_line_2;
+        $user->city           = $validated['city'] ?? $user->city;
+        $user->state          = $validated['state'] ?? $user->state;
+        $user->postcode       = $validated['postcode'] ?? $user->postcode;
+        $user->save();
+
+        $teacher->qualification    = $validated['qualification'];
+        $teacher->experience_years = $validated['experience_years'];
+        if (array_key_exists('specialization', $validated)) {
+            $teacher->specialization = $validated['specialization'];
+        }
+        if (array_key_exists('teaching_style', $validated)) {
+            $teacher->teaching_style = $validated['teaching_style'];
+        }
+        if (array_key_exists('bio', $validated)) {
+            $teacher->bio = $validated['bio'];
+        }
+        $teacher->save();
+
+        $application = $this->getTeacherApplication($user, $teacher);
+        $application->update([
+            'full_name'        => $validated['name'],
+            'phone'            => $validated['phone'] ?? $application->phone,
+            'qualification'    => $validated['qualification'],
+            'experience_years' => $validated['experience_years'],
+        ]);
+
+        return redirect()->route('teacher.profile', ['tab' => $request->input('tab', 'profile')])
+            ->with('success', 'Profile information updated successfully!');
+    }
+
+    /**
+     * Update teacher password.
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password'         => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
+        ], [
+            'current_password.current_password' => 'Your current password is incorrect.',
+            'password.confirmed'                => 'The new password confirmation does not match.',
+            'password.min'                      => 'Password must be at least 8 characters long.',
+        ]);
+
+        $user->update(['password' => Hash::make($validated['password'])]);
+
+        return redirect()->route('teacher.profile', ['tab' => 'security'])
+            ->with('success', 'Your password has been changed successfully!');
     }
 }

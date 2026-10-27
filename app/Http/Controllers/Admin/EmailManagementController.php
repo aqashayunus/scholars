@@ -111,12 +111,13 @@ class EmailManagementController extends Controller
     public function storeTemplate(Request $request)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'category'  => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
-            'subject'   => 'required|string|max:255',
-            'body'      => 'required|string',
-            'cta_label' => 'nullable|string|max:100',
-            'cta_url'   => 'nullable|string|max:500',
+            'name'          => 'required|string|max:255',
+            'category'      => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
+            'subject'       => 'required|string|max:255',
+            'body'          => 'required|string',
+            'cta_label'     => 'nullable|string|max:100',
+            'cta_url'       => 'nullable|string|max:500',
+            'automation_id' => 'nullable|exists:email_automations,id',
         ]);
 
         $key = Str::slug($request->category . ' ' . $request->name, '_');
@@ -142,6 +143,11 @@ class EmailManagementController extends Controller
         // Record initial version
         $template->recordVersion(auth()->id());
 
+        // Link to automation if selected
+        if ($request->filled('automation_id')) {
+            EmailAutomation::where('id', $request->automation_id)->update(['email_template_id' => $template->id]);
+        }
+
         return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
             ->with('success', "Email template '{$template->name}' created successfully.");
     }
@@ -152,12 +158,13 @@ class EmailManagementController extends Controller
     public function updateTemplate(Request $request, EmailTemplate $template)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'category'  => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
-            'subject'   => 'required|string|max:255',
-            'body'      => 'required|string',
-            'cta_label' => 'nullable|string|max:100',
-            'cta_url'   => 'nullable|string|max:500',
+            'name'          => 'required|string|max:255',
+            'category'      => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
+            'subject'       => 'required|string|max:255',
+            'body'          => 'required|string',
+            'cta_label'     => 'nullable|string|max:100',
+            'cta_url'       => 'nullable|string|max:500',
+            'automation_id' => 'nullable|exists:email_automations,id',
         ]);
 
         // Save snapshot to version history
@@ -172,6 +179,11 @@ class EmailManagementController extends Controller
             'cta_url'    => $request->cta_url,
             'updated_by' => auth()->id(),
         ]);
+
+        // Link or update automation if provided
+        if ($request->filled('automation_id')) {
+            EmailAutomation::where('id', $request->automation_id)->update(['email_template_id' => $template->id]);
+        }
 
         return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
             ->with('success', "Template '{$template->name}' updated successfully (Version saved).");

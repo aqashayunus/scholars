@@ -55,9 +55,18 @@ class EmailVariableRegistry
                 'meeting_url'    => 'Live video session link',
                 'class_status'   => 'Status of class (Upcoming / Rescheduled / Cancelled)',
             ],
+            'Teacher and Educator' => [
+                'teacher_name'  => 'Educator full name',
+                'teacher_email' => 'Educator login email address',
+                'teacher_phone' => 'Educator contact number',
+                'temp_password' => 'Generated temporary / initial login password',
+                'ic_number'     => 'Educator IC or Passport number',
+            ],
             'General Institutional' => [
-                'current_date'  => 'Current date formatted (e.g. 05 Oct 2026)',
-                'current_year'  => 'Current four-digit year (e.g. 2026)',
+                'recipient_name' => 'Recipient full name',
+                'temp_password'  => 'Generated temporary / initial login password',
+                'current_date'   => 'Current date formatted (e.g. 05 Oct 2026)',
+                'current_year'   => 'Current four-digit year (e.g. 2026)',
                 'portal_url'     => 'Olympia Scholars portal login URL',
                 'reset_url'      => 'Password reset security link',
                 'expire_minutes' => 'Token validity duration in minutes',
@@ -150,7 +159,12 @@ class EmailVariableRegistry
                 $data['student_name']  = $u->name;
                 $data['student_email'] = $u->email;
             } elseif ($u->role === 'teacher') {
-                $data['teacher_name'] = $u->name;
+                $data['teacher_name']  = $u->name;
+                $data['teacher_email'] = $u->email;
+                $data['teacher_phone'] = $u->phone ?? 'N/A';
+            }
+            if (!isset($data['recipient_name'])) {
+                $data['recipient_name'] = $u->name;
             }
         }
 

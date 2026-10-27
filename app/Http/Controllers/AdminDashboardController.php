@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Mail\WelcomeMail;
 use App\Models\EmailTemplate;
 use App\Models\EmailCampaign;
 use App\Models\EmailAutomation;
@@ -2419,25 +2420,51 @@ class AdminDashboardController extends Controller
     public function approveTeacherApplication(Request $request, $id)
     {
         $application = TeacherApplication::findOrFail($id);
+        $generatedPassword = null;
 
-        DB::transaction(function () use ($application, $request) {
-            // 1. Find or create user account for teacher
+        DB::transaction(function () use ($application, $request, &$generatedPassword) {
+            // 1. Auto-generate personalized password:
+            // First 2 letters of Name (uppercase) + Last 6 digits of IC / Passport
+            $cleanName = preg_replace('/[^A-Za-z]/', '', $application->full_name);
+            $firstTwoName = strtoupper(substr($cleanName ?: 'TE', 0, 2));
+            if (strlen($firstTwoName) < 2) {
+                $firstTwoName = str_pad($firstTwoName, 2, 'T');
+            }
+
+            $rawIc = trim($application->ic_number ?? '');
+            $cleanDigits = preg_replace('/[^0-9]/', '', $rawIc);
+
+            if (strlen($cleanDigits) >= 6) {
+                $lastSix = substr($cleanDigits, -6);
+                $generatedPassword = $firstTwoName . $lastSix;
+            } elseif (strlen(preg_replace('/[^A-Za-z0-9]/', '', $rawIc)) >= 6) {
+                $lastSix = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $rawIc), -6));
+                $generatedPassword = $firstTwoName . $lastSix;
+            } else {
+                $generatedPassword = Setting::get('default_temp_password', 'AsterEdu2026!');
+            }
+
+            // 2. Find or create user account for teacher
             $user = User::where('email', $application->email)->first();
-            $tempPassword = Setting::get('default_temp_password', 'AsterEdu2026!');
 
             if (!$user) {
                 $user = User::create([
-                    'name'     => $application->full_name,
-                    'email'    => $application->email,
-                    'phone'    => $application->phone,
-                    'role'     => 'teacher',
-                    'password' => Hash::make($tempPassword),
+                    'name'           => $application->full_name,
+                    'email'          => $application->email,
+                    'phone'          => $application->phone,
+                    'role'           => 'teacher',
+                    'password'       => Hash::make($generatedPassword),
+                    'ic_number_hash' => !empty($rawIc) ? User::hashIc($rawIc) : null,
                 ]);
             } else {
-                $user->update(['role' => 'teacher']);
+                $updateData = ['role' => 'teacher'];
+                if (!empty($rawIc) && empty($user->ic_number_hash)) {
+                    $updateData['ic_number_hash'] = User::hashIc($rawIc);
+                }
+                $user->update($updateData);
             }
 
-            // 2. Create or activate Teacher profile
+            // 3. Create or activate Teacher profile
             Teacher::updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -2448,7 +2475,7 @@ class AdminDashboardController extends Controller
                 ]
             );
 
-            // 3. Update application status
+            // 4. Update application status
             $application->update([
                 'user_id'     => $user->id,
                 'status'      => 'approved',
@@ -2456,18 +2483,45 @@ class AdminDashboardController extends Controller
                 'approved_at' => now(),
             ]);
 
+            // 5. Send Welcome Email containing credentials details (via Email Automation if active, fallback to WelcomeMail)
+            $emailSent = false;
+            try {
+                $emailSent = (bool) \App\Services\Email\EmailAutomationService::trigger(
+                    'teacher_application_approved',
+                    [
+                        'user'          => $user,
+                        'teacher_name'  => $user->name,
+                        'teacher_email' => $user->email,
+                        'temp_password' => $generatedPassword,
+                        'ic_number'     => $rawIc,
+                    ],
+                    'teacher_approved_' . $application->id,
+                    true // Synchronous dispatch: guarantees immediate delivery in cPanel without requiring queue worker
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
+            if (!$emailSent) {
+                try {
+                    Mail::to($user->email)->send(new WelcomeMail($user, $generatedPassword));
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+
             try {
                 \App\Models\UserNotification::create([
                     'user_id' => $user->id,
                     'type'    => 'application',
                     'title'   => 'TEACHER APPLICATION APPROVED',
-                    'message' => "Congratulations! Your educator application has been approved. Your educator account is now active.",
+                    'message' => "Congratulations! Your educator application has been approved. Your educator account is now active. Your initial login password is: {$generatedPassword}",
                     'read_at' => null,
                 ]);
             } catch (\Throwable $e) {}
         });
 
-        return back()->with('success', "Teacher application for '{$application->full_name}' has been approved and their educator account is now active.");
+        return back()->with('success', "Teacher application for '{$application->full_name}' has been approved and their educator account is now active. Generated Password: {$generatedPassword}");
     }
 
     public function rejectTeacherApplication(Request $request, $id)
@@ -2492,6 +2546,146 @@ class AdminDashboardController extends Controller
         }
 
         return back()->with('success', "Teacher application for '{$application->full_name}' has been marked as rejected.");
+    }
+
+    /**
+     * Resolve a file path across multiple common storage locations.
+     * Handles cPanel shared hosting, symlinked storage, and standard local storage.
+     */
+    public function resolveDocumentFilePath(?string $filePath): ?string
+    {
+        if (empty($filePath)) {
+            return null;
+        }
+
+        $cleanPath = ltrim($filePath, '/\\');
+        if (str_starts_with($cleanPath, 'storage/')) {
+            $cleanPath = substr($cleanPath, 8);
+        }
+        if (str_starts_with($cleanPath, 'public/')) {
+            $cleanPath = substr($cleanPath, 7);
+        }
+
+        $filename = basename($cleanPath);
+
+        $candidates = [
+            Storage::disk('public')->path($cleanPath),
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            storage_path('app/' . $cleanPath),
+            base_path('storage/app/public/' . $cleanPath),
+            storage_path('app/private/' . $cleanPath),
+            storage_path('app/public/teacher_applications/resumes/' . $filename),
+            storage_path('app/public/teacher_applications/certificates/' . $filename),
+            storage_path('app/public/teacher_applications/transcripts/' . $filename),
+            storage_path('app/public/teacher_applications/additional_documents/' . $filename),
+            public_path('storage/teacher_applications/resumes/' . $filename),
+            public_path('storage/teacher_applications/certificates/' . $filename),
+            public_path('storage/teacher_applications/transcripts/' . $filename),
+            public_path('storage/teacher_applications/additional_documents/' . $filename),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && file_exists($candidate) && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * View or download an uploaded teacher application document.
+     */
+    public function viewTeacherApplicationDocument($id, $type)
+    {
+        $application = TeacherApplication::findOrFail($id);
+
+        $fieldMap = [
+            'resume'              => 'resume_path',
+            'certificate'         => 'certificate_path',
+            'transcript'          => 'transcript_path',
+            'additional_document' => 'additional_document_path',
+            'additional'          => 'additional_document_path',
+        ];
+
+        $field = $fieldMap[$type] ?? null;
+        if (!$field) {
+            abort(404, 'Invalid document type requested.');
+        }
+
+        $filePath = $application->{$field};
+        if (!$filePath) {
+            abort(404, 'No ' . str_replace('_', ' ', $type) . ' has been uploaded for this application.');
+        }
+
+        $resolved = $this->resolveDocumentFilePath($filePath);
+        if (!$resolved) {
+            return response()->view('errors.document-not-found', [
+                'documentType'  => ucwords(str_replace('_', ' ', $type)),
+                'applicantName' => $application->full_name,
+                'fileName'      => basename($filePath),
+            ], 404);
+        }
+
+        $mime = $this->detectDocumentMimeType($resolved);
+        $filename = basename($resolved);
+
+        return response()->file($resolved, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control'       => 'no-cache, private',
+        ]);
+    }
+
+    /**
+     * Fallback file server for /storage/teacher_applications/{path}
+     * Catches requests rewritten to Laravel when web server cannot find the static symlink.
+     */
+    public function serveTeacherApplicationStorage($path)
+    {
+        $filePath = 'teacher_applications/' . ltrim($path, '/\\');
+        $resolved = $this->resolveDocumentFilePath($filePath);
+
+        if (!$resolved) {
+            abort(404, 'The requested document file was not found on server storage.');
+        }
+
+        $mime = $this->detectDocumentMimeType($resolved);
+        $filename = basename($resolved);
+
+        return response()->file($resolved, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Cache-Control'       => 'public, max-age=86400',
+        ]);
+    }
+
+    /**
+     * Accurately determine document MIME type based on extension and file inspection.
+     */
+    protected function detectDocumentMimeType(string $filePath): string
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $extMap = [
+            'pdf'  => 'application/pdf',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'doc'  => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+
+        if (isset($extMap[$ext])) {
+            return $extMap[$ext];
+        }
+
+        $detected = @mime_content_type($filePath);
+        if ($detected && $detected !== 'application/x-empty') {
+            return $detected;
+        }
+
+        return 'application/octet-stream';
     }
 
     // ── TEACHING GIGS ─────────────────────────────────────────────────────────

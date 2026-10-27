@@ -504,11 +504,13 @@
                                 </td>
                                 <td class="py-3 px-4 text-center">
                                     <div class="inline-flex items-center gap-1.5">
-                                        <button @click="testAutomationModal({{ json_encode($auto) }})" class="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition" title="Test Fire Trigger">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <button type="button"
+                                                @click="openAssignModal({{ $auto->id }}, {{ json_encode($auto->name) }}, {{ json_encode($auto->trigger_event) }}, {{ $auto->email_template_id ?: 'null' }}, {{ $auto->delay_minutes ?: 0 }})"
+                                                class="px-2.5 py-1 text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-300 rounded transition cursor-pointer">
+                                            Assign
                                         </button>
-                                        <button @click="editAutomationModal({{ json_encode($auto) }})" class="p-1 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition" title="Assign Template">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        <button type="button" @click="testAutomationModal({{ json_encode($auto) }})" class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer" title="Test Fire Trigger">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                         </button>
                                     </div>
                                 </td>
@@ -939,6 +941,20 @@
                             <input type="text" name="subject" x-model="templateFormData.subject" required
                                    placeholder="e.g. Official Update for &#123;&#123;student_name&#125;&#125; — Olympia Scholars"
                                    class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 text-xs rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">Linked Automation Trigger (Optional)</label>
+                            <select name="automation_id" x-model="templateFormData.automation_id"
+                                    class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 text-xs rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="">-- No automated trigger (Manual / Campaign only) --</option>
+                                @foreach($emailAutomations as $auto)
+                                    <option value="{{ $auto->id }}">
+                                        {{ $auto->name }} (Event: {{ $auto->trigger_event }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1">Assign which system event will automatically send this template.</p>
                         </div>
 
                         {{-- Variable Picker Drawer Button --}}
@@ -1401,6 +1417,89 @@
             </div>
         </div>
     </div>
+    {{-- 6. Assign Template to Automation Modal --}}
+    <div x-show="showAssignTemplateModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="showAssignTemplateModal = false"></div>
+        <div class="min-h-screen px-4 text-center flex items-center justify-center p-0">
+            <div class="inline-block bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all my-8 max-w-md w-full border border-gray-200">
+                <form :action="'{{ url('admin/email-management/automations') }}/' + (selectedAutomation ? selectedAutomation.id : '')" method="POST">
+                    @csrf
+                    @method('PUT')
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">Assign Email Template</h3>
+                            <p class="text-xs text-gray-500 font-normal mt-0.5" x-text="selectedAutomation ? selectedAutomation.name : ''"></p>
+                        </div>
+                        <button type="button" @click="showAssignTemplateModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold cursor-pointer">&times;</button>
+                    </div>
+                    <div class="p-6 space-y-4 text-xs">
+                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-xs">
+                            <span class="font-semibold block mb-0.5">Event Trigger:</span>
+                            <span x-text="selectedAutomation ? selectedAutomation.trigger_event : ''"></span>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-1.5">Select Email Template to Send <span class="text-rose-500">*</span></label>
+                            <select name="email_template_id" x-model="selectedAutomationTemplateId" required class="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs text-gray-800 bg-white">
+                                <option value="">-- Choose an Email Template --</option>
+                                @foreach($emailTemplates as $tpl)
+                                    <option value="{{ $tpl->id }}">
+                                        {{ $tpl->name }} ({{ ucfirst($tpl->category) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-[11px] text-gray-400 mt-1">Whenever this event occurs in the system, this template will be filled and sent.</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-1.5">Dispatch Delay (Minutes)</label>
+                            <input type="number" name="delay_minutes" x-model="selectedAutomationDelay" min="0" max="10080" class="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-xs" placeholder="0 = Send immediately">
+                            <p class="text-[11px] text-gray-400 mt-1">Set to 0 to dispatch instantly upon the event occurring.</p>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-2">
+                        <button type="button" @click="showAssignTemplateModal = false" class="px-4 py-2 border border-gray-200 hover:bg-gray-100 text-gray-700 font-medium text-xs rounded-xl transition cursor-pointer">Cancel</button>
+                        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer">Save &amp; Assign</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- 7. Test Fire Automation Modal --}}
+    <div x-show="showTestAutomationModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity" @click="showTestAutomationModal = false"></div>
+        <div class="min-h-screen px-4 text-center flex items-center justify-center p-0">
+            <div class="inline-block bg-white rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all my-8 max-w-md w-full border border-gray-200">
+                <form :action="'{{ url('admin/email-management/automations') }}/' + (selectedAutomation ? selectedAutomation.id : '') + '/test'" method="POST">
+                    @csrf
+                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">Test Fire Automation</h3>
+                            <p class="text-xs text-gray-500 font-normal mt-0.5" x-text="selectedAutomation ? selectedAutomation.name : ''"></p>
+                        </div>
+                        <button type="button" @click="showTestAutomationModal = false" class="text-gray-400 hover:text-gray-600 text-lg font-bold cursor-pointer">&times;</button>
+                    </div>
+                    <div class="p-6 space-y-4 text-xs">
+                        <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs">
+                            <span class="font-semibold block mb-0.5">Simulation Note:</span>
+                            This will send a simulated trigger using sample data to your chosen recipient email.
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-1.5">Recipient Test Email <span class="text-rose-500">*</span></label>
+                            <input type="email" name="test_email" x-model="testAutomationEmail" required class="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 text-xs">
+                            <p class="text-[11px] text-gray-400 mt-1">Enter your own email to verify how the automated email looks in your inbox.</p>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-2">
+                        <button type="button" @click="showTestAutomationModal = false" class="px-4 py-2 border border-gray-200 hover:bg-gray-100 text-gray-700 font-medium text-xs rounded-xl transition cursor-pointer">Cancel</button>
+                        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl shadow-xs transition cursor-pointer">Send Test Trigger</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </div>
 
@@ -1419,7 +1518,7 @@ function adminEmailManager() {
         showTemplateModal: false,
         isEditingTemplate: false,
         templateFormAction: '{{ route('admin.email.templates.store') }}',
-        templateFormData: { id: null, name: '', category: 'greetings', subject: '', body: '', cta_label: '', cta_url: '' },
+        templateFormData: { id: null, name: '', category: 'greetings', subject: '', body: '', cta_label: '', cta_url: '', automation_id: '' },
         showVariablePicker: false,
 
         showPreviewModal: false,
@@ -1444,6 +1543,14 @@ function adminEmailManager() {
         showLogDetailsModal: false,
         selectedLog: null,
 
+        showAssignTemplateModal: false,
+        showTestAutomationModal: false,
+        selectedAutomation: null,
+        selectedAutomationTemplateId: '',
+        selectedAutomationDelay: 0,
+        testAutomationEmail: '{{ auth()->user()->email ?? 'admin@olympianscholars.my' }}',
+
+        automationsList: @json($emailAutomations),
         audienceLabels: @json(collect($supportedAudiences)->mapWithKeys(fn($v, $k) => [$k => $v['label']])),
 
         initEmailManager() {
@@ -1503,13 +1610,14 @@ function adminEmailManager() {
         openCreateTemplateModal() {
             this.isEditingTemplate = false;
             this.templateFormAction = '{{ route('admin.email.templates.store') }}';
-            this.templateFormData = { id: null, name: '', category: 'greetings', subject: '', body: '', cta_label: '', cta_url: '' };
+            this.templateFormData = { id: null, name: '', category: 'greetings', subject: '', body: '', cta_label: '', cta_url: '', automation_id: '' };
             this.showTemplateModal = true;
         },
 
         editTemplateModal(tpl) {
             this.isEditingTemplate = true;
             this.templateFormAction = '{{ url('admin/email-management/templates') }}/' + tpl.id;
+            const linkedAuto = this.automationsList.find(a => Number(a.email_template_id) === Number(tpl.id));
             this.templateFormData = {
                 id: tpl.id,
                 name: tpl.name,
@@ -1518,13 +1626,14 @@ function adminEmailManager() {
                 body: tpl.body,
                 cta_label: tpl.cta_label || '',
                 cta_url: tpl.cta_url || '',
+                automation_id: linkedAuto ? linkedAuto.id : '',
             };
             this.showTemplateModal = true;
         },
 
         insertVariable(vKey) {
             const textarea = document.getElementById('templateBodyTextarea');
-            const insertText = '{{' + vKey + '}}';
+            const insertText = '{' + '{' + vKey + '}' + '}';
             if (textarea) {
                 const start = textarea.selectionStart;
                 const end = textarea.selectionEnd;
@@ -1685,34 +1794,23 @@ function adminEmailManager() {
         },
 
         testAutomationModal(auto) {
-            const adminEmail = prompt(`Test Fire '${auto.name}':\nEnter destination email for test trigger:`, '{{ auth()->user()?->email ?? 'admin@olympiascholars.my' }}');
-            if (adminEmail) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '{{ url('admin/email-management/automations') }}/' + auto.id + '/test';
-                form.innerHTML = `
-                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="test_email" value="${adminEmail}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
+            this.selectedAutomation = auto;
+            this.testAutomationEmail = '{{ auth()->user()?->email ?? 'admin@olympianscholars.my' }}';
+            this.showTestAutomationModal = true;
+        },
+
+        openAssignModal(id, name, triggerEvent, templateId, delay) {
+            this.selectedAutomation = { id: id, name: name, trigger_event: triggerEvent };
+            this.selectedAutomationTemplateId = templateId || '';
+            this.selectedAutomationDelay = delay || 0;
+            this.showAssignTemplateModal = true;
         },
 
         editAutomationModal(auto) {
-            const tplId = prompt(`Select template ID for automation '${auto.name}':`, auto.email_template_id || '');
-            if (tplId) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '{{ url('admin/email-management/automations') }}/' + auto.id;
-                form.innerHTML = `
-                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="_method" value="PUT">
-                    <input type="hidden" name="email_template_id" value="${tplId}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
+            this.selectedAutomation = auto;
+            this.selectedAutomationTemplateId = auto.email_template_id || '';
+            this.selectedAutomationDelay = auto.delay_minutes || 0;
+            this.showAssignTemplateModal = true;
         },
 
         viewLogDetails(log) {

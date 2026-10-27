@@ -323,7 +323,12 @@
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($teacherApplications as $app)
                                     <tr class="hover:bg-amber-50/40 transition target-row">
-                                        <td class="py-3 px-3 font-medium text-gray-900">{{ $app->full_name }}</td>
+                                        <td class="py-3 px-3 font-medium text-gray-900">
+                                            {{ $app->full_name }}
+                                            @if($app->ic_number)
+                                                <span class="text-gray-400 block text-[10px] font-mono">IC: {{ $app->ic_number }}</span>
+                                            @endif
+                                        </td>
                                         <td class="py-3 px-3 text-gray-600 font-normal">{{ $app->email }} <span class="text-gray-400 block text-[10px]">{{ $app->phone }}</span></td>
                                         <td class="py-3 px-3 text-gray-700 font-normal">{{ $app->qualification }}</td>
                                         <td class="py-3 px-3 font-medium text-gray-800">{{ $app->experience_years }} Years</td>
@@ -340,10 +345,10 @@
                                             <div class="flex items-center justify-end gap-1.5">
                                                 <button type="button"
                                                         data-applicant-name="{{ e($app->full_name) }}"
-                                                        data-resume="{{ $app->resume_path ? asset('storage/' . $app->resume_path) : '' }}"
-                                                        data-certificate="{{ $app->certificate_path ? asset('storage/' . $app->certificate_path) : '' }}"
-                                                        data-transcript="{{ $app->transcript_path ? asset('storage/' . $app->transcript_path) : '' }}"
-                                                        data-additional="{{ $app->additional_document_path ? asset('storage/' . $app->additional_document_path) : '' }}"
+                                                        data-resume="{{ $app->resume_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'resume']) : '' }}"
+                                                        data-certificate="{{ $app->certificate_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'certificate']) : '' }}"
+                                                        data-transcript="{{ $app->transcript_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'transcript']) : '' }}"
+                                                        data-additional="{{ $app->additional_document_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'additional']) : '' }}"
                                                         onclick="openTeacherDocsModal(this)"
                                                         class="px-2.5 py-1 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-[11px] font-normal transition cursor-pointer">
                                                     View Documents
@@ -419,10 +424,10 @@
                                         'is_online' => (bool)$t->is_online,
                                         'joined_date' => $t->created_at ? $t->created_at->format('d M Y') : '—',
                                         'documents' => [
-                                            'resume'              => $tApp && $tApp->resume_path ? asset('storage/' . $tApp->resume_path) : null,
-                                            'certificate'         => $tApp && $tApp->certificate_path ? asset('storage/' . $tApp->certificate_path) : null,
-                                            'transcript'          => $tApp && $tApp->transcript_path ? asset('storage/' . $tApp->transcript_path) : null,
-                                            'additional_document' => $tApp && $tApp->additional_document_path ? asset('storage/' . $tApp->additional_document_path) : null,
+                                            'resume'              => $tApp && $tApp->resume_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'resume']) : null,
+                                            'certificate'         => $tApp && $tApp->certificate_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'certificate']) : null,
+                                            'transcript'          => $tApp && $tApp->transcript_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'transcript']) : null,
+                                            'additional_document' => $tApp && $tApp->additional_document_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'additional']) : null,
                                         ],
                                         'subjects' => $t->subjects->map(fn($s) => [
                                             'name' => $s->name,
@@ -1255,14 +1260,11 @@
                                         </td>
 
                                         {{-- Name & Description --}}
-                                        <td class="py-3.5 px-4">
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
                                             <div class="flex items-center gap-2">
                                                 <span class="w-3 h-3 rounded-full border border-gray-200 shrink-0" style="background-color: {{ $s->color ?? '#3b82f6' }}"></span>
                                                 <span class="font-semibold text-gray-900 text-xs">{{ $s->display_name }}</span>
                                             </div>
-                                            @if($s->description)
-                                                <div class="text-[10px] text-gray-400 font-normal truncate max-w-sm mt-0.5">{{ $s->description }}</div>
-                                            @endif
                                         </td>
 
                                         {{-- Stage / Level --}}
@@ -5835,7 +5837,7 @@
 
     {{-- 6c. EDIT SUBJECT MODAL --}}
     <div id="editSubjectModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div class="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
@@ -5942,8 +5944,60 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Description</label>
-                    <textarea id="edit_subject_description" name="description" rows="2" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-gray-700">Description</label>
+                        <button type="button" onclick="toggleSubjectShortcuts()" class="text-xs text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span>Formatting Shortcuts</span>
+                        </button>
+                    </div>
+                    <textarea id="edit_subject_description" name="description" rows="5" placeholder="Course overview, syllabus, CLO/PLO outcomes, tables..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-normal leading-relaxed"></textarea>
+
+                    {{-- Formatting Shortcuts Panel (Toggleable) --}}
+                    <div id="subject_shortcuts_panel" class="hidden mt-2 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2.5 text-slate-700 shadow-2xs">
+                        <div class="flex items-center justify-between font-bold text-slate-800 border-b border-slate-200 pb-1.5">
+                            <span class="text-xs font-bold text-slate-900">Formatting Shortcuts Guide</span>
+                            <button type="button" onclick="toggleSubjectShortcuts()" class="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            <div><span class="font-bold text-slate-800">Bold:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">*text*</code></div>
+                            <div><span class="font-bold text-slate-800">Italic:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">_text_</code></div>
+                            <div><span class="font-bold text-slate-800">Strikethrough:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">~text~</code></div>
+                            <div><span class="font-bold text-slate-800">Monospace:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">`text`</code></div>
+                            <div><span class="font-bold text-slate-800">Bullet list:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">- item</code></div>
+                            <div><span class="font-bold text-slate-800">Numbered list:</span> <code class="bg-white px-1.5 py-0.5 border rounded text-blue-700 font-mono">1. item</code></div>
+                            <div><span class="font-bold text-slate-800">Line break:</span> <span class="text-slate-600">Enter</span></div>
+                            <div><span class="font-bold text-slate-800">Paragraph:</span> <span class="text-slate-600">Blank line</span></div>
+                        </div>
+                        <div class="pt-2 border-t border-slate-200">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-slate-800 text-[11px]">HTML Table Template:</span>
+                                <button type="button" onclick="insertSubjectTableSample()" class="text-[10px] font-bold text-blue-600 hover:underline cursor-pointer">Insert Sample Table</button>
+                            </div>
+                            <pre class="bg-white p-2.5 rounded-lg border border-slate-200 text-[10px] text-slate-700 overflow-x-auto font-mono leading-relaxed">&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;Komponen&lt;/th&gt;
+      &lt;th&gt;Penerangan&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Komponen 1&lt;/td&gt;
+      &lt;td&gt;Tulis penerangan di sini.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Komponen 2&lt;/td&gt;
+      &lt;td&gt;Tulis penerangan di sini.&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Komponen 3&lt;/td&gt;
+      &lt;td&gt;Tulis penerangan di sini.&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;</pre>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -10138,7 +10192,7 @@
                     const td = document.getElementById(id);
                     if (!td) return;
                     if (url && url.trim() !== '') {
-                        td.innerHTML = '<a href="' + url + '" target="_blank" class="text-blue-600 hover:underline font-normal">View Document</a>';
+                        td.innerHTML = '<a href="' + url + '" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 hover:underline font-medium inline-flex items-center gap-1">View Document <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>';
                     } else {
                         td.innerHTML = '<span class="text-gray-400 font-normal">Not provided</span>';
                     }
@@ -10881,12 +10935,29 @@
             document.getElementById('edit_subject_color').value = subject.color || '#3b82f6';
             document.getElementById('edit_subject_icon').value = subject.icon || 'academic-cap';
             document.getElementById('edit_subject_description').value = subject.description || '';
+            document.getElementById('subject_shortcuts_panel')?.classList.add('hidden');
             document.getElementById('edit_subject_is_active').checked = !!subject.is_active;
 
             document.getElementById('editSubjectForm').action = '/admin/subjects/' + subject.id;
             document.getElementById('editSubjectModal').classList.remove('hidden');
         }
         function closeEditSubjectModal() { document.getElementById('editSubjectModal').classList.add('hidden'); }
+
+        function toggleSubjectShortcuts() {
+            const panel = document.getElementById('subject_shortcuts_panel');
+            if (panel) panel.classList.toggle('hidden');
+        }
+
+        function insertSubjectTableSample() {
+            const textarea = document.getElementById('edit_subject_description');
+            if (!textarea) return;
+            const sample = `\n<table>\n  <thead>\n    <tr>\n      <th>Komponen</th>\n      <th>Penerangan</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>Komponen 1</td>\n      <td>Tulis penerangan di sini.</td>\n    </tr>\n    <tr>\n      <td>Komponen 2</td>\n      <td>Tulis penerangan di sini.</td>\n    </tr>\n    <tr>\n      <td>Komponen 3</td>\n      <td>Tulis penerangan di sini.</td>\n    </tr>\n  </tbody>\n</table>\n`;
+            const start = textarea.selectionStart;
+            const val = textarea.value;
+            textarea.value = val.substring(0, start) + sample + val.substring(start);
+            textarea.selectionStart = textarea.selectionEnd = start + sample.length;
+            textarea.focus();
+        }
 
         // ── DIAGNOSTIC TEST MANAGER MODAL ────────────────────────────────────────
         let currentDiagSubjectId = null;

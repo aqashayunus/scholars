@@ -69,6 +69,15 @@ class EmailTemplateSeeder extends Seeder
                 'cta_label' => 'View Linked Student Profile',
                 'cta_url'   => '{{portal_url}}',
             ],
+            [
+                'name'      => 'Teacher Application Approved & Credentials',
+                'key'       => 'greetings_teacher_approved',
+                'category'  => EmailTemplate::CATEGORY_GREETINGS,
+                'subject'   => 'Educator Application Approved — Welcome to {{platform_name}}',
+                'body'      => "Dear {{teacher_name}},\n\nCongratulations! We are pleased to inform you that your educator application for {{platform_name}} has been officially approved.\n\nYour educator account has been provisioned and is now active. You may log in to access your educator workspace, student rosters, curriculum materials, and timetable schedules.\n\n--------------------------------------------------\nYOUR LOGIN CREDENTIALS\nLogin Portal: {{portal_url}}\nRegistered Email: {{teacher_email}}\nInitial Password: {{temp_password}}\n--------------------------------------------------\n\nNote: Your initial password was automatically generated using the first 2 letters of your name (uppercase) + the last 6 digits of your IC / Passport. For account security, we recommend changing your password after logging in.\n\nWe look forward to having you empower scholars in our academic community.\n\nBest regards,\nThe {{platform_name}} Academic Admissions Team",
+                'cta_label' => 'Access Educator Portal',
+                'cta_url'   => '{{portal_url}}',
+            ],
 
             // ── PAYMENT & INVOICES ────────────────────────────────
             [
@@ -364,6 +373,14 @@ class EmailTemplateSeeder extends Seeder
                 'trigger_event' => 'When parent verifies student IC or child is connected',
                 'description'   => 'Notifies parent that the student profile is officially linked.',
                 'template_key'  => 'greetings_parent_student_linked',
+            ],
+            [
+                'key'           => 'teacher_application_approved',
+                'name'          => 'Teacher Application Approved Notification',
+                'category'      => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'When administrator approves an educator application',
+                'description'   => 'Notifies the teacher of approval, provides their login portal URL, registered email, and temporary/initial password.',
+                'template_key'  => 'greetings_teacher_approved',
             ],
             [
                 'key'           => 'invoice_issued',

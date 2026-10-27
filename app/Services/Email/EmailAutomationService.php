@@ -27,6 +27,18 @@ class EmailAutomationService
                 ->where('key', $automationKey)
                 ->first();
 
+            // Self-healing: if automation or table is unseeded on cPanel, auto-seed default templates & automations
+            if (!$automation) {
+                try {
+                    (new \Database\Seeders\EmailTemplateSeeder())->run();
+                    $automation = EmailAutomation::with(['template'])
+                        ->where('key', $automationKey)
+                        ->first();
+                } catch (\Throwable $seederErr) {
+                    Log::warning("[EmailAutomationService] Auto-seed failed: " . $seederErr->getMessage());
+                }
+            }
+
             if (!$automation) {
                 return $isTest ? ['success' => false, 'error' => "Automation '{$automationKey}' not found in database. Please run: php artisan db:seed --class=EmailTemplateSeeder"] : false;
             }
@@ -39,6 +51,14 @@ class EmailAutomationService
 
             // Guard: check if template exists and is active (allow draft in test mode)
             $template = $automation->template;
+            if (!$template) {
+                // Try self-healing template association
+                try {
+                    (new \Database\Seeders\EmailTemplateSeeder())->run();
+                    $automation->refresh();
+                    $template = $automation->template;
+                } catch (\Throwable $e) {}
+            }
             if (!$template) {
                 self::recordExecution($automation, 'skipped', '', 'Template is missing.', $idempotencyKey);
                 return $isTest ? ['success' => false, 'error' => "No template linked to automation '{$automation->name}'. Please select an active template."] : false;
@@ -146,6 +166,26 @@ class EmailAutomationService
             $recipients[] = [
                 'email'   => $context['recipient_email'],
                 'name'    => $context['recipient_name'] ?? 'Recipient',
+                'type'    => $context['recipient_type'] ?? 'custom',
+                'user_id' => $context['user_id'] ?? null,
+            ];
+            return $recipients;
+        }
+
+        if (!empty($context['teacher_email'])) {
+            $recipients[] = [
+                'email'   => $context['teacher_email'],
+                'name'    => $context['teacher_name'] ?? ($context['user']?->name ?? 'Educator'),
+                'type'    => 'teacher',
+                'user_id' => $context['user']?->id ?? ($context['user_id'] ?? null),
+            ];
+            return $recipients;
+        }
+
+        if (!empty($context['email'])) {
+            $recipients[] = [
+                'email'   => $context['email'],
+                'name'    => $context['name'] ?? ($context['recipient_name'] ?? 'Recipient'),
                 'type'    => $context['recipient_type'] ?? 'custom',
                 'user_id' => $context['user_id'] ?? null,
             ];

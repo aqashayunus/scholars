@@ -58,6 +58,11 @@ Route::get('/register/teacher', [TeacherApplicationController::class, 'create'])
 Route::post('/register/teacher', [TeacherApplicationController::class, 'store'])->name('register.teacher.submit')->middleware('guest');
 Route::get('/register/teacher/success', [TeacherApplicationController::class, 'success'])->name('register.teacher.success');
 
+// Fallback storage route for teacher application documents (handles non-symlinked cPanel / LiteSpeed environments)
+Route::get('/storage/teacher_applications/{path}', [\App\Http\Controllers\AdminDashboardController::class, 'serveTeacherApplicationStorage'])
+    ->where('path', '.*')
+    ->name('storage.teacher-applications');
+
 // ──────────────────────────────────────────────────
 // BREEZE AUTH ROUTES
 // ──────────────────────────────────────────────────
@@ -211,6 +216,15 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::post('/gigs/{id}/checkout', [TeacherDashboardController::class, 'checkOutGig'])->name('gigs.checkout');
     Route::post('/toggle-duty', [TeacherDashboardController::class, 'toggleDuty'])->name('toggle-duty');
     Route::get('/wallet', [TeacherDashboardController::class, 'walletIndex'])->name('wallet');
+
+    // Profile & Document Management
+    Route::get('/profile', [TeacherDashboardController::class, 'profile'])->name('profile');
+    Route::put('/profile', [TeacherDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [TeacherDashboardController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/documents', [TeacherDashboardController::class, 'uploadDocument'])->name('profile.documents.upload');
+    Route::delete('/profile/documents/{type}', [TeacherDashboardController::class, 'deleteDocument'])->name('profile.documents.delete');
+    Route::get('/profile/documents/{type}', [TeacherDashboardController::class, 'viewDocument'])->name('profile.documents.view');
+    Route::get('/profile/documents/{type}/download', [TeacherDashboardController::class, 'downloadDocument'])->name('profile.documents.download');
 });
 
 // ──────────────────────────────────────────────────
@@ -315,6 +329,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Teacher Applications Review & Approvals
     Route::post('/teacher-applications/{id}/approve', [AdminDashboardController::class, 'approveTeacherApplication'])->name('teacher-applications.approve');
     Route::post('/teacher-applications/{id}/reject', [AdminDashboardController::class, 'rejectTeacherApplication'])->name('teacher-applications.reject');
+    Route::get('/teacher-applications/{id}/document/{type}', [AdminDashboardController::class, 'viewTeacherApplicationDocument'])->name('teacher-applications.document');
 
     // Teaching Gigs & Masterclasses
     Route::post('/gigs', [AdminDashboardController::class, 'storeGig'])->name('gigs.store');

@@ -14,6 +14,7 @@ class TeacherApplication extends Model
         'full_name',
         'email',
         'phone',
+        'ic_number',
         'qualification',
         'experience_years',
         'preferred_subjects',

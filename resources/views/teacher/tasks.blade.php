@@ -8,7 +8,7 @@
     <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('tasksManager', () => ({
-            categoryTab: 'all',
+            selectedType: 'all',
             createTab: 'assignment',
             searchQuery: '',
             selectedClass: 'all',
@@ -30,6 +30,8 @@
             createModalError: '',
             isSubmitting: false,
             quizDraftRestored: false,
+            perPage: 10,
+            currentPage: 1,
 
             tasks: JSON.parse(document.getElementById('tasks-data')?.textContent || '[]'),
 
@@ -211,20 +213,37 @@
             },
             get filteredTasks() {
                 return this.tasks.filter(t => {
-                    const matchesTab = this.categoryTab === 'all' || 
-                                       (this.categoryTab === 'assignments' && t.type === 'Assignment') ||
-                                       (this.categoryTab === 'quizzes' && t.type === 'Quiz') ||
-                                       (this.categoryTab === 'assessments' && t.type === 'Assessment') ||
-                                       (this.categoryTab === 'exams' && t.type === 'Exam');
-
+                    const matchesType = !this.selectedType || this.selectedType === 'all' || t.type === this.selectedType;
                     const matchesQuery = !this.searchQuery || 
                                          (t.name && t.name.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
                                          (t.topic && t.topic.toLowerCase().includes(this.searchQuery.toLowerCase()));
                     const matchesClass = !this.selectedClass || this.selectedClass === 'all' || t.class === this.selectedClass;
                     const matchesSubject = !this.selectedSubject || this.selectedSubject === 'all' || t.subject === this.selectedSubject;
                     const matchesStatus = !this.selectedStatus || this.selectedStatus === 'all' || t.status === this.selectedStatus;
-                    return matchesTab && matchesQuery && matchesClass && matchesSubject && matchesStatus;
+                    return matchesType && matchesQuery && matchesClass && matchesSubject && matchesStatus;
                 });
+            },
+            get totalPages() {
+                return Math.max(1, Math.ceil(this.filteredTasks.length / this.perPage));
+            },
+            get paginatedTasks() {
+                if (this.currentPage > this.totalPages) {
+                    this.currentPage = 1;
+                }
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredTasks.slice(start, start + this.perPage);
+            },
+            get startIndex() {
+                if (this.filteredTasks.length === 0) return 0;
+                return (this.currentPage - 1) * this.perPage + 1;
+            },
+            get endIndex() {
+                return Math.min(this.currentPage * this.perPage, this.filteredTasks.length);
+            },
+            goToPage(p) {
+                if (p >= 1 && p <= this.totalPages) {
+                    this.currentPage = p;
+                }
             }
         }));
     });
@@ -350,59 +369,59 @@
             </div>
         </div>
 
-        {{-- ── 2. CATEGORY TABS & FILTER BAR ── --}}
-        <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                
-                {{-- Category Sub-Tabs --}}
-                <div class="flex flex-wrap gap-4 text-xs font-extrabold">
-                    <button @click="categoryTab = 'all'" :class="categoryTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600 pb-2' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                        All Items (<span x-text="tasks.length"></span>)
-                    </button>
-                    <button @click="categoryTab = 'assignments'" :class="categoryTab === 'assignments' ? 'text-blue-600 border-b-2 border-blue-600 pb-2' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                        Assignments (<span x-text="tasks.filter(t => t.type === 'Assignment').length"></span>)
-                    </button>
-                    <button @click="categoryTab = 'quizzes'" :class="categoryTab === 'quizzes' ? 'text-blue-600 border-b-2 border-blue-600 pb-2' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                        Quizzes (<span x-text="tasks.filter(t => t.type === 'Quiz').length"></span>)
-                    </button>
-                    <button @click="categoryTab = 'assessments'" :class="categoryTab === 'assessments' ? 'text-blue-600 border-b-2 border-blue-600 pb-2' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                        Assessments (<span x-text="tasks.filter(t => t.type === 'Assessment').length"></span>)
-                    </button>
-                    <button @click="categoryTab = 'exams'" :class="categoryTab === 'exams' ? 'text-blue-600 border-b-2 border-blue-600 pb-2' : 'text-gray-500 hover:text-gray-900 pb-2'" class="transition-colors cursor-pointer">
-                        Exams (<span x-text="tasks.filter(t => t.type === 'Exam').length"></span>)
-                    </button>
+        {{-- ── 2. FILTER BAR ── --}}
+        <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
+            <div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
+                {{-- Search Bar --}}
+                <div class="relative flex-1 min-w-[220px]">
+                    <input type="text" x-model="searchQuery" placeholder="Search tasks or topics..." class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
 
-                {{-- Search & Dropdown Filters --}}
-                <div class="flex flex-wrap items-center gap-2">
-                    <input type="text" x-model="searchQuery" placeholder="Search tasks or topics..." class="bg-gray-50 border border-gray-200/80 rounded-2xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                    
-                    <select x-model="selectedClass" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[130px]">
-                        <option value="all">All Classes</option>
-                        @foreach($courses->pluck('level')->unique() as $lvl)
-                            <option value="{{ $lvl }}">{{ $lvl }}</option>
-                        @endforeach
-                    </select>
+                {{-- Filter Dropdowns & Reset Button --}}
+                <div class="grid grid-cols-2 sm:grid-cols-4 xl:flex xl:items-center gap-2.5">
+                    <div class="w-full xl:w-auto xl:min-w-[130px]">
+                        <select x-model="selectedType" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Type: All</option>
+                            <option value="Assignment">Assignment</option>
+                            <option value="Quiz">Quiz</option>
+                            <option value="Assessment">Assessment</option>
+                            <option value="Exam">Exam</option>
+                        </select>
+                    </div>
 
-                    <select x-model="selectedSubject" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[140px]">
-                        <option value="all">All Subjects</option>
-                        @foreach($courses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? null)->filter()->unique() as $sName)
-                            <option value="{{ $sName }}">{{ $sName }}</option>
-                        @endforeach
-                    </select>
+                    <div class="w-full xl:w-auto xl:min-w-[130px]">
+                        <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Class: All</option>
+                            @foreach($courses->pluck('level')->unique() as $lvl)
+                                <option value="{{ $lvl }}">{{ $lvl }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                    <select x-model="selectedStatus" class="bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2 text-xs font-bold text-gray-700 outline-none cursor-pointer min-w-[130px]">
-                        <option value="all">All Status</option>
-                        <option value="Active">Active</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Overdue">Overdue</option>
-                    </select>
+                    <div class="w-full xl:w-auto xl:min-w-[140px]">
+                        <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Subject: All</option>
+                            @foreach($courses->map(fn($c) => $c->subject->display_name ?? $c->subject->name ?? null)->filter()->unique() as $sName)
+                                <option value="{{ $sName }}">{{ $sName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                    <button @click="searchQuery = ''; selectedClass = 'all'; selectedSubject = 'all'; selectedStatus = 'all'" class="py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0">
-                        Reset
+                    <div class="w-full xl:w-auto xl:min-w-[130px]">
+                        <select x-model="selectedStatus" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-8 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Status: All</option>
+                            <option value="Active">Active</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Overdue">Overdue</option>
+                        </select>
+                    </div>
+
+                    <button @click="searchQuery = ''; selectedType = 'all'; selectedClass = 'all'; selectedSubject = 'all'; selectedStatus = 'all'; currentPage = 1" class="col-span-2 sm:col-span-4 xl:col-auto py-2.5 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset</span>
                     </button>
                 </div>
-
             </div>
         </div>
 
@@ -422,7 +441,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 font-medium">
-                        <template x-for="tk in filteredTasks" :key="tk.id">
+                        <template x-for="tk in paginatedTasks" :key="tk.id">
                             <tr @click="selectedTask = tk; showReviewModal = true" class="hover:bg-gray-50/80 transition-colors cursor-pointer">
                                 
                                 {{-- Title & Description --}}
@@ -502,8 +521,44 @@
                 </table>
             </div>
 
-            <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-xs">
-                <span class="text-gray-400 font-semibold" x-text="`Showing ${filteredTasks.length} item(s)`"></span>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100 text-xs">
+                <div class="flex flex-wrap items-center gap-3 text-gray-500 font-medium">
+                    <span x-show="filteredTasks.length > 0"
+                          x-text="`Showing ${startIndex} to ${endIndex} of ${filteredTasks.length} item(s)` + (tasks.length !== filteredTasks.length ? ` (filtered from ${tasks.length} total)` : '')"></span>
+                    <span x-show="filteredTasks.length === 0" class="text-gray-400 font-semibold">
+                        Showing 0 of 0 items
+                    </span>
+
+                    {{-- Rows per page selector --}}
+                    <div class="flex items-center gap-1.5 pl-3 border-l border-gray-200">
+                        <span class="text-gray-400 text-[11px]">Show</span>
+                        <select x-model.number="perPage" @change="currentPage = 1" class="bg-gray-50 border border-gray-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="10">10 rows</option>
+                            <option value="25">25 rows</option>
+                            <option value="50">50 rows</option>
+                            <option value="100">100 rows</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Functional Pagination --}}
+                <div class="flex items-center gap-1" x-show="totalPages > 1">
+                    <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Previous Page">
+                        ‹
+                    </button>
+                    <template x-for="p in totalPages" :key="p">
+                        <button type="button" @click="goToPage(p)"
+                                :class="currentPage === p ? 'bg-blue-600 text-white font-black shadow-2xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold'"
+                                class="px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer"
+                                x-text="p">
+                        </button>
+                    </template>
+                    <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Next Page">
+                        ›
+                    </button>
+                </div>
             </div>
         </div>
 

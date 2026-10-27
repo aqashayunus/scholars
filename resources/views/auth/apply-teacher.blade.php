@@ -68,6 +68,14 @@
                 </div>
 
                 <div>
+                    <label for="ic_number" class="block text-sm font-semibold text-charcoal mb-1.5">IC / Passport Number <span class="text-red-500">*</span></label>
+                    <input id="ic_number" name="ic_number" type="text" value="{{ old('ic_number') }}" required
+                           class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none text-sm transition-all"
+                           placeholder="e.g. 950812-14-5678 or A12345678">
+                    <p class="text-[11px] text-muted mt-1">Used for educator verification and initial account security.</p>
+                </div>
+
+                <div>
                     <label for="email" class="block text-sm font-semibold text-charcoal mb-1.5">Email Address <span class="text-red-500">*</span></label>
                     <input id="email" name="email" type="email" value="{{ old('email') }}" required
                            class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none text-sm transition-all"

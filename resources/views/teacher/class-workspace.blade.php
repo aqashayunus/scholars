@@ -323,6 +323,12 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="flex items-center justify-between pt-4 border-t border-gray-100 text-xs">
+                <span class="text-gray-500 font-medium">
+                    Showing {{ $course->enrollments->count() }} enrolled student{{ $course->enrollments->count() === 1 ? '' : 's' }}
+                </span>
+            </div>
         </div>
 
         {{-- ── TAB 3: MATERIALS TAB ── --}}

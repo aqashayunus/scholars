@@ -16,6 +16,61 @@
         studentsData: {{ \Illuminate\Support\Js::from(collect($allStudents ?? [])->keyBy('id')->toArray()) }},
         noteModalOpen: false,
         noteText: '',
+
+        attendancePerPage: 10,
+        attendanceCurrentPage: 1,
+        get filteredAttendanceList() {
+            return Object.values(this.studentsData).filter(s => {
+                if (this.attendanceFilter === 'good') return (s.attendance || 0) >= 80;
+                if (this.attendanceFilter === 'attention') return (s.attendance || 0) < 80;
+                if (this.attendanceFilter === 'absent') return (s.absent_count || 0) > 0;
+                return true;
+            });
+        },
+        get paginatedAttendanceList() {
+            const total = this.filteredAttendanceList.length;
+            const maxPage = Math.max(1, Math.ceil(total / this.attendancePerPage));
+            if (this.attendanceCurrentPage > maxPage) this.attendanceCurrentPage = 1;
+            const start = (this.attendanceCurrentPage - 1) * this.attendancePerPage;
+            return this.filteredAttendanceList.slice(start, start + this.attendancePerPage);
+        },
+        get attendanceTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredAttendanceList.length / this.attendancePerPage));
+        },
+        get attendanceStartIndex() {
+            if (this.filteredAttendanceList.length === 0) return 0;
+            return (this.attendanceCurrentPage - 1) * this.attendancePerPage + 1;
+        },
+        get attendanceEndIndex() {
+            return Math.min(this.attendanceCurrentPage * this.attendancePerPage, this.filteredAttendanceList.length);
+        },
+
+        progressPerPage: 10,
+        progressCurrentPage: 1,
+        get filteredProgressList() {
+            return Object.values(this.studentsData).filter(s => {
+                if (this.progressFilter === 'high') return (s.progress || 0) >= 75;
+                if (this.progressFilter === 'low') return (s.progress || 0) < 60;
+                return true;
+            });
+        },
+        get paginatedProgressList() {
+            const total = this.filteredProgressList.length;
+            const maxPage = Math.max(1, Math.ceil(total / this.progressPerPage));
+            if (this.progressCurrentPage > maxPage) this.progressCurrentPage = 1;
+            const start = (this.progressCurrentPage - 1) * this.progressPerPage;
+            return this.filteredProgressList.slice(start, start + this.progressPerPage);
+        },
+        get progressTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredProgressList.length / this.progressPerPage));
+        },
+        get progressStartIndex() {
+            if (this.filteredProgressList.length === 0) return 0;
+            return (this.progressCurrentPage - 1) * this.progressPerPage + 1;
+        },
+        get progressEndIndex() {
+            return Math.min(this.progressCurrentPage * this.progressPerPage, this.filteredProgressList.length);
+        },
         get currentStudent() {
             if (this.selectedStudentKey && this.studentsData[this.selectedStudentKey]) {
                 return this.studentsData[this.selectedStudentKey];
@@ -450,12 +505,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            <template x-for="st in Object.values(studentsData).filter(s => {
-                                if (attendanceFilter === 'good') return (s.attendance || 0) >= 80;
-                                if (attendanceFilter === 'attention') return (s.attendance || 0) < 80;
-                                if (attendanceFilter === 'absent') return (s.absent_count || 0) > 0;
-                                return true;
-                            })" :key="st.id">
+                            <template x-for="st in paginatedAttendanceList" :key="st.id">
                                 <tr class="hover:bg-gray-50/50 transition-colors">
                                     <td class="py-3.5 flex items-center gap-3">
                                         <div :class="st.avatar_color || 'bg-blue-600'" class="w-8 h-8 rounded-full text-white font-black text-xs flex items-center justify-center shrink-0">
@@ -502,6 +552,43 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100 text-xs">
+                    <div class="flex flex-wrap items-center gap-3 text-gray-500 font-medium">
+                        <span x-show="filteredAttendanceList.length > 0"
+                              x-text="`Showing ${attendanceStartIndex} to ${attendanceEndIndex} of ${filteredAttendanceList.length} student(s)` + (Object.values(studentsData).length !== filteredAttendanceList.length ? ` (filtered from ${Object.values(studentsData).length} total)` : '')"></span>
+                        <span x-show="filteredAttendanceList.length === 0" class="text-gray-400 font-semibold">
+                            Showing 0 of 0 students
+                        </span>
+
+                        <div class="flex items-center gap-1.5 pl-3 border-l border-gray-200">
+                            <span class="text-gray-400 text-[11px]">Show</span>
+                            <select x-model.number="attendancePerPage" @change="attendanceCurrentPage = 1" class="bg-gray-50 border border-gray-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                                <option value="10">10 rows</option>
+                                <option value="25">25 rows</option>
+                                <option value="50">50 rows</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1" x-show="attendanceTotalPages > 1">
+                        <button type="button" @click="attendanceCurrentPage > 1 && attendanceCurrentPage--" :disabled="attendanceCurrentPage === 1"
+                                class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Previous Page">
+                            ‹
+                        </button>
+                        <template x-for="p in attendanceTotalPages" :key="p">
+                            <button type="button" @click="attendanceCurrentPage = p"
+                                    :class="attendanceCurrentPage === p ? 'bg-blue-600 text-white font-black shadow-2xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer"
+                                    x-text="p">
+                            </button>
+                        </template>
+                        <button type="button" @click="attendanceCurrentPage < attendanceTotalPages && attendanceCurrentPage++" :disabled="attendanceCurrentPage === attendanceTotalPages"
+                                class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Next Page">
+                            ›
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -538,11 +625,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            <template x-for="st in Object.values(studentsData).filter(s => {
-                                if (progressFilter === 'high') return (s.progress || 0) >= 75;
-                                if (progressFilter === 'low') return (s.progress || 0) < 60;
-                                return true;
-                            })" :key="st.id">
+                            <template x-for="st in paginatedProgressList" :key="st.id">
                                 <tr class="hover:bg-gray-50/50 transition-colors">
                                     <td class="py-3.5 flex items-center gap-3">
                                         <div :class="st.avatar_color || 'bg-blue-600'" class="w-8 h-8 rounded-full text-white font-black text-xs flex items-center justify-center shrink-0">
@@ -588,6 +671,43 @@
                             </template>
                         </tbody>
                     </table>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100 text-xs">
+                    <div class="flex flex-wrap items-center gap-3 text-gray-500 font-medium">
+                        <span x-show="filteredProgressList.length > 0"
+                              x-text="`Showing ${progressStartIndex} to ${progressEndIndex} of ${filteredProgressList.length} student(s)` + (Object.values(studentsData).length !== filteredProgressList.length ? ` (filtered from ${Object.values(studentsData).length} total)` : '')"></span>
+                        <span x-show="filteredProgressList.length === 0" class="text-gray-400 font-semibold">
+                            Showing 0 of 0 students
+                        </span>
+
+                        <div class="flex items-center gap-1.5 pl-3 border-l border-gray-200">
+                            <span class="text-gray-400 text-[11px]">Show</span>
+                            <select x-model.number="progressPerPage" @change="progressCurrentPage = 1" class="bg-gray-50 border border-gray-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                                <option value="10">10 rows</option>
+                                <option value="25">25 rows</option>
+                                <option value="50">50 rows</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1" x-show="progressTotalPages > 1">
+                        <button type="button" @click="progressCurrentPage > 1 && progressCurrentPage--" :disabled="progressCurrentPage === 1"
+                                class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Previous Page">
+                            ‹
+                        </button>
+                        <template x-for="p in progressTotalPages" :key="p">
+                            <button type="button" @click="progressCurrentPage = p"
+                                    :class="progressCurrentPage === p ? 'bg-blue-600 text-white font-black shadow-2xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold'"
+                                    class="px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer"
+                                    x-text="p">
+                            </button>
+                        </template>
+                        <button type="button" @click="progressCurrentPage < progressTotalPages && progressCurrentPage++" :disabled="progressCurrentPage === progressTotalPages"
+                                class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Next Page">
+                            ›
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

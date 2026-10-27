@@ -14,6 +14,8 @@
         selectedFileName: '',
         activeActionMenu: null,
         materials: {{ \Illuminate\Support\Js::from($mappedMaterials) }},
+        perPage: 10,
+        currentPage: 1,
         get filteredMaterials() {
             return this.materials.filter(m => {
                 const matchesQuery = !this.searchQuery || m.name.toLowerCase().includes(this.searchQuery.toLowerCase());
@@ -24,12 +26,35 @@
                 return matchesQuery && matchesClass && matchesSubject && matchesTopic && matchesStatus;
             });
         },
+        get totalPages() {
+            return Math.max(1, Math.ceil(this.filteredMaterials.length / this.perPage));
+        },
+        get paginatedMaterials() {
+            if (this.currentPage > this.totalPages) {
+                this.currentPage = 1;
+            }
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredMaterials.slice(start, start + this.perPage);
+        },
+        get startIndex() {
+            if (this.filteredMaterials.length === 0) return 0;
+            return (this.currentPage - 1) * this.perPage + 1;
+        },
+        get endIndex() {
+            return Math.min(this.currentPage * this.perPage, this.filteredMaterials.length);
+        },
+        goToPage(p) {
+            if (p >= 1 && p <= this.totalPages) {
+                this.currentPage = p;
+            }
+        },
         resetFilters() {
             this.searchQuery = '';
             this.selectedClass = 'all';
             this.selectedSubject = 'all';
             this.selectedTopic = 'all';
             this.selectedStatus = 'all';
+            this.currentPage = 1;
         }
     }" class="space-y-6">
 
@@ -186,7 +211,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 font-medium">
-                        <template x-for="mat in filteredMaterials" :key="mat.id">
+                        <template x-for="mat in paginatedMaterials" :key="mat.id">
                             <tr class="hover:bg-gray-50/80 transition-colors">
                                 <td class="py-3.5 px-4">
                                     <div class="flex items-center gap-3">
@@ -244,8 +269,44 @@
                 </table>
             </div>
 
-            <div class="flex items-center justify-between pt-3 border-t border-gray-100 text-xs">
-                <span class="text-gray-400 font-semibold" x-text="`Showing ${filteredMaterials.length} material(s)`"></span>
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100 text-xs">
+                <div class="flex flex-wrap items-center gap-3 text-gray-500 font-medium">
+                    <span x-show="filteredMaterials.length > 0"
+                          x-text="`Showing ${startIndex} to ${endIndex} of ${filteredMaterials.length} material(s)` + (materials.length !== filteredMaterials.length ? ` (filtered from ${materials.length} total)` : '')"></span>
+                    <span x-show="filteredMaterials.length === 0" class="text-gray-400 font-semibold">
+                        Showing 0 of 0 materials
+                    </span>
+
+                    {{-- Rows per page selector --}}
+                    <div class="flex items-center gap-1.5 pl-3 border-l border-gray-200">
+                        <span class="text-gray-400 text-[11px]">Show</span>
+                        <select x-model.number="perPage" @change="currentPage = 1" class="bg-gray-50 border border-gray-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="10">10 rows</option>
+                            <option value="25">25 rows</option>
+                            <option value="50">50 rows</option>
+                            <option value="100">100 rows</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Functional Pagination --}}
+                <div class="flex items-center gap-1" x-show="totalPages > 1">
+                    <button type="button" @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Previous Page">
+                        ‹
+                    </button>
+                    <template x-for="p in totalPages" :key="p">
+                        <button type="button" @click="goToPage(p)"
+                                :class="currentPage === p ? 'bg-blue-600 text-white font-black shadow-2xs' : 'bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold'"
+                                class="px-2.5 py-1 rounded-lg text-xs transition-colors cursor-pointer"
+                                x-text="p">
+                        </button>
+                    </template>
+                    <button type="button" @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                            class="px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed text-gray-600 font-bold transition-colors cursor-pointer" title="Next Page">
+                        ›
+                    </button>
+                </div>
             </div>
         </div>
 

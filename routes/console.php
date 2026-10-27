@@ -39,4 +39,54 @@ Schedule::command('emails:process-class-reminders')
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/class-reminders.log'));
 
+// ── Storage: Sync files from storage/app/public to public/storage (useful for cPanel environments) ─
+Artisan::command('storage:sync', function () {
+    $source = storage_path('app/public');
+    $dest = public_path('storage');
+
+    if (!is_dir($source)) {
+        $this->error("Source directory {$source} does not exist.");
+        return 1;
+    }
+
+    if (is_link($dest)) {
+        $this->info("public/storage is already a symbolic link. No file copying required.");
+        return 0;
+    }
+
+    if (!is_dir($dest)) {
+        @mkdir($dest, 0755, true);
+    }
+
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($source, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    $copied = 0;
+    foreach ($files as $file) {
+        $rel = substr($file->getPathname(), strlen($source) + 1);
+        $target = $dest . DIRECTORY_SEPARATOR . $rel;
+
+        if ($file->isDir()) {
+            if (!is_dir($target)) {
+                @mkdir($target, 0755, true);
+            }
+        } else {
+            $targetDir = dirname($target);
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0755, true);
+            }
+            if (!file_exists($target) || filemtime($file->getPathname()) > filemtime($target)) {
+                @copy($file->getPathname(), $target);
+                @chmod($target, 0644);
+                $copied++;
+            }
+        }
+    }
+
+    $this->info("Storage sync complete. Copied/updated {$copied} files to public/storage.");
+    return 0;
+})->purpose('Synchronize storage/app/public files into public/storage for cPanel/shared hosting without symlink support');
+
 
