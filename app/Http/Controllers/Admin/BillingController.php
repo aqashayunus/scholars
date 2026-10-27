@@ -224,6 +224,167 @@ class BillingController extends Controller
         }
     }
 
+    // ── Quick Dashboard Actions ──────────────────────────────────────────────
+    // Extracted from inline route closures in routes/web.php (admin dashboard's
+    // quick invoice-status/record-payment/verify-payment widgets) — same
+    // behavior as before, except quickVerifyPayment() now validates
+    // approved_amount, which the closure never did.
+
+    public function updateInvoiceStatusQuick(Request $request, $id)
+    {
+        $request->validate([
+            'status'      => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'notes'       => 'nullable|string|max:500',
+        ]);
+
+        $invoice = Invoice::findOrFail($id);
+        $invoice->status = $request->status;
+
+        if ($request->status === 'paid') {
+            $invoice->amount_paid = $invoice->total_amount;
+            app(\App\Services\ReminderService::class)->skipRemainingReminders($invoice);
+        } elseif ($request->status === 'partially_paid') {
+            if ($request->filled('amount_paid') && (float) $request->amount_paid > 0) {
+                $invoice->amount_paid = min((float) $invoice->total_amount, (float) $request->amount_paid);
+            } elseif ($invoice->amount_paid <= 0) {
+                $invoice->amount_paid = round($invoice->total_amount / 2, 2);
+            }
+        } elseif ($request->status === 'issued') {
+            if ($request->input('reset_amount') == '1' || $request->amount_paid === '0') {
+                $invoice->amount_paid = 0;
+            }
+        }
+
+        if ($request->filled('notes')) {
+            $invoice->notes = $request->notes;
+        }
+
+        $invoice->save();
+
+        // Sync linked Payment record so the Payment Ledger shows the correct amount
+        if (in_array($request->status, ['paid', 'partially_paid'])) {
+            $pendingPayment = $invoice->paymentTransactions()
+                ->where('payments.status', PaymentStatus::Pending)
+                ->first();
+
+            if ($pendingPayment) {
+                $amountToApply = (float) $invoice->amount_paid;
+                $pendingPayment->amount = $amountToApply;
+
+                if ($request->status === 'paid') {
+                    if (!$pendingPayment->receipt_number) {
+                        $pendingPayment->receipt_number = Payment::generateReceiptNumber();
+                    }
+                    $pendingPayment->status      = PaymentStatus::Successful;
+                    $pendingPayment->verified_by = Auth::id();
+                    $pendingPayment->paid_at     = now();
+                }
+
+                $pendingPayment->save();
+
+                \App\Models\PaymentInvoice::where('payment_id', $pendingPayment->id)
+                    ->where('invoice_id', $invoice->id)
+                    ->update(['amount_applied' => $amountToApply]);
+            }
+        }
+
+        if ($invoice->student) {
+            app(\App\Services\StudentAccessRestrictionService::class)->syncStudentStatus($invoice->student);
+        }
+
+        return back()->with('success', "Invoice {$invoice->invoice_number} status updated to {$invoice->status_label}.");
+    }
+
+    public function recordInvoicePaymentQuick(Request $request, $id)
+    {
+        $invoice = Invoice::with('student.user')->findOrFail($id);
+
+        $request->validate([
+            'amount'         => ['required', 'numeric', 'min:0.01'],
+            'payment_method' => ['required', 'string'],
+            'reference_no'   => ['nullable', 'string', 'max:100'],
+            'notes'          => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $amount = (float) $request->amount;
+        $admin = Auth::user();
+        $receiptNumber = null;
+
+        DB::transaction(function () use ($invoice, $amount, $request, $admin, &$receiptNumber) {
+            $receiptNumber = Payment::generateReceiptNumber();
+            $payerId = $invoice->student->user_id ?? $admin->id;
+
+            $payment = Payment::create([
+                'user_id'             => $payerId,
+                'reference_no'        => $request->reference_no ?: ('ADM-' . strtoupper(\Illuminate\Support\Str::random(8))),
+                'payer_id'            => $payerId,
+                'payer_type'          => 'student',
+                'student_id'          => $invoice->student_id,
+                'description'         => "Payment for Invoice #{$invoice->invoice_number}",
+                'amount'              => $amount,
+                'payment_method'      => $request->payment_method,
+                'status'              => PaymentStatus::Successful,
+                'receipt_number'      => $receiptNumber,
+                'verified_by'         => $admin->id,
+                'paid_at'             => now(),
+                'payment_proof_notes' => $request->notes,
+            ]);
+
+            \App\Models\PaymentInvoice::create([
+                'payment_id'     => $payment->id,
+                'invoice_id'     => $invoice->id,
+                'amount_applied' => $amount,
+            ]);
+
+            $this->invoiceService->recalculateAmountPaid($invoice);
+        });
+
+        $invoice->refresh();
+        $typeLabel = $invoice->status === InvoiceStatus::Paid ? 'full' : 'partial';
+        $isPartial = $invoice->status !== InvoiceStatus::Paid;
+
+        \App\Services\BillingNotificationService::notifyPaymentRecorded($invoice, $amount, $receiptNumber, $isPartial);
+
+        return back()->with('success', "Authorized {$typeLabel} payment of RM " . number_format($amount, 2) . " for Invoice {$invoice->invoice_number}. Current status: {$invoice->status_label}.");
+    }
+
+    public function verifyPaymentQuick(Request $request, $payment)
+    {
+        $p = Payment::findOrFail($payment);
+
+        if ($request->input('action') === 'reject') {
+            $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+            $this->paymentService->rejectManualPayment($p, Auth::user(), $request->input('reason', 'Payment could not be verified'));
+            return back()->with('success', 'Payment rejected successfully.');
+        }
+
+        if ($request->input('action') === 'pending') {
+            $p->status = 'pending';
+            $p->verified_by = null;
+            $p->save();
+            return back()->with('success', "Payment {$p->reference_no} has been reset to Pending Review.");
+        }
+
+        // Fix (2026-10-27): approved_amount was never validated here, unlike
+        // every other money-accepting endpoint in this controller — a
+        // non-numeric value silently cast to 0.0 via (float), and there was
+        // no upper bound against the invoice total.
+        if ($request->filled('approved_amount')) {
+            $request->validate([
+                'approved_amount' => ['numeric', 'min:0.01'],
+            ]);
+            $approvedAmt = (float) $request->approved_amount;
+            $p->amount = $approvedAmt;
+            $p->save();
+            \App\Models\PaymentInvoice::where('payment_id', $p->id)->update(['amount_applied' => $approvedAmt]);
+        }
+
+        $request->validate(['notes' => ['nullable', 'string', 'max:1000']]);
+        $this->paymentService->approveManualPayment($p, Auth::user(), $request->input('notes'));
+        return back()->with('success', "Payment {$p->reference_no} of RM " . number_format($p->amount, 2) . " approved and verified successfully.");
+    }
+
     // ── Reminder History ──────────────────────────────────────────────────────
 
     public function reminderHistory(Invoice $invoice)
