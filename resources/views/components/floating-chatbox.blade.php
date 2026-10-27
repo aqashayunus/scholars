@@ -1019,7 +1019,7 @@ function OlympiaChatWidget() {
             fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': cfg.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 this.contacts = Array.isArray(data) ? data : [];
             })
@@ -1042,7 +1042,7 @@ function OlympiaChatWidget() {
             fetch(window.__CHAT_CONFIG__.directory, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': this.getCsrfToken() }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 this.directory = Array.isArray(data) ? data : [];
             })
@@ -1134,7 +1134,7 @@ function OlympiaChatWidget() {
             fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 if (!data.messages) return;
 
@@ -1170,7 +1170,7 @@ function OlympiaChatWidget() {
             fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 if (!data.messages || data.messages.length === 0) {
                     this.hasOlderMessages = false;
@@ -1375,7 +1375,7 @@ function OlympiaChatWidget() {
                     'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf,
                 }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(res => {
                 if (res.ok) {
                     this.messages = [];
@@ -1418,7 +1418,7 @@ function OlympiaChatWidget() {
                     'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf,
                 }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(res => {
                 if (res.ok) {
                     this.contacts = [];
@@ -1456,7 +1456,7 @@ function OlympiaChatWidget() {
                     'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf,
                 }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(res => {
                 if (res.ok) {
                     this.contacts = this.contacts.filter(c => c.conversation_id !== convId);
@@ -1508,7 +1508,7 @@ function OlympiaChatWidget() {
                 },
                 body: JSON.stringify({ body })
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(m => {
                 if (!m.id) return;
                 const container = document.getElementById('chat-messages-inner');
@@ -1540,7 +1540,7 @@ function OlympiaChatWidget() {
                 },
                 body: formData
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(m => {
                 if (!m.id) return;
                 const container = document.getElementById('chat-messages-inner');
@@ -1584,7 +1584,7 @@ function OlympiaChatWidget() {
             fetch(`${window.__CHAT_CONFIG__.messagesBase}/${this.activeConversationId}/typing`, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(d => {
                 this.typingText = d.typing && d.typing.length > 0;
             })
@@ -1625,7 +1625,7 @@ function OlympiaChatWidget() {
             fetch(window.__CHAT_CONFIG__.unread, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(d => { this.globalUnread = d.count || 0; })
             .catch(() => {});
         },
@@ -1638,7 +1638,7 @@ function OlympiaChatWidget() {
             fetch(window.__CHAT_CONFIG__.monitorChildren, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 this.monitorChildren = Array.isArray(data) ? data : [];
             })
@@ -1655,7 +1655,7 @@ function OlympiaChatWidget() {
             fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 this.monitorConversations = Array.isArray(data) ? data : [];
             })
@@ -1687,7 +1687,7 @@ function OlympiaChatWidget() {
             fetch(url, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
             })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(data => {
                 if (!data.messages) return;
                 if (initial) {
@@ -1714,7 +1714,9 @@ function OlympiaChatWidget() {
                     'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf,
                 },
                 body: JSON.stringify({ status })
-            }).catch(() => {});
+            })
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); })
+            .catch(() => {});
         },
 
         toggleAdminDrawer() {
@@ -1727,7 +1729,7 @@ function OlympiaChatWidget() {
                 fetch(`${window.__CHAT_CONFIG__.adminUserContext}/${targetId}`, {
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': window.__CHAT_CONFIG__.csrf }
                 })
-                .then(r => r.json())
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(d => { this.adminUserContext = d; })
                 .catch(() => {})
                 .finally(() => { this.loadingAdminContext = false; });
