@@ -758,10 +758,12 @@ function addChildModalData() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                     },
                     body: JSON.stringify({ ic_number: this.connectInput })
                 });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 if (data.found) {
                     this.connectStatus = 'found';
