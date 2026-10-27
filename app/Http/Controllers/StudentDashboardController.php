@@ -270,11 +270,18 @@ class StudentDashboardController extends Controller
     }
 
     /**
-     * Student clicks "Join" on a live class. Idempotent — delegates the
-     * join-attempt recording and status resolution to AttendanceService.
+     * Student clicks "Join" on a live class. Delegates authorization +
+     * join-attempt recording to ClassScheduleService/AttendanceService;
+     * this method is only responsible for turning the result into the
+     * right HTTP response (redirect vs JSON, status code, route).
      */
-    public function joinClass(LiveClass $liveClass, Request $request, AttendanceService $attendanceService)
-    {
+    public function joinClass(
+        LiveClass $liveClass,
+        Request $request,
+        ClassScheduleService $schedule,
+        AttendanceService $attendanceService,
+        StudentAccessRestrictionService $restrictionService
+    ) {
         $user = auth()->user();
         if ($user->role !== 'student') {
             abort(403, 'Unauthorized.');
@@ -282,75 +289,32 @@ class StudentDashboardController extends Controller
 
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
-        // 1. Enforce student billing restriction
-        $restrictionService = app(StudentAccessRestrictionService::class);
-        if ($restrictionService->isStudentRestricted($student)) {
-            $details = $restrictionService->getRestrictionDetails($student);
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => 'payment_restricted',
-                    'message' => 'Your academic access is temporarily on hold due to an overdue payment balance.',
-                    'details' => $details,
-                ], 403);
-            }
-            return redirect()->route('student.fees')->with('error', 'Your academic access is temporarily on hold due to an overdue payment balance. Please settle your invoice to access live classes.');
-        }
-
-        // 2. Validate enrollment (direct or matching subject)
-        $isEnrolled = ClassScheduleService::getStudentLiveClassesQuery($student)
-            ->where('live_classes.id', $liveClass->id)
-            ->exists();
-
-        if (!$isEnrolled) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => 'not_enrolled',
-                    'message' => 'You are not enrolled in this live class.',
-                ], 403);
-            }
-            return redirect()->route('student.classes')->with('error', 'You are not enrolled in this live class.');
-        }
-
-        // 3. Delegate to AttendanceService to record join attempt idempotently
-        $result = $attendanceService->recordStudentJoin($student, $liveClass, $request);
+        $result = $schedule->authorizeAndJoin($student, $liveClass, $request, $restrictionService, $attendanceService);
 
         if (!$result['success']) {
-            if ($request->wantsJson()) {
-                return response()->json($result, 422);
-            }
-            return redirect()->route('student.classes')->with('error', $result['message']);
-        }
+            [$statusCode, $redirectRoute] = match ($result['error'] ?? null) {
+                'payment_restricted' => [403, 'student.fees'],
+                'not_enrolled'       => [403, 'student.classes'],
+                default              => [422, 'student.classes'],
+            };
 
-        $meetingUrl = $result['meeting_url'] ?: $liveClass->meeting_url;
-
-        if (empty($meetingUrl)) {
             if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'error'   => 'missing_url',
-                    'message' => 'The instructor has not provided a live meeting link for this session yet.',
-                ], 422);
+                return response()->json($result, $statusCode);
             }
-            return redirect()->route('student.classes')->with('error', 'The instructor has not provided a live meeting link for this session yet.');
+            return redirect()->route($redirectRoute)->with('error', $result['message']);
         }
 
         if ($request->wantsJson()) {
-            return response()->json([
-                'success'      => true,
-                'redirect_url' => $meetingUrl,
-                'is_rejoin'    => $result['is_rejoin'] ?? false,
-            ]);
+            return response()->json($result);
         }
 
-        return redirect()->away($meetingUrl);
+        return redirect()->away($result['redirect_url']);
     }
 
     /**
      * Submit an attendance correction request.
      */
-    public function submitCorrectionRequest(Request $request, AttendanceService $attendanceService)
+    public function submitCorrectionRequest(Request $request, ClassScheduleService $schedule, AttendanceService $attendanceService)
     {
         $user = auth()->user();
         if ($user->role !== 'student') {
@@ -366,26 +330,15 @@ class StudentDashboardController extends Controller
         $student = Student::where('user_id', $user->id)->firstOrFail();
         $liveClass = LiveClass::findOrFail($validated['live_class_id']);
 
-        $isEnrolled = ClassScheduleService::getStudentLiveClassesQuery($student)
-            ->where('live_classes.id', $liveClass->id)
-            ->exists();
-
-        if (!$isEnrolled) {
-            return response()->json(['success' => false, 'message' => 'You are not enrolled in this class.'], 403);
-        }
-
-        $req = $attendanceService->submitCorrectionRequest(
+        $result = $schedule->submitCorrectionRequest(
             $student,
             $liveClass,
             $validated['reason'],
-            $validated['requested_status'] ?? 'attended'
+            $validated['requested_status'] ?? 'attended',
+            $attendanceService
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Attendance correction request submitted for teacher review.',
-            'request' => $req,
-        ]);
+        return response()->json($result, $result['success'] ? 200 : 403);
     }
 
     private function getStudent(): Student

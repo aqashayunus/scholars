@@ -5,6 +5,9 @@ namespace App\Services\Student;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentAttendance;
+use App\Services\AttendanceService;
+use App\Services\StudentAccessRestrictionService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ClassScheduleService
@@ -132,6 +135,91 @@ class ClassScheduleService
             'absent'   => $absent,
             'late'     => $late,
             'pct'      => $rate,
+        ];
+    }
+
+    /**
+     * Checks billing restriction + enrollment, then delegates the actual
+     * join-attempt recording to AttendanceService. Returns a plain result
+     * array (success/error/message/...) — the controller is the only place
+     * that turns this into an HTTP response (redirect vs JSON, status code).
+     */
+    public function authorizeAndJoin(
+        Student $student,
+        LiveClass $liveClass,
+        ?Request $request,
+        StudentAccessRestrictionService $restrictionService,
+        AttendanceService $attendanceService
+    ): array {
+        if ($restrictionService->isStudentRestricted($student)) {
+            return [
+                'success' => false,
+                'error'   => 'payment_restricted',
+                'message' => 'Your academic access is temporarily on hold due to an overdue payment balance. Please settle your invoice to access live classes.',
+                'details' => $restrictionService->getRestrictionDetails($student),
+            ];
+        }
+
+        $isEnrolled = self::getStudentLiveClassesQuery($student)
+            ->where('live_classes.id', $liveClass->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            return [
+                'success' => false,
+                'error'   => 'not_enrolled',
+                'message' => 'You are not enrolled in this live class.',
+            ];
+        }
+
+        $result = $attendanceService->recordStudentJoin($student, $liveClass, $request);
+
+        if (!$result['success']) {
+            return $result;
+        }
+
+        $meetingUrl = $result['meeting_url'] ?: $liveClass->meeting_url;
+
+        if (empty($meetingUrl)) {
+            return [
+                'success' => false,
+                'error'   => 'missing_url',
+                'message' => 'The instructor has not provided a live meeting link for this session yet.',
+            ];
+        }
+
+        return [
+            'success'      => true,
+            'redirect_url' => $meetingUrl,
+            'is_rejoin'    => $result['is_rejoin'] ?? false,
+        ];
+    }
+
+    /**
+     * Validates enrollment, then delegates to AttendanceService to create
+     * the correction request record.
+     */
+    public function submitCorrectionRequest(
+        Student $student,
+        LiveClass $liveClass,
+        string $reason,
+        string $requestedStatus,
+        AttendanceService $attendanceService
+    ): array {
+        $isEnrolled = self::getStudentLiveClassesQuery($student)
+            ->where('live_classes.id', $liveClass->id)
+            ->exists();
+
+        if (!$isEnrolled) {
+            return ['success' => false, 'message' => 'You are not enrolled in this class.'];
+        }
+
+        $req = $attendanceService->submitCorrectionRequest($student, $liveClass, $reason, $requestedStatus);
+
+        return [
+            'success' => true,
+            'message' => 'Attendance correction request submitted for teacher review.',
+            'request' => $req,
         ];
     }
 }
