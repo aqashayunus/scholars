@@ -2,9 +2,9 @@
 {{-- TAB: TEACHER CLASS FEE CLAIMS (#teacher-claims)                   --}}
 {{-- ══════════════════════════════════════════════════════════════════ --}}
 <div id="tab-teacher-claims" class="admin-tab-content hidden space-y-6">
-    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-5 space-y-4">
+    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
         {{-- Card Header & Filter Bar --}}
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="p-5 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <h2 class="font-semibold text-lg text-gray-900">Teacher Class Claims</h2>
                 <p class="text-xs text-gray-500 font-normal">Review and process class fee claim submissions from instructors</p>
@@ -195,8 +195,38 @@
                             </td>
                         </tr>
                     @endforelse
+
+                    <tr id="teacherClaimsNoResultsRow" class="hidden">
+                        <td colspan="8" class="text-center py-8 text-gray-400 font-normal">
+                            No teacher class claims found matching your filter criteria.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
+        </div>
+
+        {{-- Teacher Claims Pagination & Count Footer --}}
+        <div id="teacherClaimsPaginationContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-gray-50/30 text-xs">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="relative inline-flex items-center">
+                    <select id="teacherClaimsPerPageSelect" onchange="setTeacherClaimsPerPage(this.value)" class="appearance-none !bg-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg pl-2.5 pr-6 py-1 text-xs font-normal text-gray-700 outline-none focus:outline-none focus:border-slate-400 transition cursor-pointer">
+                        <option value="10" selected>10 rows</option>
+                        <option value="25">25 rows</option>
+                        <option value="50">50 rows</option>
+                        <option value="all">All rows</option>
+                    </select>
+                    <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+
+                <div class="text-gray-500 font-normal">
+                    Showing <span id="teacherClaimsShowingStart" class="font-semibold text-gray-800">{{ $allTeacherClaims->isEmpty() ? 0 : 1 }}</span> to <span id="teacherClaimsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allTeacherClaims->count()) }}</span> of <span id="teacherClaimsTotalFiltered" class="font-semibold text-gray-800">{{ $allTeacherClaims->count() }}</span> claims
+                    <span id="teacherClaimsTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="teacherClaimsGrandTotal">{{ $allTeacherClaims->count() }}</span> total)</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5" id="teacherClaimsPaginationButtons">
+                {{-- Dynamically generated pagination buttons --}}
+            </div>
         </div>
     </div>
 </div>
@@ -415,28 +445,172 @@
 {{-- JAVASCRIPT LOGIC FOR TEACHER CLAIMS                                --}}
 {{-- ══════════════════════════════════════════════════════════════════ --}}
 <script>
-function handleTeacherClaimsSearch(val) {
-    const query = (val || '').toLowerCase().trim();
-    const statusFilter = (document.getElementById('teacherClaimsStatusFilter')?.value || '').toLowerCase();
-    const rows = document.querySelectorAll('#teacherClaimsTable tbody .teacher-claim-row');
+let teacherClaimsPerPage = 10;
+let teacherClaimsCurrentPage = 1;
+let teacherClaimsSearchQuery = '';
+let teacherClaimsStatus = '';
 
+function setTeacherClaimsPerPage(val) {
+    teacherClaimsPerPage = val === 'all' ? 999999 : parseInt(val, 10);
+    teacherClaimsCurrentPage = 1;
+    renderTeacherClaimsPagination();
+}
+
+function handleTeacherClaimsSearch(val) {
+    teacherClaimsSearchQuery = (val || '').toLowerCase().trim();
+    teacherClaimsCurrentPage = 1;
+    renderTeacherClaimsPagination();
+}
+
+function filterTeacherClaimsStatus(val) {
+    teacherClaimsStatus = (val || '').toLowerCase().trim();
+    teacherClaimsCurrentPage = 1;
+    renderTeacherClaimsPagination();
+}
+
+function setTeacherClaimsPage(pageNum) {
+    teacherClaimsCurrentPage = pageNum;
+    renderTeacherClaimsPagination();
+    const table = document.getElementById('teacherClaimsTable');
+    if (table) {
+        const rect = table.getBoundingClientRect();
+        if (rect.top < 0) {
+            table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+}
+
+function renderTeacherClaimsPagination() {
+    const table = document.getElementById('teacherClaimsTable');
+    if (!table) return;
+
+    const rows = Array.from(table.querySelectorAll('tbody tr.teacher-claim-row'));
+    const grandTotal = rows.length;
+
+    const matchedRows = [];
     rows.forEach(row => {
         const text = row.innerText.toLowerCase();
-        const matchesQuery = !query || text.includes(query);
+        const matchesQuery = !teacherClaimsSearchQuery || text.includes(teacherClaimsSearchQuery);
         const rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
-        const matchesStatus = !statusFilter || rowStatus === statusFilter;
+        const matchesStatus = !teacherClaimsStatus || rowStatus === teacherClaimsStatus;
 
         if (matchesQuery && matchesStatus) {
+            matchedRows.push(row);
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    const totalMatched = matchedRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalMatched / teacherClaimsPerPage));
+
+    if (teacherClaimsCurrentPage > totalPages) teacherClaimsCurrentPage = totalPages;
+    if (teacherClaimsCurrentPage < 1) teacherClaimsCurrentPage = 1;
+
+    const startIndex = (teacherClaimsCurrentPage - 1) * teacherClaimsPerPage;
+    const endIndex = Math.min(startIndex + teacherClaimsPerPage, totalMatched);
+
+    matchedRows.forEach((row, idx) => {
+        if (idx >= startIndex && idx < endIndex) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
         }
     });
+
+    const noResultsRow = document.getElementById('teacherClaimsNoResultsRow');
+    if (noResultsRow) {
+        noResultsRow.classList.toggle('hidden', totalMatched > 0 || grandTotal === 0);
+    }
+
+    const showingStartEl = document.getElementById('teacherClaimsShowingStart');
+    const showingEndEl = document.getElementById('teacherClaimsShowingEnd');
+    const totalFilteredEl = document.getElementById('teacherClaimsTotalFiltered');
+    const unfilteredWrapper = document.getElementById('teacherClaimsTotalUnfiltered');
+    const grandTotalEl = document.getElementById('teacherClaimsGrandTotal');
+
+    if (showingStartEl) showingStartEl.innerText = totalMatched === 0 ? 0 : (startIndex + 1);
+    if (showingEndEl) showingEndEl.innerText = endIndex;
+    if (totalFilteredEl) totalFilteredEl.innerText = totalMatched;
+    if (grandTotalEl) grandTotalEl.innerText = grandTotal;
+    if (unfilteredWrapper) {
+        unfilteredWrapper.classList.toggle('hidden', totalMatched === grandTotal);
+    }
+
+    renderTeacherClaimsPaginationControls(totalPages, totalMatched);
 }
 
-function filterTeacherClaimsStatus(val) {
-    const searchVal = document.getElementById('teacherClaimsSearch')?.value || '';
-    handleTeacherClaimsSearch(searchVal);
+function renderTeacherClaimsPaginationControls(totalPages, totalMatched) {
+    const container = document.getElementById('teacherClaimsPaginationButtons');
+    if (!container) return;
+
+    if (totalMatched === 0 || totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    const prevDisabled = teacherClaimsCurrentPage === 1;
+    html += `
+        <button type="button" onclick="setTeacherClaimsPage(${teacherClaimsCurrentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${prevDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span>Prev</span>
+        </button>
+    `;
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, teacherClaimsCurrentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    if (startPage > 1) {
+        html += `<button type="button" onclick="setTeacherClaimsPage(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        const isActive = p === teacherClaimsCurrentPage;
+        html += `
+            <button type="button" onclick="setTeacherClaimsPage(${p})"
+                class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition cursor-pointer ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                ${p}
+            </button>
+        `;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+        }
+        html += `<button type="button" onclick="setTeacherClaimsPage(${totalPages})" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">${totalPages}</button>`;
+    }
+
+    // Next Button
+    const nextDisabled = teacherClaimsCurrentPage === totalPages;
+    html += `
+        <button type="button" onclick="setTeacherClaimsPage(${teacherClaimsCurrentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${nextDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+            <span>Next</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+    `;
+
+    container.innerHTML = html;
+}
+
+// Initialize on DOM load or immediately if ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderTeacherClaimsPagination);
+} else {
+    renderTeacherClaimsPagination();
 }
 
 function openClaimDetailModalFromRow(button) {
