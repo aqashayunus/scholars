@@ -824,7 +824,7 @@ class AdminDashboardController extends Controller
             $student->update(['parent_user_id' => $validated['parent_user_id']]);
         }
 
-        return redirect()->to(url()->previous() . '#parent-links')->with('success', "Successfully linked parent '{$parent->name}' with student '{$student->user->name}'.");
+        return redirect()->to(route('admin.dashboard') . '#parent-accounts')->with('success', "Successfully linked parent '{$parent->name}' with student '{$student->user->name}'.");
     }
 
     public function unlinkParentStudent(Request $request)
@@ -845,7 +845,7 @@ class AdminDashboardController extends Controller
             $student->update(['parent_user_id' => $nextParent ? $nextParent->parent_user_id : null]);
         }
 
-        return redirect()->to(url()->previous() . '#parent-links')->with('success', 'Parent and child link removed successfully.');
+        return redirect()->to(route('admin.dashboard') . '#parent-accounts')->with('success', 'Parent and child link removed successfully.');
     }
 
     public function resetUserPassword(Request $request, $id)

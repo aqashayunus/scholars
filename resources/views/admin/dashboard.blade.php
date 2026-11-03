@@ -12568,7 +12568,11 @@
             let activeTab = 'tab-overview';
             let activeSubTab = 'courses-catalog';
 
-            const rawHash = window.location.hash.replace('#', '');
+            let rawHash = window.location.hash.replace('#', '');
+            if (rawHash === 'parent-links') {
+                rawHash = 'parent-accounts';
+                history.replaceState(null, '', '#parent-accounts');
+            }
 
             if (rawHash) {
                 if (rawHash.startsWith('courses-') && document.getElementById('panel-' + rawHash)) {
