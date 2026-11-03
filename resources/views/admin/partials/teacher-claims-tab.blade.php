@@ -2,33 +2,25 @@
 {{-- TAB: TEACHER CLASS FEE CLAIMS (#teacher-claims)                   --}}
 {{-- ══════════════════════════════════════════════════════════════════ --}}
 <div id="tab-teacher-claims" class="admin-tab-content hidden space-y-6">
-    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+    <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-5 space-y-4">
         {{-- Card Header & Filter Bar --}}
-        <div class="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-                <h2 class="font-semibold text-base text-gray-900">Teacher Class Claims</h2>
+                <h2 class="font-semibold text-lg text-gray-900">Teacher Class Claims</h2>
                 <p class="text-xs text-gray-500 font-normal">Review and process class fee claim submissions from instructors</p>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="text-xs text-gray-500 font-normal" id="teacherClaimsTotalBadge">{{ $allTeacherClaims->count() }} Total Claims</span>
-                @if(($pendingTeacherClaimsCount ?? 0) > 0)
-                    <span class="text-xs text-gray-600 font-normal">({{ $pendingTeacherClaimsCount }} Pending Review)</span>
-                @endif
+            <div class="flex flex-wrap items-center gap-2">
+                <input id="teacherClaimsSearch"
+                       oninput="handleTeacherClaimsSearch(this.value)"
+                       type="text"
+                       placeholder="Search claim, teacher, class..."
+                       class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-52 font-normal">
 
-                <div class="relative">
-                    <svg class="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    <input type="text"
-                           id="teacherClaimsSearch"
-                           oninput="handleTeacherClaimsSearch(this.value)"
-                           placeholder="Search claim, teacher, class..."
-                           class="text-xs rounded-xl border border-gray-200 bg-white pl-8 pr-3 py-1.5 text-gray-800 placeholder-gray-400 focus:outline-none focus:border-slate-400 w-64 shadow-2xs">
-                </div>
-
-                <select id="teacherClaimsStatusFilter" onchange="filterTeacherClaimsStatus(this.value)" class="text-xs rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-gray-700 focus:outline-none focus:border-slate-400 shadow-2xs">
+                <select id="teacherClaimsStatusFilter"
+                        onchange="filterTeacherClaimsStatus(this.value)"
+                        class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 font-normal">
                     <option value="">All Statuses</option>
-                    <option value="pending">Pending Review</option>
+                    <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="paid">Paid</option>
                     <option value="rejected">Rejected</option>
@@ -40,14 +32,14 @@
         <div class="overflow-x-auto admin-scrollbar">
             <table class="w-full text-left text-xs" id="teacherClaimsTable">
                 <thead>
-                    <tr class="border-b border-gray-200 text-gray-500 font-medium uppercase text-[10px] bg-gray-50/75">
+                    <tr class="border-b border-gray-100 text-gray-400 font-medium uppercase text-[10px] bg-gray-50/50">
                         <th class="py-3 px-4">Claim Ref</th>
-                        <th class="py-3 px-4">Teacher Details</th>
+                        <th class="py-3 px-4">Teacher Name</th>
                         <th class="py-3 px-4">Class &amp; Subject</th>
                         <th class="py-3 px-4">Class Date &amp; Duration</th>
                         <th class="py-3 px-4">Claim Amount</th>
                         <th class="py-3 px-4">Status</th>
-                        <th class="py-3 px-4">Bank Account</th>
+                        <th class="py-3 px-4">Bank Details</th>
                         <th class="py-3 px-4 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -91,102 +83,106 @@
                             data-status="{{ strtolower($claim->status) }}"
                             data-claim-id="{{ $claim->id }}"
                             data-claim-info="{{ json_encode($claimPayload) }}">
-                            <td class="py-3 px-4 font-mono text-gray-500 font-normal">
+                            
+                            {{-- 1. Claim Ref --}}
+                            <td class="py-3.5 px-4 font-mono font-medium text-gray-900 whitespace-nowrap">
                                 {{ $claim->claim_number }}
                             </td>
-                            <td class="py-3 px-4">
+
+                            {{-- 2. Teacher Name & Email --}}
+                            <td class="py-3.5 px-4">
                                 <div class="font-medium text-gray-900">{{ $teacherName }}</div>
-                                <div class="text-[11px] text-gray-500 font-normal">{{ $teacherEmail }}</div>
+                                <div class="text-[11px] text-gray-400 font-normal">{{ $teacherEmail }}</div>
                             </td>
-                            <td class="py-3 px-4">
-                                <div class="font-normal text-gray-800">{{ $classTitle }}</div>
-                                <div class="text-[11px] text-gray-500 font-normal">{{ $subjectName }}</div>
+
+                            {{-- 3. Class & Subject --}}
+                            <td class="py-3.5 px-4">
+                                <div class="font-normal text-gray-900">{{ $classTitle }}</div>
+                                <div class="text-[11px] text-blue-600 font-normal">{{ $subjectName }}</div>
                             </td>
-                            <td class="py-3 px-4 text-gray-600 font-normal whitespace-nowrap">
+
+                            {{-- 4. Class Date & Duration --}}
+                            <td class="py-3.5 px-4 text-gray-600 font-normal whitespace-nowrap">
                                 <div>{{ $claim->class_date ? \Carbon\Carbon::parse($claim->class_date)->format('d M Y') : '—' }}</div>
                                 <div class="text-[11px] text-gray-400 font-normal">{{ $claim->duration_minutes ?: 60 }} mins</div>
                             </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <div class="font-medium text-gray-900">RM {{ number_format($claim->amount, 2) }}</div>
-                                <div class="text-[11px] text-gray-400 font-normal">Rate: RM {{ number_format($claim->rate_per_class, 2) }}</div>
+
+                            {{-- 5. Claim Amount --}}
+                            <td class="py-3.5 px-4 whitespace-nowrap">
+                                <div class="font-semibold text-emerald-700">RM {{ number_format($claim->amount, 2) }}</div>
+                                <div class="text-[10px] text-gray-400 font-normal">Rate: RM {{ number_format($claim->rate_per_class, 2) }}</div>
                             </td>
-                            <td class="py-3 px-4 whitespace-nowrap">
+
+                            {{-- 6. Status --}}
+                            <td class="py-3.5 px-4 whitespace-nowrap">
                                 @if($claim->status === 'pending')
-                                    <div class="text-xs text-amber-700 font-medium">Pending Review</div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-amber-50 text-amber-800">
+                                        Pending Review
+                                    </span>
                                 @elseif($claim->status === 'approved')
-                                    <div class="text-xs text-emerald-700 font-medium">Approved</div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-emerald-50 text-emerald-700">
+                                        Approved
+                                    </span>
                                     @if($claim->approved_at)
-                                        <div class="text-[11px] text-gray-400 font-normal">{{ \Carbon\Carbon::parse($claim->approved_at)->format('d M Y') }}</div>
+                                        <div class="text-[10px] text-gray-400 font-normal mt-0.5">{{ \Carbon\Carbon::parse($claim->approved_at)->format('d M Y') }}</div>
                                     @endif
                                 @elseif($claim->status === 'paid')
-                                    <div class="text-xs text-gray-800 font-medium">Paid</div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-blue-50 text-blue-700">
+                                        Paid
+                                    </span>
                                     @if($claim->payment_reference)
-                                        <div class="text-[11px] text-gray-400 font-mono">{{ $claim->payment_reference }}</div>
+                                        <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ $claim->payment_reference }}</div>
                                     @endif
                                 @elseif($claim->status === 'rejected')
-                                    <div class="text-xs text-rose-700 font-medium">Rejected</div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-rose-50 text-rose-700">
+                                        Rejected
+                                    </span>
                                 @else
-                                    <div class="text-xs text-gray-600 font-medium">{{ ucfirst($claim->status) }}</div>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-gray-100 text-gray-600">
+                                        {{ $claim->status }}
+                                    </span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4">
+
+                            {{-- 7. Bank Details --}}
+                            <td class="py-3.5 px-4">
                                 @if($bankAcc !== '—')
                                     <div class="text-xs text-gray-800 font-normal">{{ $bankName }} • {{ $bankAcc }}</div>
                                     @if($bankHolder)
-                                        <div class="text-[11px] text-gray-400 font-normal uppercase">{{ $bankHolder }}</div>
+                                        <div class="text-[10px] text-gray-400 font-normal uppercase">{{ $bankHolder }}</div>
                                     @endif
                                 @else
                                     <span class="text-gray-400 text-xs">—</span>
                                 @endif
                             </td>
-                            <td class="py-3 px-4 text-right">
+
+                            {{-- 8. Actions --}}
+                            <td class="py-3.5 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
-                                    {{-- View Details Modal Button --}}
                                     <button type="button"
                                             onclick="openClaimDetailModalFromRow(this)"
-                                            title="View Claim Details"
-                                            aria-label="View Claim Details"
-                                            class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
+                                            class="px-2.5 py-1 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-[11px] font-normal transition cursor-pointer">
+                                        Details
                                     </button>
 
                                     @if($claim->status === 'pending')
-                                        {{-- Approve Button --}}
                                         <form action="{{ route('admin.teacher-claims.approve', $claim->id) }}" method="POST" onsubmit="return confirm('Approve claim {{ addslashes($claim->claim_number) }} (RM {{ number_format($claim->amount, 2) }}) for {{ addslashes($teacherName) }}?');" class="inline">
                                             @csrf
-                                            <button type="submit"
-                                                    title="Approve Claim"
-                                                    aria-label="Approve Claim"
-                                                    class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
-                                                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                                                </svg>
+                                            <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-medium transition cursor-pointer">
+                                                Approve
                                             </button>
                                         </form>
 
-                                        {{-- Reject Button --}}
                                         <button type="button"
                                                 onclick="openRejectClaimModal({{ $claim->id }}, '{{ addslashes($claim->claim_number) }}', '{{ addslashes($teacherName) }}')"
-                                                title="Reject Claim"
-                                                aria-label="Reject Claim"
-                                                class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
-                                            <svg class="w-4 h-4 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                            </svg>
+                                                class="px-2.5 py-1 bg-gray-100 hover:bg-rose-50 text-rose-600 rounded text-[11px] font-medium transition cursor-pointer">
+                                            Reject
                                         </button>
                                     @elseif($claim->status === 'approved')
-                                        {{-- Mark as Paid Button --}}
                                         <button type="button"
                                                 onclick="openMarkPaidClaimModal({{ $claim->id }}, '{{ addslashes($claim->claim_number) }}', '{{ number_format($claim->amount, 2) }}', '{{ addslashes($teacherName) }}', '{{ addslashes($bankName . ' • ' . $bankAcc) }}', '{{ addslashes($bankHolder) }}')"
-                                                title="Record Payout / Mark Paid"
-                                                aria-label="Record Payout / Mark Paid"
-                                                class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
-                                            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                            </svg>
+                                                class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-medium transition cursor-pointer">
+                                            Mark Paid
                                         </button>
                                     @endif
                                 </div>
@@ -201,11 +197,6 @@
                     @endforelse
                 </tbody>
             </table>
-        </div>
-
-        {{-- Footer Count --}}
-        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs text-gray-500">
-            <span id="teacherClaimsCountDisplay">Showing {{ $allTeacherClaims->count() }} claims</span>
         </div>
     </div>
 </div>
@@ -428,7 +419,6 @@ function handleTeacherClaimsSearch(val) {
     const query = (val || '').toLowerCase().trim();
     const statusFilter = (document.getElementById('teacherClaimsStatusFilter')?.value || '').toLowerCase();
     const rows = document.querySelectorAll('#teacherClaimsTable tbody .teacher-claim-row');
-    let visibleCount = 0;
 
     rows.forEach(row => {
         const text = row.innerText.toLowerCase();
@@ -438,16 +428,10 @@ function handleTeacherClaimsSearch(val) {
 
         if (matchesQuery && matchesStatus) {
             row.style.display = '';
-            visibleCount++;
         } else {
             row.style.display = 'none';
         }
     });
-
-    const countDisplay = document.getElementById('teacherClaimsCountDisplay');
-    if (countDisplay) {
-        countDisplay.innerText = `Showing ${visibleCount} claims`;
-    }
 }
 
 function filterTeacherClaimsStatus(val) {
@@ -498,7 +482,7 @@ function openClaimDetailModal(data) {
         statusEl.innerText = 'Approved';
         statusSubEl.innerText = data.approved_at ? `Approved on ${data.approved_at}` : 'Ready for payment release';
     } else if (status === 'paid') {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-gray-900';
+        statusEl.className = 'font-medium text-sm mt-0.5 text-blue-700';
         statusEl.innerText = 'Paid Out';
         statusSubEl.innerText = data.paid_at ? `Paid on ${data.paid_at}` : 'Payment recorded';
     } else if (status === 'rejected') {
