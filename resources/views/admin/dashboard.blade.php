@@ -7587,6 +7587,12 @@
             if (tabId === 'tab-student' && typeof renderStudentDirPagination === 'function') {
                 renderStudentDirPagination();
             }
+            if (tabId === 'tab-parent-accounts' && typeof renderParentAccountsPagination === 'function') {
+                renderParentAccountsPagination();
+            }
+            if (tabId === 'tab-teacher-claims' && typeof renderTeacherClaimsPagination === 'function') {
+                renderTeacherClaimsPagination();
+            }
             if (window.OSTablePaginator) {
                 window.OSTablePaginator.renderVisible();
             }

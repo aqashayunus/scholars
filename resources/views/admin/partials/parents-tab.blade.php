@@ -143,12 +143,38 @@
                             <td colspan="7" class="text-center py-8 text-gray-400">No parent accounts found.</td>
                         </tr>
                     @endforelse
+
+                    <tr id="parentAccountsNoResultsRow" class="hidden">
+                        <td colspan="7" class="text-center py-8 text-gray-400 font-normal">
+                            No parent accounts found matching your filter criteria.
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between text-xs text-gray-500">
-            <span id="parentAccountsCountDisplay">Showing {{ $allParentsList->count() }} parent accounts</span>
+        {{-- Parent Accounts Pagination & Count Footer --}}
+        <div id="parentAccountsPaginationContainer" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 border-t border-gray-100 bg-gray-50/30 text-xs">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="relative inline-flex items-center">
+                    <select id="parentAccountsPerPageSelect" onchange="setParentAccountsPerPage(this.value)" class="appearance-none !bg-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg pl-2.5 pr-6 py-1 text-xs font-normal text-gray-700 outline-none focus:outline-none focus:border-slate-400 transition cursor-pointer">
+                        <option value="10" selected>10 rows</option>
+                        <option value="25">25 rows</option>
+                        <option value="50">50 rows</option>
+                        <option value="all">All rows</option>
+                    </select>
+                    <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                </div>
+
+                <div class="text-gray-500 font-normal">
+                    Showing <span id="parentAccountsShowingStart" class="font-semibold text-gray-800">{{ $allParentsList->isEmpty() ? 0 : 1 }}</span> to <span id="parentAccountsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allParentsList->count()) }}</span> of <span id="parentAccountsTotalFiltered" class="font-semibold text-gray-800">{{ $allParentsList->count() }}</span> parent accounts
+                    <span id="parentAccountsTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="parentAccountsGrandTotal">{{ $allParentsList->count() }}</span> total)</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5" id="parentAccountsPaginationButtons">
+                {{-- Dynamically generated pagination buttons --}}
+            </div>
         </div>
     </div>
 </div>
@@ -290,40 +316,180 @@ function openCreateParentUserModal() {
     }
 }
 
-function handleParentAccountsSearch(val) {
-    const query = (val || '').toLowerCase().trim();
-    const filterVal = document.getElementById('parentAccountsFilter')?.value || '';
-    const rows = document.querySelectorAll('#parentAccountsTable tbody .parent-account-row');
-    let visibleCount = 0;
+let parentAccountsCurrentPage = 1;
+let parentAccountsPerPage = 10;
+let parentAccountsSearchQuery = '';
+let parentAccountsFilterVal = '';
 
+function setParentAccountsPerPage(val) {
+    parentAccountsPerPage = val === 'all' ? 999999 : parseInt(val, 10);
+    parentAccountsCurrentPage = 1;
+
+    const select = document.getElementById('parentAccountsPerPageSelect');
+    if (select && select.value !== String(val)) select.value = String(val);
+
+    renderParentAccountsPagination();
+}
+
+function handleParentAccountsSearch(val) {
+    parentAccountsSearchQuery = (val || '').toLowerCase().trim();
+    parentAccountsCurrentPage = 1;
+    renderParentAccountsPagination();
+}
+
+function filterParentAccountsChildren(val) {
+    parentAccountsFilterVal = (val || '').trim();
+    parentAccountsCurrentPage = 1;
+    renderParentAccountsPagination();
+}
+
+function setParentAccountsPage(pageNum) {
+    parentAccountsCurrentPage = pageNum;
+    renderParentAccountsPagination();
+    const table = document.getElementById('parentAccountsTable');
+    if (table) {
+        const rect = table.getBoundingClientRect();
+        if (rect.top < 0) {
+            table.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+}
+
+function renderParentAccountsPagination() {
+    const table = document.getElementById('parentAccountsTable');
+    if (!table) return;
+
+    const rows = Array.from(table.querySelectorAll('tbody tr.parent-account-row'));
+    const grandTotal = rows.length;
+
+    const matchedRows = [];
     rows.forEach(row => {
         const text = row.innerText.toLowerCase();
-        const matchesQuery = !query || text.includes(query);
+        const matchesQuery = !parentAccountsSearchQuery || text.includes(parentAccountsSearchQuery);
 
         let matchesFilter = true;
         const hasChildren = row.getAttribute('data-has-children');
-        if (filterVal === 'has_children') {
+        if (parentAccountsFilterVal === 'has_children') {
             matchesFilter = hasChildren === 'yes';
-        } else if (filterVal === 'no_children') {
+        } else if (parentAccountsFilterVal === 'no_children') {
             matchesFilter = hasChildren === 'no';
         }
 
         if (matchesQuery && matchesFilter) {
-            row.style.display = '';
-            visibleCount++;
+            matchedRows.push(row);
         } else {
             row.style.display = 'none';
         }
     });
 
-    const countDisplay = document.getElementById('parentAccountsCountDisplay');
-    if (countDisplay) {
-        countDisplay.innerText = `Showing ${visibleCount} parent accounts`;
+    const totalMatched = matchedRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalMatched / parentAccountsPerPage));
+
+    if (parentAccountsCurrentPage > totalPages) parentAccountsCurrentPage = totalPages;
+    if (parentAccountsCurrentPage < 1) parentAccountsCurrentPage = 1;
+
+    const startIndex = (parentAccountsCurrentPage - 1) * parentAccountsPerPage;
+    const endIndex = Math.min(startIndex + parentAccountsPerPage, totalMatched);
+
+    matchedRows.forEach((row, idx) => {
+        if (idx >= startIndex && idx < endIndex) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    const noResultsRow = document.getElementById('parentAccountsNoResultsRow');
+    if (noResultsRow) {
+        noResultsRow.classList.toggle('hidden', totalMatched > 0 || grandTotal === 0);
     }
+
+    const showingStartEl = document.getElementById('parentAccountsShowingStart');
+    const showingEndEl = document.getElementById('parentAccountsShowingEnd');
+    const totalFilteredEl = document.getElementById('parentAccountsTotalFiltered');
+    const unfilteredWrapper = document.getElementById('parentAccountsTotalUnfiltered');
+    const grandTotalEl = document.getElementById('parentAccountsGrandTotal');
+
+    if (showingStartEl) showingStartEl.innerText = totalMatched === 0 ? 0 : (startIndex + 1);
+    if (showingEndEl) showingEndEl.innerText = endIndex;
+    if (totalFilteredEl) totalFilteredEl.innerText = totalMatched;
+    if (grandTotalEl) grandTotalEl.innerText = grandTotal;
+    if (unfilteredWrapper) {
+        unfilteredWrapper.classList.toggle('hidden', totalMatched === grandTotal);
+    }
+
+    renderParentAccountsPaginationControls(totalPages, totalMatched);
 }
 
-function filterParentAccountsChildren(val) {
-    const searchVal = document.getElementById('parentAccountsSearch')?.value || '';
-    handleParentAccountsSearch(searchVal);
+function renderParentAccountsPaginationControls(totalPages, totalMatched) {
+    const container = document.getElementById('parentAccountsPaginationButtons');
+    if (!container) return;
+
+    if (totalMatched === 0 || totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    const prevDisabled = parentAccountsCurrentPage === 1;
+    html += `
+        <button type="button" onclick="setParentAccountsPage(${parentAccountsCurrentPage - 1})" ${prevDisabled ? 'disabled' : ''}
+            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${prevDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            <span>Prev</span>
+        </button>
+    `;
+
+    // Page numbers
+    const maxVisible = 5;
+    let startPage = Math.max(1, parentAccountsCurrentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    if (startPage > 1) {
+        html += `<button type="button" onclick="setParentAccountsPage(1)" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        const isActive = p === parentAccountsCurrentPage;
+        html += `
+            <button type="button" onclick="setParentAccountsPage(${p})"
+                class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-medium transition cursor-pointer ${isActive ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                ${p}
+            </button>
+        `;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="px-1 text-gray-400 text-xs">...</span>`;
+        }
+        html += `<button type="button" onclick="setParentAccountsPage(${totalPages})" class="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-xs text-gray-700 bg-white hover:bg-gray-50 transition cursor-pointer">${totalPages}</button>`;
+    }
+
+    // Next Button
+    const nextDisabled = parentAccountsCurrentPage === totalPages;
+    html += `
+        <button type="button" onclick="setParentAccountsPage(${parentAccountsCurrentPage + 1})" ${nextDisabled ? 'disabled' : ''}
+            class="px-2.5 py-1 text-xs rounded-lg border transition cursor-pointer flex items-center gap-1 ${nextDisabled ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50 active:scale-95'}">
+            <span>Next</span>
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+    `;
+
+    container.innerHTML = html;
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderParentAccountsPagination);
+} else {
+    renderParentAccountsPagination();
 }
 </script>
