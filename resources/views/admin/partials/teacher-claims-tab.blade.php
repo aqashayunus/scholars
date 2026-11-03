@@ -14,11 +14,11 @@
                        oninput="handleTeacherClaimsSearch(this.value)"
                        type="text"
                        placeholder="Search claim, teacher, class..."
-                       class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 w-52 font-normal">
+                       class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 outline-none focus:ring-1 focus:ring-gray-300 w-52 font-normal">
 
                 <select id="teacherClaimsStatusFilter"
                         onchange="filterTeacherClaimsStatus(this.value)"
-                        class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 font-normal">
+                        class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 outline-none focus:ring-1 focus:ring-gray-300 font-normal">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
@@ -92,13 +92,13 @@
                             {{-- 2. Teacher Name & Email --}}
                             <td class="py-3.5 px-4">
                                 <div class="font-medium text-gray-900">{{ $teacherName }}</div>
-                                <div class="text-[11px] text-gray-400 font-normal">{{ $teacherEmail }}</div>
+                                <div class="text-[11px] text-gray-500 font-normal">{{ $teacherEmail }}</div>
                             </td>
 
                             {{-- 3. Class & Subject --}}
                             <td class="py-3.5 px-4">
                                 <div class="font-normal text-gray-900">{{ $classTitle }}</div>
-                                <div class="text-[11px] text-blue-600 font-normal">{{ $subjectName }}</div>
+                                <div class="text-[11px] text-gray-500 font-normal">{{ $subjectName }}</div>
                             </td>
 
                             {{-- 4. Class Date & Duration --}}
@@ -109,38 +109,28 @@
 
                             {{-- 5. Claim Amount --}}
                             <td class="py-3.5 px-4 whitespace-nowrap">
-                                <div class="font-semibold text-emerald-700">RM {{ number_format($claim->amount, 2) }}</div>
+                                <div class="font-medium text-gray-900">RM {{ number_format($claim->amount, 2) }}</div>
                                 <div class="text-[10px] text-gray-400 font-normal">Rate: RM {{ number_format($claim->rate_per_class, 2) }}</div>
                             </td>
 
-                            {{-- 6. Status --}}
+                            {{-- 6. Status (Clean text, no colorful badge) --}}
                             <td class="py-3.5 px-4 whitespace-nowrap">
                                 @if($claim->status === 'pending')
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-amber-50 text-amber-800">
-                                        Pending Review
-                                    </span>
+                                    <div class="font-normal text-gray-900">Pending Review</div>
                                 @elseif($claim->status === 'approved')
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-emerald-50 text-emerald-700">
-                                        Approved
-                                    </span>
+                                    <div class="font-normal text-gray-900">Approved</div>
                                     @if($claim->approved_at)
-                                        <div class="text-[10px] text-gray-400 font-normal mt-0.5">{{ \Carbon\Carbon::parse($claim->approved_at)->format('d M Y') }}</div>
+                                        <div class="text-[11px] text-gray-400 font-normal">{{ \Carbon\Carbon::parse($claim->approved_at)->format('d M Y') }}</div>
                                     @endif
                                 @elseif($claim->status === 'paid')
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-blue-50 text-blue-700">
-                                        Paid
-                                    </span>
+                                    <div class="font-normal text-gray-900">Paid</div>
                                     @if($claim->payment_reference)
-                                        <div class="text-[10px] text-gray-400 font-mono mt-0.5">{{ $claim->payment_reference }}</div>
+                                        <div class="text-[11px] text-gray-400 font-mono">{{ $claim->payment_reference }}</div>
                                     @endif
                                 @elseif($claim->status === 'rejected')
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-rose-50 text-rose-700">
-                                        Rejected
-                                    </span>
+                                    <div class="font-normal text-gray-400 italic">Rejected</div>
                                 @else
-                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-gray-100 text-gray-600">
-                                        {{ $claim->status }}
-                                    </span>
+                                    <div class="font-normal text-gray-900">{{ ucfirst($claim->status) }}</div>
                                 @endif
                             </td>
 
@@ -156,33 +146,55 @@
                                 @endif
                             </td>
 
-                            {{-- 8. Actions --}}
+                            {{-- 8. Actions (Standard textless icon buttons, neutral monochrome) --}}
                             <td class="py-3.5 px-4 text-right">
                                 <div class="flex items-center justify-end gap-1.5">
+                                    {{-- Details Button --}}
                                     <button type="button"
                                             onclick="openClaimDetailModalFromRow(this)"
-                                            class="px-2.5 py-1 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-[11px] font-normal transition cursor-pointer">
-                                        Details
+                                            title="View Details"
+                                            aria-label="View Details"
+                                            class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                        </svg>
                                     </button>
 
                                     @if($claim->status === 'pending')
+                                        {{-- Approve Button --}}
                                         <form action="{{ route('admin.teacher-claims.approve', $claim->id) }}" method="POST" onsubmit="return confirm('Approve claim {{ addslashes($claim->claim_number) }} (RM {{ number_format($claim->amount, 2) }}) for {{ addslashes($teacherName) }}?');" class="inline">
                                             @csrf
-                                            <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-medium transition cursor-pointer">
-                                                Approve
+                                            <button type="submit"
+                                                    title="Approve Claim"
+                                                    aria-label="Approve Claim"
+                                                    class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                                </svg>
                                             </button>
                                         </form>
 
+                                        {{-- Reject Button --}}
                                         <button type="button"
                                                 onclick="openRejectClaimModal({{ $claim->id }}, '{{ addslashes($claim->claim_number) }}', '{{ addslashes($teacherName) }}')"
-                                                class="px-2.5 py-1 bg-gray-100 hover:bg-rose-50 text-rose-600 rounded text-[11px] font-medium transition cursor-pointer">
-                                            Reject
+                                                title="Reject Claim"
+                                                aria-label="Reject Claim"
+                                                class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                            </svg>
                                         </button>
                                     @elseif($claim->status === 'approved')
+                                        {{-- Mark Paid Button --}}
                                         <button type="button"
                                                 onclick="openMarkPaidClaimModal({{ $claim->id }}, '{{ addslashes($claim->claim_number) }}', '{{ number_format($claim->amount, 2) }}', '{{ addslashes($teacherName) }}', '{{ addslashes($bankName . ' • ' . $bankAcc) }}', '{{ addslashes($bankHolder) }}')"
-                                                class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-medium transition cursor-pointer">
-                                            Mark Paid
+                                                title="Record Payout / Mark Paid"
+                                                aria-label="Record Payout / Mark Paid"
+                                                class="w-8 h-8 rounded-lg border border-gray-200 text-gray-500 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center transition cursor-pointer">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                            </svg>
                                         </button>
                                     @endif
                                 </div>
@@ -254,7 +266,7 @@
                 </div>
                 <div>
                     <div class="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Claim Status</div>
-                    <div class="font-medium text-sm mt-0.5" id="claimDetailStatus">—</div>
+                    <div class="font-medium text-sm mt-0.5 text-gray-900" id="claimDetailStatus">—</div>
                     <div class="text-gray-400 text-[11px]" id="claimDetailStatusSub">—</div>
                 </div>
             </div>
@@ -310,7 +322,7 @@
                     </div>
                     <div id="claimDetailProofRow" class="hidden pt-2 border-t border-gray-100">
                         <span class="text-gray-400 text-[11px] block mb-1">Proof Attachment</span>
-                        <a id="claimDetailProofLink" href="#" target="_blank" class="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 underline font-medium text-xs">
+                        <a id="claimDetailProofLink" href="#" target="_blank" class="inline-flex items-center gap-1.5 text-gray-700 hover:text-black underline font-medium text-xs">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
                             </svg>
@@ -351,10 +363,10 @@
         <form id="rejectClaimForm" method="POST" action="" class="space-y-4">
             @csrf
             <div>
-                <label class="block text-xs font-medium text-gray-700 mb-1">Reason for Rejection <span class="text-rose-500">*</span></label>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Reason for Rejection <span class="text-gray-400">*</span></label>
                 <textarea name="admin_notes" id="reject_admin_notes" rows="3" required
                           placeholder="e.g. Class session was not conducted or duplicate claim submitted..."
-                          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white font-normal"></textarea>
+                          class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white font-normal"></textarea>
                 <p class="text-[11px] text-gray-400 mt-1">This explanation will be sent to the instructor via their notification portal.</p>
             </div>
 
@@ -362,7 +374,7 @@
                 <button type="button" onclick="closeRejectClaimModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium text-xs rounded-xl transition cursor-pointer">
                     Cancel
                 </button>
-                <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer">
+                <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-black active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer">
                     Confirm Rejection
                 </button>
             </div>
@@ -407,7 +419,7 @@
 
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
-                <select name="payment_method" id="mark_paid_payment_method" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-normal">
+                <select name="payment_method" id="mark_paid_payment_method" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white font-normal">
                     <option value="Bank Transfer">Bank Transfer (IBG / DuitNow)</option>
                     <option value="DuitNow QR">DuitNow QR</option>
                     <option value="Online Banking">Online Banking</option>
@@ -420,20 +432,20 @@
                 <label class="block text-xs font-medium text-gray-700 mb-1">Transaction Reference</label>
                 <input type="text" name="payment_reference" id="mark_paid_payment_reference"
                        placeholder="e.g. MBB-98213821 or auto-generated if blank"
-                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-normal">
+                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white font-normal">
             </div>
 
             <div>
                 <label class="block text-xs font-medium text-gray-700 mb-1">Payment Date</label>
                 <input type="date" name="paid_at" id="mark_paid_paid_at" value="{{ date('Y-m-d') }}"
-                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white font-normal">
+                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-900 outline-none focus:ring-1 focus:ring-gray-300 focus:bg-white font-normal">
             </div>
 
             <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
                 <button type="button" onclick="closeMarkPaidClaimModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 active:scale-95 text-gray-700 font-medium text-xs rounded-xl transition cursor-pointer">
                     Cancel
                 </button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer">
+                <button type="submit" class="px-4 py-2 bg-slate-900 hover:bg-black active:scale-95 text-white font-medium text-xs rounded-xl shadow-xs transition cursor-pointer">
                     Confirm Payout Recorded
                 </button>
             </div>
@@ -580,7 +592,7 @@ function renderTeacherClaimsPaginationControls(totalPages, totalMatched) {
         const isActive = p === teacherClaimsCurrentPage;
         html += `
             <button type="button" onclick="setTeacherClaimsPage(${p})"
-                class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-semibold transition cursor-pointer ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
+                class="w-7 h-7 flex items-center justify-center rounded-lg border text-xs font-medium transition cursor-pointer ${isActive ? 'bg-slate-900 text-white border-slate-900 shadow-2xs' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}">
                 ${p}
             </button>
         `;
@@ -642,29 +654,29 @@ function openClaimDetailModal(data) {
     document.getElementById('claimDetailBankHolder').innerText = data.bank_account_holder || '—';
     document.getElementById('claimDetailNotes').innerText = data.teacher_notes || '—';
 
-    // Status styling
+    // Status styling (Plain monochrome text)
     const statusEl = document.getElementById('claimDetailStatus');
     const statusSubEl = document.getElementById('claimDetailStatusSub');
     const status = (data.status || '').toLowerCase();
 
     if (status === 'pending') {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-amber-700';
+        statusEl.className = 'font-normal text-sm mt-0.5 text-gray-900';
         statusEl.innerText = 'Pending Review';
         statusSubEl.innerText = 'Awaiting administrative approval';
     } else if (status === 'approved') {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-emerald-700';
+        statusEl.className = 'font-normal text-sm mt-0.5 text-gray-900';
         statusEl.innerText = 'Approved';
         statusSubEl.innerText = data.approved_at ? `Approved on ${data.approved_at}` : 'Ready for payment release';
     } else if (status === 'paid') {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-blue-700';
-        statusEl.innerText = 'Paid Out';
+        statusEl.className = 'font-normal text-sm mt-0.5 text-gray-900';
+        statusEl.innerText = 'Paid';
         statusSubEl.innerText = data.paid_at ? `Paid on ${data.paid_at}` : 'Payment recorded';
     } else if (status === 'rejected') {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-rose-700';
+        statusEl.className = 'font-normal text-sm mt-0.5 text-gray-500 italic';
         statusEl.innerText = 'Rejected';
         statusSubEl.innerText = 'Claim submission declined';
     } else {
-        statusEl.className = 'font-medium text-sm mt-0.5 text-gray-700';
+        statusEl.className = 'font-normal text-sm mt-0.5 text-gray-900';
         statusEl.innerText = data.status || '—';
         statusSubEl.innerText = '';
     }
