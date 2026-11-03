@@ -15,6 +15,7 @@ use App\Models\Subject;
 use App\Models\SubjectTopic;
 use App\Models\SubjectSubtopic;
 use App\Models\Teacher;
+use App\Models\TeacherClassClaim;
 use App\Models\TeacherApplication;
 use App\Models\TeachingGig;
 use App\Models\User;
@@ -88,8 +89,8 @@ class AdminDashboardController extends Controller
         $totalInvoicesCount   = Payment::count();
         $paidInvoicesCount    = Payment::whereIn('status', $paidStatuses)->count();
         $pendingInvoicesCount = Payment::whereIn('status', ['pending', 'unpaid', 'under_review'])->count();
-        $teacherPayoutEst     = $totalRevenue * ($teacherCutPct / 100);
-        $netPlatformMargin    = $totalRevenue * ((100 - $teacherCutPct) / 100);
+        $teacherPayoutEst     = (float) TeacherClassClaim::whereIn('status', ['approved', 'paid'])->sum('amount');
+        $netPlatformMargin    = max(0, $totalRevenue - $teacherPayoutEst);
         $avgTeacherRating     = round((float) Teacher::avg('rating') ?: 4.85, 2);
 
         // ── 3. Full Database Collections ─────────────────────────────────────
@@ -148,6 +149,11 @@ class AdminDashboardController extends Controller
         $allRecordedClasses   = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
         $allQuizzes           = Quiz::with(['course.subject', 'questions'])->latest('id')->get();
         $teacherApplications  = TeacherApplication::with('user')->latest('id')->get();
+        $allTeacherClaims     = TeacherClassClaim::with(['teacher.user', 'liveClass', 'course'])->latest('id')->get();
+        $pendingTeacherClaimsCount   = $allTeacherClaims->where('status', 'pending')->count();
+        $pendingTeacherClaimsAmount  = $allTeacherClaims->where('status', 'pending')->sum('amount');
+        $approvedTeacherClaimsAmount = $allTeacherClaims->where('status', 'approved')->sum('amount');
+        $paidTeacherClaimsAmount     = $allTeacherClaims->where('status', 'paid')->sum('amount');
 
         // ── 3c. Student Diagnostic Test Insights ─────────────────────────────
         $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->with('subject')->latest('id')->get();
@@ -522,6 +528,45 @@ class AdminDashboardController extends Controller
         $attendanceEarlyJoinWindow      = (int) Setting::get('attendance.early_join_window_minutes', 15);
         $attendanceExcusedInDenominator = (bool) Setting::get('attendance.excused_in_denominator', 0);
 
+        // ── 8. Teacher Class Claims Data ──────────────────────────────────────
+        $allTeacherClaims = TeacherClassClaim::with(['teacher.user', 'liveClass', 'course'])
+            ->orderByDesc('id')
+            ->get();
+        $pendingTeacherClaimsCount   = $allTeacherClaims->where('status', 'pending')->count();
+        $pendingTeacherClaimsAmount  = (float) $allTeacherClaims->where('status', 'pending')->sum('amount');
+        $approvedTeacherClaimsAmount = (float) $allTeacherClaims->where('status', 'approved')->sum('amount');
+        $paidTeacherClaimsAmount     = (float) $allTeacherClaims->where('status', 'paid')->sum('amount');
+        $rejectedTeacherClaimsCount  = $allTeacherClaims->where('status', 'rejected')->count();
+        $approvedTeacherClaimsCount  = $allTeacherClaims->whereIn('status', ['approved', 'paid'])->count();
+        $teacherPayoutEst            = (float) ($approvedTeacherClaimsAmount + $paidTeacherClaimsAmount);
+
+        // ── 9. Parents & Linkages Data ───────────────────────────────────────
+        $allParentsList = User::where('role', 'parent')
+            ->with(['studentChildren.user', 'children.user', 'payments'])
+            ->latest('id')
+            ->get();
+
+        $allParentStudentLinks = DB::table('parent_student')
+            ->join('users as parents', 'parents.id', '=', 'parent_student.parent_user_id')
+            ->join('students', 'students.id', '=', 'parent_student.student_id')
+            ->join('users as students_users', 'students_users.id', '=', 'students.user_id')
+            ->select(
+                'parent_student.*',
+                'parents.id as parent_user_id',
+                'parents.name as parent_name',
+                'parents.email as parent_email',
+                'parents.phone as parent_phone',
+                'parents.passport_number as parent_passport',
+                'parents.nationality_type as parent_nationality',
+                'students.id as student_id',
+                'students.level as student_level',
+                'students.school_name as student_school',
+                'students_users.name as student_name',
+                'students_users.email as student_email'
+            )
+            ->orderByDesc('parent_student.id')
+            ->get();
+
         return view('admin.dashboard', compact(
             'totalUsers', 'totalStudents', 'totalTeachers', 'totalParents', 'totalAdmins',
             'totalCourses', 'publishedCourses', 'draftCourses', 'archivedCourses',
@@ -530,9 +575,9 @@ class AdminDashboardController extends Controller
             'totalRevenue', 'totalInvoicesCount', 'paidInvoicesCount', 'pendingInvoicesCount',
             'teacherPayoutEst', 'netPlatformMargin', 'avgTeacherRating',
             'teacherCutPct', 'currencySymbol',
-            'allPayments', 'allFeeStructures', 'allInvoices', 'allStudentsList', 'allCertificates', 'financialLogs', 'pendingProofPayments', 'allVerificationPayments',
+            'allPayments', 'allFeeStructures', 'allInvoices', 'allStudentsList', 'allParentsList', 'allParentStudentLinks', 'allCertificates', 'financialLogs', 'pendingProofPayments', 'allVerificationPayments',
             'allEnrollments', 'allTeachers', 'allCourses', 'allUsers', 'allGigs', 'allMasteries',
-            'allSubjects', 'missingSubjectDiagnosticCount', 'allTopics', 'allLiveClasses', 'allRecordedClasses', 'teacherApplications', 'allQuizzes', 'allTasks',
+            'allSubjects', 'missingSubjectDiagnosticCount', 'allTopics', 'allLiveClasses', 'allRecordedClasses', 'teacherApplications', 'allTeacherClaims', 'pendingTeacherClaimsCount', 'pendingTeacherClaimsAmount', 'approvedTeacherClaimsAmount', 'paidTeacherClaimsAmount', 'rejectedTeacherClaimsCount', 'approvedTeacherClaimsCount', 'allQuizzes', 'allTasks',
             'revenueLabels', 'revenueData',
             'subjectEnrollments', 'subjectLabels', 'subjectData',
             'recentLogs', 'restrictedStudentsCount',
@@ -727,6 +772,80 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "User '{$userName}' deleted successfully.");
+    }
+
+    public function linkParentStudent(Request $request)
+    {
+        $validated = $request->validate([
+            'parent_user_id' => 'required|exists:users,id',
+            'student_id'     => 'required|exists:students,id',
+            'relationship'   => 'nullable|string|max:50',
+            'is_primary'     => 'nullable|boolean',
+        ]);
+
+        $parent = User::findOrFail($validated['parent_user_id']);
+        if ($parent->role !== 'parent') {
+            return back()->with('error', 'Selected user is not a parent account.');
+        }
+
+        $relationship = $validated['relationship'] ?: 'Guardian';
+        $isPrimary = $request->boolean('is_primary', false);
+
+        if ($isPrimary) {
+            DB::table('parent_student')->where('student_id', $validated['student_id'])->update(['is_primary' => false]);
+        }
+
+        $existing = DB::table('parent_student')
+            ->where('parent_user_id', $validated['parent_user_id'])
+            ->where('student_id', $validated['student_id'])
+            ->first();
+
+        if ($existing) {
+            DB::table('parent_student')->where('id', $existing->id)->update([
+                'relationship' => $relationship,
+                'is_primary'   => $isPrimary,
+                'status'       => 'active',
+                'updated_at'   => now(),
+            ]);
+        } else {
+            DB::table('parent_student')->insert([
+                'parent_user_id' => $validated['parent_user_id'],
+                'student_id'     => $validated['student_id'],
+                'relationship'   => $relationship,
+                'is_primary'     => $isPrimary,
+                'status'         => 'active',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+        }
+
+        $student = Student::find($validated['student_id']);
+        if ($student && (!$student->parent_user_id || $isPrimary)) {
+            $student->update(['parent_user_id' => $validated['parent_user_id']]);
+        }
+
+        return redirect()->to(url()->previous() . '#parent-links')->with('success', "Successfully linked parent '{$parent->name}' with student '{$student->user->name}'.");
+    }
+
+    public function unlinkParentStudent(Request $request)
+    {
+        $validated = $request->validate([
+            'parent_user_id' => 'required|exists:users,id',
+            'student_id'     => 'required|exists:students,id',
+        ]);
+
+        DB::table('parent_student')
+            ->where('parent_user_id', $validated['parent_user_id'])
+            ->where('student_id', $validated['student_id'])
+            ->delete();
+
+        $student = Student::find($validated['student_id']);
+        if ($student && $student->parent_user_id == $validated['parent_user_id']) {
+            $nextParent = DB::table('parent_student')->where('student_id', $student->id)->first();
+            $student->update(['parent_user_id' => $nextParent ? $nextParent->parent_user_id : null]);
+        }
+
+        return redirect()->to(url()->previous() . '#parent-links')->with('success', 'Parent and child link removed successfully.');
     }
 
     public function resetUserPassword(Request $request, $id)
@@ -2688,6 +2807,85 @@ class AdminDashboardController extends Controller
         return 'application/octet-stream';
     }
 
+    // ── TEACHER CLASS FEE CLAIMS ─────────────────────────────────────────────
+
+    public function approveTeacherClaim($id)
+    {
+        $claim = TeacherClassClaim::findOrFail($id);
+        $claim->update([
+            'status'      => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        if ($claim->teacher?->user_id) {
+            \App\Models\UserNotification::create([
+                'user_id' => $claim->teacher->user_id,
+                'type'    => 'claim',
+                'title'   => 'Class Fee Claim Approved',
+                'message' => "Your class fee claim {$claim->claim_number} (RM " . number_format($claim->amount, 2) . ") for '{$claim->class_title}' has been approved by admin.",
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' approved successfully.");
+    }
+
+    public function rejectTeacherClaim(Request $request, $id)
+    {
+        $claim = TeacherClassClaim::findOrFail($id);
+        $reason = $request->input('admin_notes', 'Claim not authorized.');
+
+        $claim->update([
+            'status'      => 'rejected',
+            'admin_notes' => $reason,
+        ]);
+
+        if ($claim->teacher?->user_id) {
+            \App\Models\UserNotification::create([
+                'user_id' => $claim->teacher->user_id,
+                'type'    => 'claim',
+                'title'   => 'Class Fee Claim Rejected',
+                'message' => "Your class fee claim {$claim->claim_number} was rejected. Reason: {$reason}",
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' marked as rejected.");
+    }
+
+    public function markPaidTeacherClaim(Request $request, $id)
+    {
+        $claim = TeacherClassClaim::findOrFail($id);
+
+        $validated = $request->validate([
+            'payment_method'    => 'nullable|string|max:100',
+            'payment_reference' => 'nullable|string|max:255',
+            'paid_at'           => 'nullable|date',
+        ]);
+
+        $ref = !empty($validated['payment_reference']) ? $validated['payment_reference'] : ('TRF-' . strtoupper(substr(md5(uniqid()), 0, 8)));
+
+        $claim->update([
+            'status'            => 'paid',
+            'payment_method'    => $validated['payment_method'] ?? 'Bank Transfer',
+            'payment_reference' => $ref,
+            'paid_at'           => !empty($validated['paid_at']) ? Carbon::parse($validated['paid_at']) : now(),
+        ]);
+
+        if ($claim->teacher?->user_id) {
+            \App\Models\UserNotification::create([
+                'user_id' => $claim->teacher->user_id,
+                'type'    => 'claim',
+                'title'   => 'Class Fee Claim Paid Out',
+                'message' => "Payment of RM " . number_format($claim->amount, 2) . " for claim {$claim->claim_number} ({$claim->class_title}) has been recorded. Reference: {$claim->payment_reference}.",
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' marked as paid.");
+    }
+
     // ── TEACHING GIGS ─────────────────────────────────────────────────────────
 
     public function storeGig(Request $request)
@@ -3899,8 +4097,21 @@ class AdminDashboardController extends Controller
             'subject_ids'   => 'nullable|array',
             'subject_ids.*' => 'exists:subjects,id',
         ]);
-        $teacher->subjects()->sync($request->input('subject_ids', []));
+        $subjectIds = $request->input('subject_ids', []);
+        $teacher->subjects()->sync($subjectIds);
         $name = $teacher->user->name ?? 'Teacher #' . $id;
+
+        // Keep courses table teacher_id in sync with subject assignments
+        if (!empty($subjectIds)) {
+            \App\Models\Course::whereIn('subject_id', $subjectIds)->update(['teacher_id' => $teacher->id]);
+        }
+        \App\Models\Course::where('teacher_id', $teacher->id)
+            ->whereNotNull('subject_id')
+            ->whereNotIn('subject_id', $subjectIds)
+            ->each(function($course) {
+                $otherTeacherId = $course->subject?->teachers()->where('teachers.id', '!=', $course->teacher_id)->first()?->id;
+                $course->update(['teacher_id' => $otherTeacherId]);
+            });
 
         try {
             if ($teacher->user_id) {

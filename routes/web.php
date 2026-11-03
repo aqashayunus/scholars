@@ -209,13 +209,9 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::post('/messages/contacts-preview', [MessageController::class, 'contactsPreview'])->name('messages.contacts.preview');
     Route::post('/notifications/read-all', [TeacherDashboardController::class, 'readAllNotifications'])->name('notifications.readAll');
 
-    // Gig routes
-    Route::get('/gigs', [TeacherDashboardController::class, 'gigsMarketplace'])->name('gigs');
-    Route::post('/gigs/{id}/claim', [TeacherDashboardController::class, 'claimGig'])->name('gigs.claim');
-    Route::post('/gigs/{id}/checkin', [TeacherDashboardController::class, 'checkInGig'])->name('gigs.checkin');
-    Route::post('/gigs/{id}/checkout', [TeacherDashboardController::class, 'checkOutGig'])->name('gigs.checkout');
-    Route::post('/toggle-duty', [TeacherDashboardController::class, 'toggleDuty'])->name('toggle-duty');
-    Route::get('/wallet', [TeacherDashboardController::class, 'walletIndex'])->name('wallet');
+    // Teacher Class Fee Claims
+    Route::get('/claims', [TeacherDashboardController::class, 'claimsIndex'])->name('claims');
+    Route::post('/claims', [TeacherDashboardController::class, 'storeClaim'])->name('claims.store');
 
     // Profile & Document Management
     Route::get('/profile', [TeacherDashboardController::class, 'profile'])->name('profile');
@@ -273,6 +269,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/teachers/{id}/toggle-status', [AdminDashboardController::class, 'toggleTeacherStatus'])->name('teachers.toggle-status');
     Route::post('/students/{id}/toggle-status', [AdminDashboardController::class, 'toggleStudentStatus'])->name('students.toggle-status');
 
+    // Parent Linkages Management
+    Route::post('/parents/link', [AdminDashboardController::class, 'linkParentStudent'])->name('parents.link');
+    Route::post('/parents/unlink', [AdminDashboardController::class, 'unlinkParentStudent'])->name('parents.unlink');
+
     // Subject CRUD
     Route::post('/subjects', [AdminDashboardController::class, 'storeSubject'])->name('subjects.store');
     Route::match(['put', 'post'], '/subjects/{id}', [AdminDashboardController::class, 'updateSubject'])->name('subjects.update');
@@ -302,6 +302,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::match(['put', 'post'], '/recorded-classes/{id}', [AdminDashboardController::class, 'updateRecordedClass'])->name('recorded-classes.update');
     Route::delete('/recorded-classes/{id}', [AdminDashboardController::class, 'destroyRecordedClass'])->name('recorded-classes.destroy');
 
+    // Teacher Class Fee Claims Management & Approval
+    Route::post('/teacher-claims/{id}/approve', [AdminDashboardController::class, 'approveTeacherClaim'])->name('teacher-claims.approve');
+    Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
+    Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
+
     // Tasks & Diagnostic Tests Management
     Route::post('/tasks', [AdminDashboardController::class, 'storeTask'])->name('tasks.store');
     Route::post('/tasks/parse-pdf', [AdminDashboardController::class, 'parsePdfQuestions'])->name('tasks.parse-pdf');
@@ -330,6 +335,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/teacher-applications/{id}/approve', [AdminDashboardController::class, 'approveTeacherApplication'])->name('teacher-applications.approve');
     Route::post('/teacher-applications/{id}/reject', [AdminDashboardController::class, 'rejectTeacherApplication'])->name('teacher-applications.reject');
     Route::get('/teacher-applications/{id}/document/{type}', [AdminDashboardController::class, 'viewTeacherApplicationDocument'])->name('teacher-applications.document');
+
+    // Teacher Class Claims Review & Payouts
+    Route::post('/teacher-claims/{id}/approve', [AdminDashboardController::class, 'approveTeacherClaim'])->name('teacher-claims.approve');
+    Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
+    Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
 
     // Teaching Gigs & Masterclasses
     Route::post('/gigs', [AdminDashboardController::class, 'storeGig'])->name('gigs.store');

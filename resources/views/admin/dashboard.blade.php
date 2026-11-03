@@ -547,6 +547,8 @@
             </div>
         </div>
 
+        @include('admin.partials.teacher-claims-tab')
+
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB: STUDENT DIRECTORY & LINKAGES (PARENT & TEACHER ASSIGNMENTS) --}}
         {{-- ══════════════════════════════════════════════════════════════════ --}}
