@@ -161,50 +161,68 @@ class AdminDashboardController extends Controller
         $activeDiagnostic = $selectedDiagId ? $diagnosticTests->firstWhere('id', $selectedDiagId) : $diagnosticTests->first();
         $activeDiagId    = $activeDiagnostic?->id;
 
-        $allDiagnosticStudents = Student::where('status', 'active')
-            ->whereHas('user', function($qu) {
-                $qu->where('is_active', true);
-            })
-            ->with(['user', 'studentAssignments' => function($q) use ($activeDiagId) {
-                if ($activeDiagId) {
-                    $q->where('assignment_id', $activeDiagId);
-                } else {
-                    $q->whereHas('assignment', fn($qa) => $qa->where('type', 'Diagnostic Test'));
-                }
-                $q->with('assignment');
-            }])->get()->map(function($st) {
-            $sa = $st->studentAssignments->first();
-            $isCompleted = $sa && in_array($sa->status, ['submitted', 'graded', 'completed']);
-            $score = $isCompleted ? (int)$sa->score : null;
-            $tahap = $isCompleted ? ($sa->tahap_kepandaian ?: ($score >= 80 ? 'Cemerlang' : ($score >= 60 ? 'Baik' : ($score >= 40 ? 'Sederhana' : 'Perlu Bimbingan')))) : 'Belum Diuji';
-            $timeTaken = $sa?->time_taken_seconds ?: 0;
-            $minutes = floor($timeTaken / 60);
-            $seconds = $timeTaken % 60;
-            $formattedTime = $timeTaken > 0 ? ($minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s") : '-';
+        $targetStudentIds = collect();
+        if ($activeDiagnostic) {
+            // 1. Students explicitly assigned to this test
+            $assignedIds = StudentAssignment::where('assignment_id', $activeDiagnostic->id)->pluck('student_id');
 
-            return (object) [
-                'id'                    => $st->id,
-                'student_id'            => $st->id,
-                'student_assignment_id' => $sa?->id,
-                'name'                  => $st->user?->name ?? 'Student #' . $st->id,
-                'email'                 => $st->user?->email ?? '-',
-                'level'                 => $st->level ?: 'All Levels',
-                'is_completed'          => $isCompleted,
-                'status'                => $isCompleted ? 'Completed' : 'Pending',
-                'score'                 => $score,
-                'tahap_kepandaian'      => $tahap,
-                'formatted_time'        => $formattedTime,
-                'submitted_at'          => $sa?->submitted_at,
-                'badge_class'           => match($tahap) {
-                    'Cemerlang'       => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    'Baik'            => 'bg-blue-50 text-blue-700 border-blue-200',
-                    'Sederhana'       => 'bg-amber-50 text-amber-700 border-amber-200',
-                    'Perlu Bimbingan' => 'bg-rose-50 text-rose-700 border-rose-200',
-                    default           => 'bg-gray-100 text-gray-700 border-gray-200',
-                },
-                'answers_breakdown'     => $sa?->answers_json ?: [],
-            ];
-        });
+            // 2. Students enrolled in courses of this subject
+            $enrolledIds = collect();
+            if ($activeDiagnostic->subject_id) {
+                $courseIds = Course::where('subject_id', $activeDiagnostic->subject_id)->pluck('id');
+                $enrolledIds = Enrollment::whereIn('course_id', $courseIds)->pluck('student_id');
+            }
+
+            // 3. If global diagnostic test targeted by form/level
+            $levelIds = collect();
+            if ($activeDiagnostic->is_global && $activeDiagnostic->target_level && $activeDiagnostic->target_level !== 'All Levels') {
+                $levelIds = Student::where('level', $activeDiagnostic->target_level)->pluck('id');
+            }
+
+            $targetStudentIds = $assignedIds->merge($enrolledIds)->merge($levelIds)->unique()->filter();
+        }
+
+        if ($targetStudentIds->isNotEmpty()) {
+            $allDiagnosticStudents = Student::whereIn('id', $targetStudentIds)
+                ->whereHas('user')
+                ->with(['user', 'studentAssignments' => function($q) use ($activeDiagId) {
+                    $q->where('assignment_id', $activeDiagId)->with('assignment');
+                }])->get()->map(function($st) {
+                $sa = $st->studentAssignments->first();
+                $isCompleted = $sa && in_array($sa->status, ['submitted', 'graded', 'completed']);
+                $score = $isCompleted ? (int)$sa->score : null;
+                $tahap = $isCompleted ? ($sa->tahap_kepandaian ?: ($score >= 80 ? 'Cemerlang' : ($score >= 60 ? 'Baik' : ($score >= 40 ? 'Sederhana' : 'Perlu Bimbingan')))) : 'Belum Diuji';
+                $timeTaken = $sa?->time_taken_seconds ?: 0;
+                $minutes = floor($timeTaken / 60);
+                $seconds = $timeTaken % 60;
+                $formattedTime = $timeTaken > 0 ? ($minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s") : '-';
+
+                return (object) [
+                    'id'                    => $st->id,
+                    'student_id'            => $st->id,
+                    'student_assignment_id' => $sa?->id,
+                    'name'                  => $st->user?->name ?? 'Student #' . $st->id,
+                    'email'                 => $st->user?->email ?? '-',
+                    'level'                 => $st->level ?: 'All Levels',
+                    'is_completed'          => $isCompleted,
+                    'status'                => $isCompleted ? 'Completed' : 'Pending',
+                    'score'                 => $score,
+                    'tahap_kepandaian'      => $tahap,
+                    'formatted_time'        => $formattedTime,
+                    'submitted_at'          => $sa?->submitted_at,
+                    'badge_class'           => match($tahap) {
+                        'Cemerlang'       => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        'Baik'            => 'bg-blue-50 text-blue-700 border-blue-200',
+                        'Sederhana'       => 'bg-amber-50 text-amber-700 border-amber-200',
+                        'Perlu Bimbingan' => 'bg-rose-50 text-rose-700 border-rose-200',
+                        default           => 'bg-gray-100 text-gray-700 border-gray-200',
+                    },
+                    'answers_breakdown'     => $sa?->answers_json ?: [],
+                ];
+            });
+        } else {
+            $allDiagnosticStudents = collect();
+        }
 
         $diagnosticTotalStudents       = $allDiagnosticStudents->count();
         $diagnosticCompletedCount       = $allDiagnosticStudents->where('is_completed', true)->count();
