@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
+use App\Models\FeeStructure;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
@@ -13,6 +14,7 @@ use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Services\BillingNotificationService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
@@ -147,6 +149,75 @@ class BillingController extends Controller
             return redirect()->route('admin.billing.invoices.show', $invoice)
                 ->with('success', "Invoice {$invoice->invoice_number} created successfully.");
         });
+    }
+
+    /**
+     * Extracted from an inline route closure in routes/web.php (the admin
+     * dashboard's quick single-line invoice form) -- a 4th privileged route
+     * closure missed during the Phase 4 route-closure extraction pass, found
+     * during the Phase 4 gap-closure validation. Same behavior as before,
+     * including the dispatch to invoiceStore() when an itemized `items[]`
+     * payload is submitted instead of this quick single-line form.
+     */
+    public function invoiceStoreQuick(Request $request)
+    {
+        if ($request->has('items') && is_array($request->items)) {
+            return $this->invoiceStore($request);
+        }
+
+        $request->validate([
+            'student_id'      => ['required', 'exists:students,id'],
+            'title'           => ['required', 'string', 'max:255'],
+            'subtotal'        => ['required', 'numeric', 'min:0'],
+            'discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'due_date'        => ['required', 'date'],
+        ]);
+
+        $student = Student::with('user')->findOrFail($request->student_id);
+        $subtotal = (float) $request->subtotal;
+        $discount = (float) ($request->discount_amount ?? 0);
+        $total = max(0, $subtotal - $discount);
+
+        $feeType = 'Tuition Fee';
+        if ($request->fee_structure_id) {
+            $fs = FeeStructure::find($request->fee_structure_id);
+            if ($fs) {
+                $feeType = $fs->name;
+            }
+        }
+        $monthYear = now()->format('F Y');
+        $studentName = $student->user->name ?? "Student #{$student->id}";
+        $title = $request->filled('title') ? $request->title : "{$feeType} {$monthYear} {$studentName}";
+
+        $invoice = Invoice::create([
+            'student_id'       => $student->id,
+            'fee_structure_id' => $request->fee_structure_id ?: null,
+            'invoice_number'   => $this->invoiceService->generateInvoiceNumber(),
+            'title'            => $title,
+            'billing_period'   => $monthYear,
+            'subtotal'         => $subtotal,
+            'discount_amount'  => $discount,
+            'total_amount'     => $total,
+            'amount_paid'      => 0,
+            'issued_date'      => now()->toDateString(),
+            'due_date'         => $request->due_date,
+            'status'           => InvoiceStatus::Issued,
+        ]);
+
+        InvoiceItem::create([
+            'invoice_id'  => $invoice->id,
+            'description' => $title,
+            'unit_price'  => $subtotal,
+            'quantity'    => 1,
+            'amount'      => $subtotal,
+        ]);
+
+        $this->invoiceService->scheduleReminders($invoice, $student);
+
+        // In-app alert for student & parent
+        BillingNotificationService::notifyInvoiceIssued($invoice);
+
+        return back()->with('success', "Invoice {$invoice->invoice_number} created successfully.");
     }
 
     public function invoiceCancel(Invoice $invoice)

@@ -142,6 +142,63 @@ class QuickBillingActionsTest extends TestCase
         $this->assertEquals(PaymentStatus::Pending, $payment->fresh()->status);
     }
 
+    public function test_admin_can_create_a_quick_single_line_invoice(): void
+    {
+        // Covers BillingController::invoiceStoreQuick -- extracted from a 4th
+        // privileged route closure (routes/web.php:397-455) missed during the
+        // original Phase 4 route-closure extraction pass.
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.invoices.store'), [
+                'student_id'      => $this->student->id,
+                'title'           => 'November Tuition',
+                'subtotal'        => 300.00,
+                'discount_amount' => 50.00,
+                'due_date'        => now()->addDays(14)->toDateString(),
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('invoices', [
+            'student_id'      => $this->student->id,
+            'title'           => 'November Tuition',
+            'subtotal'        => 300.00,
+            'discount_amount' => 50.00,
+            'total_amount'    => 250.00,
+            'status'          => InvoiceStatus::Issued->value,
+        ]);
+        $this->assertDatabaseHas('invoice_items', [
+            'description' => 'November Tuition',
+            'unit_price'  => 300.00,
+            'amount'      => 300.00,
+        ]);
+    }
+
+    public function test_quick_invoice_store_dispatches_itemized_payloads_to_invoice_store(): void
+    {
+        // The same route accepts an items[] payload and defers to the full
+        // multi-line invoiceStore() instead -- this is the dispatch branch
+        // that made the closure look "quick" in the first place.
+        $response = $this->actingAs($this->admin)
+            ->post(route('admin.invoices.store'), [
+                'student_id'     => $this->student->id,
+                'billing_period' => 'November 2026',
+                'due_date'       => now()->addDays(14)->toDateString(),
+                'items'          => [
+                    ['description' => 'Tuition', 'amount' => 200.00],
+                    ['description' => 'Materials', 'amount' => 50.00],
+                ],
+            ]);
+
+        $response->assertRedirect();
+        $this->assertDatabaseHas('invoices', [
+            'student_id'   => $this->student->id,
+            'subtotal'     => 250.00,
+            'total_amount' => 250.00,
+        ]);
+        $this->assertDatabaseHas('invoice_items', ['description' => 'Materials', 'amount' => 50.00]);
+    }
+
     public function test_quick_verify_rejects_payment(): void
     {
         $invoice = $this->makeInvoice();

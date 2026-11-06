@@ -394,65 +394,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/invoices/{id}/status', [\App\Http\Controllers\Admin\BillingController::class, 'updateInvoiceStatusQuick'])->name('invoices.status');
 
     // Quick invoice store
-    Route::post('/invoices', function (\Illuminate\Http\Request $request) {
-        if ($request->has('items') && is_array($request->items)) {
-            return app(\App\Http\Controllers\Admin\BillingController::class)->invoiceStore($request);
-        }
-
-        $request->validate([
-            'student_id'      => 'required|exists:students,id',
-            'title'           => 'required|string|max:255',
-            'subtotal'        => 'required|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'due_date'        => 'required|date',
-        ]);
-
-        $student = \App\Models\Student::with('user')->findOrFail($request->student_id);
-        $subtotal = (float) $request->subtotal;
-        $discount = (float) ($request->discount_amount ?? 0);
-        $total = max(0, $subtotal - $discount);
-
-        $feeType = 'Tuition Fee';
-        if ($request->fee_structure_id) {
-            $fs = \App\Models\FeeStructure::find($request->fee_structure_id);
-            if ($fs) {
-                $feeType = $fs->name;
-            }
-        }
-        $monthYear = now()->format('F Y');
-        $studentName = $student->user->name ?? "Student #{$student->id}";
-        $title = $request->filled('title') ? $request->title : "{$feeType} {$monthYear} {$studentName}";
-
-        $invoice = \App\Models\Invoice::create([
-            'student_id'       => $student->id,
-            'fee_structure_id' => $request->fee_structure_id ?: null,
-            'invoice_number'   => app(\App\Services\InvoiceService::class)->generateInvoiceNumber(),
-            'title'            => $title,
-            'billing_period'   => $monthYear,
-            'subtotal'         => $subtotal,
-            'discount_amount'  => $discount,
-            'total_amount'     => $total,
-            'amount_paid'      => 0,
-            'issued_date'      => now()->toDateString(),
-            'due_date'         => $request->due_date,
-            'status'           => \App\Enums\InvoiceStatus::Issued,
-        ]);
-
-        \App\Models\InvoiceItem::create([
-            'invoice_id'  => $invoice->id,
-            'description' => $title,
-            'unit_price'  => $subtotal,
-            'quantity'    => 1,
-            'amount'      => $subtotal,
-        ]);
-
-        app(\App\Services\InvoiceService::class)->scheduleReminders($invoice, $student);
-
-        // In-app alert for student & parent
-        \App\Services\BillingNotificationService::notifyInvoiceIssued($invoice);
-
-        return back()->with('success', "Invoice {$invoice->invoice_number} created successfully.");
-    })->name('invoices.store');
+    Route::post('/invoices', [\App\Http\Controllers\Admin\BillingController::class, 'invoiceStoreQuick'])->name('invoices.store');
 
     // Authorize / Record Payment (Supports Full & Partial Payments)
     Route::post('/invoices/{id}/record-payment', [\App\Http\Controllers\Admin\BillingController::class, 'recordInvoicePaymentQuick'])->name('invoices.record-payment');
