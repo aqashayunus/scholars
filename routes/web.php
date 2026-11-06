@@ -10,6 +10,7 @@ use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
+use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PageController;
@@ -275,9 +276,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/export/enrollments', [AdminFinanceController::class, 'exportEnrollmentsCsv'])->name('export.enrollments');
 
     // Course CRUD & Pricing Setup
-    Route::post('/courses', [AdminDashboardController::class, 'storeCourse'])->name('courses.store');
-    Route::put('/courses/{id}', [AdminDashboardController::class, 'updateCourse'])->name('courses.update');
-    Route::delete('/courses/{id}', [AdminDashboardController::class, 'destroyCourse'])->name('courses.destroy');
+    Route::post('/courses', [AdminCurriculumController::class, 'storeCourse'])->name('courses.store');
+    Route::put('/courses/{id}', [AdminCurriculumController::class, 'updateCourse'])->name('courses.update');
+    Route::delete('/courses/{id}', [AdminCurriculumController::class, 'destroyCourse'])->name('courses.destroy');
 
     // Invoice Admin CRUD (View/Edit/Delete — separate from billing/store)
     Route::put('/invoices/{id}/admin-update', [AdminFinanceController::class, 'updateInvoice'])->name('invoices.admin-update');
@@ -292,21 +293,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/students/{id}/toggle-status', [AdminDashboardController::class, 'toggleStudentStatus'])->name('students.toggle-status');
 
     // Subject CRUD
-    Route::post('/subjects', [AdminDashboardController::class, 'storeSubject'])->name('subjects.store');
-    Route::match(['put', 'post'], '/subjects/{id}', [AdminDashboardController::class, 'updateSubject'])->name('subjects.update');
-    Route::delete('/subjects/{id}', [AdminDashboardController::class, 'destroySubject'])->name('subjects.destroy');
-    Route::get('/subjects/{id}', [AdminDashboardController::class, 'showSubject'])->name('subjects.show');
-    Route::post('/subjects/{id}/diagnostic-test', [AdminDashboardController::class, 'setSubjectDiagnosticTest'])->name('subjects.diagnostic.set');
-    Route::post('/subjects/{id}/diagnostic-test/create', [AdminDashboardController::class, 'createSubjectDiagnosticTest'])->name('subjects.diagnostic.create');
-    Route::delete('/subjects/{id}/diagnostic-test', [AdminDashboardController::class, 'detachSubjectDiagnosticTest'])->name('subjects.diagnostic.detach');
+    Route::post('/subjects', [AdminCurriculumController::class, 'storeSubject'])->name('subjects.store');
+    Route::match(['put', 'post'], '/subjects/{id}', [AdminCurriculumController::class, 'updateSubject'])->name('subjects.update');
+    Route::delete('/subjects/{id}', [AdminCurriculumController::class, 'destroySubject'])->name('subjects.destroy');
+    Route::get('/subjects/{id}', [AdminCurriculumController::class, 'showSubject'])->name('subjects.show');
+    Route::post('/subjects/{id}/diagnostic-test', [AdminCurriculumController::class, 'setSubjectDiagnosticTest'])->name('subjects.diagnostic.set');
+    Route::post('/subjects/{id}/diagnostic-test/create', [AdminCurriculumController::class, 'createSubjectDiagnosticTest'])->name('subjects.diagnostic.create');
+    Route::delete('/subjects/{id}/diagnostic-test', [AdminCurriculumController::class, 'detachSubjectDiagnosticTest'])->name('subjects.diagnostic.detach');
 
     // Topic & Subtopic CRUD (Curriculum Syllabus Builder)
-    Route::post('/topics', [AdminDashboardController::class, 'storeTopic'])->name('topics.store');
-    Route::match(['put', 'post'], '/topics/{id}', [AdminDashboardController::class, 'updateTopic'])->name('topics.update');
-    Route::delete('/topics/{id}', [AdminDashboardController::class, 'destroyTopic'])->name('topics.destroy');
-    Route::post('/topics/{topicId}/subtopics', [AdminDashboardController::class, 'storeSubtopic'])->name('topics.subtopics.store');
-    Route::match(['put', 'post'], '/subtopics/{id}', [AdminDashboardController::class, 'updateSubtopic'])->name('subtopics.update');
-    Route::delete('/subtopics/{id}', [AdminDashboardController::class, 'destroySubtopic'])->name('subtopics.destroy');
+    Route::post('/topics', [AdminCurriculumController::class, 'storeTopic'])->name('topics.store');
+    Route::match(['put', 'post'], '/topics/{id}', [AdminCurriculumController::class, 'updateTopic'])->name('topics.update');
+    Route::delete('/topics/{id}', [AdminCurriculumController::class, 'destroyTopic'])->name('topics.destroy');
+    Route::post('/topics/{topicId}/subtopics', [AdminCurriculumController::class, 'storeSubtopic'])->name('topics.subtopics.store');
+    Route::match(['put', 'post'], '/subtopics/{id}', [AdminCurriculumController::class, 'updateSubtopic'])->name('subtopics.update');
+    Route::delete('/subtopics/{id}', [AdminCurriculumController::class, 'destroySubtopic'])->name('subtopics.destroy');
 
     // Live Class CRUD
     Route::post('/live-classes', [AdminDashboardController::class, 'storeLiveClass'])->name('live-classes.store');
@@ -370,12 +371,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/certificates/{id}', [AdminSettingsController::class, 'destroyCertificate'])->name('certificates.destroy');
 
     // Topic & Subtopic CRUD
-    Route::post('/topics', [AdminDashboardController::class, 'storeTopic'])->name('topics.store');
-    Route::put('/topics/{id}', [AdminDashboardController::class, 'updateTopic'])->name('topics.update');
-    Route::delete('/topics/{id}', [AdminDashboardController::class, 'destroyTopic'])->name('topics.destroy');
-    Route::post('/topics/{topicId}/subtopics', [AdminDashboardController::class, 'storeSubtopic'])->name('topics.subtopics.store');
-    Route::put('/subtopics/{id}', [AdminDashboardController::class, 'updateSubtopic'])->name('subtopics.update');
-    Route::delete('/subtopics/{id}', [AdminDashboardController::class, 'destroySubtopic'])->name('subtopics.destroy');
+    Route::post('/topics', [AdminCurriculumController::class, 'storeTopic'])->name('topics.store');
+    Route::put('/topics/{id}', [AdminCurriculumController::class, 'updateTopic'])->name('topics.update');
+    Route::delete('/topics/{id}', [AdminCurriculumController::class, 'destroyTopic'])->name('topics.destroy');
+    Route::post('/topics/{topicId}/subtopics', [AdminCurriculumController::class, 'storeSubtopic'])->name('topics.subtopics.store');
+    Route::put('/subtopics/{id}', [AdminCurriculumController::class, 'updateSubtopic'])->name('subtopics.update');
+    Route::delete('/subtopics/{id}', [AdminCurriculumController::class, 'destroySubtopic'])->name('subtopics.destroy');
 
     // Financial & Payment Management (Fee Structures, Invoices, Payment Verification, Gateway Settings)
     Route::post('/fee-structures', [AdminFinanceController::class, 'storeFeeStructure'])->name('fee-structures.store');

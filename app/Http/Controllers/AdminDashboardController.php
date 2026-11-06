@@ -2,15 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Course;
 use App\Models\LiveClass;
 use App\Models\RecordedClass;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentTopicMastery;
-use App\Models\Subject;
-use App\Models\SubjectTopic;
-use App\Models\SubjectSubtopic;
 use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\TeachingGig;
@@ -22,7 +18,6 @@ use App\Models\Question;
 use App\Models\Assignment;
 use App\Services\Admin\AssignmentQuizService;
 use App\Services\Admin\ClassSchedulingService;
-use App\Services\Admin\CurriculumService;
 use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
 use App\Services\Admin\TeacherApplicationService;
@@ -30,18 +25,14 @@ use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\BlastEngagementEmailRequest;
 use App\Http\Requests\Admin\ResetUserPasswordRequest;
-use App\Http\Requests\Admin\StoreCourseRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
 use App\Http\Requests\Admin\StoreLiveClassRequest;
 use App\Http\Requests\Admin\StoreRecordedClassRequest;
 use App\Http\Requests\Admin\StoreTeacherClassRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\UpdateCourseRequest;
 use App\Http\Requests\Admin\UpdateLiveClassRequest;
 use App\Http\Requests\Admin\UpdateRecordedClassRequest;
-use App\Http\Requests\Admin\UpdateSubtopicRequest;
 use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
-use App\Http\Requests\Admin\UpdateTopicRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -137,187 +128,6 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
-    }
-
-    // ── COURSE CRUD ───────────────────────────────────────────────────────────
-
-    public function storeCourse(StoreCourseRequest $request, CurriculumService $curriculum)
-    {
-        [$course, $monthlyFee] = $curriculum->createCourse($request->validated());
-
-        return redirect()->to(route('admin.dashboard') . '#courses-catalog')
-            ->with('success', "Course '{$course->title}' created. Subject fee set to " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($monthlyFee, 2) . "/month.");
-    }
-
-    public function updateCourse(UpdateCourseRequest $request, $id, CurriculumService $curriculum)
-    {
-        $course = Course::findOrFail($id);
-        [$course, $monthlyFee] = $curriculum->updateCourse($course, $request->validated());
-
-        return redirect()->to(route('admin.dashboard') . '#courses-catalog')
-            ->with('success', "Course '{$course->title}' updated. Subject fee: " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($monthlyFee, 2) . "/month.");
-    }
-
-    public function destroyCourse($id, CurriculumService $curriculum)
-    {
-        $title = $curriculum->deleteCourse($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-catalog')
-            ->with('success', "Course '{$title}' removed from catalog.");
-    }
-
-    // ── SUBJECT CRUD ─────────────────────────────────────────────────────────
-
-    public function storeSubject(Request $request, CurriculumService $curriculum)
-    {
-        $result = $curriculum->storeSubject($request);
-
-        if ($result['bulk']) {
-            return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-                ->with('success', "{$result['count']} KPM curriculum subject(s) created successfully.");
-        }
-
-        $subject = $result['subject'];
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-            ->with('success', "Subject '{$subject->name}' ({$subject->code}) created successfully.");
-    }
-
-    public function updateSubject(Request $request, $id, CurriculumService $curriculum)
-    {
-        $subject = Subject::findOrFail($id);
-        $subject = $curriculum->updateSubject($subject, $request);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-            ->with('success', "Subject '{$subject->name}' updated successfully.");
-    }
-
-    public function destroySubject($id, CurriculumService $curriculum)
-    {
-        $name = $curriculum->deleteSubject($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-            ->with('success', "Subject '{$name}' deleted successfully.");
-    }
-
-    public function showSubject($id, CurriculumService $curriculum)
-    {
-        $subject = $curriculum->findSubjectForJson((int) $id);
-
-        if (request()->wantsJson() || request()->ajax()) {
-            if (!$subject) {
-                return response()->json(['error' => 'Subject not found'], 404);
-            }
-            return response()->json($subject);
-        }
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects');
-    }
-
-    // ── SUBJECT DIAGNOSTIC TEST MANAGEMENT ────────────────────────────────────
-
-    public function setSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
-    {
-        $result = $curriculum->setSubjectDiagnosticTest($request, (int) $id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-            ->with('success', "Diagnostic test \"{$result['assignment']->title}\" attached to {$result['subject']->display_name}.");
-    }
-
-    public function createSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
-    {
-        $result = $curriculum->createSubjectDiagnosticTest($request, (int) $id);
-        $message = "Diagnostic test \"{$result['assignment']->title}\" saved and attached to {$result['subject']->display_name}.";
-
-        if ($request->expectsJson() || $request->ajax()) {
-            return response()->json([
-                'success'       => true,
-                'message'       => $message,
-                'assignment_id' => $result['assignment']->id,
-            ]);
-        }
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')->with('success', $message);
-    }
-
-    public function detachSubjectDiagnosticTest(Request $request, $id, CurriculumService $curriculum)
-    {
-        $result = $curriculum->detachSubjectDiagnosticTest((int) $id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-subjects')
-            ->with('success', "Diagnostic test \"{$result['testTitle']}\" detached from {$result['subject']->display_name}.");
-    }
-
-    // ── TOPIC & SUBTOPIC CRUD (CURRICULUM SYLLABUS BUILDER) ───────────────────
-
-    public function storeTopic(Request $request, CurriculumService $curriculum)
-    {
-        $result = $curriculum->storeTopic($request);
-
-        if (isset($result['error'])) {
-            return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('error', $result['error']);
-        }
-
-        if ($result['bulk']) {
-            return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('success', "{$result['count']} curriculum topic(s) added successfully.");
-        }
-
-        $topic = $result['topic'];
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Curriculum Topic 'Chapter {$topic->chapter_number}: {$topic->title}' added successfully.");
-    }
-
-    public function updateTopic(UpdateTopicRequest $request, $id, CurriculumService $curriculum)
-    {
-        $topic = SubjectTopic::findOrFail($id);
-        $topic = $curriculum->updateTopic($topic, $request);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Curriculum Topic '{$topic->title}' updated successfully.");
-    }
-
-    public function destroyTopic($id, CurriculumService $curriculum)
-    {
-        $title = $curriculum->deleteTopic($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Curriculum Topic '{$title}' and its subtopics deleted successfully.");
-    }
-
-    public function storeSubtopic(Request $request, $topicId, CurriculumService $curriculum)
-    {
-        $result = $curriculum->storeSubtopic($topicId, $request);
-        $topic = $result['topic'];
-
-        if ($result['bulk']) {
-            return redirect()->to(route('admin.dashboard') . '#courses-topics')
-                ->with('success', "{$result['count']} checkpoint(s) added under '{$topic->title}'.");
-        }
-
-        $subtopic = $result['subtopic'];
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Subtopic '{$subtopic->title}' added under {$topic->title}.");
-    }
-
-    public function updateSubtopic(UpdateSubtopicRequest $request, $id, CurriculumService $curriculum)
-    {
-        $subtopic = SubjectSubtopic::findOrFail($id);
-        $subtopic = $curriculum->updateSubtopic($subtopic, $request->validated());
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Subtopic '{$subtopic->title}' updated successfully.");
-    }
-
-    public function destroySubtopic($id, CurriculumService $curriculum)
-    {
-        $title = $curriculum->deleteSubtopic($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-topics')
-            ->with('success', "Subtopic '{$title}' deleted successfully.");
     }
 
     // ── LIVE CLASS CRUD ──────────────────────────────────────────────────────
