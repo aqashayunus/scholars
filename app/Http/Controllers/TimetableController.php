@@ -2,6 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Timetable\AdminQuickCreateSessionRequest;
+use App\Http\Requests\Timetable\AdminRescheduleRequest;
+use App\Http\Requests\Timetable\QuickCreateSessionRequest;
+use App\Http\Requests\Timetable\StoreAcademicEventRequest;
+use App\Http\Requests\Timetable\TeacherRescheduleRequest;
+use App\Http\Requests\Timetable\UpdateAcademicEventRequest;
 use App\Models\LiveClass;
 use App\Services\TimetableService;
 use Illuminate\Http\Request;
@@ -69,15 +75,9 @@ class TimetableController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // 5. TEACHER DIRECT RESCHEDULE & UPDATE
     // ─────────────────────────────────────────────────────────────────────────
-    public function teacherReschedule(Request $request, $id)
+    public function teacherReschedule(TeacherRescheduleRequest $request, $id)
     {
-        $validated = $request->validate([
-            'scheduled_date'   => 'required|date|after_or_equal:today',
-            'scheduled_time'   => 'required|string',
-            'duration_minutes' => 'nullable|integer|min:15|max:300',
-            'reason'           => 'required|string|min:5|max:1000',
-            'meeting_url'      => 'nullable|url|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $result = $this->timetable->rescheduleByTeacher(auth()->user(), (int) $id, $validated);
 
@@ -95,18 +95,9 @@ class TimetableController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // 6. TEACHER QUICK CREATE SESSION
     // ─────────────────────────────────────────────────────────────────────────
-    public function quickCreateSession(Request $request)
+    public function quickCreateSession(QuickCreateSessionRequest $request)
     {
-        $courseIds = $this->timetable->teacherCourseIds(auth()->user());
-
-        $validated = $request->validate([
-            'course_id'        => 'required|in:' . implode(',', $courseIds),
-            'title'            => 'required|string|max:255',
-            'scheduled_date'   => 'required|date|after_or_equal:today',
-            'scheduled_time'   => 'required|string',
-            'duration_minutes' => 'required|integer|min:15|max:300',
-            'meeting_url'      => 'nullable|url|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $liveClass = $this->timetable->quickCreateByTeacher(auth()->user(), $validated);
 
@@ -124,15 +115,9 @@ class TimetableController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // 6B. ADMIN RESCHEDULE & QUICK CREATE
     // ─────────────────────────────────────────────────────────────────────────
-    public function adminReschedule(Request $request, $id)
+    public function adminReschedule(AdminRescheduleRequest $request, $id)
     {
-        $validated = $request->validate([
-            'scheduled_date'   => 'required|date',
-            'scheduled_time'   => 'required|string',
-            'duration_minutes' => 'nullable|integer|min:15|max:300',
-            'reason'           => 'required|string|min:3|max:1000',
-            'meeting_url'      => 'nullable|url|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $result = $this->timetable->rescheduleByAdmin((int) $id, $validated, auth()->id());
 
@@ -147,17 +132,9 @@ class TimetableController extends Controller
         return redirect()->back()->with('success', "Class session rescheduled successfully to {$result['newDateTime']->format('d M Y, h:i A')}.");
     }
 
-    public function adminQuickCreateSession(Request $request)
+    public function adminQuickCreateSession(AdminQuickCreateSessionRequest $request)
     {
-        $validated = $request->validate([
-            'course_id'        => 'required|exists:courses,id',
-            'teacher_id'       => 'nullable|exists:teachers,id',
-            'title'            => 'required|string|max:255',
-            'scheduled_date'   => 'required|date',
-            'scheduled_time'   => 'required|string',
-            'duration_minutes' => 'required|integer|min:15|max:300',
-            'meeting_url'      => 'nullable|url|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $liveClass = $this->timetable->quickCreateByAdmin($validated);
 
@@ -175,18 +152,9 @@ class TimetableController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     // 6C. ACADEMIC EVENTS CRUD (Holidays, Breaks, Terms, Exams)
     // ─────────────────────────────────────────────────────────────────────────
-    public function storeAcademicEvent(Request $request)
+    public function storeAcademicEvent(StoreAcademicEventRequest $request)
     {
-        $validated = $request->validate([
-            'title'           => 'required|string|max:255',
-            'description'     => 'nullable|string|max:1000',
-            'event_type'      => 'required|in:public_holiday,school_break,exam_period,academic_term',
-            'start_date'      => 'required|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-            'is_all_day'      => 'nullable|boolean',
-            'color'           => 'nullable|string|max:30',
-            'state_or_region' => 'nullable|string|max:100',
-        ]);
+        $validated = $request->validated();
 
         $event = $this->timetable->storeAcademicEvent($validated, auth()->id(), $request->boolean('is_all_day', true));
 
@@ -197,18 +165,9 @@ class TimetableController extends Controller
         return redirect()->back()->with('success', 'Academic event created successfully.');
     }
 
-    public function updateAcademicEvent(Request $request, $id)
+    public function updateAcademicEvent(UpdateAcademicEventRequest $request, $id)
     {
-        $validated = $request->validate([
-            'title'           => 'required|string|max:255',
-            'description'     => 'nullable|string|max:1000',
-            'event_type'      => 'required|in:public_holiday,school_break,exam_period,academic_term',
-            'start_date'      => 'required|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-            'is_all_day'      => 'nullable|boolean',
-            'color'           => 'nullable|string|max:30',
-            'state_or_region' => 'nullable|string|max:100',
-        ]);
+        $validated = $request->validated();
 
         $event = $this->timetable->updateAcademicEvent((int) $id, $validated, $request->boolean('is_all_day', true));
 
