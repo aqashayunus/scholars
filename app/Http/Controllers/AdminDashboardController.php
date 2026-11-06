@@ -46,6 +46,10 @@ use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateCourseRequest;
 use App\Http\Requests\Admin\UpdateLiveClassRequest;
 use App\Http\Requests\Admin\UpdateRecordedClassRequest;
+use App\Http\Requests\Admin\UpdateAdminProfileRequest;
+use App\Http\Requests\Admin\UpdatePlatformSettingsRequest;
+use App\Http\Requests\Admin\UpdatePricingPlansRequest;
+use App\Http\Requests\Admin\UpdateSecuritySettingsRequest;
 use App\Http\Requests\Admin\UpdateSubtopicRequest;
 use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
@@ -644,16 +648,11 @@ class AdminDashboardController extends Controller
         ));
     }
 
-    public function updateProfile(Request $request)
+    public function updateProfile(UpdateAdminProfileRequest $request)
     {
         $admin = auth()->user();
 
-        $validated = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email,' . $admin->id,
-            'phone'    => 'nullable|string|max:30',
-            'password' => 'nullable|string|min:6|confirmed',
-        ]);
+        $validated = $request->validated();
 
         $admin->name  = $validated['name'];
         $admin->email = $validated['email'];
@@ -667,19 +666,8 @@ class AdminDashboardController extends Controller
         return back()->with('success', 'Admin profile and credentials updated successfully.');
     }
 
-    public function updatePlatformSettings(Request $request)
+    public function updatePlatformSettings(UpdatePlatformSettingsRequest $request)
     {
-        $request->validate([
-            'platform_name'    => 'required|string|max:100',
-            'platform_tagline' => 'nullable|string|max:150',
-            'support_email'    => 'required|email|max:100',
-            'support_phone'    => 'nullable|string|max:30',
-            'teacher_cut_pct'  => 'required|numeric|min:0|max:100',
-            'currency_code'    => 'required|string|max:10',
-            'currency_symbol'  => 'required|string|max:10',
-            'invoice_due_days' => 'nullable|integer|min:1|max:180',
-        ]);
-
         Setting::set('platform_name',       $request->platform_name,               'general',   'Platform Name');
         Setting::set('platform_tagline',    $request->platform_tagline ?? '',       'general',   'Platform Tagline');
         Setting::set('support_email',       $request->support_email,               'general',   'Support Email');
@@ -699,17 +687,8 @@ class AdminDashboardController extends Controller
         return back()->with('success', 'Platform configuration saved to database successfully.');
     }
 
-    public function updatePricingPlans(Request $request)
+    public function updatePricingPlans(UpdatePricingPlansRequest $request)
     {
-        $request->validate([
-            'monthly_price' => 'required|string|max:50',
-            'monthly_per'   => 'required|string|max:20',
-            'subject_price' => 'required|string|max:50',
-            'subject_per'   => 'required|string|max:20',
-            'premium_price' => 'required|string|max:50',
-            'premium_per'   => 'required|string|max:20',
-        ]);
-
         Setting::set('plan_monthly_price', $request->monthly_price, 'pricing', 'Monthly Plan — Display Price');
         Setting::set('plan_monthly_per',   $request->monthly_per,   'pricing', 'Monthly Plan — Billing Period');
         Setting::set('plan_subject_price', $request->subject_price, 'pricing', 'Subject Package — Display Price');
@@ -722,12 +701,8 @@ class AdminDashboardController extends Controller
         return back()->with('success', 'Public subscription plan pricing updated in database. Changes are now live on /pricing.');
     }
 
-    public function updateSecuritySettings(Request $request)
+    public function updateSecuritySettings(UpdateSecuritySettingsRequest $request)
     {
-        $request->validate([
-            'default_temp_password' => 'required|string|min:6|max:50',
-        ]);
-
         Setting::set('default_temp_password', $request->default_temp_password, 'security', 'Default Temporary Password');
         Setting::clearCache();
 
