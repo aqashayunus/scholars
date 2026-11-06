@@ -502,17 +502,113 @@ class DiagnosticTestController extends Controller
         $formattedDuration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
 
         return response()->json([
-            'success'            => true,
-            'student_name'       => $studentAssignment->student?->user?->name ?? 'Student',
-            'student_level'      => $studentAssignment->student?->level ?? 'Academic',
-            'test_title'         => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
-            'score'              => $studentAssignment->score ?? 0,
-            'tahap_kepandaian'   => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
-            'tahap_description'  => $studentAssignment->getTahapDescription(),
-            'tahap_badge_class'  => $studentAssignment->getTahapBadgeClass(),
-            'formatted_duration' => $formattedDuration,
-            'submitted_at'       => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
-            'answers_breakdown'  => array_values($answers),
+            'success'               => true,
+            'student_assignment_id' => $studentAssignment->id,
+            'student_name'          => $studentAssignment->student?->user?->name ?? 'Student',
+            'student_level'         => $studentAssignment->student?->level ?? 'Academic',
+            'test_title'            => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
+            'score'                 => $studentAssignment->score ?? 0,
+            'status'                => $studentAssignment->status,
+            'tahap_kepandaian'      => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
+            'tahap_description'     => $studentAssignment->getTahapDescription(),
+            'tahap_badge_class'     => $studentAssignment->getTahapBadgeClass(),
+            'teacher_feedback'      => $studentAssignment->teacher_feedback ?? '',
+            'formatted_duration'    => $formattedDuration,
+            'submitted_at'          => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
+            'answers_breakdown'     => array_values($answers),
+        ]);
+    }
+
+    /**
+     * Admin grading / review endpoint to award marks and override diagnostic test scores.
+     */
+    public function saveAdminGrade(Request $request, $id)
+    {
+        $studentAssignment = StudentAssignment::with(['student.user', 'assignment'])->findOrFail($id);
+
+        $validated = $request->validate([
+            'scores'           => 'required|array',
+            'teacher_feedback' => 'nullable|string|max:3000',
+            'status'           => 'nullable|string|in:graded,pending_review,submitted',
+        ]);
+
+        $submittedScores = $validated['scores'];
+        $answersBreakdown = $studentAssignment->answers_json ?: [];
+
+        $totalEarned = 0.0;
+        $totalPossible = 0.0;
+        $hasPendingManual = false;
+
+        // If answers_breakdown is empty, reconstruct from questionsList if available
+        if (empty($answersBreakdown) && $studentAssignment->assignment) {
+            $questionsList = $studentAssignment->assignment->getQuestionsList();
+            foreach ($questionsList as $q) {
+                $qNum = (string) ($q['number'] ?? 1);
+                $answersBreakdown[] = [
+                    'section'         => ($q['type'] ?? '') === 'mcq' ? 'A' : 'B',
+                    'type'            => $q['type'] ?? 'mcq',
+                    'question_number' => (int) $qNum,
+                    'title'           => $q['title'] ?? ("Question " . $qNum),
+                    'student_choice'  => '—',
+                    'correct_option'  => (string) ($q['correct_answer'] ?? ''),
+                    'is_correct'      => false,
+                    'is_partial'      => false,
+                    'is_manual'       => false,
+                    'score'           => 0.0,
+                    'max_marks'       => (float) ($q['marks'] ?? 1.0),
+                    'feedback'        => '',
+                ];
+            }
+        }
+
+        foreach ($answersBreakdown as $idx => &$item) {
+            $qNum = (string) ($item['question_number'] ?? ($idx + 1));
+            $maxMarks = (float) ($item['max_marks'] ?? 1.0);
+            $totalPossible += $maxMarks;
+
+            if (array_key_exists($qNum, $submittedScores)) {
+                $awarded = max(0.0, min($maxMarks, (float) $submittedScores[$qNum]));
+                $item['score']      = $awarded;
+                $item['is_correct'] = ($awarded >= $maxMarks);
+                $item['is_partial'] = ($awarded > 0 && $awarded < $maxMarks);
+                $item['is_manual']  = false;
+            } elseif (!empty($item['is_manual'])) {
+                $hasPendingManual = true;
+            }
+
+            $totalEarned += (float) ($item['score'] ?? 0.0);
+        }
+        unset($item);
+
+        // Overall percentage calculated from total earned vs total possible
+        $percentage = $totalPossible > 0 ? (int) round(($totalEarned / $totalPossible) * 100) : 0;
+        $percentage = max(0, min(100, $percentage));
+
+        $tahapKepandaian = match (true) {
+            $percentage >= 80 => 'Cemerlang',
+            $percentage >= 60 => 'Baik',
+            $percentage >= 40 => 'Sederhana',
+            default           => 'Perlu Bimbingan',
+        };
+
+        $newStatus = $request->input('status') ?: ($hasPendingManual ? 'pending_review' : 'graded');
+
+        $studentAssignment->update([
+            'score'            => $percentage,
+            'tahap_kepandaian' => $tahapKepandaian,
+            'status'           => $newStatus,
+            'answers_json'     => array_values($answersBreakdown),
+            'teacher_feedback' => $validated['teacher_feedback'] ?? $studentAssignment->teacher_feedback,
+        ]);
+
+        return response()->json([
+            'success'          => true,
+            'message'          => 'Diagnostic test graded successfully.',
+            'score'            => $percentage,
+            'tahap_kepandaian' => $tahapKepandaian,
+            'status'           => $newStatus,
+            'total_earned'     => $totalEarned,
+            'total_possible'   => $totalPossible,
         ]);
     }
 

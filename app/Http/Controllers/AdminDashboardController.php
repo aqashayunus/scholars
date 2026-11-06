@@ -206,6 +206,7 @@ class AdminDashboardController extends Controller
                     'level'                 => $st->level ?: 'All Levels',
                     'is_completed'          => $isCompleted,
                     'status'                => $isCompleted ? 'Completed' : 'Pending',
+                    'raw_status'            => $sa?->status ?? 'pending',
                     'score'                 => $score,
                     'tahap_kepandaian'      => $tahap,
                     'formatted_time'        => $formattedTime,
