@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Student\LinkParentRequest;
+use App\Http\Requests\Student\PayInvoiceRequest;
+use App\Http\Requests\Student\QuizSubmitRequest;
+use App\Http\Requests\Student\SubmitCorrectionRequestRequest;
+use App\Http\Requests\Student\SubmitTaskRequest;
+use App\Http\Requests\Student\UpdateStudentPasswordRequest;
+use App\Http\Requests\Student\UpdateStudentProfileRequest;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentTopicMastery;
@@ -10,7 +17,6 @@ use App\Services\Student\ClassScheduleService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Validation\Rules\Password;
 
 class StudentDashboardController extends Controller
 {
@@ -45,14 +51,11 @@ class StudentDashboardController extends Controller
         return view('student.tasks', array_merge(['student' => $student], $assignmentService->tasksData($student)));
     }
 
-    public function submitTask(Request $request, $id, \App\Services\Student\AssignmentService $assignmentService)
+    public function submitTask(SubmitTaskRequest $request, $id, \App\Services\Student\AssignmentService $assignmentService)
     {
         $student = $this->getStudent();
 
-        $validated = $request->validate([
-            'submission_notes' => 'nullable|string|max:3000',
-            'file'             => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
-        ]);
+        $validated = $request->validated();
 
         $assignmentService->submitTask($student, (int) $id, $validated['submission_notes'] ?? null, $request->file('file'));
 
@@ -76,14 +79,11 @@ class StudentDashboardController extends Controller
         return view('student.quiz', compact('student', 'quiz'));
     }
 
-    public function quizSubmit(Request $request, $id, \App\Services\Student\QuizPerformanceService $quizzes)
+    public function quizSubmit(QuizSubmitRequest $request, $id, \App\Services\Student\QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
 
-        $validated = $request->validate([
-            'score'           => 'required|integer',
-            'total_questions' => 'required|integer',
-        ]);
+        $validated = $request->validated();
 
         $quizzes->submitQuiz($student, (int) $id, (int) $validated['score'], (int) $validated['total_questions']);
 
@@ -136,15 +136,8 @@ class StudentDashboardController extends Controller
     /**
      * Link the student's account to a parent account by the parent's IC number.
      */
-    public function linkParent(Request $request, \App\Services\Student\ProfileService $profileService)
+    public function linkParent(LinkParentRequest $request, \App\Services\Student\ProfileService $profileService)
     {
-        $request->validate([
-            'parent_ic'    => 'required|string|max:20',
-            'relationship' => 'nullable|string|max:30',
-        ], [
-            'parent_ic.required' => 'Please enter the parent\'s MyKad / IC number.',
-        ]);
-
         $student      = $this->getStudent();
         $rawIc        = trim($request->input('parent_ic'));
         $relationship = $request->input('relationship', 'Guardian');
@@ -164,25 +157,12 @@ class StudentDashboardController extends Controller
     /**
      * Update the student's personal information (name, email, phone, level).
      */
-    public function updateProfile(Request $request, \App\Services\Student\ProfileService $profileService)
+    public function updateProfile(UpdateStudentProfileRequest $request, \App\Services\Student\ProfileService $profileService)
     {
         $user    = auth()->user();
         $student = Student::where('user_id', $user->id)->first();
 
-        $validated = $request->validate([
-            'name'          => ['required', 'string', 'min:2', 'max:255'],
-            'email'         => ['nullable', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'phone'         => ['nullable', 'string', 'max:50'],
-            'school_name'   => ['nullable', 'string', 'max:255'],
-            'avatar'        => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'remove_avatar' => ['nullable', 'boolean'],
-        ], [
-            'name.required' => 'Please enter your full name.',
-            'email.email'   => 'Please enter a valid email address.',
-            'email.unique'  => 'This email is already in use by another account.',
-            'avatar.image'  => 'The profile picture must be an image (JPEG, PNG, JPG, or WebP).',
-            'avatar.max'    => 'Profile picture size must not exceed 2MB.',
-        ]);
+        $validated = $request->validated();
 
         $profileService->updateProfile($user, $student, $validated, $request->boolean('remove_avatar'), $request->file('avatar'));
 
@@ -202,26 +182,10 @@ class StudentDashboardController extends Controller
      * Update the student's password.
      * Parent-managed students are allowed to set a new password without knowing the current one.
      */
-    public function updatePassword(Request $request, \App\Services\Student\ProfileService $profileService)
+    public function updatePassword(UpdateStudentPasswordRequest $request, \App\Services\Student\ProfileService $profileService)
     {
         $user    = auth()->user();
-        $student = Student::where('user_id', $user->id)->first();
-        $isParentManaged = $profileService->isParentManaged($student);
-
-        $rules = [
-            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
-        ];
-
-        // Only require current password for self-registered (non-parent-managed) students
-        if (!$isParentManaged) {
-            $rules['current_password'] = ['required', 'current_password'];
-        }
-
-        $validated = $request->validate($rules, [
-            'current_password.current_password' => 'The current password you entered is incorrect.',
-            'password.confirmed'                => 'New passwords do not match.',
-            'password.min'                      => 'Password must be at least 8 characters.',
-        ]);
+        $validated = $request->validated();
 
         $profileService->updatePassword($user, $validated['password']);
 
@@ -250,16 +214,10 @@ class StudentDashboardController extends Controller
     /**
      * Process invoice payment by student.
      */
-    public function payInvoice(Request $request, $id, \App\Services\Student\BillingService $billing)
+    public function payInvoice(PayInvoiceRequest $request, $id, \App\Services\Student\BillingService $billing)
     {
         $student = $this->getStudent();
         $paymentMethod = $request->input('payment_method', 'fpx');
-
-        if ($paymentMethod === 'bank_transfer') {
-            $request->validate([
-                'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            ]);
-        }
 
         $result = $billing->payInvoice($student, (int) $id, $paymentMethod, $request->file('proof_file'));
 
@@ -314,18 +272,14 @@ class StudentDashboardController extends Controller
     /**
      * Submit an attendance correction request.
      */
-    public function submitCorrectionRequest(Request $request, ClassScheduleService $schedule, AttendanceService $attendanceService)
+    public function submitCorrectionRequest(SubmitCorrectionRequestRequest $request, ClassScheduleService $schedule, AttendanceService $attendanceService)
     {
         $user = auth()->user();
         if ($user->role !== 'student') {
             abort(403);
         }
 
-        $validated = $request->validate([
-            'live_class_id'    => 'required|exists:live_classes,id',
-            'reason'           => 'required|string|max:1000',
-            'requested_status' => 'nullable|string|in:attended,excused',
-        ]);
+        $validated = $request->validated();
 
         $student = Student::where('user_id', $user->id)->firstOrFail();
         $liveClass = LiveClass::findOrFail($validated['live_class_id']);
