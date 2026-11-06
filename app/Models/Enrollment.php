@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class Enrollment extends Model
 {
     use HasFactory;
-    protected $fillable = ['student_id','course_id','status','progress_pct','completed_lessons','enrolled_at'];
+    protected $fillable = ['student_id','course_id','progress_pct','completed_lessons','enrolled_at'];
     protected $casts = ['enrolled_at' => 'datetime', 'status' => EnrollmentStatus::class];
 
     public function student() { return $this->belongsTo(Student::class); }

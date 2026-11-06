@@ -166,15 +166,14 @@ class PageController extends Controller
             }
 
             // Create enrollment
-            Enrollment::firstOrCreate([
-                'student_id' => $student->id,
-                'course_id'  => $course->id,
-            ], [
-                'status'            => 'active',
-                'enrolled_at'       => now(),
-                'progress_pct'      => 0,
-                'completed_lessons' => 0,
-            ]);
+            $enrollment = Enrollment::firstOrNew(['student_id' => $student->id, 'course_id' => $course->id]);
+            if (!$enrollment->exists) {
+                $enrollment->status = 'active';
+                $enrollment->enrolled_at = now();
+                $enrollment->progress_pct = 0;
+                $enrollment->completed_lessons = 0;
+                $enrollment->save();
+            }
         }
     }
 

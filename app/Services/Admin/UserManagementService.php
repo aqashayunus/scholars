@@ -51,13 +51,13 @@ class UserManagementService
 
             if (!empty($validated['courses'])) {
                 foreach ($validated['courses'] as $courseId) {
-                    Enrollment::create([
-                        'student_id'        => $student->id,
-                        'course_id'         => $courseId,
-                        'status'            => 'active',
-                        'progress_pct'      => 0,
-                        'completed_lessons' => 0,
-                    ]);
+                    $enrollment = new Enrollment();
+                    $enrollment->student_id = $student->id;
+                    $enrollment->course_id = $courseId;
+                    $enrollment->status = 'active';
+                    $enrollment->progress_pct = 0;
+                    $enrollment->completed_lessons = 0;
+                    $enrollment->save();
                 }
 
                 try {

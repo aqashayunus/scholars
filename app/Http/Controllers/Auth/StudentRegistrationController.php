@@ -352,10 +352,14 @@ class StudentRegistrationController extends Controller
                 ]);
             }
 
-            Enrollment::firstOrCreate(
-                ['student_id' => $student->id, 'course_id' => $course->id],
-                ['status' => 'active', 'enrolled_at' => now(), 'progress_pct' => 0, 'completed_lessons' => 0]
-            );
+            $enrollment = Enrollment::firstOrNew(['student_id' => $student->id, 'course_id' => $course->id]);
+            if (!$enrollment->exists) {
+                $enrollment->status = 'active';
+                $enrollment->enrolled_at = now();
+                $enrollment->progress_pct = 0;
+                $enrollment->completed_lessons = 0;
+                $enrollment->save();
+            }
 
             // Auto-assign the subject's diagnostic test if one is configured
             if ($subject->diagnostic_assignment_id) {

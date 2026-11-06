@@ -354,10 +354,14 @@ class TimetableService
             }
 
             foreach ($candidateStudentIds->unique() as $stId) {
-                Enrollment::firstOrCreate(
-                    ['student_id' => $stId, 'course_id' => $course->id],
-                    ['status' => 'active', 'progress_pct' => 0, 'completed_lessons' => 0, 'enrolled_at' => now()]
-                );
+                $enrollment = Enrollment::firstOrNew(['student_id' => $stId, 'course_id' => $course->id]);
+                if (!$enrollment->exists) {
+                    $enrollment->status = 'active';
+                    $enrollment->progress_pct = 0;
+                    $enrollment->completed_lessons = 0;
+                    $enrollment->enrolled_at = now();
+                    $enrollment->save();
+                }
             }
         }
 
