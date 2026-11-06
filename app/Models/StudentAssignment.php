@@ -51,6 +51,11 @@ class StudentAssignment extends Model
         };
     }
 
+    public function isCompletedOrSubmitted(): bool
+    {
+        return in_array($this->status, ['submitted', 'graded', 'completed', 'pending_review']);
+    }
+
     public function student()    { return $this->belongsTo(Student::class); }
     public function assignment() { return $this->belongsTo(Assignment::class); }
     public function interactiveSubmission() { return $this->hasOne(StudentAssignmentSubmission::class, 'student_assignment_id'); }

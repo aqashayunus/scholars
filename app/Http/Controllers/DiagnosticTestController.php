@@ -82,7 +82,7 @@ class DiagnosticTestController extends Controller
 
         $mcqCount       = count(array_filter($questionsList, fn($q) => $q['type'] === 'mcq'));
         $fillBlankCount = count(array_filter($questionsList, fn($q) => $q['type'] === 'fill_in_blank'));
-        $isCompleted    = in_array($studentAssignment->status, ['submitted', 'graded', 'completed']);
+        $isCompleted    = in_array($studentAssignment->status, ['submitted', 'graded', 'completed', 'pending_review']);
         $draftAnswers   = (!$isCompleted && is_array($studentAssignment->answers_json)) ? $studentAssignment->answers_json : [];
 
         $cleanRelPath = $filePath ? ltrim(str_replace('\\', '/', $filePath), '/') : '';
@@ -131,7 +131,7 @@ class DiagnosticTestController extends Controller
             'status' => 'pending',
         ]);
 
-        if (!in_array($studentAssignment->status, ['submitted', 'graded', 'completed'])) {
+        if (!in_array($studentAssignment->status, ['submitted', 'graded', 'completed', 'pending_review'])) {
             self::ensureDiagnosticColumnsExist();
             $answers = $request->input('answers', []);
             $timeTakenSeconds = (int) $request->input('time_taken_seconds', 0);
@@ -522,6 +522,13 @@ class DiagnosticTestController extends Controller
      */
     public static function ensureDiagnosticColumnsExist(): void
     {
+        try {
+            // Ensure status column allows 'pending_review' without ENUM truncation error
+            DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+        } catch (\Throwable $e) {
+            // Ignore if no DDL permissions or already updated
+        }
+
         try {
             if (!Schema::hasColumn('student_assignments', 'tahap_kepandaian') ||
                 !Schema::hasColumn('student_assignments', 'answers_json') ||

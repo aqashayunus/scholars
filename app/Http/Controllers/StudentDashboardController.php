@@ -516,7 +516,7 @@ class StudentDashboardController extends Controller
         });
 
         $totalTasks = $assignments->count();
-        $completedCount = $assignments->whereIn('status', ['submitted', 'completed', 'graded'])->count();
+        $completedCount = $assignments->whereIn('status', ['submitted', 'completed', 'graded', 'pending_review'])->count();
         $pendingCount = $assignments->where('status', 'pending')->count();
         
         // Overdue ONLY applies to tasks due AFTER the student enrolled
@@ -717,7 +717,7 @@ class StudentDashboardController extends Controller
         $highScoreQuizzesCount = $quizResults->filter(fn($q) => $q->percent >= 80)->count();
         $avgQuizScore          = $completedQuizzesCount > 0 ? (int) round($quizResults->avg(fn($q) => $q->percent)) : 0;
         
-        $submittedAssignmentsCount = $assignments->whereIn('status', ['submitted', 'graded'])->count();
+        $submittedAssignmentsCount = $assignments->whereIn('status', ['submitted', 'graded', 'pending_review'])->count();
         $attendedClassesCount      = $attendances->whereIn('status', ['attended', 'late'])->count();
         $streakDays                = max(1, $student->streak_days ?? 1);
 

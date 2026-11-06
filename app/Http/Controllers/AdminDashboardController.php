@@ -189,7 +189,7 @@ class AdminDashboardController extends Controller
                     $q->where('assignment_id', $activeDiagId)->with('assignment');
                 }])->get()->map(function($st) {
                 $sa = $st->studentAssignments->first();
-                $isCompleted = $sa && in_array($sa->status, ['submitted', 'graded', 'completed']);
+                $isCompleted = $sa && in_array($sa->status, ['submitted', 'graded', 'completed', 'pending_review']);
                 $score = $isCompleted ? (int)$sa->score : null;
                 $tahap = $isCompleted ? ($sa->tahap_kepandaian ?: ($score >= 80 ? 'Cemerlang' : ($score >= 60 ? 'Baik' : ($score >= 40 ? 'Sederhana' : 'Perlu Bimbingan')))) : 'Belum Diuji';
                 $timeTaken = $sa?->time_taken_seconds ?: 0;

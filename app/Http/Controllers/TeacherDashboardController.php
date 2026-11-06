@@ -16,6 +16,7 @@ use App\Models\StudentAssignment;
 use App\Models\StudentQuiz;
 use App\Models\Subject;
 use App\Models\Teacher;
+use App\Models\TeacherClassClaim;
 use App\Models\TeacherEarning;
 use App\Models\TeachingGig;
 use App\Models\ClassRequest;
@@ -54,15 +55,19 @@ class TeacherDashboardController extends Controller
     }
 
     /**
-     * Get all courses associated with the teacher (directly owned courses + courses of their assigned subjects).
+     * Get all courses associated with the teacher (courses of their admin-assigned subjects, or directly owned courses).
      */
     private function getTeacherCourses(Teacher $teacher)
     {
-        $courses = $teacher->courses;
         $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
 
         if ($assignedSubjectIds->isNotEmpty()) {
-            $subjectCourses = Course::whereIn('subject_id', $assignedSubjectIds)
+            return Course::where(function($q) use ($assignedSubjectIds, $teacher) {
+                    $q->whereIn('subject_id', $assignedSubjectIds)
+                      ->orWhere(function($subQ) use ($teacher) {
+                          $subQ->where('teacher_id', $teacher->id)->whereNull('subject_id');
+                      });
+                })
                 ->with([
                     'subject',
                     'enrollments.student.user',
@@ -70,10 +75,16 @@ class TeacherDashboardController extends Controller
                     'quizzes.results.student.user',
                 ])
                 ->get();
-            $courses = $courses->merge($subjectCourses)->unique('id');
         }
 
-        return $courses;
+        return $teacher->courses()
+            ->with([
+                'subject',
+                'enrollments.student.user',
+                'assignments.results.student.user',
+                'quizzes.results.student.user',
+            ])
+            ->get();
     }
 
     /**
@@ -142,10 +153,22 @@ class TeacherDashboardController extends Controller
                 });
 
                 $subjectsList = $studentCourses->map(fn($c) => $c->subject->name ?? $c->subject->display_name ?? $c->title)->filter()->unique()->values()->join(', ');
-                $levelsList   = $studentCourses->pluck('level')->filter()->unique()->values()->join(', ');
+
+                $rawLevels = $studentCourses->map(fn($c) => $c->subject?->form_year ?: $c->level);
+                $courseLevels = $rawLevels->map(function($f) {
+                    $f = trim($f ?? '');
+                    if (preg_match('/(Year\s*\d+|Form\s*\d+|Tingkatan\s*\d+|Tahun\s*\d+|Standard\s*\d+|Preschool|Kindergarten)/i', $f, $m)) {
+                        return ucwords(strtolower($m[1]));
+                    }
+                    if (preg_match('/^(primary|secondary|kssr|kssm|core|elective|school)$/i', $f)) {
+                        return null;
+                    }
+                    return $f ?: null;
+                })->filter()->unique()->values();
+
+                $levelsList = $courseLevels->isNotEmpty() ? $courseLevels->join(', ') : ($student->grade ?? $student->level ?? 'Year 4');
 
                 $courseTitles = $studentCourses->pluck('title')->filter()->unique()->values();
-                $courseLevels = $studentCourses->pluck('level')->filter()->unique()->values();
                 $subjectNames = $studentCourses->map(fn($c) => $c->subject?->name ?: ($c->subject?->display_name ?: $c->title))->filter()->unique()->values();
 
                 $classNames = $studentCourses->flatMap(function($c) {
@@ -191,7 +214,7 @@ class TeacherDashboardController extends Controller
                     ->whereIn('assignment_id', $allCourseAssignments->pluck('id'))
                     ->get();
 
-                $completedTasks = $studentAssignments->whereIn('status', ['submitted', 'graded'])->count();
+                $completedTasks = $studentAssignments->whereIn('status', ['submitted', 'graded', 'pending_review'])->count();
                 $pendingTasks   = $studentAssignments->where('status', 'pending')->count();
                 $overdueTasks   = $studentAssignments->filter(function($sa) {
                     return $sa->status === 'pending' && $sa->assignment && $sa->assignment->due_date && $sa->assignment->due_date->lt(now());
@@ -316,15 +339,17 @@ class TeacherDashboardController extends Controller
         $user    = auth()->user();
         $teacher = $this->getTeacher();
 
-        $courses       = $teacher->courses;
+        $courses       = $this->getTeacherCourses($teacher);
         $courseIds     = $courses->pluck('id');
-        $totalStudents = $courses->sum(fn($c) => $c->enrollments->count());
+        $totalStudents = $courses->flatMap(fn($c) => $c->enrollments->pluck('student_id'))->unique()->count();
 
         $now = now();
 
         // All active live classes for this teacher (or teacher's courses), excluding cancelled sessions
         $allLiveClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                                      $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                                      $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                                          $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                                      });
                                   })
                                   ->where('status', '!=', 'cancelled')
                                   ->with('course.subject')
@@ -479,12 +504,15 @@ class TeacherDashboardController extends Controller
         $user    = auth()->user();
         $teacher = $this->getTeacher();
 
-        $courseIds   = $teacher->courses->pluck('id');
+        $courses     = $this->getTeacherCourses($teacher);
+        $courseIds   = $courses->pluck('id');
         $attStats    = $this->getAttendanceStats($courseIds);
 
         // Upcoming & active live classes
         $upcomingClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->activeOrUpcoming()
             ->with('course.subject')
@@ -493,7 +521,9 @@ class TeacherDashboardController extends Controller
 
         // Past classes
         $pastClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->completedOrPast()
             ->with('course.subject')
@@ -501,7 +531,7 @@ class TeacherDashboardController extends Controller
             ->take(20)
             ->get();
 
-        return view('teacher.classes', compact('teacher', 'attStats', 'upcomingClasses', 'pastClasses'));
+        return view('teacher.classes', compact('teacher', 'courses', 'attStats', 'upcomingClasses', 'pastClasses'));
     }
 
     public function manageClass($id)
@@ -688,32 +718,41 @@ class TeacherDashboardController extends Controller
 
         $courses = $this->getTeacherCourses($teacher);
 
+        $coursesList = collect($courses);
+        $subjectList = collect($teacher->subjects ?? []);
+
         // Dynamic Classes: unique course titles or course names taught by this teacher + registered subjects
-        $filterClasses = $courses->map(function ($c) use ($courses) {
+        $filterClasses = $coursesList->map(function ($c) use ($coursesList) {
             if ($c->subject?->display_name) {
                 return $c->subject->display_name;
             }
-            $sameTitleCount = $courses->where('title', $c->title)->count();
+            $sameTitleCount = $coursesList->where('title', $c->title)->count();
             if ($sameTitleCount > 1 && $c->level) {
                 return $c->title . ' (' . $c->level . ')';
             }
             return $c->title ?: ($c->subject?->display_name ?? $c->subject?->name);
         })->merge(
-            $teacher->subjects ? $teacher->subjects->map(fn($s) => $s->display_name ?: $s->name) : collect()
+            $subjectList->map(fn($s) => $s->display_name ?: $s->name)
         )->filter()->unique()->values();
 
-        // Dynamic Year / Form levels: from assigned subjects and courses
-        $filterForms = ($teacher->subjects ? $teacher->subjects->pluck('form_year')->filter() : collect())
-            ->merge($courses->pluck('level'))
-            ->merge($teacher->subjects ? $teacher->subjects->pluck('level') : collect())
-            ->merge(collect($mappedStudents)->pluck('class'))
+        // Dynamic Year / Form levels: strictly year/form age (e.g. Year 4, Year 5, Form 1)
+        $filterForms = $subjectList->pluck('form_year')->filter()
+            ->merge($coursesList->map(fn($c) => $c->subject?->form_year ?: $c->level))
+            ->merge(collect($mappedStudents)->flatMap(fn($s) => $s['course_levels'] ?? [$s['class']]))
+            ->map(function($f) {
+                $f = trim($f ?? '');
+                if (preg_match('/(Year\s*\d+|Form\s*\d+|Tingkatan\s*\d+|Tahun\s*\d+|Standard\s*\d+|Preschool|Kindergarten)/i', $f, $m)) {
+                    return ucwords(strtolower($m[1]));
+                }
+                return null;
+            })
             ->filter()
             ->unique()
             ->values();
 
         // Dynamic Subjects: from assigned subjects and courses
-        $filterSubjects = ($teacher->subjects ? $teacher->subjects->pluck('name') : collect())
-            ->merge($courses->map(function ($c) {
+        $filterSubjects = $subjectList->pluck('name')->filter()
+            ->merge($coursesList->map(function ($c) {
                 return $c->subject?->name ?: ($c->subject?->display_name ?: $c->title);
             }))
             ->merge(
@@ -725,6 +764,7 @@ class TeacherDashboardController extends Controller
 
         return view('teacher.students', compact(
             'teacher',
+            'courses',
             'mappedStudents',
             'filterClasses',
             'filterForms',
@@ -739,7 +779,7 @@ class TeacherDashboardController extends Controller
                           ->with(['courses.subject', 'courses.enrollments', 'courses.learningMaterials'])
                           ->firstOrFail();
 
-        $courses = $teacher->courses;
+        $courses = $this->getTeacherCourses($teacher);
         $courseIds = $courses->pluck('id');
 
         $realMaterials = LearningMaterial::whereIn('course_id', $courseIds)
@@ -843,9 +883,10 @@ class TeacherDashboardController extends Controller
     {
         $teacher = $this->getTeacher(true);
 
+        $courses = $this->getTeacherCourses($teacher);
         $tasks = [];
 
-        foreach ($teacher->courses as $course) {
+        foreach ($courses as $course) {
             $enrollments = $course->enrollments;
             $enrollmentCount = $enrollments->count();
 
@@ -859,7 +900,14 @@ class TeacherDashboardController extends Controller
                 $submittedCount = 0;
                 $lateCount = 0;
 
-                foreach ($enrollments as $enrollment) {
+                // If task was assigned to selected students only, limit roster to those assigned students
+                $targetEnrollments = $enrollments;
+                if (($assignment->assign_target ?? 'all') === 'selected') {
+                    $assignedStudentIds = $assignment->results->pluck('student_id')->all();
+                    $targetEnrollments = $enrollments->whereIn('student_id', $assignedStudentIds);
+                }
+
+                foreach ($targetEnrollments as $enrollment) {
                     $student = $enrollment->student;
                     $studentName = $student?->user?->name ?? 'Student';
                     $studentEmail = $student?->user?->email ?? '';
@@ -912,7 +960,7 @@ class TeacherDashboardController extends Controller
                     }
                 }
 
-                $totalStudents = $enrollmentCount;
+                $totalStudents = $targetEnrollments->count();
                 $pendingCount = max(0, $totalStudents - $submittedCount);
                 $pct = $totalStudents > 0 ? round(($submittedCount / $totalStudents) * 100) : 0;
                 $hasOpen = $submittedCount < $totalStudents;
@@ -944,6 +992,7 @@ class TeacherDashboardController extends Controller
                     'attachmentUrl'    => $assignment->file_url,
                     'attachmentName'   => $assignment->file_name,
                     'course_id'        => $course->id,
+                    'assign_target'    => $assignment->assign_target ?? 'all',
                     'rawDueDate'       => $assignment->due_date ? $assignment->due_date->format('Y-m-d') : date('Y-m-d'),
                     'delete_url'       => route('teacher.tasks.destroy', $assignment->id),
                     'roster'           => $roster,
@@ -1015,23 +1064,38 @@ class TeacherDashboardController extends Controller
             }
         }
 
-        $courses     = $teacher->courses;
+        $coursesStudentsMap = $courses->mapWithKeys(function($c) {
+            return [$c->id => $c->enrollments->map(function($enr) use ($c) {
+                $student = $enr->student;
+                $name = $student?->user?->name ?? ('Student #' . $enr->student_id);
+                $words = explode(' ', trim($name));
+                $initials = strtoupper(substr($words[0] ?? 'S', 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : ''));
+                return [
+                    'id'       => $enr->student_id,
+                    'name'     => $name,
+                    'initials' => $initials,
+                    'email'    => $student?->user?->email ?? '',
+                    'level'    => $student?->level ?? $c->level,
+                ];
+            })->values()];
+        });
+
         $mappedTasks = collect($tasks)->sortByDesc('id')->values()->all();
 
-        return view('teacher.tasks', compact('teacher', 'courses', 'mappedTasks'));
+        return view('teacher.tasks', compact('teacher', 'courses', 'mappedTasks', 'coursesStudentsMap'));
     }
 
     public function monitoring()
     {
         $user    = auth()->user();
         $teacher = $this->getTeacher();
-
-        $courseIds     = $teacher->courses->pluck('id');
-        $totalStudents = $teacher->courses->sum(fn($c) => $c->enrollments->count());
+        $courses = $this->getTeacherCourses($teacher);
+        $courseIds     = $courses->pluck('id');
+        $totalStudents = $courses->flatMap(fn($c) => $c->enrollments->pluck('student_id'))->unique()->count();
         $attStats      = $this->getAttendanceStats($courseIds);
 
         // Per-subject performance
-        $performanceBySubject = $teacher->courses->map(function($c) {
+        $performanceBySubject = $courses->map(function($c) {
             $totalEnrollments = $c->enrollments->count();
             $taskCount = $c->assignments->count();
             $tasksCompleted = \App\Models\StudentAssignment::whereIn('assignment_id', $c->assignments->pluck('id'))
@@ -1090,7 +1154,9 @@ class TeacherDashboardController extends Controller
         $tasksCompletedPct = $totalExpectedSubmissions > 0 ? (int) round(($totalSubmissions / $totalExpectedSubmissions) * 100) : 100;
 
         $totalLiveClassesHeld = \App\Models\LiveClass::where(function($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->where('scheduled_at', '<', now())
             ->where('status', '!=', 'cancelled')
@@ -1121,56 +1187,141 @@ class TeacherDashboardController extends Controller
         return redirect()->back()->with('success', "Duty status updated to {$statusLabel}.");
     }
 
-    public function gigsMarketplace()
-    {
-        $teacher  = Teacher::where('user_id', auth()->id())->firstOrFail();
-        $openGigs = TeachingGig::where('status', 'open')->orderBy('scheduled_at')->get();
-        $myGigs   = TeachingGig::where('assigned_teacher_id', $teacher->id)->orderByDesc('scheduled_at')->get();
+    // ── TEACHER CLASS FEE CLAIMS ─────────────────────────────────────────────
 
-        return view('teacher.gigs.index', compact('teacher', 'openGigs', 'myGigs'));
+    public function claimsIndex()
+    {
+        $teacher = $this->getTeacher(false);
+
+        $claims = TeacherClassClaim::where('teacher_id', $teacher->id)
+            ->with(['liveClass', 'course'])
+            ->orderByDesc('id')
+            ->get();
+
+        $stats = [
+            'total_claims'    => $claims->count(),
+            'total_amount'    => $claims->sum('amount'),
+            'pending_count'   => $claims->where('status', 'pending')->count(),
+            'pending_amount'  => $claims->where('status', 'pending')->sum('amount'),
+            'approved_count'  => $claims->where('status', 'approved')->count(),
+            'approved_amount' => $claims->where('status', 'approved')->sum('amount'),
+            'paid_count'      => $claims->where('status', 'paid')->count(),
+            'paid_amount'     => $claims->where('status', 'paid')->sum('amount'),
+            'rejected_count'  => $claims->where('status', 'rejected')->count(),
+        ];
+
+        // Fetch candidate completed live classes eligible for claiming
+        $courseIds = $teacher->courses->pluck('id')->toArray();
+        $completedClasses = LiveClass::where(function($q) use ($teacher, $courseIds) {
+                $q->where('teacher_id', $teacher->id)
+                  ->orWhereIn('course_id', $courseIds);
+            })
+            ->where('scheduled_at', '<=', now())
+            ->where('status', '!=', 'cancelled')
+            ->with('course.subject')
+            ->orderByDesc('scheduled_at')
+            ->take(40)
+            ->get();
+
+        $claimedLiveClassIds = $claims->pluck('live_class_id')->filter()->toArray();
+
+        // Collect teacher's assigned subjects (from direct subjects pivot and assigned course subjects)
+        $assignedSubjects = $teacher->subjects
+            ->merge($teacher->courses->pluck('subject'))
+            ->filter()
+            ->unique('id')
+            ->sortBy(function($subj) {
+                return $subj->display_name ?? $subj->name;
+            })
+            ->values();
+
+        if ($assignedSubjects->isEmpty()) {
+            $assignedSubjects = Subject::active()->orderBy('name')->get();
+        }
+
+        return view('teacher.claims.index', compact('teacher', 'claims', 'stats', 'completedClasses', 'claimedLiveClassIds', 'assignedSubjects'));
     }
 
-    public function claimGig($id)
+    public function storeClaim(Request $request)
     {
-        $teacher = Teacher::where('user_id', auth()->id())->firstOrFail();
-        $gig     = TeachingGig::where('id', $id)->where('status', 'open')->firstOrFail();
+        $teacher = $this->getTeacher(false);
 
-        $gig->update([
-            'status'              => 'claimed',
-            'assigned_teacher_id' => $teacher->id,
-            'claimed_at'          => now(),
+        $validated = $request->validate([
+            'claim_type'          => 'required|in:live_class,manual',
+            'live_class_id'       => 'nullable|exists:live_classes,id',
+            'course_id'           => 'nullable|exists:courses,id',
+            'subject_name'        => 'required|string|max:255',
+            'class_title'         => 'required|string|max:255',
+            'class_date'          => 'required|date',
+            'duration_minutes'    => 'required|integer|min:15|max:480',
+            'rate_per_class'      => 'nullable|numeric|min:0',
+            'teacher_notes'       => 'nullable|string|max:2000',
+            'proof_attachment'    => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf',
         ]);
 
-        return redirect()->route('teacher.gigs')->with('success', "Teaching Gig '{$gig->title}' claimed successfully!");
-    }
+        // Prevent duplicate claim for the same live class
+        if (!empty($validated['live_class_id'])) {
+            $alreadyClaimed = TeacherClassClaim::where('live_class_id', $validated['live_class_id'])
+                ->whereIn('status', ['pending', 'approved', 'paid'])
+                ->exists();
+            if ($alreadyClaimed) {
+                return redirect()->back()
+                    ->withErrors(['live_class_id' => 'This live class session has already been claimed or is pending approval.'])
+                    ->withInput();
+            }
+        }
 
-    public function checkInGig($id)
-    {
-        $teacher = Teacher::where('user_id', auth()->id())->firstOrFail();
-        $gig     = TeachingGig::where('id', $id)->where('assigned_teacher_id', $teacher->id)->firstOrFail();
+        // Retrieve bank payout details directly from teacher's profile
+        $bankName   = trim((string) $teacher->bank_name);
+        $bankNumber = trim((string) $teacher->bank_account_number);
+        $bankHolder = trim((string) ($teacher->bank_account_holder ?: ($teacher->user->name ?? '')));
 
-        $gig->update(['status' => 'checked_in', 'checked_in_at' => now()]);
+        if (empty($bankName) || empty($bankNumber)) {
+            return redirect()->back()
+                ->withErrors(['bank' => 'Please set up your Bank Name and Account Number in My Profile before submitting a claim.'])
+                ->withInput();
+        }
 
-        return redirect()->back()->with('success', "Checked in live for '{$gig->title}'. Session room is open.");
-    }
+        // Upload proof attachment if provided
+        $proofPath = null;
+        if ($request->hasFile('proof_attachment')) {
+            $proofPath = $request->file('proof_attachment')->store('claim_proofs', 'public');
+        }
 
-    public function checkOutGig($id)
-    {
-        $teacher = Teacher::where('user_id', auth()->id())->firstOrFail();
-        $gig     = TeachingGig::where('id', $id)->where('assigned_teacher_id', $teacher->id)->firstOrFail();
+        $ratePerClass = 50.00; // Fixed RM 50 per class as requested
 
-        $gig->update(['status' => 'completed', 'completed_at' => now()]);
-        $teacher->increment('total_gigs_completed');
+        $claim = TeacherClassClaim::create([
+            'claim_number'          => TeacherClassClaim::generateClaimNumber(),
+            'teacher_id'            => $teacher->id,
+            'live_class_id'         => $validated['live_class_id'] ?? null,
+            'course_id'             => $validated['course_id'] ?? null,
+            'subject_name'          => $validated['subject_name'],
+            'class_title'           => $validated['class_title'],
+            'class_date'            => $validated['class_date'],
+            'duration_minutes'      => $validated['duration_minutes'] ?? 60,
+            'rate_per_class'        => $ratePerClass,
+            'amount'                => $ratePerClass,
+            'teacher_notes'         => $validated['teacher_notes'] ?? null,
+            'proof_attachment_path' => $proofPath,
+            'bank_name'             => $bankName,
+            'bank_account_number'   => $bankNumber,
+            'bank_account_holder'   => $bankHolder,
+            'status'                => 'pending',
+        ]);
 
-        return redirect()->back()->with('success', "Session completed! Completion timestamp recorded for Aster Edu.");
-    }
+        // Notify Admins
+        $adminUsers = User::where('role', 'admin')->get();
+        foreach ($adminUsers as $admin) {
+            UserNotification::create([
+                'user_id' => $admin->id,
+                'type'    => 'claim',
+                'title'   => 'New Teacher Class Claim Received',
+                'message' => "Cikgu {$teacher->user->name} has submitted a class fee claim of RM 50.00 ({$claim->claim_number}) for '{$claim->class_title}' ({$claim->subject_name}).",
+            ]);
+        }
 
-    public function walletIndex()
-    {
-        $teacher  = Teacher::where('user_id', auth()->id())->firstOrFail();
-        $earnings = TeacherEarning::where('teacher_id', $teacher->id)->orderByDesc('created_at')->get();
-
-        return view('teacher.wallet.index', compact('teacher', 'earnings'));
+        return redirect()->route('teacher.claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' for RM " . number_format($claim->amount, 2) . " submitted successfully! Admin will review and authorize payment.");
     }
 
     public function storeClass(Request $request)
@@ -1289,6 +1440,7 @@ class TeacherDashboardController extends Controller
             'file_name'          => $fileName,
             'file_size'          => $fileSize,
             'is_interactive_pdf' => $isPdf ? $request->boolean('is_interactive_pdf', false) : false,
+            'assign_target'      => $validated['assign_target'] ?? 'all',
         ]);
 
         // Filter target enrollments based on teacher choice (all vs selected)
@@ -1338,7 +1490,8 @@ class TeacherDashboardController extends Controller
     public function storeGeneralTask(Request $request)
     {
         $teacher = $this->getTeacher(false);
-        $courseIds = $teacher->courses->pluck('id')->toArray();
+        $courses = $this->getTeacherCourses($teacher);
+        $courseIds = $courses->pluck('id')->toArray();
 
         $validated = $request->validate([
             'course_id'        => 'required|in:' . implode(',', $courseIds),
@@ -1352,9 +1505,12 @@ class TeacherDashboardController extends Controller
             'exam_date'        => 'nullable|date',
             'due_date'         => 'required|date|after_or_equal:today',
             'file'             => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg,mp4',
+            'assign_target'    => 'nullable|in:all,selected',
+            'student_ids'      => 'nullable|array',
+            'student_ids.*'    => 'integer',
         ]);
 
-        $course = Course::findOrFail($validated['course_id']);
+        $course = Course::with('enrollments.student.user')->findOrFail($validated['course_id']);
         $itemType = $validated['type'] ?? 'Assignment';
 
         $filePath = null;
@@ -1370,23 +1526,33 @@ class TeacherDashboardController extends Controller
             $isPdf = strtolower($file->getClientOriginalExtension()) === 'pdf';
         }
 
+        $assignTarget = $validated['assign_target'] ?? 'all';
+
         $assignment = $course->assignments()->create([
-            'title'            => $validated['title'],
-            'type'             => $itemType,
-            'topic'            => $validated['topic'] ?? null,
-            'description'      => $validated['description'] ?? null,
-            'instructions'     => $validated['instructions'] ?? null,
-            'total_marks'      => $validated['total_marks'] ?? 100,
-            'duration_minutes' => $validated['duration_minutes'] ?? null,
-            'exam_date'        => $validated['exam_date'] ?? null,
-            'due_date'         => $validated['due_date'],
+            'title'              => $validated['title'],
+            'type'               => $itemType,
+            'topic'              => $validated['topic'] ?? null,
+            'description'        => $validated['description'] ?? null,
+            'instructions'       => $validated['instructions'] ?? null,
+            'total_marks'        => $validated['total_marks'] ?? 100,
+            'duration_minutes'   => $validated['duration_minutes'] ?? null,
+            'exam_date'          => $validated['exam_date'] ?? null,
+            'due_date'           => $validated['due_date'],
             'file_path'          => $filePath,
             'file_name'          => $fileName,
             'file_size'          => $fileSize,
             'is_interactive_pdf' => $isPdf ? $request->boolean('is_interactive_pdf', false) : false,
+            'assign_target'      => $assignTarget,
         ]);
 
-        foreach ($course->enrollments as $enrollment) {
+        // Filter target enrollments based on teacher choice (all vs selected)
+        $targetEnrollments = $course->enrollments;
+        if ($assignTarget === 'selected' && !empty($validated['student_ids'])) {
+            $selectedIds = collect($validated['student_ids'])->map(fn($sid) => (int)$sid)->all();
+            $targetEnrollments = $course->enrollments->whereIn('student_id', $selectedIds);
+        }
+
+        foreach ($targetEnrollments as $enrollment) {
             StudentAssignment::firstOrCreate([
                 'student_id'    => $enrollment->student_id,
                 'assignment_id' => $assignment->id,
@@ -1409,28 +1575,32 @@ class TeacherDashboardController extends Controller
             }
         }
 
+        $assignedCount = $targetEnrollments->count();
+        $targetDesc = $assignTarget === 'selected' ? "{$assignedCount} selected student(s)" : "{$assignedCount} student(s)";
+
         UserNotification::create([
             'user_id' => auth()->id(),
             'type'    => 'task',
             'title'   => "{$itemType} Published & Assigned",
-            'message' => "You successfully assigned {$itemType} '{$validated['title']}' to {$course->title} ({$course->enrollments->count()} students).",
+            'message' => "You successfully assigned {$itemType} '{$validated['title']}' to {$course->title} ({$targetDesc}).",
         ]);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => "{$itemType} '{$validated['title']}' created and assigned successfully!",
+                'message' => "{$itemType} '{$validated['title']}' created and assigned to {$targetDesc} successfully!",
                 'assignment' => $assignment,
             ]);
         }
 
-        return redirect()->back()->with('success', "{$itemType} '{$validated['title']}' created and assigned successfully!");
+        return redirect()->back()->with('success', "{$itemType} '{$validated['title']}' created and assigned to {$targetDesc} successfully!");
     }
 
     public function storeQuiz(Request $request)
     {
         $teacher = $this->getTeacher(false);
-        $courseIds = $teacher->courses->pluck('id')->toArray();
+        $courses = $this->getTeacherCourses($teacher);
+        $courseIds = $courses->pluck('id')->toArray();
 
         $validated = $request->validate([
             'course_id'          => 'required|in:' . implode(',', $courseIds),
@@ -1439,6 +1609,9 @@ class TeacherDashboardController extends Controller
             'time_limit_minutes' => 'nullable|integer|min:1|max:300',
             'passing_marks'      => 'nullable|integer|min:1|max:100',
             'due_date'           => 'nullable|date|after_or_equal:today',
+            'assign_target'      => 'nullable|in:all,selected',
+            'student_ids'        => 'nullable|array',
+            'student_ids.*'      => 'integer',
             'questions'          => 'required|array|min:1',
             'questions.*.question_text'   => 'required|string',
             'questions.*.option_a'        => 'required|string',
@@ -1449,7 +1622,7 @@ class TeacherDashboardController extends Controller
             'questions.*.explanation'     => 'nullable|string',
         ]);
 
-        $course = Course::findOrFail($validated['course_id']);
+        $course = Course::with('enrollments.student.user')->findOrFail($validated['course_id']);
         $totalQuestions = count($validated['questions']);
 
         $quiz = Quiz::create([
@@ -1476,8 +1649,15 @@ class TeacherDashboardController extends Controller
             ]);
         }
 
-        // Notify enrolled students
-        foreach ($course->enrollments as $enrollment) {
+        $assignTarget = $validated['assign_target'] ?? 'all';
+        $targetEnrollments = $course->enrollments;
+        if ($assignTarget === 'selected' && !empty($validated['student_ids'])) {
+            $selectedIds = collect($validated['student_ids'])->map(fn($sid) => (int)$sid)->all();
+            $targetEnrollments = $course->enrollments->whereIn('student_id', $selectedIds);
+        }
+
+        // Notify target enrolled students
+        foreach ($targetEnrollments as $enrollment) {
             if ($enrollment->student?->user_id) {
                 UserNotification::create([
                     'user_id' => $enrollment->student->user_id,
@@ -1488,11 +1668,14 @@ class TeacherDashboardController extends Controller
             }
         }
 
+        $assignedCount = $targetEnrollments->count();
+        $targetDesc = $assignTarget === 'selected' ? "{$assignedCount} selected student(s)" : "{$assignedCount} student(s)";
+
         UserNotification::create([
             'user_id' => auth()->id(),
             'type'    => 'quiz',
             'title'   => 'Quiz Created',
-            'message' => "You successfully created quiz '{$validated['title']}' with {$totalQuestions} questions for {$course->title}.",
+            'message' => "You successfully created quiz '{$validated['title']}' with {$totalQuestions} questions for {$course->title} ({$targetDesc}).",
         ]);
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -2612,8 +2795,11 @@ class TeacherDashboardController extends Controller
             'city'               => ['nullable', 'string', 'max:100'],
             'state'              => ['nullable', 'string', 'max:100'],
             'postcode'           => ['nullable', 'string', 'max:20'],
-            'avatar'             => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
-            'remove_avatar'      => ['nullable', 'boolean'],
+            'avatar'              => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+            'remove_avatar'       => ['nullable', 'boolean'],
+            'bank_name'           => ['nullable', 'string', 'max:100'],
+            'bank_account_number' => ['nullable', 'string', 'max:50'],
+            'bank_account_holder' => ['nullable', 'string', 'max:255'],
         ]);
 
         if ($request->boolean('remove_avatar')) {
@@ -2653,6 +2839,15 @@ class TeacherDashboardController extends Controller
         }
         if (array_key_exists('bio', $validated)) {
             $teacher->bio = $validated['bio'];
+        }
+        if (array_key_exists('bank_name', $validated)) {
+            $teacher->bank_name = $validated['bank_name'];
+        }
+        if (array_key_exists('bank_account_number', $validated)) {
+            $teacher->bank_account_number = $validated['bank_account_number'];
+        }
+        if (array_key_exists('bank_account_holder', $validated)) {
+            $teacher->bank_account_holder = $validated['bank_account_holder'];
         }
         $teacher->save();
 
