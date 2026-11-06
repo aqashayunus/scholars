@@ -9,6 +9,7 @@ use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PageController;
@@ -270,8 +271,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/export/attendance', [AdminSettingsController::class, 'exportAttendanceCsv'])->name('export.attendance');
 
     // Export CSV routes
-    Route::get('/export/payments', [AdminDashboardController::class, 'exportPaymentsCsv'])->name('export.payments');
-    Route::get('/export/enrollments', [AdminDashboardController::class, 'exportEnrollmentsCsv'])->name('export.enrollments');
+    Route::get('/export/payments', [AdminFinanceController::class, 'exportPaymentsCsv'])->name('export.payments');
+    Route::get('/export/enrollments', [AdminFinanceController::class, 'exportEnrollmentsCsv'])->name('export.enrollments');
 
     // Course CRUD & Pricing Setup
     Route::post('/courses', [AdminDashboardController::class, 'storeCourse'])->name('courses.store');
@@ -279,10 +280,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/courses/{id}', [AdminDashboardController::class, 'destroyCourse'])->name('courses.destroy');
 
     // Invoice Admin CRUD (View/Edit/Delete — separate from billing/store)
-    Route::put('/invoices/{id}/admin-update', [AdminDashboardController::class, 'updateInvoice'])->name('invoices.admin-update');
-    Route::put('/invoices/{id}/due-date', [AdminDashboardController::class, 'updateInvoiceDueDate'])->name('invoices.due-date.update');
-    Route::post('/billing/default-due-days', [AdminDashboardController::class, 'updateDefaultDueDays'])->name('billing.default-due-days.update');
-    Route::delete('/invoices/{id}', [AdminDashboardController::class, 'destroyInvoice'])->name('invoices.destroy');
+    Route::put('/invoices/{id}/admin-update', [AdminFinanceController::class, 'updateInvoice'])->name('invoices.admin-update');
+    Route::put('/invoices/{id}/due-date', [AdminFinanceController::class, 'updateInvoiceDueDate'])->name('invoices.due-date.update');
+    Route::post('/billing/default-due-days', [AdminFinanceController::class, 'updateDefaultDueDays'])->name('billing.default-due-days.update');
+    Route::delete('/invoices/{id}', [AdminFinanceController::class, 'destroyInvoice'])->name('invoices.destroy');
 
     // Teacher Subject Assignment & Class Creation
     Route::post('/teachers/{id}/subjects', [AdminDashboardController::class, 'updateTeacherSubjects'])->name('teachers.subjects.update');
@@ -377,21 +378,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/subtopics/{id}', [AdminDashboardController::class, 'destroySubtopic'])->name('subtopics.destroy');
 
     // Financial & Payment Management (Fee Structures, Invoices, Payment Verification, Gateway Settings)
-    Route::post('/fee-structures', [AdminDashboardController::class, 'storeFeeStructure'])->name('fee-structures.store');
-    Route::put('/fee-structures/{id}', [AdminDashboardController::class, 'updateFeeStructure'])->name('fee-structures.update');
-    Route::delete('/fee-structures/{id}', [AdminDashboardController::class, 'destroyFeeStructure'])->name('fee-structures.destroy');
+    Route::post('/fee-structures', [AdminFinanceController::class, 'storeFeeStructure'])->name('fee-structures.store');
+    Route::put('/fee-structures/{id}', [AdminFinanceController::class, 'updateFeeStructure'])->name('fee-structures.update');
+    Route::delete('/fee-structures/{id}', [AdminFinanceController::class, 'destroyFeeStructure'])->name('fee-structures.destroy');
     // Package engine — subjects, items, tiers, versioning, duplication
-    Route::put('/fee-structures/{id}/subjects', [AdminDashboardController::class, 'updateFeeStructureSubjects'])->name('fee-structures.subjects.update');
-    Route::put('/fee-structures/{id}/items', [AdminDashboardController::class, 'updateFeeStructureItems'])->name('fee-structures.items.update');
-    Route::put('/fee-structures/{id}/tiers', [AdminDashboardController::class, 'updateFeeStructureTiers'])->name('fee-structures.tiers.update');
-    Route::post('/fee-structures/{id}/duplicate', [AdminDashboardController::class, 'duplicateFeeStructure'])->name('fee-structures.duplicate');
-    Route::post('/fee-structures/{id}/version', [AdminDashboardController::class, 'createFeeStructureVersion'])->name('fee-structures.version');
-    Route::get('/api/fee-structures/{id}/subjects', [AdminDashboardController::class, 'apiFeeStructureSubjects'])->name('api.fee-structures.subjects');
-    Route::get('/api/fee-structures/{id}/preview', [AdminDashboardController::class, 'apiFeeStructurePreview'])->name('api.fee-structures.preview');
+    Route::put('/fee-structures/{id}/subjects', [AdminFinanceController::class, 'updateFeeStructureSubjects'])->name('fee-structures.subjects.update');
+    Route::put('/fee-structures/{id}/items', [AdminFinanceController::class, 'updateFeeStructureItems'])->name('fee-structures.items.update');
+    Route::put('/fee-structures/{id}/tiers', [AdminFinanceController::class, 'updateFeeStructureTiers'])->name('fee-structures.tiers.update');
+    Route::post('/fee-structures/{id}/duplicate', [AdminFinanceController::class, 'duplicateFeeStructure'])->name('fee-structures.duplicate');
+    Route::post('/fee-structures/{id}/version', [AdminFinanceController::class, 'createFeeStructureVersion'])->name('fee-structures.version');
+    Route::get('/api/fee-structures/{id}/subjects', [AdminFinanceController::class, 'apiFeeStructureSubjects'])->name('api.fee-structures.subjects');
+    Route::get('/api/fee-structures/{id}/preview', [AdminFinanceController::class, 'apiFeeStructurePreview'])->name('api.fee-structures.preview');
 
-    Route::post('/settings/finance', [AdminDashboardController::class, 'updateFinanceSettings'])->name('settings.finance');
-    Route::post('/settings/finance/reveal', [AdminDashboardController::class, 'revealGatewayCredentials'])->name('settings.finance.reveal');
-    Route::post('/settings/billplz/test-connection', [AdminDashboardController::class, 'testBillplzConnection'])->name('settings.billplz.test');
+    Route::post('/settings/finance', [AdminFinanceController::class, 'updateFinanceSettings'])->name('settings.finance');
+    Route::post('/settings/finance/reveal', [AdminFinanceController::class, 'revealGatewayCredentials'])->name('settings.finance.reveal');
+    Route::post('/settings/billplz/test-connection', [AdminFinanceController::class, 'testBillplzConnection'])->name('settings.billplz.test');
     Route::post('/invoices/{id}/status', [\App\Http\Controllers\Admin\BillingController::class, 'updateInvoiceStatusQuick'])->name('invoices.status');
 
     // Quick invoice store
