@@ -125,6 +125,75 @@ class BillingService
     }
 
     /**
+     * Financial metric-cards payments query for dashboard(). Moved verbatim
+     * out of ParentDashboardController::dashboard().
+     */
+    public function dashboardPayments(User $user, Collection $children, ?Student $child): Collection
+    {
+        $paymentsQuery = Payment::where(function ($q) use ($user, $children) {
+            $q->where('user_id', $user->id)
+              ->orWhere('payer_id', $user->id);
+            if ($children->isNotEmpty()) {
+                $q->orWhereIn('student_id', $children->pluck('id'));
+            }
+        })->with('course.subject');
+
+        if ($child) {
+            $childCourseIds = $child->enrollments->pluck('course_id')->filter()->all();
+            $paymentsQuery->where(function ($q) use ($child, $childCourseIds) {
+                $q->where('student_id', $child->id);
+                if (!empty($childCourseIds)) {
+                    $q->orWhereIn('course_id', $childCourseIds);
+                }
+            });
+        }
+
+        return $paymentsQuery->orderByDesc('id')->get();
+    }
+
+    /**
+     * Full payments-page data for payments(). Moved verbatim out of
+     * ParentDashboardController::payments().
+     */
+    public function paymentsPageData(User $user, Collection $children, ?Student $child): array
+    {
+        $paymentsQuery = Payment::where('user_id', $user->id)->with('course.subject');
+
+        if ($child) {
+            $childCourseIds = $child->enrollments->pluck('course_id')->filter()->all();
+            if (!empty($childCourseIds)) {
+                $paymentsQuery->where(function ($q) use ($childCourseIds) {
+                    $q->whereIn('course_id', $childCourseIds)
+                      ->orWhereNull('course_id');
+                });
+            }
+        }
+
+        $payments = $paymentsQuery->orderByDesc('id')->get();
+
+        $totalPaid     = (float) $payments->where('status', PaymentStatus::Successful)->sum('amount');
+        $paidCount     = $payments->where('status', PaymentStatus::Successful)->count();
+        $latestPayment = $payments->where('status', PaymentStatus::Successful)->first();
+
+        $summary = $this->outstandingSummary($payments, $children, $child);
+
+        // Pending invoices list for quick checkout
+        $pendingPayments = $payments->where('status', PaymentStatus::Pending)->values();
+
+        return [
+            'payments'         => $payments,
+            'totalPaid'        => $totalPaid,
+            'totalOutstanding' => $summary['totalOutstanding'],
+            'pendingCount'     => $summary['pendingCount'],
+            'paidCount'        => $paidCount,
+            'latestPayment'    => $latestPayment,
+            'pendingPayments'  => $pendingPayments,
+            'lastPaymentMade'  => $summary['lastPaymentMade'],
+            'nextPaymentDue'   => $summary['nextPaymentDue'],
+        ];
+    }
+
+    /**
      * Process a child invoice payment by a parent. Returns a result array;
      * the controller maps 'status' to the right redirect/back response
      * (same convention as Student/BillingService::payInvoice()).

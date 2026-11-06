@@ -10,10 +10,8 @@ use App\Http\Requests\Parent\PayChildInvoiceRequest;
 use App\Http\Requests\Parent\ProcessPaymentRequest;
 use App\Http\Requests\Parent\StoreChildRequest;
 use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Student;
 use App\Models\StudentAttendance;
-use App\Models\User;
 use App\Services\Parent\AcademicProgressService;
 use App\Services\Parent\BillingService;
 use App\Services\Parent\ChildAccessService;
@@ -21,9 +19,6 @@ use App\Services\ParentLinkService;
 use App\Services\Student\ClassScheduleService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class ParentDashboardController extends Controller
 {
@@ -67,25 +62,7 @@ class ParentDashboardController extends Controller
         }
 
         // Financial metric cards data
-        $paymentsQuery = Payment::where(function($q) use ($user, $children) {
-            $q->where('user_id', $user->id)
-              ->orWhere('payer_id', $user->id);
-            if ($children->isNotEmpty()) {
-                $q->orWhereIn('student_id', $children->pluck('id'));
-            }
-        })->with('course.subject');
-
-        if ($child) {
-            $childCourseIds = $child->enrollments->pluck('course_id')->filter()->all();
-            $paymentsQuery->where(function($q) use ($child, $childCourseIds) {
-                $q->where('student_id', $child->id);
-                if (!empty($childCourseIds)) {
-                    $q->orWhereIn('course_id', $childCourseIds);
-                }
-            });
-        }
-
-        $payments = $paymentsQuery->orderByDesc('id')->get();
+        $payments = $this->billing->dashboardPayments($user, $children, $child);
 
         $summary          = $this->billing->outstandingSummary($payments, $children, $child);
         $totalOutstanding = $summary['totalOutstanding'];
@@ -273,87 +250,17 @@ class ParentDashboardController extends Controller
     public function storeChild(StoreChildRequest $request)
     {
         $parent = auth()->user();
+        $result = $this->access->createChild($parent, $request->validated());
 
-        $validated = $request->validated();
-
-        // Check if student with this IC already exists
-        $childIcHash = Student::hashIc($validated['child_ic_number']);
-        if (Student::where('ic_number_hash', $childIcHash)->exists()) {
-            return redirect()->back()
+        return match ($result['status']) {
+            'duplicate_ic' => redirect()->back()
                 ->withInput()
-                ->withErrors(['child_ic_number' => 'A student account with this IC number already exists. Please use "Connect Existing Student" to link them.']);
-        }
-
-        try {
-            $student = DB::transaction(function () use ($parent, $validated, $childIcHash) {
-                // Auto-generate student email: <first name>@olympianscholars.my
-                $firstName = strtolower(explode(' ', trim($validated['name']))[0] ?? 'student');
-                $firstNameSlug = Str::slug($firstName, '');
-                $prefix = strlen($firstNameSlug) >= 2 ? $firstNameSlug : 'student';
-
-                $childEmail = $prefix . '@olympianscholars.my';
-                $counter = 1;
-                while (User::where('email', $childEmail)->exists()) {
-                    $counter++;
-                    $childEmail = $prefix . $counter . '@olympianscholars.my';
-                }
-
-                $childPassword = !empty($validated['password'])
-                    ? $validated['password']
-                    : Str::random(8) . rand(10, 99) . '!';
-
-                $childUser = User::create([
-                    'name'     => $validated['name'],
-                    'email'    => $childEmail,
-                    'phone'    => '',
-                    'role'     => 'student',
-                    'password' => Hash::make($childPassword),
-                ]);
-
-                $dob    = Student::dobFromIc($validated['child_ic_number']);
-                $gender = Student::genderFromIc($validated['child_ic_number']);
-
-                $student = Student::create([
-                    'user_id'        => $childUser->id,
-                    'parent_user_id' => $parent->id,
-                    'ic_number_hash' => $childIcHash,
-                    'gender'         => $gender,
-                    'date_of_birth'  => $dob,
-                    'level'          => $validated['level'],
-                    'school_name'    => $validated['school_name'] ?? null,
-                    'total_points'   => 0,
-                    'streak_days'    => 1,
-                ]);
-
-                // Link via pivot table
-                DB::table('parent_student')->insertOrIgnore([
-                    'parent_user_id' => $parent->id,
-                    'student_id'     => $student->id,
-                    'relationship'   => $validated['relationship'] ?? 'Guardian',
-                    'is_primary'     => true,
-                    'status'         => 'active',
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
-                ]);
-
-                // Enroll in selected subjects if provided
-                $subjectNames = $validated['subjects'] ?? [];
-                if (!empty($subjectNames)) {
-                    \App\Http\Controllers\Auth\StudentRegistrationController::enrollInSubjects(
-                        $student, $subjectNames, $validated['level'] ?? null
-                    );
-                }
-
-                return $student;
-            });
-
-            return redirect()->route('parent.dashboard', ['child_id' => $student->id])->with('success',
-                "✓ Child account for {$student->user->name} created and linked successfully!"
-            );
-        } catch (\Exception $e) {
-            report($e);
-            return redirect()->back()->withErrors(['name' => 'Failed to create child account. Please try again.']);
-        }
+                ->withErrors(['child_ic_number' => 'A student account with this IC number already exists. Please use "Connect Existing Student" to link them.']),
+            'error' => redirect()->back()->withErrors(['name' => 'Failed to create child account. Please try again.']),
+            default => redirect()->route('parent.dashboard', ['child_id' => $result['student']->id])->with('success',
+                "✓ Child account for {$result['student']->user->name} created and linked successfully!"
+            ),
+        };
     }
 
     /**
@@ -361,61 +268,20 @@ class ParentDashboardController extends Controller
      */
     public function connectChild(ConnectChildRequest $request)
     {
-        $parent = auth()->user();
-
+        $parent       = auth()->user();
         $identifier   = trim($request->input('identifier'));
         $relationship = $request->input('relationship', 'Guardian');
 
-        // Check if identifier is an IC number (12 digits)
-        $cleanDigits = preg_replace('/\D/', '', $identifier);
-        $student     = null;
-
-        if (strlen($cleanDigits) === 12) {
-            $icHash  = Student::hashIc($identifier);
-            $student = Student::where('ic_number_hash', $icHash)->with('user')->first();
-        }
-
-        if (!$student) {
-            // Try by student's user email
-            $studentUser = User::where('email', $identifier)->where('role', 'student')->first();
-            if ($studentUser) {
-                $student = Student::where('user_id', $studentUser->id)->with('user')->first();
-            }
-        }
-
-        if (!$student) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['identifier' => 'No student found with that IC number or email. Please check and try again.']);
-        }
-
-        $result = $this->parentLinkService->requestLink($parent, $student, $relationship);
-
-        if ($result['status'] === 'active') {
-            // Trigger automated official communication — only fires on an actual
-            // successful link, never on the pending-approval chain path (Phase 0's
-            // ParentLinkService already decides whether this link activates
-            // immediately or requires the existing guardian's approval first).
-            try {
-                \App\Services\Email\EmailAutomationService::trigger(
-                    'parent_student_linked',
-                    [
-                        'user'    => $parent,
-                        'parent'  => $parent,
-                        'student' => $student,
-                    ],
-                    "parent_link_{$parent->id}_{$student->id}"
-                );
-            } catch (\Throwable $emailErr) {
-                \Illuminate\Support\Facades\Log::warning('[ParentDashboard] Child linked email trigger failed: ' . $emailErr->getMessage());
-            }
-        }
+        $result = $this->access->connectChild($parent, $this->parentLinkService, $identifier, $relationship);
 
         return match ($result['status']) {
+            'not_found' => redirect()->back()
+                ->withInput()
+                ->withErrors(['identifier' => 'No student found with that IC number or email. Please check and try again.']),
             'already_linked' => redirect()->back()
-                ->with('success', "{$student->user->name} is already linked to your account."),
-            'active' => redirect()->route('parent.dashboard', ['child_id' => $student->id])
-                ->with('success', "✓ Successfully linked {$student->user->name} to your parent account!"),
+                ->with('success', "{$result['student']->user->name} is already linked to your account."),
+            'active' => redirect()->route('parent.dashboard', ['child_id' => $result['student']->id])
+                ->with('success', "✓ Successfully linked {$result['student']->user->name} to your parent account!"),
             'pending' => redirect()->back()
                 ->with('success', 'This student already has a guardian on file. A request has been sent to the existing guardian for approval — you will gain access once they approve it.'),
         };
@@ -430,38 +296,9 @@ class ParentDashboardController extends Controller
         $children = $this->access->getParentChildren($user);
         $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
-        $paymentsQuery = Payment::where('user_id', $user->id)->with('course.subject');
-
-        // Optional filter by child's courses if specific child is selected and has courses
-        if ($child) {
-            $childCourseIds = $child->enrollments->pluck('course_id')->filter()->all();
-            if (!empty($childCourseIds)) {
-                $paymentsQuery->where(function($q) use ($childCourseIds) {
-                    $q->whereIn('course_id', $childCourseIds)
-                      ->orWhereNull('course_id');
-                });
-            }
-        }
-
-        $payments = $paymentsQuery->orderByDesc('id')->get();
-
-        $totalPaid     = (float) $payments->where('status', PaymentStatus::Successful)->sum('amount');
-        $paidCount     = $payments->where('status', PaymentStatus::Successful)->count();
-        $latestPayment = $payments->where('status', PaymentStatus::Successful)->first();
-
-        $summary          = $this->billing->outstandingSummary($payments, $children, $child);
-        $totalOutstanding = $summary['totalOutstanding'];
-        $pendingCount     = $summary['pendingCount'];
-        $lastPaymentMade  = $summary['lastPaymentMade'];
-        $nextPaymentDue   = $summary['nextPaymentDue'];
-
-        // Pending invoices list for quick checkout
-        $pendingPayments = $payments->where('status', PaymentStatus::Pending)->values();
-
-        return view('parent.payments', compact(
-            'children', 'child', 'payments', 'totalPaid', 'totalOutstanding',
-            'pendingCount', 'paidCount', 'latestPayment', 'pendingPayments',
-            'lastPaymentMade', 'nextPaymentDue'
+        return view('parent.payments', array_merge(
+            ['children' => $children, 'child' => $child],
+            $this->billing->paymentsPageData($user, $children, $child)
         ));
     }
 
