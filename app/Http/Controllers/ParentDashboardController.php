@@ -4,6 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
+use App\Http\Requests\Parent\ConnectChildRequest;
+use App\Http\Requests\Parent\CreateCustomInvoiceRequest;
+use App\Http\Requests\Parent\PayChildInvoiceRequest;
+use App\Http\Requests\Parent\ProcessPaymentRequest;
+use App\Http\Requests\Parent\StoreChildRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Student;
@@ -265,25 +270,11 @@ class ParentDashboardController extends Controller
         return redirect()->route('parent.dashboard', ['child_id' => $child->id]);
     }
 
-    public function storeChild(Request $request)
+    public function storeChild(StoreChildRequest $request)
     {
         $parent = auth()->user();
 
-        $validated = $request->validate([
-            'name'             => 'required|string|min:2|max:255',
-            'child_ic_number'  => ['required', 'string', 'regex:/^[0-9]{6}-[0-9]{2}-[0-9]{4}$/'],
-            'level'            => 'required|string|max:100',
-            'relationship'     => 'nullable|string|max:30',
-            'school_name'      => 'nullable|string|max:255',
-            'password'         => 'nullable|string|min:6|max:100',
-            'subjects'         => 'nullable|array',
-            'subjects.*'       => 'string|max:255',
-        ], [
-            'name.required'            => 'Please enter your child\'s full name.',
-            'child_ic_number.required' => 'Please enter your child\'s MyKad / IC number.',
-            'child_ic_number.regex'    => 'IC number must be in format XXXXXX-XX-XXXX.',
-            'level.required'           => 'Please select your child\'s education level.',
-        ]);
+        $validated = $request->validated();
 
         // Check if student with this IC already exists
         $childIcHash = Student::hashIc($validated['child_ic_number']);
@@ -368,16 +359,9 @@ class ParentDashboardController extends Controller
     /**
      * Connect an existing student to this parent using the student's MyKad IC number or email.
      */
-    public function connectChild(Request $request)
+    public function connectChild(ConnectChildRequest $request)
     {
         $parent = auth()->user();
-
-        $request->validate([
-            'identifier'   => 'required|string|max:255',
-            'relationship' => 'nullable|string|max:30',
-        ], [
-            'identifier.required' => 'Please enter the student\'s MyKad / IC number (e.g. 123456-78-9012) or their registered email address.',
-        ]);
 
         $identifier   = trim($request->input('identifier'));
         $relationship = $request->input('relationship', 'Guardian');
@@ -484,15 +468,11 @@ class ParentDashboardController extends Controller
     /**
      * Process simulated / gateway payment for invoices.
      */
-    public function processPayment(Request $request)
+    public function processPayment(ProcessPaymentRequest $request)
     {
         $user = auth()->user();
 
-        $validated = $request->validate([
-            'payment_ids'    => 'required',
-            'payment_method' => 'required|string|max:100',
-            'bank_name'      => 'nullable|string|max:100',
-        ]);
+        $validated = $request->validated();
 
         $paymentIds = is_array($validated['payment_ids'])
             ? $validated['payment_ids']
@@ -510,29 +490,23 @@ class ParentDashboardController extends Controller
     /**
      * Process child invoice payment by parent.
      */
-    public function payChildInvoice(Request $request, $id)
+    public function payChildInvoice(PayChildInvoiceRequest $request, $id)
     {
         $parent   = auth()->user();
         $children = $this->access->getParentChildren($parent);
         $childIds = $children->pluck('id')->toArray();
 
-        // Short-circuit before any file validation, same order as the
-        // original method — an already-paid invoice must not fail on a
-        // missing bank-transfer proof file.
+        // Short-circuit before touching the payment flow, same order as
+        // before extraction — an already-paid invoice must not go through
+        // the bank-transfer proof_file requirement (the FormRequest itself
+        // skips that rule entirely once it sees the invoice is Paid).
         $invoice = Invoice::whereIn('student_id', $childIds)->findOrFail($id);
         if ($invoice->status === InvoiceStatus::Paid) {
             return back()->with('info', 'This invoice has already been fully paid.');
         }
 
         $paymentMethod = $request->input('payment_method', 'fpx');
-        $proofFile = null;
-
-        if ($paymentMethod === 'bank_transfer') {
-            $request->validate([
-                'proof_file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            ]);
-            $proofFile = $request->file('proof_file');
-        }
+        $proofFile = $paymentMethod === 'bank_transfer' ? $request->file('proof_file') : null;
 
         $result = $this->billing->payInvoice($parent, $childIds, (int) $id, $paymentMethod, $proofFile);
 
@@ -546,15 +520,11 @@ class ParentDashboardController extends Controller
     /**
      * Create a manual custom tuition or materials fee invoice.
      */
-    public function createCustomInvoice(Request $request)
+    public function createCustomInvoice(CreateCustomInvoiceRequest $request)
     {
         $user = auth()->user();
 
-        $validated = $request->validate([
-            'description' => 'required|string|max:255',
-            'amount'      => 'required|numeric|min:1|max:10000',
-            'course_id'   => 'nullable|exists:courses,id',
-        ]);
+        $validated = $request->validated();
 
         $invoiceRef = $this->billing->createCustomInvoice(
             $user,
