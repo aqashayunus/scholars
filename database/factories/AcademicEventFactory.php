@@ -18,7 +18,7 @@ class AcademicEventFactory extends Factory
         return [
             'title'           => fake()->sentence(3),
             'description'     => fake()->optional()->sentence(),
-            'event_type'      => fake()->randomElement(['public_holiday', 'exam_period', 'school_holiday', 'enrollment_window']),
+            'event_type'      => fake()->randomElement(['public_holiday', 'academic_term', 'school_break', 'exam_period', 'special_event']),
             'start_date'      => fake()->dateTimeBetween('now', '+3 months')->format('Y-m-d'),
             'end_date'        => null,
             'is_all_day'      => true,
