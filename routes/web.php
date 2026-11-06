@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
 use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
+use App\Http\Controllers\Admin\ClassSchedulingController as AdminClassSchedulingController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PageController;
@@ -310,14 +311,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/subtopics/{id}', [AdminCurriculumController::class, 'destroySubtopic'])->name('subtopics.destroy');
 
     // Live Class CRUD
-    Route::post('/live-classes', [AdminDashboardController::class, 'storeLiveClass'])->name('live-classes.store');
-    Route::match(['put', 'post'], '/live-classes/{id}', [AdminDashboardController::class, 'updateLiveClass'])->name('live-classes.update');
-    Route::delete('/live-classes/{id}', [AdminDashboardController::class, 'destroyLiveClass'])->name('live-classes.destroy');
+    Route::post('/live-classes', [AdminClassSchedulingController::class, 'storeLiveClass'])->name('live-classes.store');
+    Route::match(['put', 'post'], '/live-classes/{id}', [AdminClassSchedulingController::class, 'updateLiveClass'])->name('live-classes.update');
+    Route::delete('/live-classes/{id}', [AdminClassSchedulingController::class, 'destroyLiveClass'])->name('live-classes.destroy');
 
     // Recorded Class CRUD
-    Route::post('/recorded-classes', [AdminDashboardController::class, 'storeRecordedClass'])->name('recorded-classes.store');
-    Route::match(['put', 'post'], '/recorded-classes/{id}', [AdminDashboardController::class, 'updateRecordedClass'])->name('recorded-classes.update');
-    Route::delete('/recorded-classes/{id}', [AdminDashboardController::class, 'destroyRecordedClass'])->name('recorded-classes.destroy');
+    Route::post('/recorded-classes', [AdminClassSchedulingController::class, 'storeRecordedClass'])->name('recorded-classes.store');
+    Route::match(['put', 'post'], '/recorded-classes/{id}', [AdminClassSchedulingController::class, 'updateRecordedClass'])->name('recorded-classes.update');
+    Route::delete('/recorded-classes/{id}', [AdminClassSchedulingController::class, 'destroyRecordedClass'])->name('recorded-classes.destroy');
 
     // Tasks & Diagnostic Tests Management
     Route::post('/tasks', [AdminDashboardController::class, 'storeTask'])->name('tasks.store');

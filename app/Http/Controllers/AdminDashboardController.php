@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LiveClass;
-use App\Models\RecordedClass;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentTopicMastery;
@@ -17,7 +15,6 @@ use App\Models\Quiz;
 use App\Models\Question;
 use App\Models\Assignment;
 use App\Services\Admin\AssignmentQuizService;
-use App\Services\Admin\ClassSchedulingService;
 use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
 use App\Services\Admin\TeacherApplicationService;
@@ -26,12 +23,8 @@ use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\BlastEngagementEmailRequest;
 use App\Http\Requests\Admin\ResetUserPasswordRequest;
 use App\Http\Requests\Admin\StoreGigRequest;
-use App\Http\Requests\Admin\StoreLiveClassRequest;
-use App\Http\Requests\Admin\StoreRecordedClassRequest;
 use App\Http\Requests\Admin\StoreTeacherClassRequest;
 use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\UpdateLiveClassRequest;
-use App\Http\Requests\Admin\UpdateRecordedClassRequest;
 use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use Illuminate\Http\Request;
@@ -128,60 +121,6 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#users')
             ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
-    }
-
-    // ── LIVE CLASS CRUD ──────────────────────────────────────────────────────
-
-    public function storeLiveClass(StoreLiveClassRequest $request, ClassSchedulingService $scheduling)
-    {
-        $liveClass = $scheduling->createLiveClass($request->validated());
-
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
-            ->with('success', "Live Class '{$liveClass->title}' scheduled successfully.");
-    }
-
-    public function updateLiveClass(UpdateLiveClassRequest $request, $id, ClassSchedulingService $scheduling)
-    {
-        $liveClass = LiveClass::findOrFail($id);
-        $liveClass = $scheduling->updateLiveClass($liveClass, $request->validated());
-
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
-            ->with('success', "Live Class '{$liveClass->title}' updated successfully.");
-    }
-
-    public function destroyLiveClass($id, ClassSchedulingService $scheduling)
-    {
-        $title = $scheduling->deleteLiveClass($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
-            ->with('success', "Live Class '{$title}' removed.");
-    }
-
-    // ── RECORDED CLASS CRUD ──────────────────────────────────────────────────
-
-    public function storeRecordedClass(StoreRecordedClassRequest $request, ClassSchedulingService $scheduling)
-    {
-        $recordedClass = $scheduling->createRecordedClass($request->validated(), $request);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
-            ->with('success', "Recorded Class '{$recordedClass->title}' added to vault.");
-    }
-
-    public function updateRecordedClass(UpdateRecordedClassRequest $request, $id, ClassSchedulingService $scheduling)
-    {
-        $recordedClass = RecordedClass::findOrFail($id);
-        $recordedClass = $scheduling->updateRecordedClass($recordedClass, $request->validated(), $request);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
-            ->with('success', "Recorded Class '{$recordedClass->title}' updated successfully.");
-    }
-
-    public function destroyRecordedClass($id, ClassSchedulingService $scheduling)
-    {
-        $title = $scheduling->deleteRecordedClass($id);
-
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
-            ->with('success', "Recorded Class '{$title}' deleted.");
     }
 
     // ── TASKS & DIAGNOSTIC TESTS CRUD ─────────────────────────────────────────
