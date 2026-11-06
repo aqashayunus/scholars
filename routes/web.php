@@ -8,6 +8,7 @@ use App\Http\Controllers\Billing\BillplzController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
 use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PageController;
@@ -256,17 +257,17 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::put('/content/blog/{id}', [AdminContentController::class, 'updateBlog'])->name('content.blog.update');
     Route::delete('/content/blog/{id}', [AdminContentController::class, 'destroyBlog'])->name('content.blog.destroy');
 
-    Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
-    Route::post('/settings/profile', [AdminDashboardController::class, 'updateProfile'])->name('settings.profile');
-    Route::post('/settings/platform', [AdminDashboardController::class, 'updatePlatformSettings'])->name('settings.platform');
-    Route::post('/settings/pricing-plans', [AdminDashboardController::class, 'updatePricingPlans'])->name('settings.pricing-plans');
-    Route::post('/settings/security', [AdminDashboardController::class, 'updateSecuritySettings'])->name('settings.security');
-    Route::post('/settings/cache-clear', [AdminDashboardController::class, 'clearSystemCache'])->name('settings.cache-clear');
-    Route::post('/settings/attendance', [AdminDashboardController::class, 'updateAttendanceSettings'])->name('settings.attendance');
+    Route::get('/settings', [AdminSettingsController::class, 'settings'])->name('settings');
+    Route::post('/settings/profile', [AdminSettingsController::class, 'updateProfile'])->name('settings.profile');
+    Route::post('/settings/platform', [AdminSettingsController::class, 'updatePlatformSettings'])->name('settings.platform');
+    Route::post('/settings/pricing-plans', [AdminSettingsController::class, 'updatePricingPlans'])->name('settings.pricing-plans');
+    Route::post('/settings/security', [AdminSettingsController::class, 'updateSecuritySettings'])->name('settings.security');
+    Route::post('/settings/cache-clear', [AdminSettingsController::class, 'clearSystemCache'])->name('settings.cache-clear');
+    Route::post('/settings/attendance', [AdminSettingsController::class, 'updateAttendanceSettings'])->name('settings.attendance');
 
     // Attendance Management & Export
-    Route::get('/attendance', [AdminDashboardController::class, 'attendance'])->name('attendance');
-    Route::get('/export/attendance', [AdminDashboardController::class, 'exportAttendanceCsv'])->name('export.attendance');
+    Route::get('/attendance', [AdminSettingsController::class, 'attendance'])->name('attendance');
+    Route::get('/export/attendance', [AdminSettingsController::class, 'exportAttendanceCsv'])->name('export.attendance');
 
     // Export CSV routes
     Route::get('/export/payments', [AdminDashboardController::class, 'exportPaymentsCsv'])->name('export.payments');
@@ -364,8 +365,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
 
     // Official Certificates Management
-    Route::post('/certificates', [AdminDashboardController::class, 'storeCertificate'])->name('certificates.store');
-    Route::delete('/certificates/{id}', [AdminDashboardController::class, 'destroyCertificate'])->name('certificates.destroy');
+    Route::post('/certificates', [AdminSettingsController::class, 'storeCertificate'])->name('certificates.store');
+    Route::delete('/certificates/{id}', [AdminSettingsController::class, 'destroyCertificate'])->name('certificates.destroy');
 
     // Topic & Subtopic CRUD
     Route::post('/topics', [AdminDashboardController::class, 'storeTopic'])->name('topics.store');
