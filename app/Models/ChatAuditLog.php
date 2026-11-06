@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ChatAuditLog extends Model
 {
+    use HasFactory;
+
     protected $table = 'chat_audit_logs';
 
     public $timestamps = false;

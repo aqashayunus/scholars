@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'invoice_id',          // legacy: single-invoice payments

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class FeeStructureItem extends Model
 {
+    use HasFactory;
+
     protected $table = 'fee_structure_items';
 
     // Item type constants
