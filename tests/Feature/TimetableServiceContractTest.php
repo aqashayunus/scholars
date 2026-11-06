@@ -122,7 +122,7 @@ class TimetableServiceContractTest extends TestCase
 
     public function test_admin_can_reschedule_any_class(): void
     {
-        $admin = User::create(['name' => 'Admin', 'email' => 'admin-tt@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $admin = User::factory()->create(['name' => 'Admin', 'email' => 'admin-tt@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
         $teacher = Teacher::factory()->create();
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
         $class = $this->makeLiveClass($teacher, $course, now()->addDay());
@@ -140,7 +140,7 @@ class TimetableServiceContractTest extends TestCase
 
     public function test_admin_can_quick_create_a_session_for_any_course(): void
     {
-        $admin = User::create(['name' => 'Admin2', 'email' => 'admin-tt2@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $admin = User::factory()->create(['name' => 'Admin2', 'email' => 'admin-tt2@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
         $teacher = Teacher::factory()->create();
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
 
@@ -160,7 +160,7 @@ class TimetableServiceContractTest extends TestCase
 
     public function test_admin_can_create_an_academic_event(): void
     {
-        $admin = User::create(['name' => 'Admin3', 'email' => 'admin-tt3@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $admin = User::factory()->create(['name' => 'Admin3', 'email' => 'admin-tt3@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
 
         $response = $this->actingAs($admin)->post(route('admin.academic-events.store'), [
             'title'      => 'Mid-Term Break',
@@ -174,7 +174,7 @@ class TimetableServiceContractTest extends TestCase
 
     public function test_admin_can_update_an_academic_event(): void
     {
-        $admin = User::create(['name' => 'Admin4', 'email' => 'admin-tt4@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $admin = User::factory()->create(['name' => 'Admin4', 'email' => 'admin-tt4@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
         $event = AcademicEvent::factory()->create(['title' => 'Old Title', 'event_type' => 'school_break']);
 
         $response = $this->actingAs($admin)->put(route('admin.academic-events.update', $event->id), [
@@ -189,7 +189,7 @@ class TimetableServiceContractTest extends TestCase
 
     public function test_admin_can_delete_an_academic_event(): void
     {
-        $admin = User::create(['name' => 'Admin5', 'email' => 'admin-tt5@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $admin = User::factory()->create(['name' => 'Admin5', 'email' => 'admin-tt5@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
         $event = AcademicEvent::factory()->create();
 
         $response = $this->actingAs($admin)->delete(route('admin.academic-events.destroy', $event->id));

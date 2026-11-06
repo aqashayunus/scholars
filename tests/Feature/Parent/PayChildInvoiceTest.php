@@ -25,9 +25,9 @@ class PayChildInvoiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->parent = User::create(['name' => 'Parent', 'email' => 'parent@pci.test', 'role' => 'parent', 'password' => Hash::make('password')]);
-        $studentUser  = User::create(['name' => 'Child', 'email' => 'child@pci.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $this->student = Student::create(['user_id' => $studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
+        $this->parent = User::factory()->create(['name' => 'Parent', 'email' => 'parent@pci.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $studentUser  = User::factory()->create(['name' => 'Child', 'email' => 'child@pci.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $this->student = Student::factory()->create(['user_id' => $studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
     }
 
     private function makeInvoice(InvoiceStatus $status = InvoiceStatus::Issued): Invoice
@@ -142,7 +142,7 @@ class PayChildInvoiceTest extends TestCase
 
     public function test_parent_cannot_pay_invoice_for_a_child_that_is_not_their_own(): void
     {
-        $otherParent = User::create(['name' => 'Other Parent', 'email' => 'other@pci.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $otherParent = User::factory()->create(['name' => 'Other Parent', 'email' => 'other@pci.test', 'role' => 'parent', 'password' => Hash::make('password')]);
         $invoice = $this->makeInvoice();
 
         $response = $this->actingAs($otherParent)

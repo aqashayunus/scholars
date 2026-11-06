@@ -76,7 +76,8 @@ class ProfileService
 
         // Backfill legacy column if empty
         if (!$student->parent_user_id) {
-            $student->update(['parent_user_id' => $parentUser->id]);
+            $student->parent_user_id = $parentUser->id;
+            $student->save();
         }
 
         return [

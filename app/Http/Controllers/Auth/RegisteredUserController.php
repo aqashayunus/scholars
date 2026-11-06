@@ -49,12 +49,13 @@ class RegisteredUserController extends Controller
         // hardcoded literal 'password123' when none was supplied — removed
         // rather than fixed, since it duplicated (and diverged from) the real
         // parent registration flow's logic.
-        $user = User::create([
+        $user = new User([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
         ]);
+        $user->role = $request->role;
+        $user->save();
 
         // Create matching Student profile if registering as student
         if ($user->role === 'student') {

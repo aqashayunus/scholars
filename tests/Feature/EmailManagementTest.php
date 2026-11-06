@@ -36,7 +36,7 @@ class EmailManagementTest extends TestCase
         parent::setUp();
 
         // 1. Create Admin
-        $this->admin = User::create([
+        $this->admin = User::factory()->create([
             'name'     => 'System Admin',
             'email'    => 'admin@olympianscholars.my',
             'role'     => 'admin',
@@ -44,7 +44,7 @@ class EmailManagementTest extends TestCase
         ]);
 
         // 2. Create Parent
-        $this->parentUser = User::create([
+        $this->parentUser = User::factory()->create([
             'name'     => 'Parent Tan',
             'email'    => 'parent.tan@example.com',
             'role'     => 'parent',
@@ -52,14 +52,14 @@ class EmailManagementTest extends TestCase
         ]);
 
         // 3. Create Student
-        $this->studentUser = User::create([
+        $this->studentUser = User::factory()->create([
             'name'     => 'Student Tan Wei',
             'email'    => 'wei@olympianscholars.my',
             'role'     => 'student',
             'password' => Hash::make('password123'),
         ]);
 
-        $this->student = Student::create([
+        $this->student = Student::factory()->create([
             'user_id'        => $this->studentUser->id,
             'parent_user_id' => $this->parentUser->id,
             'level'          => 'SPM',
@@ -178,7 +178,7 @@ class EmailManagementTest extends TestCase
     public function test_audience_resolver_resolves_recipients_and_respects_suppressions(): void
     {
         // Add a teacher
-        User::create([
+        User::factory()->create([
             'name'     => 'Teacher Lee',
             'email'    => 'lee@olympianscholars.my',
             'role'     => 'teacher',

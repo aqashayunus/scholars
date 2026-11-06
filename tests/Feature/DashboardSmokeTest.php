@@ -28,13 +28,13 @@ class DashboardSmokeTest extends TestCase
         // Deliberately zero teachers in the DB — this is the exact condition
         // that previously crashed first-time dashboard load via the
         // hardcoded teacher_id fallback in PageController::enrollStudentInSubjects.
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Fresh Student',
             'email'    => 'freshstudent@test.com',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
-        Student::create(['user_id' => $user->id, 'level' => 'SPM']);
+        Student::factory()->create(['user_id' => $user->id, 'level' => 'SPM']);
 
         $response = $this->actingAs($user)->get(route('student.dashboard'));
 
@@ -43,7 +43,7 @@ class DashboardSmokeTest extends TestCase
 
     public function test_teacher_dashboard_loads_for_a_brand_new_teacher(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Fresh Teacher',
             'email'    => 'freshteacher@test.com',
             'role'     => 'teacher',
@@ -64,7 +64,7 @@ class DashboardSmokeTest extends TestCase
 
     public function test_parent_dashboard_loads_for_a_parent_with_no_children_yet(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Fresh Parent',
             'email'    => 'freshparent@test.com',
             'role'     => 'parent',
@@ -78,7 +78,7 @@ class DashboardSmokeTest extends TestCase
 
     public function test_admin_dashboard_loads_for_a_fresh_admin(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Fresh Admin',
             'email'    => 'freshadmin@test.com',
             'role'     => 'admin',

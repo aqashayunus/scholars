@@ -29,7 +29,7 @@ class MessagingServiceContractTest extends TestCase
 
     private function makeUser(string $role, string $email): User
     {
-        return User::create(['name' => ucfirst($role) . ' ' . $email, 'email' => $email, 'role' => $role, 'password' => Hash::make('password')]);
+        return User::factory()->create(['name' => ucfirst($role) . ' ' . $email, 'email' => $email, 'role' => $role, 'password' => Hash::make('password')]);
     }
 
     private function makeDirectConversation(User $a, User $b): Conversation
@@ -222,7 +222,7 @@ class MessagingServiceContractTest extends TestCase
     {
         $parent = $this->makeUser('parent', 'mon1@test.com');
         $childUser = $this->makeUser('student', 'child1@test.com');
-        $student = Student::create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
+        $student = Student::factory()->create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
         \Illuminate\Support\Facades\DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id, 'student_id' => $student->id,
             'relationship' => 'Guardian', 'status' => 'active', 'is_primary' => true,
@@ -248,7 +248,7 @@ class MessagingServiceContractTest extends TestCase
     {
         $parent = $this->makeUser('parent', 'mon2@test.com');
         $childUser = $this->makeUser('student', 'child2@test.com');
-        $student = Student::create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
+        $student = Student::factory()->create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
         \Illuminate\Support\Facades\DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id, 'student_id' => $student->id,
             'relationship' => 'Guardian', 'status' => 'active', 'is_primary' => true,

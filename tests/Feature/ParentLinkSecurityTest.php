@@ -25,14 +25,14 @@ class ParentLinkSecurityTest extends TestCase
 
     private function makeStudent(string $ic, ?int $parentUserId = null): Student
     {
-        $studentUser = User::create([
+        $studentUser = User::factory()->create([
             'name'     => 'Child ' . $ic,
             'email'    => 'child' . $ic . '@student.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
 
-        return Student::create([
+        return Student::factory()->create([
             'user_id'        => $studentUser->id,
             'parent_user_id' => $parentUserId,
             'ic_number_hash' => Student::hashIc($ic),
@@ -42,7 +42,7 @@ class ParentLinkSecurityTest extends TestCase
 
     private function makeParent(string $email): User
     {
-        return User::create([
+        return User::factory()->create([
             'name'     => 'Parent ' . $email,
             'email'    => $email,
             'role'     => 'parent',

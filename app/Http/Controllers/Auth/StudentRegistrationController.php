@@ -130,13 +130,14 @@ class StudentRegistrationController extends Controller
         try {
             $student = DB::transaction(function () use ($validated, $selectedSubjectNames, $feeStructureId, $icHash, $dob, $gender) {
                 // 1. Create User account
-                $user = User::create([
+                $user = new User([
                     'name'     => $validated['name'],
                     'email'    => $validated['email'],
                     'phone'    => $validated['phone'],
-                    'role'     => 'student',
                     'password' => Hash::make($validated['password']),
                 ]);
+                $user->role = 'student';
+                $user->save();
 
                 // 2. Create Student profile
                 $student = Student::create([

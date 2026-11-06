@@ -42,28 +42,28 @@ class AttendanceTest extends TestCase
         Setting::set('attendance.excused_in_denominator', 0);
 
         // 1. Teacher
-        $this->teacherUser = User::create([
+        $this->teacherUser = User::factory()->create([
             'name'     => 'Cikgu Rahman',
             'email'    => 'rahman@teacher.test',
             'role'     => 'teacher',
             'password' => Hash::make('password'),
         ]);
 
-        $this->teacher = Teacher::create([
+        $this->teacher = Teacher::factory()->create([
             'user_id'            => $this->teacherUser->id,
             'application_status' => 'active',
             'qualification'      => 'Master of Mathematics',
         ]);
 
         // 2. Student
-        $this->studentUser = User::create([
+        $this->studentUser = User::factory()->create([
             'name'     => 'Nurul Huda',
             'email'    => 'huda@student.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
 
-        $this->student = Student::create([
+        $this->student = Student::factory()->create([
             'user_id' => $this->studentUser->id,
             'level'   => 'SPM',
             'status'  => 'active',

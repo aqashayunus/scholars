@@ -31,20 +31,20 @@ class ChatAuthorizationTest extends TestCase
 
     private function makeParent(string $email): User
     {
-        return User::create([
+        return User::factory()->create([
             'name' => 'Parent ' . $email, 'email' => $email, 'role' => 'parent', 'password' => Hash::make('password'),
         ]);
     }
 
     private function makeStudentWithUser(string $email, ?int $parentUserId = null): Student
     {
-        $u = User::create(['name' => 'Student ' . $email, 'email' => $email, 'role' => 'student', 'password' => Hash::make('password')]);
-        return Student::create(['user_id' => $u->id, 'parent_user_id' => $parentUserId, 'level' => 'SPM']);
+        $u = User::factory()->create(['name' => 'Student ' . $email, 'email' => $email, 'role' => 'student', 'password' => Hash::make('password')]);
+        return Student::factory()->create(['user_id' => $u->id, 'parent_user_id' => $parentUserId, 'level' => 'SPM']);
     }
 
     private function makeTeacherWithUser(string $email): Teacher
     {
-        $u = User::create(['name' => 'Teacher ' . $email, 'email' => $email, 'role' => 'teacher', 'password' => Hash::make('password')]);
+        $u = User::factory()->create(['name' => 'Teacher ' . $email, 'email' => $email, 'role' => 'teacher', 'password' => Hash::make('password')]);
         return Teacher::create(['user_id' => $u->id, 'specialization' => 'Math', 'qualification' => 'B.Ed', 'rating' => 5.0, 'experience_years' => 1]);
     }
 

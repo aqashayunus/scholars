@@ -30,7 +30,7 @@ class PaymentRestrictionTest extends TestCase
         parent::setUp();
 
         // 1. Create Parent User
-        $this->parent = User::create([
+        $this->parent = User::factory()->create([
             'name'     => 'Parent Abu',
             'email'    => 'abu@parent.test',
             'role'     => 'parent',
@@ -38,14 +38,14 @@ class PaymentRestrictionTest extends TestCase
         ]);
 
         // 2. Create Child A (Paid)
-        $childAUser = User::create([
+        $childAUser = User::factory()->create([
             'name'     => 'Child Ahmad',
             'email'    => 'ahmad@student.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
 
-        $this->childPaid = Student::create([
+        $this->childPaid = Student::factory()->create([
             'user_id'        => $childAUser->id,
             'parent_user_id' => $this->parent->id,
             'level'          => 'SPM',
@@ -78,14 +78,14 @@ class PaymentRestrictionTest extends TestCase
         ]);
 
         // 3. Create Child B (Overdue)
-        $childBUser = User::create([
+        $childBUser = User::factory()->create([
             'name'     => 'Child Ali',
             'email'    => 'ali@student.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
 
-        $this->childOverdue = Student::create([
+        $this->childOverdue = Student::factory()->create([
             'user_id'        => $childBUser->id,
             'parent_user_id' => $this->parent->id,
             'level'          => 'PT3',
@@ -305,7 +305,7 @@ class PaymentRestrictionTest extends TestCase
      */
     public function test_parent_cannot_access_unauthorized_child(): void
     {
-        $otherParent = User::create([
+        $otherParent = User::factory()->create([
             'name'     => 'Other Parent',
             'email'    => 'other@parent.test',
             'role'     => 'parent',

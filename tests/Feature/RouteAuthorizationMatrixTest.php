@@ -36,7 +36,7 @@ class RouteAuthorizationMatrixTest extends TestCase
         parent::setUp();
 
         foreach (self::ROLES as $role) {
-            $user = User::create([
+            $user = User::factory()->create([
                 'name'     => ucfirst($role) . ' Matrix Tester',
                 'email'    => $role . '@matrix.test',
                 'role'     => $role,
@@ -44,10 +44,10 @@ class RouteAuthorizationMatrixTest extends TestCase
             ]);
 
             if ($role === 'student') {
-                Student::create(['user_id' => $user->id, 'level' => 'SPM']);
+                Student::factory()->create(['user_id' => $user->id, 'level' => 'SPM']);
             }
             if ($role === 'teacher') {
-                Teacher::create([
+                Teacher::factory()->create([
                     'user_id'          => $user->id,
                     'specialization'   => 'General Academic',
                     'qualification'    => 'B.Ed',

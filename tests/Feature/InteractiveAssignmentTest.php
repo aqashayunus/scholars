@@ -40,7 +40,7 @@ class InteractiveAssignmentTest extends TestCase
         Storage::fake('public');
 
         // 1. Admin
-        $this->adminUser = User::create([
+        $this->adminUser = User::factory()->create([
             'name'     => 'Admin User',
             'email'    => 'admin@olympia.test',
             'role'     => 'admin',
@@ -48,39 +48,39 @@ class InteractiveAssignmentTest extends TestCase
         ]);
 
         // 2. Teacher
-        $this->teacherUser = User::create([
+        $this->teacherUser = User::factory()->create([
             'name'     => 'Cikgu Rahman',
             'email'    => 'rahman@teacher.test',
             'role'     => 'teacher',
             'password' => Hash::make('password'),
         ]);
-        $this->teacher = Teacher::create([
+        $this->teacher = Teacher::factory()->create([
             'user_id'            => $this->teacherUser->id,
             'application_status' => 'active',
             'qualification'      => 'Master of Mathematics',
         ]);
 
         // 3. Student A
-        $this->studentUserA = User::create([
+        $this->studentUserA = User::factory()->create([
             'name'     => 'Student A',
             'email'    => 'studenta@olympia.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
-        $this->studentA = Student::create([
+        $this->studentA = Student::factory()->create([
             'user_id' => $this->studentUserA->id,
             'level'   => 'Form 4',
             'status'  => 'active',
         ]);
 
         // 4. Student B
-        $this->studentUserB = User::create([
+        $this->studentUserB = User::factory()->create([
             'name'     => 'Student B',
             'email'    => 'studentb@olympia.test',
             'role'     => 'student',
             'password' => Hash::make('password'),
         ]);
-        $this->studentB = Student::create([
+        $this->studentB = Student::factory()->create([
             'user_id' => $this->studentUserB->id,
             'level'   => 'Form 4',
             'status'  => 'active',
@@ -194,13 +194,13 @@ class InteractiveAssignmentTest extends TestCase
     public function test_teacher_cannot_review_submission_from_unrelated_course(): void
     {
         // Unrelated teacher
-        $otherTeacherUser = User::create([
+        $otherTeacherUser = User::factory()->create([
             'name'     => 'Cikgu Siti',
             'email'    => 'siti@teacher.test',
             'role'     => 'teacher',
             'password' => Hash::make('password'),
         ]);
-        $otherTeacher = Teacher::create([
+        $otherTeacher = Teacher::factory()->create([
             'user_id'            => $otherTeacherUser->id,
             'application_status' => 'active',
             'qualification'      => 'Bachelor of Education',

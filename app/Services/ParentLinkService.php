@@ -53,7 +53,8 @@ class ParentLinkService
             // No existing guardian at all — first claim is safe to activate immediately,
             // matching the pre-fix behavior for the common legitimate case (school
             // pre-created the student account with no parent yet).
-            $student->update(['parent_user_id' => $parent->id]);
+            $student->parent_user_id = $parent->id;
+            $student->save();
         }
 
         if (!$isFirstClaim) {

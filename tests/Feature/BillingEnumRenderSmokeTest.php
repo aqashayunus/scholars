@@ -33,10 +33,10 @@ class BillingEnumRenderSmokeTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::create(['name' => 'Admin', 'email' => 'admin@render.test', 'role' => 'admin', 'password' => Hash::make('password')]);
-        $this->parent = User::create(['name' => 'Parent', 'email' => 'parent@render.test', 'role' => 'parent', 'password' => Hash::make('password')]);
-        $this->studentUser = User::create(['name' => 'Student', 'email' => 'student@render.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $this->student = Student::create(['user_id' => $this->studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
+        $this->admin = User::factory()->create(['name' => 'Admin', 'email' => 'admin@render.test', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $this->parent = User::factory()->create(['name' => 'Parent', 'email' => 'parent@render.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $this->studentUser = User::factory()->create(['name' => 'Student', 'email' => 'student@render.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $this->student = Student::factory()->create(['user_id' => $this->studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
         // authorizeInvoiceAccess() (Billing\InvoiceController) checks only the
         // pivot-based authorizedChildren(), not the legacy parent_user_id
         // column — both must be set for the parent fixture to be authorized.

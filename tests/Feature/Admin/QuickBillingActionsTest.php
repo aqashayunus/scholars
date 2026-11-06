@@ -32,9 +32,9 @@ class QuickBillingActionsTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::create(['name' => 'Admin', 'email' => 'admin@qba.test', 'role' => 'admin', 'password' => Hash::make('password')]);
-        $studentUser = User::create(['name' => 'Student', 'email' => 'student@qba.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $this->student = Student::create(['user_id' => $studentUser->id, 'level' => 'SPM']);
+        $this->admin = User::factory()->create(['name' => 'Admin', 'email' => 'admin@qba.test', 'role' => 'admin', 'password' => Hash::make('password')]);
+        $studentUser = User::factory()->create(['name' => 'Student', 'email' => 'student@qba.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $this->student = Student::factory()->create(['user_id' => $studentUser->id, 'level' => 'SPM']);
     }
 
     private function makeInvoice(): Invoice

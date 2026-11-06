@@ -192,7 +192,7 @@ class ParentRegistrationController extends Controller
         try {
             $result = DB::transaction(function () use ($validated, $hasExistingChild, $parentIcHash, $request) {
                 // --- 1. Create Parent User ---
-                $parentUser = User::create([
+                $parentUser = new User([
                     'name'             => $validated['parent_name'],
                     'email'            => $validated['email'],
                     'phone'            => $validated['phone'],
@@ -205,9 +205,10 @@ class ParentRegistrationController extends Controller
                     'state'            => $validated['state'],
                     'country'          => $validated['country'] ?? 'Malaysia',
                     'ic_number_hash'   => $parentIcHash,
-                    'role'             => 'parent',
                     'password'         => Hash::make($validated['password']),
                 ]);
+                $parentUser->role = 'parent';
+                $parentUser->save();
 
                 if ($hasExistingChild) {
                     // --- 2a. Link existing student via IC hash ---
@@ -260,13 +261,13 @@ class ParentRegistrationController extends Controller
                     // real inbox the credential could otherwise be emailed to.
                     $childPassword = Str::password(14);
 
-                    $childUser = User::create([
+                    $childUser = new User([
                         'name'     => $validated['child_name'],
                         'email'    => $childEmail,
                         'phone'    => '',
-                        'role'     => 'student',
                         'password' => Hash::make($childPassword),
                     ]);
+                    $childUser->role = 'student';
                     $childUser->must_change_password = true;
                     $childUser->save();
 
@@ -276,9 +277,8 @@ class ParentRegistrationController extends Controller
                     $dob    = Student::dobFromIc($validated['child_ic_number']);
                     $gender = Student::genderFromIc($validated['child_ic_number']);
 
-                    $student = Student::create([
+                    $student = new Student([
                         'user_id'        => $childUser->id,
-                        'parent_user_id' => $parentUser->id,
                         'ic_number_hash' => $childIcHash,
                         'gender'         => $gender,
                         'date_of_birth'  => $dob,
@@ -287,6 +287,8 @@ class ParentRegistrationController extends Controller
                         'total_points'   => 0,
                         'streak_days'    => 1,
                     ]);
+                    $student->parent_user_id = $parentUser->id;
+                    $student->save();
 
                     DB::table('parent_student')->insert([
                         'parent_user_id' => $parentUser->id,

@@ -27,9 +27,9 @@ class ParentPaymentAggregationTest extends TestCase
 
     public function test_dashboard_and_payments_pages_surface_pending_and_successful_payments_correctly(): void
     {
-        $parent = User::create(['name' => 'Parent', 'email' => 'parent@agg.test', 'role' => 'parent', 'password' => Hash::make('password')]);
-        $studentUser = User::create(['name' => 'Student', 'email' => 'student@agg.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $student = Student::create(['user_id' => $studentUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
+        $parent = User::factory()->create(['name' => 'Parent', 'email' => 'parent@agg.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $studentUser = User::factory()->create(['name' => 'Student', 'email' => 'student@agg.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $student = Student::factory()->create(['user_id' => $studentUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
 
         Payment::create([
             'user_id' => $parent->id,

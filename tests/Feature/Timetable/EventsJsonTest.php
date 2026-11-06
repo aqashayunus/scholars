@@ -37,8 +37,8 @@ class EventsJsonTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-10-15 09:00:00'));
 
-        $teacherUser = User::create(['name' => 'Cikgu Lee', 'email' => 'lee@tt.test', 'role' => 'teacher', 'password' => Hash::make('password')]);
-        $this->teacher = Teacher::create(['user_id' => $teacherUser->id, 'application_status' => 'active', 'qualification' => 'Master of Physics']);
+        $teacherUser = User::factory()->create(['name' => 'Cikgu Lee', 'email' => 'lee@tt.test', 'role' => 'teacher', 'password' => Hash::make('password')]);
+        $this->teacher = Teacher::factory()->create(['user_id' => $teacherUser->id, 'application_status' => 'active', 'qualification' => 'Master of Physics']);
 
         $subject = Subject::create(['name' => 'Physics', 'slug' => 'physics-tt', 'level' => 'SPM']);
         $this->course = Course::create([
@@ -68,8 +68,8 @@ class EventsJsonTest extends TestCase
 
     public function test_student_role_events_json_does_not_crash_and_includes_the_live_class(): void
     {
-        $studentUser = User::create(['name' => 'Ali', 'email' => 'ali@tt.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $student = Student::create(['user_id' => $studentUser->id, 'level' => 'SPM']);
+        $studentUser = User::factory()->create(['name' => 'Ali', 'email' => 'ali@tt.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $student = Student::factory()->create(['user_id' => $studentUser->id, 'level' => 'SPM']);
         Enrollment::create(['student_id' => $student->id, 'course_id' => $this->course->id, 'enrolled_at' => now(), 'progress_pct' => 0, 'status' => 'active']);
 
         $response = $this->actingAs($studentUser)
@@ -83,9 +83,9 @@ class EventsJsonTest extends TestCase
 
     public function test_parent_role_events_json_does_not_crash_and_includes_the_childs_live_class(): void
     {
-        $parentUser = User::create(['name' => 'Parent Tan', 'email' => 'tan@tt.test', 'role' => 'parent', 'password' => Hash::make('password')]);
-        $studentUser = User::create(['name' => 'Mei', 'email' => 'mei@tt.test', 'role' => 'student', 'password' => Hash::make('password')]);
-        $student = Student::create(['user_id' => $studentUser->id, 'parent_user_id' => $parentUser->id, 'level' => 'SPM']);
+        $parentUser = User::factory()->create(['name' => 'Parent Tan', 'email' => 'tan@tt.test', 'role' => 'parent', 'password' => Hash::make('password')]);
+        $studentUser = User::factory()->create(['name' => 'Mei', 'email' => 'mei@tt.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $student = Student::factory()->create(['user_id' => $studentUser->id, 'parent_user_id' => $parentUser->id, 'level' => 'SPM']);
         Enrollment::create(['student_id' => $student->id, 'course_id' => $this->course->id, 'enrolled_at' => now(), 'progress_pct' => 0, 'status' => 'active']);
 
         $response = $this->actingAs($parentUser)

@@ -29,13 +29,13 @@ class TeacherApplicationService
                 // forces a real password before first real use.
                 $tempPassword = Str::password(14);
 
-                $user = User::create([
+                $user = new User([
                     'name'     => $application->full_name,
                     'email'    => $application->email,
                     'phone'    => $application->phone,
-                    'role'     => 'teacher',
                     'password' => Hash::make($tempPassword),
                 ]);
+                $user->role = 'teacher';
                 $user->must_change_password = true;
                 $user->save();
 
@@ -45,18 +45,16 @@ class TeacherApplicationService
                     report($e);
                 }
             } else {
-                $user->update(['role' => 'teacher']);
+                $user->role = 'teacher';
+                $user->save();
             }
 
-            Teacher::updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'application_status' => 'active',
-                    'qualification'      => $application->qualification,
-                    'experience_years'   => $application->experience_years,
-                    'bio'                => $application->preferred_subjects ? "Specialist educator in: {$application->preferred_subjects}" : 'Certified Aster Edu Educator',
-                ]
-            );
+            $teacher = Teacher::firstOrNew(['user_id' => $user->id]);
+            $teacher->application_status = 'active';
+            $teacher->qualification = $application->qualification;
+            $teacher->experience_years = $application->experience_years;
+            $teacher->bio = $application->preferred_subjects ? "Specialist educator in: {$application->preferred_subjects}" : 'Certified Aster Edu Educator';
+            $teacher->save();
 
             $application->update([
                 'user_id'     => $user->id,

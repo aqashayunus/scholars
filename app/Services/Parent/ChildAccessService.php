@@ -99,20 +99,20 @@ class ChildAccessService
                     ? $validated['password']
                     : Str::random(8) . rand(10, 99) . '!';
 
-                $childUser = User::create([
+                $childUser = new User([
                     'name'     => $validated['name'],
                     'email'    => $childEmail,
                     'phone'    => '',
-                    'role'     => 'student',
                     'password' => Hash::make($childPassword),
                 ]);
+                $childUser->role = 'student';
+                $childUser->save();
 
                 $dob    = Student::dobFromIc($validated['child_ic_number']);
                 $gender = Student::genderFromIc($validated['child_ic_number']);
 
-                $student = Student::create([
+                $student = new Student([
                     'user_id'        => $childUser->id,
-                    'parent_user_id' => $parent->id,
                     'ic_number_hash' => $childIcHash,
                     'gender'         => $gender,
                     'date_of_birth'  => $dob,
@@ -121,6 +121,8 @@ class ChildAccessService
                     'total_points'   => 0,
                     'streak_days'    => 1,
                 ]);
+                $student->parent_user_id = $parent->id;
+                $student->save();
 
                 // Link via pivot table
                 DB::table('parent_student')->insertOrIgnore([

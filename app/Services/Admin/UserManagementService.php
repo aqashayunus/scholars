@@ -31,23 +31,24 @@ class UserManagementService
         // that). must_change_password forces a real password on first login.
         $passwordText = Str::password(14);
 
-        $user = User::create([
+        $user = new User([
             'name'     => $validated['name'],
             'email'    => $validated['email'],
-            'role'     => $validated['role'],
             'phone'    => $validated['phone'] ?? null,
             'password' => Hash::make($passwordText),
         ]);
+        $user->role = $validated['role'];
         $user->must_change_password = true;
         $user->save();
 
         if ($user->role === 'student') {
-            $student = Student::create([
-                'user_id'        => $user->id,
-                'parent_user_id' => $validated['parent_user_id'] ?? null,
-                'level'          => 'SPM',
-                'total_points'   => 0,
+            $student = new Student([
+                'user_id'      => $user->id,
+                'level'        => 'SPM',
+                'total_points' => 0,
             ]);
+            $student->parent_user_id = $validated['parent_user_id'] ?? null;
+            $student->save();
 
             if (!empty($validated['courses'])) {
                 foreach ($validated['courses'] as $courseId) {
@@ -163,9 +164,11 @@ class UserManagementService
     {
         $student = Student::findOrFail($id);
         $newStatus = ($student->status === StudentStatus::Inactive) ? StudentStatus::Active : StudentStatus::Inactive;
-        $student->update(['status' => $newStatus]);
+        $student->status = $newStatus;
+        $student->save();
         if ($student->user) {
-            $student->user->update(['is_active' => ($newStatus === StudentStatus::Active)]);
+            $student->user->is_active = ($newStatus === StudentStatus::Active);
+            $student->user->save();
         }
 
         $name = $student->user->name ?? 'Student #' . $id;
@@ -215,13 +218,14 @@ class UserManagementService
         $teacher = Teacher::findOrFail($id);
         $newStatus = ($teacher->application_status === 'inactive' || $teacher->application_status === 'deactivated') ? 'active' : 'inactive';
 
-        $updateData = ['application_status' => $newStatus];
+        $teacher->application_status = $newStatus;
         if ($newStatus === 'inactive') {
-            $updateData['is_online'] = false;
+            $teacher->is_online = false;
         }
-        $teacher->update($updateData);
+        $teacher->save();
         if ($teacher->user) {
-            $teacher->user->update(['is_active' => ($newStatus === 'active')]);
+            $teacher->user->is_active = ($newStatus === 'active');
+            $teacher->user->save();
         }
 
         $name = $teacher->user->name ?? 'Teacher #' . $id;
@@ -268,13 +272,16 @@ class UserManagementService
         }
 
         $newActive = !$user->is_active;
-        $user->update(['is_active' => $newActive]);
+        $user->is_active = $newActive;
+        $user->save();
 
         if ($user->studentProfile) {
-            $user->studentProfile->update(['status' => $newActive ? 'active' : 'inactive']);
+            $user->studentProfile->status = $newActive ? 'active' : 'inactive';
+            $user->studentProfile->save();
         }
         if ($user->teacherProfile) {
-            $user->teacherProfile->update(['application_status' => $newActive ? 'active' : 'inactive']);
+            $user->teacherProfile->application_status = $newActive ? 'active' : 'inactive';
+            $user->teacherProfile->save();
         }
 
         $label = $newActive ? 'Reactivated' : 'Deactivated';

@@ -13,7 +13,7 @@ class ForcePasswordChangeTest extends TestCase
 
     public function test_a_flagged_user_is_redirected_to_set_a_new_password(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Flagged User',
             'email'    => 'flagged@test.com',
             'role'     => 'student',
@@ -29,7 +29,7 @@ class ForcePasswordChangeTest extends TestCase
 
     public function test_setting_a_new_password_clears_the_flag_and_restores_access(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Flagged User 2',
             'email'    => 'flagged2@test.com',
             'role'     => 'student',
@@ -56,7 +56,7 @@ class ForcePasswordChangeTest extends TestCase
 
     public function test_flagged_user_can_still_reach_the_set_password_screen_itself(): void
     {
-        $user = User::create([
+        $user = User::factory()->create([
             'name'     => 'Flagged User 3',
             'email'    => 'flagged3@test.com',
             'role'     => 'student',
