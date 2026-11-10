@@ -1,3 +1,16 @@
+> **HISTORICAL — superseded by the Phase 2 chat consolidation.** This was the
+> original pre-build spec, written before the chatbox existed. The system
+> that actually shipped diverged from it in real ways: it's built on
+> `Conversation`/`ChatMessage` (the `messages` table and `sender_id`/
+> `receiver_id` columns this document describes were deleted outright, not
+> extended), the real routes are under `chat.conversations.*` (not
+> `/chat/send`, `/chat/upload-attachment`, `/chat/conversation/{userId}` as
+> written below), and delta-polling cursors by message `id` rather than any
+> fixed-interval 3s/8s/15s schedule. For the current, verified design, see
+> [`docs/architecture.md`](docs/architecture.md) §4 (Chat Subsystem). Kept
+> here unedited as a historical record of the original intent, not as
+> documentation of current behavior.
+
 # 📋 Implementation Plan: Floating Chatbox with Parental Monitoring & Polling
 
 ## Executive Summary

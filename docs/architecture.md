@@ -1,10 +1,8 @@
 # Olympia Scholars — Architecture
 
-**Status as of:** 2026-09-28, branch `khai-QA-refactor`, on top of the single `ed7d597` initial commit (all QA/refactor work below is currently uncommitted working-tree state, not yet merged to `main`).
+**Status as of:** 2026-11-10, branch `khai-QA-refactor`. This document was last written 2026-09-28 after Phases 0–3; it went stale on every metric for six weeks while Phases 4–5 landed. Rewritten from scratch against the current codebase (`php artisan test`, `wc -l`, direct file reads, `git log`), not from memory of the previous version or from design intent. Where something is planned but not yet built, it is marked **NOT YET DONE**.
 
-This document describes the system as it actually is today, verified directly against the codebase (`php artisan test`, `git diff --stat` against the initial commit, `wc -l`, direct file reads) rather than from design intent. Where something is planned but not yet built, it is marked **NOT YET DONE** rather than omitted.
-
-Companion document: [`E:\PROJECTS\OLYMPIA-PROJECTS\Scholars\implementation_plan.md`](../implementation_plan.md) (chatbox spec) and the QA/refactor master plan at `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md`.
+Companion documents: [`implementation_plan.md`](../implementation_plan.md) (chatbox spec — now historical, see the notice at its top) and the QA/refactor master plan at `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md`.
 
 ---
 
@@ -16,9 +14,9 @@ Companion document: [`E:\PROJECTS\OLYMPIA-PROJECTS\Scholars\implementation_plan.
 | PHP | `^8.2` (running 8.3.28) | `composer.json`, `php -v` |
 | DB | MySQL (`DB_CONNECTION=mysql`) | `.env` |
 | Queue driver | `database` (`QUEUE_CONNECTION=database`) | `.env` |
-| Test DB | in-memory SQLite (`phpunit.xml`) | Phase 1 audit — 4 raw-SQL sites, zero MySQL-specific functions, confirmed a legitimate target |
+| Test DB | in-memory SQLite (`phpunit.xml`) | confirmed a legitimate target in Phase 1; also used ad hoc as a file-based DB for the Phase 5 FK/index audits since no live MySQL was reachable locally |
 | Frontend | Blade + Alpine.js + Tailwind (no SPA framework) | `resources/views`, `tailwind.config.js` |
-| Deployment target | Shared/cPanel hosting, no persistent worker process | Plan decision #4 |
+| Deployment target | Shared/cPanel hosting, no persistent worker process | Plan decision #4; **still unproven** — see §7, Phase 5a |
 
 ---
 
@@ -32,27 +30,28 @@ graph TB
 
     subgraph HTTP["HTTP Layer"]
         MW["Middleware pipeline<br/>role: / EnsureUserIsActive /<br/>EnsurePasswordIsNotExpired /<br/>EnsureStudentAccessNotRestricted /<br/>TeacherActiveMiddleware"]
-        R["routes/web.php<br/>268 routes"]
+        R["routes/web.php<br/>329 routes"]
     end
 
     subgraph App["Application Layer"]
-        AC["AdminDashboardController<br/>3,495 lines"]
-        TC["TeacherDashboardController<br/>1,533 lines"]
-        SC["StudentDashboardController<br/>1,270 lines"]
-        CC["ChatController<br/>1,171 lines"]
-        PC["ParentDashboardController<br/>1,032 lines"]
-        TTC["TimetableController<br/>771 lines"]
-        BC["Billing controllers<br/>(Admin/BillingController,<br/>Billing/InvoiceController,<br/>Billing/PaymentController)"]
-        SVC["app/Services/<br/>9 services: Invoice, Payment,<br/>PackagePricing, ParentLink,<br/>BillingNotification, Reminder,<br/>StudentAccessRestriction,<br/>PdfDiagnosticParser, PricingResult(DTO)"]
+        AC["AdminDashboardController<br/>388 lines<br/>(dashboard, users, tasks/quizzes,<br/>teacher apps/gigs, outreach)"]
+        ADM["Admin\\* domain controllers<br/>Settings · Finance · Curriculum ·<br/>ClassScheduling · Billing · Content ·<br/>EmailManagement"]
+        TC["TeacherDashboardController<br/>292 lines"]
+        SC["StudentDashboardController<br/>317 lines"]
+        CC["ChatController<br/>130 lines"]
+        PC["ParentDashboardController<br/>376 lines"]
+        TTC["TimetableController<br/>228 lines"]
+        SVC["app/Services/<br/>48 files"]
     end
 
     subgraph Domain["Domain Layer"]
         ENUMS["app/Enums/ (7)<br/>InvoiceStatus, PaymentStatus,<br/>StudentStatus, EnrollmentStatus,<br/>LiveClassStatus,<br/>StudentAssignmentStatus,<br/>TeacherApplicationStatus"]
-        MODELS["app/Models/ (47)"]
+        MODELS["app/Models/ (59)"]
+        REQ["app/Http/Requests/ (40 FormRequests)"]
     end
 
     subgraph Data["Data Layer"]
-        DB[("MySQL<br/>78 migrations")]
+        DB[("MySQL<br/>93 migrations")]
         QUEUE[("jobs table<br/>(database queue)")]
     end
 
@@ -62,16 +61,23 @@ graph TB
     end
 
     UI --> R --> MW --> App
-    AC & TC & SC & CC & PC & TTC & BC --> SVC
+    AC & ADM & TC & SC & CC & PC & TTC --> SVC
+    App --> REQ
     SVC --> MODELS
     App --> MODELS
     MODELS --> ENUMS
     MODELS --> DB
     SCHED --> JOB --> QUEUE
-    QUEUE -.->|"NOT YET DONE:<br/>no cron runs queue:work"| DB
+    QUEUE -.->|"NOT YET DONE:<br/>no cron proven to run queue:work"| DB
 ```
 
-**Known architectural weak point, unchanged by this pass:** the queue is configured and a job (`SendInvoiceReminderJob`) is dispatched daily by `invoices:process-reminders`, but nothing on the host actually consumes the `jobs` table — no `queue:work` cron entry exists. Reminders almost certainly accumulate without sending. This is Phase 5 scope and has not been touched.
+**Known architectural weak point, still unresolved:** the queue is configured and jobs are dispatched (`SendInvoiceReminderJob` daily via `invoices:process-reminders`), but nothing has been *proven* to consume the `jobs` table on the production host — no `queue:work` cron entry has been confirmed. This is Phase 5a, explicitly blocked on cPanel/infra access the Wanderer has to grant; everything else in Phase 5 that doesn't depend on it is done (§7).
+
+### 2.1 Controller split since the last write-up (Phase 4)
+
+`AdminDashboardController` was 1,030 lines at the start of this round of work (it had grown since the 2026-09-28 snapshot, which measured 3,449 — the 3,449→1,030 drop happened in an earlier, undocumented pass this doc never caught up to). It's now 388, split by domain into `Admin\SettingsController`, `Admin\FinanceController`, `Admin\CurriculumController`, and `Admin\ClassSchedulingController` (all new this phase), joining the pre-existing `Admin\BillingController`, `Admin\AdminContentController`, and `Admin\EmailManagementController`. `ParentDashboardController` went 539→376 via extraction into `Parent\ChildAccessService`/`Parent\BillingService`.
+
+**Known gap, not yet addressed:** `Admin\BillingController` (560 lines) and `Admin\EmailManagementController` (586 lines) both already exceed the Phase 4 ~400-line guideline. Neither was named in the original Phase 4 audit (both are pre-existing, upstream-merged subsystems, not part of the six controllers that audit tracked), so they were never in scope for this round's split — surfaced here so it isn't silently missed next time the controller sizes are audited.
 
 ---
 
@@ -104,233 +110,102 @@ sequenceDiagram
     Ctl-->>U: Blade view / redirect
 ```
 
-`tests/Feature/RouteAuthorizationMatrixTest.php` (Phase 1) introspects the live route table at runtime — not a hand-maintained list — and asserts all 204 `role:`-gated routes (107 admin, 41 teacher, 32 student, 24 parent) reject every other role and guests. 816 individual assertions in one test method.
+`tests/Feature/RouteAuthorizationMatrixTest.php` (Phase 1) introspects the live route table at runtime — not a hand-maintained list — and asserts every `role:`-gated route rejects every other role and guests. It kept working unchanged through every controller rename in Phase 4, which was exactly the point of building it that way: a controller-class rename is invisible to a test that only looks at route names and middleware.
 
 ---
 
-## 4. Chat Subsystem — Before/After (Phase 2)
+## 4. Chat Subsystem
 
-The chatbox was found half-migrated: a floating-widget stack (`Conversation`/`ChatMessage`) and a legacy full-page stack (`Message`/`MessageController`) coexisted with **separate, non-overlapping data**.
+The chatbox was fully consolidated in Phase 2 onto a single `Conversation`/`ChatMessage` stack (the legacy `Message`/`MessageController` stack and its table were deleted outright). `Chat\MessagingService` (1,217 lines / 24 methods) now holds essentially all of the logic that used to live in `ChatController`, which is down to 130 lines of pure route dispatch — message lifecycle (send, delta-poll via `since_id`, read receipts), attachments (upload + authenticated download), typing indicators, mute/archive/clear/delete, a parental-monitoring module (audited, logged to `chat_audit_logs`), and an admin module (contact search, status changes, per-user context).
 
-```mermaid
-graph LR
-    subgraph Before["BEFORE — two parallel, disconnected stacks"]
-        direction TB
-        W1["Floating widget<br/>(Alpine.js component)"] --> CM1["ChatController<br/>REST endpoints"]
-        CM1 --> Conv1["Conversation /<br/>ChatMessage tables"]
-        FP1["/student/messages<br/>/teacher/messages"] --> MC1["MessageController"]
-        MC1 --> Msg1["messages table"]
-        Admin1["Admin activity feed"] --> Msg1
-        Note1["A widget message is invisible<br/>at /student/messages.<br/>Unread counts diverge."]
-    end
+`ChatController::authorizeContact` allows Parent↔Child (active guardianship only — a `pending` link still grants zero chat access) and enforces the teacher-enrollment whitelist both directions. `getDirectory()` (the "who can I start a new chat with" list) surfaces the counterpart correctly.
 
-    subgraph After["AFTER — one stack, full-page view built but disabled"]
-        direction TB
-        W2["Floating widget"] --> CM2["ChatController<br/>same REST endpoints"]
-        FP2["chat/_full-page-messenger.blade.php<br/>(built, routes commented out<br/>per repo-owner direction)"] --> CM2
-        CM2 --> Conv2["Conversation / ChatMessage<br/>(single source of truth)"]
-        Admin2["Admin activity feed<br/>(repointed)"] --> Conv2
-        Deleted["Message model,<br/>MessageController,<br/>8 legacy AJAX routes,<br/>messages table:<br/>ALL DELETED<br/>(down-reversible migration)"]
-    end
-
-    Before -. Phase 2 .-> After
-```
-
-Also fixed in Phase 2: `ChatController::authorizeContact` now allows Parent↔Child (active guardianship only — a Phase-0 `pending` link correctly still grants zero chat access) and enforces the teacher-enrollment whitelist both directions. `getDirectory()` (the "who can I start a new chat with" list) previously never surfaced the counterpart at all — fixed, or the authorization fix alone would have been invisible in the UI.
+**Had zero direct test coverage until Phase 4/5's gap-closure pass** (`MessagingServiceContractTest`, 17 tests) beyond the role-matrix authorization tests (`ChatAuthorizationTest`) written in Phase 2. Writing that coverage caught a real bug: `getChildConversations()`'s audit-log call passes a null `conversation_id` for the `monitoring_session_started` action, but the migration meant to make that column nullable
+(`2026_09_28_100002_make_conversation_id_nullable_in_chat_audit_logs.php`) had explicitly skipped itself on sqlite — dead code written against an older Laravel that needed `doctrine/dbal` for `->change()`; Laravel 12 doesn't. Fixed.
 
 ---
 
-## 5. Enum / Domain Modeling (Phase 3)
+## 5. Enum / Domain Modeling
 
-### 5.1 What changed
-
-Seven `status`-bearing models moved from ad-hoc strings / class constants to native PHP backed enums:
-
-```mermaid
-classDiagram
-    class InvoiceStatus {
-        <<enum: string>>
-        Draft
-        Issued
-        PartiallyPaid
-        Paid
-        Overdue
-        Cancelled
-        +unpaidStatuses() array
-        +label() string
-    }
-    class PaymentStatus {
-        <<enum: string>>
-        Pending
-        Successful
-        Failed
-        Cancelled
-    }
-    class StudentStatus {
-        <<enum: string>>
-        Active
-        Inactive
-        Restricted
-    }
-    class EnrollmentStatus {
-        <<enum: string>>
-        Enrolled
-        Active
-        Completed
-        Dropped
-    }
-    class LiveClassStatus {
-        <<enum: string>>
-        Upcoming
-        Live
-        Completed
-    }
-    class StudentAssignmentStatus {
-        <<enum: string>>
-        Pending
-        Submitted
-        Graded
-        Late
-    }
-    class TeacherApplicationStatus {
-        <<enum: string>>
-        Pending
-        Approved
-        Rejected
-    }
-
-    class Invoice { +status: InvoiceStatus }
-    class Payment { +status: PaymentStatus }
-    class Student { +status: StudentStatus }
-    class Enrollment { +status: EnrollmentStatus }
-    class LiveClass { +status: LiveClassStatus~computed accessor~ }
-    class StudentAssignment { +status: StudentAssignmentStatus }
-    class TeacherApplication { +status: TeacherApplicationStatus }
-
-    Invoice --> InvoiceStatus
-    Payment --> PaymentStatus
-    Student --> StudentStatus
-    Enrollment --> EnrollmentStatus
-    LiveClass --> LiveClassStatus
-    StudentAssignment --> StudentAssignmentStatus
-    TeacherApplication --> TeacherApplicationStatus
-```
-
-`LiveClass.status` is a computed accessor (derives Upcoming/Live/Completed from `scheduled_at`/`duration_minutes`), not a simple `$casts` entry — it wraps the enum only at the read boundary; the internal computation and the `saving` hook's DB write stay raw strings, because the underlying MySQL column is a native `enum('upcoming','live','completed')`.
-
-### 5.2 Two bug classes this surfaced
+Seven `status`-bearing models use native PHP backed enums (`app/Enums/`): `InvoiceStatus`, `PaymentStatus`, `StudentStatus`, `EnrollmentStatus`, `LiveClassStatus`, `StudentAssignmentStatus`, `TeacherApplicationStatus`. `LiveClass.status` is a computed accessor (derives Upcoming/Live/Completed from `scheduled_at`/`duration_minutes`), not a simple `$casts` entry, because the underlying MySQL column is a native `enum('upcoming','live','completed')`.
 
 ```mermaid
 flowchart TD
     A["Model.status cast to a backed enum"] --> B{"Where is it read?"}
-    B -->|"Blade echo / ucfirst / strtolower /<br/>string interpolation / match() on raw string"| C["PHP TypeError or Fatal Error<br/>(enums cannot implement __toString)"]
-    B -->|"Eloquent query builder<br/>where() / whereIn() (pre-get)"| D["Safe — compiles to SQL,<br/>compares raw string either way"]
-    B -->|"Collection::where() / whereIn() /<br/>in_array() (AFTER ->get())"| E["SILENT bug — PHP loose (==)<br/>comparison is unconditionally false<br/>between enum instance and string.<br/>No crash. No error. Just wrong data."]
+    B -->|"Blade echo / ucfirst / strtolower /<br/>string interpolation / match() on raw string"| C["PHP TypeError or Fatal Error"]
+    B -->|"Eloquent query builder<br/>where() / whereIn() (pre-get)"| D["Safe — compiles to SQL"]
+    B -->|"Collection::where() / whereIn() /<br/>in_array() (AFTER ->get())"| E["SILENT bug — loose (==)<br/>comparison is unconditionally false<br/>between an enum instance and a string"]
     B -->|"json_encode()"| F["Safe — enums auto-serialize<br/>to their backing value"]
-
-    C -->|"caught by"| G["Grep sweep + render smoke tests"]
-    E -->|"caught by"| H["Only by rendering real pages<br/>and checking real numbers —<br/>grep cannot see this class"]
 ```
 
-Confirmed empirically (not assumed):
-```
-php -r "enum X: string { case A = 'pending'; } var_dump(X::A == 'pending');"
-→ bool(false)
-```
+Phase 3 found and fixed 2 TypeError crash sites, 2 live silent-data-bug methods (`ParentDashboardController::dashboard()`/`payments()`), and one login-gate security regression (`User::isAccountActive()` comparing a raw string against the newly-enum-cast `Student.status`, which would have let a restricted/inactive student bypass the login gate). `EnrollmentStatus` had zero test references of its own until Phase 4/5's `EnrollmentStatusTest` — closed, including a value-correctness proof that `whereIn()` with enum cases resolves correctly.
 
-**Real, live instances found and fixed of the silent (Collection) class**, both in `ParentDashboardController`:
-- `dashboard()` — pending-payment totals, pending counts, and "last payment made" were unconditionally empty/null for **every parent** viewing their own billing dashboard, regardless of actual payment data.
-- `payments()` — same pattern across 6 aggregate fields (`totalPaid`, `totalOutstanding`, `pendingCount`, `paidCount`, `latestPayment`, `pendingPayments`).
-
-Fixed by switching to strict enum-case comparisons; the "Payment has no overdue state" phantom branches (a value that was never a valid `PaymentStatus`) were dropped rather than kept as dead code. New regression test `tests/Feature/ParentPaymentAggregationTest.php` renders both live pages with real pending + successful payments and asserts the view data is actually correct — verified to fail against the pre-fix code.
-
-**Real, live instances of the crash (TypeError) class**: `ucfirst()` called directly on an enum instance in `admin/dashboard.blade.php` and `parent/dashboard.blade.php`. Missed by the existing render smoke test because its fixtures didn't populate the specific relations those two lines read (`Invoice::paymentTransactions`, `$latestPayment`).
-
-**A real security regression caught in the same pass**: `User::isAccountActive()` compared `$this->studentProfile->status === 'inactive'` (raw string) against the newly enum-cast `Student.status` — always `false` post-conversion, meaning a restricted/inactive student would have silently bypassed the login gate. Fixed before it shipped.
-
-**Known, explicit gap**: `FeeStructure` still uses `const STATUS_*` string constants — it was not one of the plan's seven named Phase 3 models and was left untouched. This is the one remaining status-like class-constant block in `app/Models/`.
+**Known, explicit gap, unchanged:** `FeeStructure` still uses `const STATUS_*` string constants — never one of the plan's seven named Phase 3 models.
 
 ---
 
-## 6. Domain Model (core billing/enrollment slice)
+## 6. Subsystems Not Previously Documented
 
-```mermaid
-erDiagram
-    STUDENT ||--o{ ENROLLMENT : has
-    STUDENT ||--o{ INVOICE : owns
-    STUDENT }o--o{ USER : "parent_student pivot (+legacy parent_user_id)"
-    INVOICE ||--o{ INVOICE_ITEM : contains
-    INVOICE }o--o{ PAYMENT : "payment_invoices pivot"
-    INVOICE ||--o{ INVOICE_REMINDER : schedules
-    COURSE ||--o{ ENROLLMENT : fills
-    COURSE ||--o{ LIVE_CLASS : schedules
-    TEACHER ||--o{ COURSE : teaches
-    TEACHER_APPLICATION ||--o| USER : "approved into"
-    STUDENT ||--o{ STUDENT_ASSIGNMENT : submits
-    ASSIGNMENT ||--o{ STUDENT_ASSIGNMENT : "graded per student"
-    USER ||--o{ CONVERSATION : "participates (pivot)"
-    CONVERSATION ||--o{ CHAT_MESSAGE : contains
-```
+These exist in the codebase (merged from upstream between the 2026-09-28 write-up and now) but were never recorded here. Listed so this document stops being wrong about what's actually in the app:
 
-47 models total in `app/Models/`. This diagram covers the slice touched by Phases 0–3; it is not exhaustive of all 47.
+| Subsystem | Location | What it does |
+|---|---|---|
+| **Billplz payment gateway** | `Services\Billplz\BillplzService`, `Http\Controllers\Billing\{BillplzController,InvoiceController,PaymentController}` | Online banking checkout (sandbox + live endpoints, API key resolved from DB `Setting` with a config fallback). Falls back to a mock FPX success path when no gateway credentials are configured (see `Parent\BillingService::payInvoice()`). |
+| **Email management** | `Services\Email\{AudienceResolverService,EmailAutomationService,EmailSendingService,EmailTemplateRenderer,EmailVariableRegistry}`, `Http\Controllers\Admin\EmailManagementController` | Templated transactional/marketing email: audience resolution with suppression-list respect, idempotent automation triggers (keyed, so the same event can't double-fire), campaign batching (`ProcessCampaignBatchJob`), and a variable registry that drives both the template editor's autocomplete and the renderer's HTML-escaping. |
+| **Grading engine** | `Services\Grading\DiagnosticGradingEngine` | Evaluates student answers against admin-authored rule ASTs (parsed separately), computing awarded marks, partial credit, and transparent per-question feedback — used by the diagnostic-test flow, distinct from a teacher's manual grading of regular tasks. |
+| **Attendance** | `Services\AttendanceService` (student-facing: join/rejoin attempts, correction requests) + `Services\Admin\AttendanceService` (admin-facing: policy settings, CSV export) | Two services, split by audience rather than by data — both operate on `student_attendances`/`attendance_events`/`attendance_correction_requests`. |
+| **Interactive PDF assignments** | `Http\Controllers\InteractiveAssignmentController`, `Services\PdfDiagnosticParser` | Lets a student annotate/fill a PDF assignment page-by-page (`submission_pages`), auto-parses question/option/page structure from an uploaded PDF for admin-authored diagnostic tests, and renders a read-only interactive viewer for teacher/admin review. |
 
 ---
 
 ## 7. QA / Refactor Phase Status
 
-Per `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md` (v2):
+Per `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md` (v2) and the follow-up gap-closure plan at `C:\Users\kyouscireul\.claude\plans\playful-dazzling-moon.md`:
 
 | Phase | Status | One-line result |
 |---|---|---|
 | 0 — Containment | ✅ Done | Closed an unauthenticated parent-child-hijack chain; randomized/emailed all previously-derivable passwords; throttled account creation |
-| 1 — Safety Net | ✅ Done | Runtime route-authorization matrix (816 checks); 6 model factories; dashboard smoke tests (found + fixed a hardcoded `teacher_id=1` crash) |
-| 2 — Chat Consolidation | ✅ Done | Rebuilt full-page messenger on the winning stack (shipped disabled per repo-owner direction); legacy `Message` stack deleted outright; Parent↔Child chat enabled |
-| 3 — Enums / Domain Modeling | ✅ Done | 7 backed enums; found and fixed 2 crash sites + 2 live silent-data-bug methods + 1 login-gate security regression |
-| 4 — Modularity | ⬜ Not started | Controllers listed in §2 are still their original (pre-refactor) sizes — no extraction has occurred |
-| 5 — Scalability | ⬜ Not started | Queue-worker cron unproven; no FK/index audit; `$fillable` privilege columns untightened |
+| 1 — Safety Net | ✅ Done | Runtime route-authorization matrix; model factories; dashboard smoke tests |
+| 2 — Chat Consolidation | ✅ Done | Single `Conversation`/`ChatMessage` stack; legacy `Message` stack deleted; Parent↔Child chat enabled |
+| 3 — Enums / Domain Modeling | ✅ Done | 7 backed enums; 2 crash sites + 2 silent-data-bug methods + 1 login-gate security regression found and fixed |
+| 4 — Modularity | ✅ Done | 4th missed route closure extracted; 22 inline `validate()` → FormRequests; both oversized controllers (Admin 1030→388, Parent 539→376) split under 400 lines — see §2.1 for the 2 pre-existing controllers this didn't cover |
+| 5 — Scalability | ✅ Done except 5a | `$fillable` tightened on all 5 flagged models (redone clean after an earlier attempt broke 313 tests → 63 failures); FK audit clean (no bugs); 2 genuinely-missing indexes added; 6 real N+1 sites fixed; a query-budget test harness locks in the 2 fixes with real regression risk. **5a (queue-worker proof on the live cPanel host) blocked on Wanderer/infra access — not done.** |
 | 6 — CI & Static Analysis | ⬜ Not started | No `.github/workflows`, no `phpstan.neon`/Larastan, no `pint.json` |
 
 ---
 
-## 8. Before / After — Verified Metrics
+## 8. Test Suite
 
-All "Before" figures are read directly from the single initial commit (`git show ed7d597:<path>`), not from memory. All "After" figures are read from the current working tree. Both were measured in this session.
+| Metric | Value | Verified via |
+|---|---|---|
+| Test methods | 351 (349 passing, 2 intentionally skipped — the full-page messenger, disabled per repo-owner direction) | `php artisan test` |
+| Assertions | 1,063 | `php artisan test` output |
+| Query-budget regression tests | 2 (`OverviewServiceBuildStudentDataTest`, `AcademicProgressServiceQueryBudgetTest`), via `Tests\Concerns\CountsQueries` | Phase 5e |
 
-| Metric | Before (`ed7d597`) | After (current) | Verified via |
-|---|---|---|---|
-| Test methods (total) | 67 (across 15 files, incl. dead `ExampleTest.php`) | **110** (108 passing + 2 intentionally skipped) across 22 Feature files + 7 Auth files + 1 Unit file | `php artisan test`; per-file `grep -c "public function test_"` |
-| Test assertions | not separately tracked | 295 | `php artisan test` output |
-| Native PHP backed enums (`app/Enums/`) | 0 | 7 | `git ls-tree` vs `ls app/Enums` |
-| Models with `status` cast to an enum | 0 | 6 direct `$casts` + 1 computed-accessor (`LiveClass`) = 7 | `grep "Status::class" app/Models/*.php` |
-| `const STATUS_*` constants remaining in `app/Models/` | 14 | 4 (all in `FeeStructure`, explicitly out of Phase 3 scope) | `grep -c "const STATUS_"` before/after |
-| Middleware | 4 (`EnsureStudentAccessNotRestricted`, `EnsureUserIsActive`, `RoleMiddleware`, `TeacherActiveMiddleware`) | 5 (+ `EnsurePasswordIsNotExpired`) | `git ls-tree` vs `ls app/Http/Middleware` |
-| `app/Services/` | 8 files | 9 files (+ `ParentLinkService`) | `git ls-tree` vs `ls app/Services` |
-| Chat data model | 2 parallel, disconnected stacks (`Message` + `Conversation`/`ChatMessage`) | 1 stack (`Conversation`/`ChatMessage`); `Message` model, `MessageController`, `messages` table, 8 legacy routes deleted | file diff, migration `2026_09_28_160633_drop_legacy_messages_table.php` |
-| Migrations | 76 | 78 | `git ls-tree` count vs `ls` count |
-| Routes in `routes/web.php` | 273 | 268 | `grep -c "Route::"` before/after (net delta reflects Phase 2's legacy chat route deletions net of Phase 0/3 additions) |
-| Inline `->validate()` / `Validator::make()` calls in controllers | 96 | 97 | grep before/after (**unchanged** — this is Phase 4 scope, not yet touched) |
-| `FormRequest` classes | 2 (`LoginRequest`, `ProfileUpdateRequest`) | 2 (unchanged) | `git ls-tree` vs `ls app/Http/Requests` |
-| Largest controller (`AdminDashboardController`) | 3,449 lines | 3,495 lines | `wc -l` before/after — **grew**, not shrank; enum-safety fixes added lines, Phase 4 (extraction) has not started |
-| `TeacherDashboardController` | 1,532 lines | 1,533 lines | `wc -l` |
-| `StudentDashboardController` | 1,258 lines | 1,270 lines | `wc -l` |
-| `ChatController` | 1,086 lines | 1,171 lines | `wc -l` — grew via Phase 2's directory-visibility + authorization work |
-| `ParentDashboardController` | 1,022 lines | 1,032 lines | `wc -l` |
-| `TimetableController` | 771 lines | 771 lines | `wc -l` — untouched so far |
-| CI workflow | none | none (unchanged) | `.github/workflows` absent both times |
-| Larastan / `phpstan.neon` | none | none (unchanged) | absent both times |
-| `pint.json` | none | none (unchanged) | absent both times |
-| Files changed since initial commit | — | 56 modified, 4 deleted, 29 added (89 total paths) | `git status --short` |
-
-**Honest reading of this table:** Phases 0–3 were a security, correctness, and data-model pass — they did not reduce controller size or add static analysis, because that is explicitly Phase 4's and Phase 6's job, neither of which has started. Controllers got slightly *larger* through this window because enum-safety and bug fixes were added in place, not extracted. The test suite is the one line that moved unambiguously in the right direction: from 67 methods (many pre-existing, unrelated to this effort) to 110, with the newest ones (`ParentPaymentAggregationTest`, `LiveClassStatusTest`, `BillingEnumRenderSmokeTest`) specifically written to catch classes of bug that static grep provably could not.
+The suite has been the regression gate for every change since Phase 1 — green before and after every commit in Phases 3–5, including two multi-day efforts (the AdminDashboardController split and the `$fillable` tightening redo) that were run in small, independently-verified slices specifically so a regression could be isolated to one commit rather than discovered at the end of a large batch.
 
 ---
 
-## 9. Deliberately Deferred / Not Yet Done
+## 9. Current Metrics Snapshot
 
-Stated explicitly so nothing here is mistaken for complete:
+| Metric | Value | Verified via |
+|---|---|---|
+| Models | 59 | `find app/Models -name "*.php"` |
+| Services | 48 | `find app/Services -name "*.php"` |
+| FormRequests | 40 | `find app/Http/Requests -name "*.php"` |
+| Model factories | 40 | `find database/factories -name "*.php"` |
+| Migrations | 93 | `ls database/migrations` |
+| Routes | 329 | `grep -c "Route::" routes/web.php` |
+| Backed enums | 7 | `ls app/Enums` |
+| `const STATUS_*` constants remaining | 4 (all `FeeStructure`, explicitly out of Phase 3 scope) | `grep -c "const STATUS_"` |
+| CI workflow / Larastan / Pint config | none of the three exist | `.github/workflows`, `phpstan.neon`, `pint.json` all absent |
 
-- **Phase 4 (Modularity)**: no controller extraction into per-domain services has happened yet. All six controllers listed in §8 remain monolithic.
-- **Phase 5 (Scalability)**: the queue is dispatching jobs into the `jobs` table but nothing consumes them — no `queue:work` cron is registered. No FK/index audit performed. Mass-assignable privilege columns (`User.role`, `Student.status`, `Invoice.status`/`amount_paid`, etc.) remain untightened.
+---
+
+## 10. Deliberately Deferred / Not Yet Done
+
+- **Phase 5a**: the queue is dispatching jobs into the `jobs` table but nothing has been *proven* to consume them on the production host — no confirmed `queue:work` cron entry. Blocked on the Wanderer granting cPanel/infra access; no further queue work should happen until this passes, per the plan's own instruction.
 - **Phase 6 (CI)**: no CI pipeline, no Larastan/PHPStan, no Pint config exist in this repository as of this writing.
 - **`FeeStructure` enum conversion**: not part of Phase 3's named scope; its `const STATUS_*` constants remain.
-- **Merge cadence**: the plan calls for shipping each phase as its own small PR; in practice all of Phases 0–3 currently sit as one uncommitted working-tree diff against the single initial commit — nothing has been merged to `main` yet.
+- **`Admin\BillingController` / `Admin\EmailManagementController` size**: both exceed the ~400-line guideline (560 and 586 lines respectively) and were never in scope for Phase 4's named controller list — see §2.1.
+- **Merge cadence**: the master plan calls for shipping each phase as its own small PR; in practice this branch (`khai-QA-refactor`) has accumulated many commits ahead of `origin` with nothing merged to `main` — a known, acknowledged risk, parked by explicit Wanderer decision this round (no push/merge without asking first).
