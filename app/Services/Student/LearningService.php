@@ -18,6 +18,14 @@ class LearningService
         // Build dynamic subjects array from database
         $studentProgress = StudentSubtopicProgress::where('student_id', $student->id)->get()->keyBy('subtopic_id');
 
+        // Batched per-course tab counts, instead of 2 queries per enrollment
+        // inside the loop below.
+        $courseIds = $enrollments->pluck('course_id');
+        $practiceCountByCourseId = Quiz::whereIn('course_id', $courseIds)->has('questions')->get(['id', 'course_id'])
+            ->groupBy('course_id')->map(fn ($g) => $g->count());
+        $materialCountByCourseId = LearningMaterial::whereIn('course_id', $courseIds)->where('status', 'Published')->get(['id', 'course_id'])
+            ->groupBy('course_id')->map(fn ($g) => $g->count());
+
         $subjectsData = [];
         foreach ($enrollments as $enrollment) {
             $course = $enrollment->course;
@@ -84,9 +92,9 @@ class LearningService
                 : ($enrollment->progress_pct ?? 0);
 
             // Dynamic tab counts from database
-            $practiceCount = Quiz::where('course_id', $course->id)->has('questions')->count();
+            $practiceCount = $practiceCountByCourseId->get($course->id, 0);
             $videoCount = $recordings->where('subject_id', $subject->id)->count();
-            $courseMaterialsCount = LearningMaterial::where('course_id', $course->id)->where('status', 'Published')->count();
+            $courseMaterialsCount = $materialCountByCourseId->get($course->id, 0);
             $notesCount = $courseMaterialsCount > 0 ? $courseMaterialsCount : 0;
 
             $subjectsData[] = [
@@ -109,7 +117,6 @@ class LearningService
         }
 
         // All quizzes and learning materials for student's enrolled courses
-        $courseIds = $enrollments->pluck('course_id');
         $allQuizzes = Quiz::whereIn('course_id', $courseIds)->with(['course.subject', 'questions'])->get();
         $allMaterials = LearningMaterial::whereIn('course_id', $courseIds)
                                         ->where('status', 'Published')
