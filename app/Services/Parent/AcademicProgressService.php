@@ -41,6 +41,14 @@ class AcademicProgressService
             'Perniagaan'           => 'slate',
         ];
 
+        // One query for all of this student's quiz results across every
+        // enrolled course, grouped by course_id, instead of one query per
+        // enrollment inside the loop below.
+        $quizzesByCourseId = $student->quizResults()
+            ->with('quiz:id,course_id')
+            ->get()
+            ->groupBy(fn ($sq) => $sq->quiz->course_id);
+
         $progress = [];
         foreach ($student->enrollments as $en) {
             $rawName = $en->course->subject->name ?? 'N/A';
@@ -49,7 +57,7 @@ class AcademicProgressService
             $pct = (int) ($en->progress_pct ?? 0);
 
             // Check if student has taken quizzes in this course
-            $quizzes = $student->quizResults()->whereHas('quiz', fn($q) => $q->where('course_id', $en->course_id))->get();
+            $quizzes = $quizzesByCourseId->get($en->course_id, collect());
             $quizAvg = $quizzes->isNotEmpty() ? (int) round($quizzes->avg('score')) : null;
 
             $progress[] = [

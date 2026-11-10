@@ -167,6 +167,19 @@ class DashboardMetricsService
         ->where('scheduled_at', '<=', $now->copy()->addMinutes(60))
         ->get();
 
+        if ($enrolledClasses->isEmpty()) {
+            return;
+        }
+
+        // One query for every "[LiveClass ID: ...]" tag already sent to this
+        // user in the relevant window, instead of one exists() query per
+        // candidate class inside the loop below.
+        $alreadyNotifiedTags = UserNotification::where('user_id', $user->id)
+            ->whereIn('type', ['class_live', 'class_reminder'])
+            ->pluck('message')
+            ->filter(fn ($message) => preg_match('/(\[LiveClass ID: \d+\] \[Status: \w+\])/', $message, $m) ? $m[1] : false)
+            ->flip();
+
         foreach ($enrolledClasses as $liveClass) {
             $startTime = $liveClass->scheduled_at;
             $endTime = $startTime->copy()->addMinutes($liveClass->duration_minutes ?? 60);
@@ -175,11 +188,8 @@ class DashboardMetricsService
             // 1. Check if class is LIVE NOW
             if ($now->gte($startTime) && $now->lte($endTime)) {
                 $uniqueTag = "[LiveClass ID: {$liveClass->id}] [Status: LIVE]";
-                $alreadyNotified = UserNotification::where('user_id', $user->id)
-                    ->where('message', 'like', "%{$uniqueTag}%")
-                    ->exists();
 
-                if (!$alreadyNotified) {
+                if (!isset($alreadyNotifiedTags[$uniqueTag])) {
                     UserNotification::create([
                         'user_id' => $user->id,
                         'type' => 'class_live',
@@ -192,11 +202,8 @@ class DashboardMetricsService
             elseif ($now->lt($startTime) && $now->diffInMinutes($startTime, false) <= 10 && $now->diffInMinutes($startTime, false) >= 0) {
                 $minutesLeft = max(1, $now->diffInMinutes($startTime));
                 $uniqueTag = "[LiveClass ID: {$liveClass->id}] [Status: 10MIN]";
-                $alreadyNotified = UserNotification::where('user_id', $user->id)
-                    ->where('message', 'like', "%{$uniqueTag}%")
-                    ->exists();
 
-                if (!$alreadyNotified) {
+                if (!isset($alreadyNotifiedTags[$uniqueTag])) {
                     UserNotification::create([
                         'user_id' => $user->id,
                         'type' => 'class_reminder',

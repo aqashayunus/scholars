@@ -625,11 +625,22 @@ class BillingAdminService
         $invoice->reminders()->delete();
         PaymentInvoice::where('invoice_id', $id)->delete();
 
-        // 3. Sync orphaned / affected payment records so Ledger stays accurate
+        // 3. Sync orphaned / affected payment records so Ledger stays accurate.
+        // Batched: one query for the payments themselves, one GROUP BY query
+        // for each payment's remaining pivot count + sum, instead of up to
+        // 3 queries per linked payment inside the loop.
+        $payments = Payment::whereIn('id', $linkedPaymentIds)->get()->keyBy('id');
+        $remainingByPaymentId = PaymentInvoice::whereIn('payment_id', $linkedPaymentIds)
+            ->selectRaw('payment_id, count(*) as remaining, sum(amount_applied) as total_applied')
+            ->groupBy('payment_id')
+            ->get()
+            ->keyBy('payment_id');
+
         foreach ($linkedPaymentIds as $paymentId) {
-            $payment = Payment::find($paymentId);
+            $payment = $payments->get($paymentId);
             if (!$payment) continue;
-            $remaining = PaymentInvoice::where('payment_id', $paymentId)->count();
+            $row = $remainingByPaymentId->get($paymentId);
+            $remaining = $row ? (int) $row->remaining : 0;
             $adminNote = "Invoice {$number} deleted by admin.";
             if ($remaining === 0) {
                 if ($payment->status === PaymentStatus::Pending) {
@@ -638,8 +649,7 @@ class BillingAdminService
                     $payment->update(['amount' => 0, 'payment_proof_notes' => $adminNote]);
                 }
             } else {
-                $newAmt = PaymentInvoice::where('payment_id', $paymentId)->sum('amount_applied');
-                $payment->update(['amount' => $newAmt]);
+                $payment->update(['amount' => $row->total_applied]);
             }
         }
 

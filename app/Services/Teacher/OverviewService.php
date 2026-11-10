@@ -8,6 +8,7 @@ use App\Models\LiveClass;
 use App\Models\Quiz;
 use App\Models\StudentAssignment;
 use App\Models\StudentAttendance;
+use App\Models\StudentQuiz;
 use App\Models\Teacher;
 use App\Models\TeacherEarning;
 use App\Models\TeachingGig;
@@ -62,6 +63,36 @@ class OverviewService
         $start = now()->startOfMonth();
         $end   = now()->endOfMonth();
 
+        $courseIds = $teacher->courses->pluck('id');
+        $studentIds = $teacher->courses->flatMap(fn ($c) => $c->enrollments->pluck('student_id'))->unique();
+
+        // Attendance this month, batched per (student_id, course_id) instead of
+        // one query per student per course.
+        $attByKey = StudentAttendance::whereIn('student_id', $studentIds)
+            ->whereHas('liveClass', fn ($q) => $q->whereIn('course_id', $courseIds)->whereBetween('scheduled_at', [$start, $end]))
+            ->with('liveClass:id,course_id')
+            ->get()
+            ->groupBy(fn ($a) => $a->student_id . ':' . $a->liveClass->course_id);
+
+        // Pending task counts, batched per (student_id, course_id).
+        $pendingByKey = StudentAssignment::whereIn('student_id', $studentIds)
+            ->where('status', 'pending')
+            ->whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds))
+            ->with('assignment:id,course_id')
+            ->get()
+            ->groupBy(fn ($sa) => $sa->student_id . ':' . $sa->assignment->course_id)
+            ->map(fn ($group) => $group->count());
+
+        // Latest quiz result per (student_id, course_id) — fetch all, ordered
+        // newest-first, and keep only the first occurrence of each key.
+        $latestQuizByKey = StudentQuiz::whereIn('student_id', $studentIds)
+            ->whereHas('quiz', fn ($q) => $q->whereIn('course_id', $courseIds))
+            ->with('quiz:id,course_id')
+            ->latest('completed_at')
+            ->get()
+            ->unique(fn ($sq) => $sq->student_id . ':' . $sq->quiz->course_id)
+            ->keyBy(fn ($sq) => $sq->student_id . ':' . $sq->quiz->course_id);
+
         foreach ($teacher->courses as $course) {
             foreach ($course->enrollments as $enrollment) {
                 $student = $enrollment->student;
@@ -70,13 +101,10 @@ class OverviewService
 
                 if (isset($studentsData[$sid])) continue;
 
-                // Real attendance this month
-                $attRecords = StudentAttendance::where('student_id', $sid)
-                    ->whereHas('liveClass', fn($q) =>
-                        $q->where('course_id', $course->id)
-                          ->whereBetween('scheduled_at', [$start, $end])
-                    )->get();
+                $key = $sid . ':' . $course->id;
 
+                // Real attendance this month
+                $attRecords  = $attByKey->get($key, collect());
                 $attTotal    = $attRecords->count();
                 $attAttended = $attRecords->whereIn('status', ['attended', 'late'])->count();
                 $attPct      = $attTotal > 0 ? round($attAttended / $attTotal * 100) : 0;
@@ -85,16 +113,10 @@ class OverviewService
                 $progressPct = (int) ($enrollment->progress_pct ?? 0);
 
                 // Real pending tasks
-                $pendingTasks = StudentAssignment::where('student_id', $sid)
-                    ->whereHas('assignment', fn($q) => $q->where('course_id', $course->id))
-                    ->where('status', 'pending')
-                    ->count();
+                $pendingTasks = $pendingByKey->get($key, 0);
 
                 // Latest quiz score
-                $latestQuiz = $student->quizResults()
-                    ->whereHas('quiz', fn($q) => $q->where('course_id', $course->id))
-                    ->latest('completed_at')
-                    ->first();
+                $latestQuiz  = $latestQuizByKey->get($key);
                 $latestScore = $latestQuiz ? $latestQuiz->percent . '%' : '–';
                 $latestDate  = $latestQuiz ? $latestQuiz->completed_at->format('d M Y') : '–';
 

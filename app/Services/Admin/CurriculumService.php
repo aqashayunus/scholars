@@ -105,6 +105,12 @@ class CurriculumService
             $createdCount = 0;
             DB::transaction(function () use ($request, &$createdCount) {
                 $maxOrder = Subject::max('order') ?? 0;
+                // One slug lookup for the whole batch instead of a
+                // while(exists()) query per item -- existingSlugs also
+                // absorbs slugs minted earlier in this same loop, since
+                // those rows aren't committed/queryable yet mid-transaction.
+                $existingSlugs = Subject::pluck('slug')->flip()->all();
+
                 foreach ($request->subjects as $item) {
                     if (empty($item['name'])) {
                         continue;
@@ -119,9 +125,10 @@ class CurriculumService
                     $slug = Str::slug($slugBase);
                     $originalSlug = $slug;
                     $counter = 1;
-                    while (Subject::where('slug', $slug)->exists()) {
+                    while (isset($existingSlugs[$slug])) {
                         $slug = $originalSlug . '-' . $counter++;
                     }
+                    $existingSlugs[$slug] = true;
 
                     Subject::create([
                         'name'           => $item['name'],
