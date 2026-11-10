@@ -22,10 +22,8 @@ class Invoice extends Model
         'subtotal',
         'discount_amount',
         'total_amount',
-        'amount_paid',
         'issued_date',
         'due_date',
-        'status',
     ];
 
     protected $casts = [

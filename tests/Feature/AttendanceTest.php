@@ -393,7 +393,7 @@ class AttendanceTest extends TestCase
     public function test_student_with_overdue_invoice_is_blocked_from_joining(): void
     {
         // Create overdue invoice for student
-        Invoice::create([
+        Invoice::factory()->create([
             'student_id'      => $this->student->id,
             'invoice_number'  => 'INV-2026-OVERDUE-01',
             'title'           => 'SPM Monthly Tuition Fee',

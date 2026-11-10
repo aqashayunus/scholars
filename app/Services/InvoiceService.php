@@ -74,7 +74,7 @@ class InvoiceService
 
                     $invoiceTitle = "{$pricing->packageName} {$billingPeriod} {$studentName}";
 
-                    $invoice = Invoice::create([
+                    $invoice = new Invoice([
                         'student_id'       => $student->id,
                         'fee_structure_id' => $feeStructure->id,
                         'invoice_number'   => $invoiceNumber,
@@ -83,11 +83,12 @@ class InvoiceService
                         'subtotal'         => $pricing->subtotal,
                         'discount_amount'  => $pricing->discountAmount,
                         'total_amount'     => $pricing->totalAmount,
-                        'amount_paid'      => 0.00,
                         'issued_date'      => $issueDate,
                         'due_date'         => $dueDate,
-                        'status'           => InvoiceStatus::Issued,
                     ]);
+                    $invoice->amount_paid = 0.00;
+                    $invoice->status = InvoiceStatus::Issued;
+                    $invoice->save();
 
                     foreach ($pricing->lineItems as $line) {
                         InvoiceItem::create(array_merge(
@@ -123,7 +124,7 @@ class InvoiceService
 
                     $invoiceTitle = "{$feeStructure->name} {$billingPeriod} {$studentName}";
 
-                    $invoice = Invoice::create([
+                    $invoice = new Invoice([
                         'student_id'       => $student->id,
                         'fee_structure_id' => $feeStructure->id,
                         'invoice_number'   => $invoiceNumber,
@@ -132,11 +133,12 @@ class InvoiceService
                         'subtotal'         => $subtotal,
                         'discount_amount'  => $discountAmount,
                         'total_amount'     => $totalAmount,
-                        'amount_paid'      => 0.00,
                         'issued_date'      => $issueDate,
                         'due_date'         => $dueDate,
-                        'status'           => InvoiceStatus::Issued,
                     ]);
+                    $invoice->amount_paid = 0.00;
+                    $invoice->status = InvoiceStatus::Issued;
+                    $invoice->save();
 
                     // Line item for the Core Package
                     $coreNames = $coreSubjects->pluck('name')->implode(', ');
@@ -166,7 +168,7 @@ class InvoiceService
                 // Calculate totals from snapshotted fees (unbundled)
                 $subtotal = $subjects->sum(fn ($s) => (float) ($s->monthly_fee ?? 0));
 
-                $invoice = Invoice::create([
+                $invoice = new Invoice([
                     'student_id'      => $student->id,
                     'invoice_number'  => $invoiceNumber,
                     'title'           => "Tuition Fee {$billingPeriod} {$studentName}",
@@ -174,11 +176,12 @@ class InvoiceService
                     'subtotal'        => $subtotal,
                     'discount_amount' => 0.00,
                     'total_amount'    => $subtotal,
-                    'amount_paid'     => 0.00,
                     'issued_date'     => $issueDate,
                     'due_date'        => $dueDate,
-                    'status'          => InvoiceStatus::Issued,
                 ]);
+                $invoice->amount_paid = 0.00;
+                $invoice->status = InvoiceStatus::Issued;
+                $invoice->save();
 
                 // Create line items (price-snapshotted from subject.monthly_fee)
                 foreach ($subjects as $subject) {
@@ -252,7 +255,7 @@ class InvoiceService
                 ?? "{$pricing->packageName} {$billingPeriod} {$studentName}";
 
             // Create the invoice with snapshotted totals
-            $invoice = Invoice::create([
+            $invoice = new Invoice([
                 'student_id'       => $student->id,
                 'fee_structure_id' => $pricing->feeStructureId,
                 'invoice_number'   => $invoiceNumber,
@@ -263,11 +266,12 @@ class InvoiceService
                 'subtotal'         => $pricing->subtotal,
                 'discount_amount'  => $pricing->discountAmount,
                 'total_amount'     => $pricing->totalAmount,
-                'amount_paid'      => 0.00,
                 'issued_date'      => $issueDate,
                 'due_date'         => $dueDate,
-                'status'           => InvoiceStatus::Issued,
             ]);
+            $invoice->amount_paid = 0.00;
+            $invoice->status = InvoiceStatus::Issued;
+            $invoice->save();
 
             // Create snapshotted line items (immutable historical record)
             foreach ($pricing->lineItems as $line) {
@@ -347,10 +351,9 @@ class InvoiceService
             $newStatus = InvoiceStatus::Issued;
         }
 
-        $invoice->update([
-            'amount_paid' => $totalPaid,
-            'status'      => $newStatus,
-        ]);
+        $invoice->amount_paid = $totalPaid;
+        $invoice->status = $newStatus;
+        $invoice->save();
 
         // Synchronize student's restriction status immediately
         if ($invoice->student) {
@@ -386,7 +389,8 @@ class InvoiceService
 
         $count = 0;
         foreach ($invoices as $inv) {
-            $inv->update(['status' => InvoiceStatus::Overdue]);
+            $inv->status = InvoiceStatus::Overdue;
+            $inv->save();
             $count++;
             if ($inv->student) {
                 app(\App\Services\StudentAccessRestrictionService::class)->syncStudentStatus($inv->student);

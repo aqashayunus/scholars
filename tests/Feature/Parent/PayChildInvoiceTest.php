@@ -32,7 +32,7 @@ class PayChildInvoiceTest extends TestCase
 
     private function makeInvoice(InvoiceStatus $status = InvoiceStatus::Issued): Invoice
     {
-        return Invoice::create([
+        return Invoice::factory()->create([
             'student_id'   => $this->student->id,
             'invoice_number' => 'INV-PCI-' . uniqid(),
             'title'        => 'Tuition Fee',

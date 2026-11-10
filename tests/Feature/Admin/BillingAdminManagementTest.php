@@ -173,7 +173,7 @@ class BillingAdminManagementTest extends TestCase
     public function test_admin_can_update_an_invoice(): void
     {
         $student = Student::factory()->create();
-        $invoice = Invoice::create([
+        $invoice = Invoice::factory()->create([
             'student_id' => $student->id, 'invoice_number' => 'INV-TEST-1', 'title' => 'Old Title',
             'subtotal' => 100, 'total_amount' => 100, 'due_date' => now()->addDays(7), 'status' => InvoiceStatus::Issued,
         ]);
@@ -190,7 +190,7 @@ class BillingAdminManagementTest extends TestCase
     public function test_updating_invoice_due_date_reconciles_overdue_status(): void
     {
         $student = Student::factory()->create();
-        $invoice = Invoice::create([
+        $invoice = Invoice::factory()->create([
             'student_id' => $student->id, 'invoice_number' => 'INV-TEST-2', 'title' => 'Invoice',
             'subtotal' => 100, 'total_amount' => 100, 'due_date' => now()->subDays(3), 'status' => InvoiceStatus::Issued,
         ]);
@@ -219,7 +219,7 @@ class BillingAdminManagementTest extends TestCase
     public function test_admin_can_delete_an_invoice_and_reset_linked_pending_payment(): void
     {
         $student = Student::factory()->create();
-        $invoice = Invoice::create([
+        $invoice = Invoice::factory()->create([
             'student_id' => $student->id, 'invoice_number' => 'INV-TEST-3', 'title' => 'Invoice',
             'subtotal' => 100, 'total_amount' => 100, 'due_date' => now()->addDays(7), 'status' => InvoiceStatus::Issued,
         ]);

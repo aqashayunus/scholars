@@ -267,7 +267,7 @@ class EmailManagementTest extends TestCase
             'recipient_type'    => 'parent',
         ]);
 
-        $invoice = Invoice::create([
+        $invoice = Invoice::factory()->create([
             'student_id'     => $this->student->id,
             'invoice_number' => 'INV-2026-TEST-001',
             'title'          => 'Term Fee',

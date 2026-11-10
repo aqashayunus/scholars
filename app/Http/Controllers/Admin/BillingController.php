@@ -110,7 +110,7 @@ class BillingController extends Controller
         return DB::transaction(function () use ($request, $student) {
             $subtotal = collect($request->items)->sum('amount');
 
-            $invoice = Invoice::create([
+            $invoice = new Invoice([
                 'student_id'     => $student->id,
                 'invoice_number' => $this->invoiceService->generateInvoiceNumber(),
                 'title'          => 'Tuition Fee – ' . $request->billing_period,
@@ -118,11 +118,12 @@ class BillingController extends Controller
                 'subtotal'       => $subtotal,
                 'discount_amount'=> 0,
                 'total_amount'   => $subtotal,
-                'amount_paid'    => 0,
                 'issued_date'    => now()->toDateString(),
                 'due_date'       => $request->due_date,
-                'status'         => InvoiceStatus::Issued,
             ]);
+            $invoice->amount_paid = 0;
+            $invoice->status = InvoiceStatus::Issued;
+            $invoice->save();
 
             foreach ($request->items as $item) {
                 InvoiceItem::create([
@@ -189,7 +190,7 @@ class BillingController extends Controller
         $studentName = $student->user->name ?? "Student #{$student->id}";
         $title = $request->filled('title') ? $request->title : "{$feeType} {$monthYear} {$studentName}";
 
-        $invoice = Invoice::create([
+        $invoice = new Invoice([
             'student_id'       => $student->id,
             'fee_structure_id' => $request->fee_structure_id ?: null,
             'invoice_number'   => $this->invoiceService->generateInvoiceNumber(),
@@ -198,11 +199,12 @@ class BillingController extends Controller
             'subtotal'         => $subtotal,
             'discount_amount'  => $discount,
             'total_amount'     => $total,
-            'amount_paid'      => 0,
             'issued_date'      => now()->toDateString(),
             'due_date'         => $request->due_date,
-            'status'           => InvoiceStatus::Issued,
         ]);
+        $invoice->amount_paid = 0;
+        $invoice->status = InvoiceStatus::Issued;
+        $invoice->save();
 
         InvoiceItem::create([
             'invoice_id'  => $invoice->id,
@@ -226,7 +228,8 @@ class BillingController extends Controller
             return back()->with('error', 'Cannot cancel a paid or already cancelled invoice.');
         }
 
-        $invoice->update(['status' => InvoiceStatus::Cancelled]);
+        $invoice->status = InvoiceStatus::Cancelled;
+        $invoice->save();
 
         // Skip all pending reminders
         app(\App\Services\ReminderService::class)->skipRemainingReminders($invoice);

@@ -39,7 +39,7 @@ class QuickBillingActionsTest extends TestCase
 
     private function makeInvoice(): Invoice
     {
-        return Invoice::create([
+        return Invoice::factory()->create([
             'student_id'     => $this->student->id,
             'invoice_number' => 'INV-QBA-' . uniqid(),
             'title'          => 'Tuition Fee',

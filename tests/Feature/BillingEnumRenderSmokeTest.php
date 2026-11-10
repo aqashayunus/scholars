@@ -50,7 +50,7 @@ class BillingEnumRenderSmokeTest extends TestCase
 
         // One invoice per status so every match()/badge branch actually renders.
         foreach (InvoiceStatus::cases() as $i => $status) {
-            Invoice::create([
+            Invoice::factory()->create([
                 'student_id'     => $this->student->id,
                 'invoice_number' => 'INV-RENDER-' . $i,
                 'title'          => 'Render Test Invoice ' . $status->value,

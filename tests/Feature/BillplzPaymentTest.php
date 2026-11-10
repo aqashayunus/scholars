@@ -64,7 +64,7 @@ class BillplzPaymentTest extends TestCase
 
     private function createTestInvoice(float $total = 150.00, InvoiceStatus $status = InvoiceStatus::Issued): Invoice
     {
-        return Invoice::create([
+        return Invoice::factory()->create([
             'student_id'      => $this->student->id,
             'invoice_number'  => 'INV-' . strtoupper(uniqid()),
             'title'           => 'Monthly Tuition Fee - Test',

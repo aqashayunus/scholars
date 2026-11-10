@@ -117,7 +117,8 @@ class BillingService
             'paid_at'        => now(),
         ]);
 
-        $invoice->update(['status' => InvoiceStatus::Paid]);
+        $invoice->status = InvoiceStatus::Paid;
+        $invoice->save();
 
         UserNotification::create([
             'user_id' => auth()->id(),

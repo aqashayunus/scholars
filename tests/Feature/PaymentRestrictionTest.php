@@ -64,7 +64,7 @@ class PaymentRestrictionTest extends TestCase
         ]);
 
         // Invoice for Child A: Paid
-        Invoice::create([
+        Invoice::factory()->create([
             'student_id'      => $this->childPaid->id,
             'invoice_number'  => 'INV-PAID-001',
             'title'           => 'Tuition Fee - Child A',
@@ -104,7 +104,7 @@ class PaymentRestrictionTest extends TestCase
         ]);
 
         // Invoice for Child B: Overdue (past due date)
-        Invoice::create([
+        Invoice::factory()->create([
             'student_id'      => $this->childOverdue->id,
             'invoice_number'  => 'INV-OVERDUE-001',
             'title'           => 'Tuition Fee - Child B',
@@ -232,10 +232,9 @@ class PaymentRestrictionTest extends TestCase
 
         // Settle the overdue invoice
         $invoice = Invoice::where('student_id', $this->childOverdue->id)->first();
-        $invoice->update([
-            'status'      => InvoiceStatus::Paid,
-            'amount_paid' => $invoice->total_amount,
-        ]);
+        $invoice->status = InvoiceStatus::Paid;
+        $invoice->amount_paid = $invoice->total_amount;
+        $invoice->save();
 
         // Synchronize status (simulating InvoiceService / PaymentService auto-sync)
         $service->syncStudentStatus($this->childOverdue);
