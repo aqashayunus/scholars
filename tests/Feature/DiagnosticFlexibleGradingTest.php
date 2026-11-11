@@ -322,4 +322,60 @@ class DiagnosticFlexibleGradingTest extends TestCase
         $this->assertIsArray($studentAssignment->answers_json);
         $this->assertCount(3, $studentAssignment->answers_json);
     }
+
+    /**
+     * Test 12: Regression for SQLSTATE[01000]: 1265 data truncation. A submission
+     * containing a [MANUAL] question must persist status='pending_review' without
+     * throwing — this was impossible while student_assignments.status was a native
+     * ENUM('pending','submitted','graded','late') that didn't include that value.
+     */
+    public function test_submission_with_manual_question_persists_pending_review_status()
+    {
+        $assignment = Assignment::create([
+            'title'              => 'Diagnostic With Manual Question',
+            'type'               => 'Diagnostic Test',
+            'time_limit_minutes' => 30,
+            'total_questions'    => 2,
+            'is_global'          => false,
+            'questions_data'     => [
+                [
+                    'number'         => 1,
+                    'type'           => 'mcq',
+                    'title'          => 'Question 1',
+                    'correct_answer' => 'A',
+                    'marks'          => 1.0,
+                ],
+                [
+                    'number'         => 2,
+                    'type'           => 'fill_in_blank',
+                    'title'          => 'Question 2 (essay)',
+                    'correct_answer' => '[MANUAL]',
+                    'marks'          => 5.0,
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($this->studentUser)
+            ->postJson(route('student.diagnostic.submit', $assignment->id), [
+                'answers' => [
+                    '1' => 'A',
+                    '2' => 'A long essay answer that requires teacher judgement.',
+                ],
+                'time_taken_seconds' => 300,
+            ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success'    => true,
+                'has_manual' => true,
+            ]);
+
+        $studentAssignment = StudentAssignment::where('student_id', $this->student->id)
+            ->where('assignment_id', $assignment->id)
+            ->first();
+
+        $this->assertNotNull($studentAssignment);
+        $this->assertEquals(StudentAssignmentStatus::PendingReview, $studentAssignment->status);
+        $this->assertSame('pending_review', $studentAssignment->getRawOriginal('status'));
+    }
 }

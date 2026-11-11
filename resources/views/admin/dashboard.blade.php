@@ -12924,18 +12924,37 @@ function clearPersonalUploadFile() {
     if (dropzonePrompt) dropzonePrompt.classList.remove('hidden');
 }
 
+let currentDiagnosticAssignmentId = null;
+
+function safeDiagHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 async function openDiagnosticBreakdownModal(studentAssignmentId) {
     const modal = document.getElementById('diagnosticBreakdownModal');
     if (!modal) return;
 
+    currentDiagnosticAssignmentId = studentAssignmentId;
+
     // Reset content
-    document.getElementById('diagModalStudentName').textContent = 'Loading...';
+    document.getElementById('diagModalTestTitle').textContent = 'Diagnostic Assessment';
+    document.getElementById('diagModalStudentName').textContent = 'Loading student details...';
     document.getElementById('diagModalScore').textContent = '--%';
-    document.getElementById('diagModalTahapBadge').className = 'px-2.5 py-1 rounded-lg text-xs font-bold border bg-gray-100 text-gray-600 border-gray-200';
-    document.getElementById('diagModalTahapBadge').textContent = 'Loading...';
+    document.getElementById('diagModalTahapText').textContent = 'Loading...';
     document.getElementById('diagModalDuration').textContent = '-';
     document.getElementById('diagModalDate').textContent = '-';
-    document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-gray-400">Loading student answers...</td></tr>';
+    if (document.getElementById('diagModalFeedback')) {
+        document.getElementById('diagModalFeedback').value = '';
+    }
+    const msgEl = document.getElementById('diagModalSaveMsg');
+    if (msgEl) msgEl.textContent = '';
+    document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400">Loading student answers...</td></tr>';
 
     modal.classList.remove('hidden');
 
@@ -12944,112 +12963,279 @@ async function openDiagnosticBreakdownModal(studentAssignmentId) {
         const data = await res.json();
 
         if (data.success) {
+            document.getElementById('diagModalTestTitle').textContent = data.test_title || 'Diagnostic Assessment';
             document.getElementById('diagModalStudentName').textContent = `${data.student_name} (${data.student_level})`;
             document.getElementById('diagModalScore').textContent = `${data.score}%`;
-            
-            const badge = document.getElementById('diagModalTahapBadge');
-            badge.className = `px-2.5 py-1 rounded-lg text-xs font-bold border ${data.tahap_badge_class}`;
-            badge.textContent = `${data.tahap_kepandaian} — ${data.tahap_description}`;
+            document.getElementById('diagModalTahapText').textContent = data.tahap_kepandaian + (data.tahap_description ? ` — ${data.tahap_description}` : '');
+            document.getElementById('diagModalDuration').textContent = data.formatted_duration || '-';
+            document.getElementById('diagModalDate').textContent = data.submitted_at || '-';
 
-            document.getElementById('diagModalDuration').textContent = data.formatted_duration;
-            document.getElementById('diagModalDate').textContent = data.submitted_at;
-
-            let rowsHtml = '';
-            if (data.answers_breakdown && data.answers_breakdown.length > 0) {
-                data.answers_breakdown.forEach(item => {
-                    const isCorrect = item.is_correct;
-                    const typeBadge = item.type === 'fill_in_blank' 
-                        ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 uppercase ml-1.5">Fill-in</span>'
-                        : '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase ml-1.5">MCQ</span>';
-
-                    rowsHtml += `
-                        <tr class="hover:bg-gray-50/60 transition">
-                            <td class="py-2.5 px-4 font-bold text-gray-800">${escapeHtml(item.title || 'Question ' + item.question_number)} ${typeBadge}</td>
-                            <td class="py-2.5 px-4 font-black ${isCorrect ? 'text-emerald-700' : 'text-rose-700'}">${escapeHtml(item.student_choice || '-')}</td>
-                            <td class="py-2.5 px-4 font-black text-gray-700">${escapeHtml(item.correct_option || '-')}</td>
-                            <td class="py-2.5 px-4 text-right">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isCorrect ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
-                                    ${isCorrect ? 'Correct ✓' : 'Incorrect ✗'}
-                                </span>
-                            </td>
-                        </tr>
-                    `;
-                });
-            } else {
-                rowsHtml = '<tr><td colspan="4" class="text-center py-6 text-gray-400">No question breakdown recorded.</td></tr>';
+            if (document.getElementById('diagModalStatusSelect')) {
+                document.getElementById('diagModalStatusSelect').value = data.status === 'pending_review' ? 'pending_review' : 'graded';
+            }
+            if (document.getElementById('diagModalFeedback')) {
+                document.getElementById('diagModalFeedback').value = data.teacher_feedback || '';
             }
 
-            document.getElementById('diagModalTableBody').innerHTML = rowsHtml;
+            renderDiagnosticBreakdownRows(data.answers_breakdown || []);
         } else {
-            document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-rose-500 font-bold">Failed to load details.</td></tr>';
+            document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-red-500 font-medium">Failed to load test details.</td></tr>';
         }
     } catch (e) {
-        document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-6 text-rose-500 font-bold">Error loading breakdown.</td></tr>';
+        document.getElementById('diagModalTableBody').innerHTML = '<tr><td colspan="5" class="text-center py-6 text-red-500 font-medium">Error loading test breakdown.</td></tr>';
+    }
+}
+
+function renderDiagnosticBreakdownRows(breakdown) {
+    const tbody = document.getElementById('diagModalTableBody');
+    if (!tbody) return;
+
+    if (!breakdown || breakdown.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400">No question breakdown recorded for this test.</td></tr>';
+        return;
+    }
+
+    let rowsHtml = '';
+    breakdown.forEach((item, index) => {
+        const qNum = item.question_number || (index + 1);
+        const maxMarks = parseFloat(item.max_marks) || 1.0;
+        const currentScore = (item.score !== undefined && item.score !== null) ? parseFloat(item.score) : 0;
+        const typeLabel = item.type === 'mcq' ? 'MCQ' : (item.type === 'fill_in_blank' ? 'Fill-in' : 'Subjective');
+        const isManual = Boolean(item.is_manual);
+
+        rowsHtml += `
+            <tr class="hover:bg-gray-50/70 transition border-b border-gray-100">
+                <td class="py-2.5 px-3 text-xs font-semibold text-gray-700 align-top whitespace-nowrap">
+                    Q${qNum} <span class="text-[11px] font-normal text-gray-400 block">${typeLabel}</span>
+                </td>
+                <td class="py-2.5 px-3 text-xs text-gray-800 align-top">
+                    <div class="font-medium text-gray-900">${safeDiagHtml(item.title || ('Question ' + qNum))}</div>
+                    ${isManual ? '<div class="text-[10px] text-amber-600 font-semibold mt-0.5">Manual Review Required</div>' : ''}
+                </td>
+                <td class="py-2.5 px-3 text-xs text-gray-800 align-top font-mono">
+                    <span class="${item.is_correct ? 'text-emerald-700 font-bold' : (item.score > 0 ? 'text-blue-700 font-semibold' : 'text-gray-700')}">
+                        ${safeDiagHtml(item.student_choice || '—')}
+                    </span>
+                </td>
+                <td class="py-2.5 px-3 text-xs text-gray-600 align-top font-mono">
+                    ${safeDiagHtml(item.correct_option || '—')}
+                </td>
+                <td class="py-2.5 px-3 text-xs align-top text-right whitespace-nowrap">
+                    <div class="inline-flex items-center justify-end gap-1">
+                        <input type="number"
+                               step="0.5"
+                               min="0"
+                               max="${maxMarks}"
+                               value="${currentScore}"
+                               data-qnum="${qNum}"
+                               data-max="${maxMarks}"
+                               oninput="recalculateModalGrade()"
+                               class="diag-score-input w-16 px-2 py-1 text-xs font-bold text-center border border-gray-300 rounded focus:border-blue-500 focus:outline-none" />
+                        <span class="text-xs text-gray-500 font-medium">/ ${maxMarks}</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = rowsHtml;
+}
+
+function recalculateModalGrade() {
+    const inputs = document.querySelectorAll('.diag-score-input');
+    let totalEarned = 0;
+    let totalPossible = 0;
+
+    inputs.forEach(input => {
+        let val = parseFloat(input.value);
+        const max = parseFloat(input.dataset.max) || 1.0;
+        if (isNaN(val)) val = 0;
+        if (val < 0) val = 0;
+        if (val > max) val = max;
+        totalEarned += val;
+        totalPossible += max;
+    });
+
+    const percentage = totalPossible > 0 ? Math.round((totalEarned / totalPossible) * 100) : 0;
+    const finalPct = Math.min(100, Math.max(0, percentage));
+
+    let tahap = 'Perlu Bimbingan';
+    if (finalPct >= 80) tahap = 'Cemerlang';
+    else if (finalPct >= 60) tahap = 'Baik';
+    else if (finalPct >= 40) tahap = 'Sederhana';
+
+    const scoreEl = document.getElementById('diagModalScore');
+    const tahapEl = document.getElementById('diagModalTahapText');
+    if (scoreEl) scoreEl.textContent = `${finalPct}%`;
+    if (tahapEl) tahapEl.textContent = tahap;
+}
+
+async function saveDiagnosticGrade() {
+    if (!currentDiagnosticAssignmentId) return;
+
+    const saveBtn = document.getElementById('diagModalSaveBtn');
+    const msgEl = document.getElementById('diagModalSaveMsg');
+
+    const inputs = document.querySelectorAll('.diag-score-input');
+    const scores = {};
+    inputs.forEach(input => {
+        const qNum = input.dataset.qnum;
+        scores[qNum] = parseFloat(input.value) || 0;
+    });
+
+    const feedback = document.getElementById('diagModalFeedback')?.value || '';
+    const status = document.getElementById('diagModalStatusSelect')?.value || 'graded';
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+    }
+    if (msgEl) {
+        msgEl.textContent = 'Saving grades...';
+        msgEl.className = 'text-xs text-blue-600 font-medium';
+    }
+
+    try {
+        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+            || '{{ csrf_token() }}';
+
+        const res = await fetch(`/admin/diagnostic/${currentDiagnosticAssignmentId}/grade`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': token,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                scores: scores,
+                teacher_feedback: feedback,
+                status: status
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            if (msgEl) {
+                msgEl.textContent = 'Grade saved successfully!';
+                msgEl.className = 'text-xs text-emerald-600 font-medium';
+            }
+            document.getElementById('diagModalScore').textContent = `${data.score}%`;
+            document.getElementById('diagModalTahapText').textContent = data.tahap_kepandaian;
+
+            setTimeout(() => {
+                closeDiagnosticBreakdownModal();
+                window.location.reload();
+            }, 700);
+        } else {
+            alert(data.message || 'Failed to save grade.');
+            if (msgEl) {
+                msgEl.textContent = data.message || 'Error saving grade.';
+                msgEl.className = 'text-xs text-red-600 font-medium';
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        alert('An error occurred while saving the grade.');
+        if (msgEl) {
+            msgEl.textContent = 'Network or server error.';
+            msgEl.className = 'text-xs text-red-600 font-medium';
+        }
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Grade';
+        }
     }
 }
 
 function closeDiagnosticBreakdownModal() {
     const modal = document.getElementById('diagnosticBreakdownModal');
     if (modal) modal.classList.add('hidden');
+    currentDiagnosticAssignmentId = null;
 }
 </script>
 
-{{-- ══ DIAGNOSTIC QUESTION BREAKDOWN MODAL ══ --}}
+{{-- ══ DIAGNOSTIC QUESTION BREAKDOWN & MANUAL GRADING MODAL ══ --}}
 <div id="diagnosticBreakdownModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4 sm:p-6" onclick="if(event.target === this) closeDiagnosticBreakdownModal()">
-    <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[90vh]">
         {{-- Modal Header --}}
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-white shrink-0">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white shrink-0">
             <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">Company Intelligence</span>
-                <h3 class="font-heading font-black text-lg text-gray-900 mt-1" id="diagModalStudentName">Student Diagnostic Breakdown</h3>
+                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider" id="diagModalTestTitle">Diagnostic Assessment</div>
+                <h3 class="text-base sm:text-lg font-bold text-gray-900 mt-0.5" id="diagModalStudentName">Student Diagnostic Breakdown</h3>
             </div>
-            <button type="button" onclick="closeDiagnosticBreakdownModal()" class="w-8 h-8 rounded-xl border border-gray-200 hover:border-gray-400 text-gray-400 hover:text-gray-900 flex items-center justify-center transition cursor-pointer text-base">✕</button>
+            <button type="button" onclick="closeDiagnosticBreakdownModal()" class="w-8 h-8 rounded-lg border border-gray-300 hover:border-gray-500 text-gray-500 hover:text-gray-900 flex items-center justify-center transition cursor-pointer text-sm">✕</button>
         </div>
 
-        {{-- Score & Tahap Overview --}}
-        <div class="p-6 bg-slate-50/60 border-b border-gray-100 shrink-0 space-y-3">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {{-- Score & Overview --}}
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-200 shrink-0">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                    <span class="text-[10px] font-bold uppercase text-gray-400 block tracking-wider">Assessed Score</span>
-                    <span class="text-3xl font-black text-blue-950" id="diagModalScore">--%</span>
+                    <span class="text-xs text-gray-500 font-medium block">Total Score</span>
+                    <span class="text-2xl font-bold text-gray-900" id="diagModalScore">--%</span>
                 </div>
                 <div>
-                    <span class="text-[10px] font-bold uppercase text-gray-400 block tracking-wider mb-1">Tahap Kepandaian (Level)</span>
-                    <span id="diagModalTahapBadge" class="px-3 py-1 rounded-xl text-xs font-bold border">Loading...</span>
+                    <span class="text-xs text-gray-500 font-medium block">Tahap Kepandaian</span>
+                    <span class="text-sm font-semibold text-gray-800 mt-1 block" id="diagModalTahapText">--</span>
                 </div>
-                <div class="text-right">
-                    <span class="text-[10px] font-bold uppercase text-gray-400 block tracking-wider">Duration / Date</span>
-                    <span class="text-xs font-bold text-gray-800" id="diagModalDuration">-</span>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block mb-1">Status</span>
+                    <select id="diagModalStatusSelect" class="text-xs border border-gray-300 rounded px-2 py-1 bg-white text-gray-800 focus:outline-none focus:border-blue-500 font-medium w-full max-w-[140px]">
+                        <option value="graded">Graded</option>
+                        <option value="pending_review">Pending Review</option>
+                    </select>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block">Duration / Date</span>
+                    <span class="text-xs text-gray-700 font-medium block mt-1"><span id="diagModalDuration">-</span></span>
                     <span class="text-[11px] text-gray-400 block" id="diagModalDate">-</span>
                 </div>
             </div>
         </div>
 
-        {{-- Answers Breakdown Table --}}
+        {{-- Answers & Grading Table --}}
         <div class="p-6 overflow-y-auto space-y-4 admin-scrollbar flex-1">
-            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-600">Question-by-Question Response Audit</h4>
-            <div class="border border-gray-100 rounded-2xl overflow-hidden">
+            <div class="flex items-center justify-between">
+                <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-700">Question Grading & Responses</h4>
+                <span class="text-[11px] text-gray-500">Edit marks directly to recalculate score</span>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
                 <table class="w-full text-left text-xs">
                     <thead>
-                        <tr class="bg-gray-50 border-b border-gray-100 text-gray-400 uppercase text-[10px] font-bold">
-                            <th class="py-2.5 px-4">Question</th>
-                            <th class="py-2.5 px-4">Student Choice</th>
-                            <th class="py-2.5 px-4">Answer Key</th>
-                            <th class="py-2.5 px-4 text-right">Result</th>
+                        <tr class="bg-gray-100/70 border-b border-gray-200 text-gray-600 uppercase text-[10px] font-semibold">
+                            <th class="py-2.5 px-3 w-16">No.</th>
+                            <th class="py-2.5 px-3">Question Prompt</th>
+                            <th class="py-2.5 px-3">Student Answer</th>
+                            <th class="py-2.5 px-3">Answer Key / Criteria</th>
+                            <th class="py-2.5 px-3 text-right w-28">Award Marks</th>
                         </tr>
                     </thead>
-                    <tbody id="diagModalTableBody" class="divide-y divide-gray-100">
-                        <tr><td colspan="4" class="text-center py-6 text-gray-400">Loading...</td></tr>
+                    <tbody id="diagModalTableBody" class="divide-y border-t border-gray-100">
+                        <tr><td colspan="5" class="text-center py-6 text-gray-400">Loading...</td></tr>
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Teacher / Admin Feedback --}}
+            <div class="pt-2">
+                <label for="diagModalFeedback" class="block text-xs font-semibold text-gray-700 mb-1">Teacher / Admin Feedback (Optional)</label>
+                <textarea id="diagModalFeedback" rows="2" class="w-full text-xs p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-800" placeholder="Enter feedback or comments for this student's diagnostic test..."></textarea>
             </div>
         </div>
 
         {{-- Footer --}}
-        <div class="px-6 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-end shrink-0">
-            <button type="button" onclick="closeDiagnosticBreakdownModal()" class="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-xs font-bold transition cursor-pointer">
-                Close
-            </button>
+        <div class="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between shrink-0">
+            <span id="diagModalSaveMsg" class="text-xs text-gray-500 font-medium"></span>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeDiagnosticBreakdownModal()" class="px-3.5 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-xs font-medium transition cursor-pointer">
+                    Cancel
+                </button>
+                <button type="button" id="diagModalSaveBtn" onclick="saveDiagnosticGrade()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold transition cursor-pointer">
+                    Save Grade
+                </button>
+            </div>
         </div>
     </div>
 </div>

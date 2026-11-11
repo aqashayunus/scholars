@@ -514,17 +514,48 @@ class DiagnosticTestController extends Controller
         $formattedDuration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
 
         return response()->json([
-            'success'            => true,
-            'student_name'       => $studentAssignment->student?->user?->name ?? 'Student',
-            'student_level'      => $studentAssignment->student?->level ?? 'Academic',
-            'test_title'         => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
-            'score'              => $studentAssignment->score ?? 0,
-            'tahap_kepandaian'   => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
-            'tahap_description'  => $studentAssignment->getTahapDescription(),
-            'tahap_badge_class'  => $studentAssignment->getTahapBadgeClass(),
-            'formatted_duration' => $formattedDuration,
-            'submitted_at'       => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
-            'answers_breakdown'  => array_values($answers),
+            'success'               => true,
+            'student_assignment_id' => $studentAssignment->id,
+            'student_name'          => $studentAssignment->student?->user?->name ?? 'Student',
+            'student_level'         => $studentAssignment->student?->level ?? 'Academic',
+            'test_title'            => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
+            'score'                 => $studentAssignment->score ?? 0,
+            'status'                => $studentAssignment->status,
+            'tahap_kepandaian'      => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
+            'tahap_description'     => $studentAssignment->getTahapDescription(),
+            'tahap_badge_class'     => $studentAssignment->getTahapBadgeClass(),
+            'teacher_feedback'      => $studentAssignment->teacher_feedback ?? '',
+            'formatted_duration'    => $formattedDuration,
+            'submitted_at'          => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
+            'answers_breakdown'     => array_values($answers),
+        ]);
+    }
+
+    /**
+     * Admin grading / review endpoint to award marks and override diagnostic test scores
+     * for questions the flexible grading engine flagged as requiring manual review.
+     */
+    public function saveAdminGrade(Request $request, $id, \App\Services\Admin\DiagnosticReviewService $reviewService)
+    {
+        $studentAssignment = StudentAssignment::with(['student.user', 'assignment'])->findOrFail($id);
+
+        $validated = $request->validate([
+            'scores'           => 'required|array',
+            'teacher_feedback' => 'nullable|string|max:3000',
+            'status'           => 'nullable|string|in:graded,pending_review,submitted',
+        ]);
+
+        $result = $reviewService->saveAdminGrade(
+            $studentAssignment,
+            $validated['scores'],
+            $validated['teacher_feedback'] ?? null,
+            $validated['status'] ?? null
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Diagnostic test graded successfully.',
+            ...$result,
         ]);
     }
 
@@ -534,6 +565,16 @@ class DiagnosticTestController extends Controller
      */
     public static function ensureDiagnosticColumnsExist(): void
     {
+        try {
+            // Defensive fallback: widen status beyond the legacy ENUM so 'pending_review'
+            // never truncates on envs where the real migration hasn't run yet (e.g. cPanel).
+            if (Schema::getConnection()->getDriverName() === 'mysql') {
+                Schema::getConnection()->statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+            }
+        } catch (\Throwable $e) {
+            // Ignore if no DDL permissions or already widened.
+        }
+
         try {
             if (!Schema::hasColumn('student_assignments', 'tahap_kepandaian') ||
                 !Schema::hasColumn('student_assignments', 'answers_json') ||

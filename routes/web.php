@@ -331,6 +331,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/submissions/{submission}/review', [\App\Http\Controllers\InteractiveAssignmentController::class, 'adminReview'])->name('submissions.review');
     Route::get('/submissions/{submission}/final-pdf', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
     Route::get('/diagnostic/{id}/details', [\App\Http\Controllers\DiagnosticTestController::class, 'getAdminDetails'])->name('diagnostic.details');
+    Route::post('/diagnostic/{id}/grade', [\App\Http\Controllers\DiagnosticTestController::class, 'saveAdminGrade'])->name('diagnostic.grade');
     Route::post('/diagnostic/test-rule', [\App\Http\Controllers\DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
 
 

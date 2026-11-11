@@ -20,6 +20,7 @@ use App\Models\Quiz;
 use App\Models\RecordedClass;
 use App\Models\Setting;
 use App\Models\Student;
+use App\Models\StudentAssignment;
 use App\Models\StudentTopicMastery;
 use App\Models\Subject;
 use App\Models\SubjectTopic;
@@ -142,7 +143,30 @@ class DashboardMetricsService
         $activeDiagnostic = $selectedDiagnosticId ? $diagnosticTests->firstWhere('id', $selectedDiagnosticId) : $diagnosticTests->first();
         $activeDiagId    = $activeDiagnostic?->id;
 
-        $allDiagnosticStudents = Student::where('status', StudentStatus::Active)
+        // Narrow the roster to students who are actually eligible for the active
+        // diagnostic: explicitly assigned, enrolled in a course of its subject, or
+        // level-matched when the test is global+level-targeted. An unfiltered
+        // "all active students" roster let unrelated students appear here.
+        $targetStudentIds = collect();
+        if ($activeDiagnostic) {
+            $assignedIds = StudentAssignment::where('assignment_id', $activeDiagnostic->id)->pluck('student_id');
+
+            $enrolledIds = collect();
+            if ($activeDiagnostic->subject_id) {
+                $courseIds = Course::where('subject_id', $activeDiagnostic->subject_id)->pluck('id');
+                $enrolledIds = Enrollment::whereIn('course_id', $courseIds)->pluck('student_id');
+            }
+
+            $levelIds = collect();
+            if ($activeDiagnostic->is_global && $activeDiagnostic->target_level && $activeDiagnostic->target_level !== 'All Levels') {
+                $levelIds = Student::where('level', $activeDiagnostic->target_level)->pluck('id');
+            }
+
+            $targetStudentIds = $assignedIds->merge($enrolledIds)->merge($levelIds)->unique()->filter();
+        }
+
+        $allDiagnosticStudents = $targetStudentIds->isEmpty() ? collect() : Student::whereIn('id', $targetStudentIds)
+            ->where('status', StudentStatus::Active)
             ->whereHas('user', function ($qu) {
                 $qu->where('is_active', true);
             })
@@ -175,6 +199,7 @@ class DashboardMetricsService
                     'level'                 => $st->level ?: 'All Levels',
                     'is_completed'          => $isCompleted,
                     'status'                => $isCompleted ? 'Completed' : 'Pending',
+                    'raw_status'            => $sa?->status ?? 'pending',
                     'score'                 => $score,
                     'tahap_kepandaian'      => $tahap,
                     'formatted_time'        => $formattedTime,
