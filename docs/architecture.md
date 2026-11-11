@@ -1,6 +1,6 @@
 # Olympia Scholars — Architecture
 
-**Status as of:** 2026-11-10, branch `khai-QA-refactor`. This document was last written 2026-09-28 after Phases 0–3; it went stale on every metric for six weeks while Phases 4–5 landed. Rewritten from scratch against the current codebase (`php artisan test`, `wc -l`, direct file reads, `git log`), not from memory of the previous version or from design intent. Where something is planned but not yet built, it is marked **NOT YET DONE**.
+**Status as of:** 2026-11-11, branch `khai-QA-refactor`. Last full rewrite was 2026-11-10 against Phases 0–5. This update layers in the business-drift reconciliation pass (§11) completed 2026-11-11 — four slices porting business features `main` had shipped that this branch never absorbed — verified the same way: `php artisan test`, `wc -l`, direct file reads, `git log`, not from memory of the previous version or design intent. Where something is planned but not yet built, it is marked **NOT YET DONE**.
 
 Companion documents: [`implementation_plan.md`](../implementation_plan.md) (chatbox spec — now historical, see the notice at its top) and the QA/refactor master plan at `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md`.
 
@@ -34,24 +34,24 @@ graph TB
     end
 
     subgraph App["Application Layer"]
-        AC["AdminDashboardController<br/>388 lines<br/>(dashboard, users, tasks/quizzes,<br/>teacher apps/gigs, outreach)"]
+        AC["AdminDashboardController<br/>459 lines<br/>(dashboard, users, tasks/quizzes,<br/>teacher apps/gigs, teacher claims,<br/>parent accounts, outreach)"]
         ADM["Admin\\* domain controllers<br/>Settings · Finance · Curriculum ·<br/>ClassScheduling · Billing · Content ·<br/>EmailManagement"]
-        TC["TeacherDashboardController<br/>292 lines"]
+        TC["TeacherDashboardController<br/>313 lines"]
         SC["StudentDashboardController<br/>317 lines"]
         CC["ChatController<br/>130 lines"]
         PC["ParentDashboardController<br/>376 lines"]
         TTC["TimetableController<br/>228 lines"]
-        SVC["app/Services/<br/>48 files"]
+        SVC["app/Services/<br/>52 files"]
     end
 
     subgraph Domain["Domain Layer"]
         ENUMS["app/Enums/ (7)<br/>InvoiceStatus, PaymentStatus,<br/>StudentStatus, EnrollmentStatus,<br/>LiveClassStatus,<br/>StudentAssignmentStatus,<br/>TeacherApplicationStatus"]
-        MODELS["app/Models/ (59)"]
+        MODELS["app/Models/ (60)"]
         REQ["app/Http/Requests/ (40 FormRequests)"]
     end
 
     subgraph Data["Data Layer"]
-        DB[("MySQL<br/>93 migrations")]
+        DB[("MySQL<br/>96 migrations")]
         QUEUE[("jobs table<br/>(database queue)")]
     end
 
@@ -78,6 +78,8 @@ graph TB
 `AdminDashboardController` was 1,030 lines at the start of this round of work (it had grown since the 2026-09-28 snapshot, which measured 3,449 — the 3,449→1,030 drop happened in an earlier, undocumented pass this doc never caught up to). It's now 388, split by domain into `Admin\SettingsController`, `Admin\FinanceController`, `Admin\CurriculumController`, and `Admin\ClassSchedulingController` (all new this phase), joining the pre-existing `Admin\BillingController`, `Admin\AdminContentController`, and `Admin\EmailManagementController`. `ParentDashboardController` went 539→376 via extraction into `Parent\ChildAccessService`/`Parent\BillingService`.
 
 **Known gap, not yet addressed:** `Admin\BillingController` (560 lines) and `Admin\EmailManagementController` (586 lines) both already exceed the Phase 4 ~400-line guideline. Neither was named in the original Phase 4 audit (both are pre-existing, upstream-merged subsystems, not part of the six controllers that audit tracked), so they were never in scope for this round's split — surfaced here so it isn't silently missed next time the controller sizes are audited.
+
+**2026-11-11 addendum:** `AdminDashboardController` grew 388→459 and `TeacherDashboardController` 292→313 during the business-drift reconciliation pass (§11) — new thin pass-through methods (`linkParentStudent`/`unlinkParentStudent`, 3 teacher-claim actions, `claimsIndex`/`storeClaim`/`updateClaimBankDetails`) delegating to 4 new services, not inline logic. Still well under the ~400-line guideline except where already noted above.
 
 ---
 
@@ -178,11 +180,11 @@ Per `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md` (v2) and
 
 | Metric | Value | Verified via |
 |---|---|---|
-| Test methods | 351 (349 passing, 2 intentionally skipped — the full-page messenger, disabled per repo-owner direction) | `php artisan test` |
-| Assertions | 1,063 | `php artisan test` output |
+| Test methods | 378 (376 passing, 2 intentionally skipped — the full-page messenger, disabled per repo-owner direction) | `php artisan test` |
+| Assertions | 1,145 | `php artisan test` output |
 | Query-budget regression tests | 2 (`OverviewServiceBuildStudentDataTest`, `AcademicProgressServiceQueryBudgetTest`), via `Tests\Concerns\CountsQueries` | Phase 5e |
 
-The suite has been the regression gate for every change since Phase 1 — green before and after every commit in Phases 3–5, including two multi-day efforts (the AdminDashboardController split and the `$fillable` tightening redo) that were run in small, independently-verified slices specifically so a regression could be isolated to one commit rather than discovered at the end of a large batch.
+The suite has been the regression gate for every change since Phase 1 — green before and after every commit in Phases 3–5 and again through the §11 reconciliation pass, including two multi-day efforts (the AdminDashboardController split and the `$fillable` tightening redo) that were run in small, independently-verified slices specifically so a regression could be isolated to one commit rather than discovered at the end of a large batch. The §11 slices followed the same discipline: 349→354→361→373→376 passing, one slice per commit, full suite re-run after each.
 
 ---
 
@@ -190,12 +192,12 @@ The suite has been the regression gate for every change since Phase 1 — green 
 
 | Metric | Value | Verified via |
 |---|---|---|
-| Models | 59 | `find app/Models -name "*.php"` |
-| Services | 48 | `find app/Services -name "*.php"` |
+| Models | 60 | `find app/Models -name "*.php"` |
+| Services | 52 | `find app/Services -name "*.php"` |
 | FormRequests | 40 | `find app/Http/Requests -name "*.php"` |
 | Model factories | 40 | `find database/factories -name "*.php"` |
-| Migrations | 93 | `ls database/migrations` |
-| Routes | 329 | `grep -c "Route::" routes/web.php` |
+| Migrations | 96 | `ls database/migrations` |
+| Routes | 338 | `grep -c "Route::" routes/web.php` |
 | Backed enums | 7 | `ls app/Enums` |
 | `const STATUS_*` constants remaining | 4 (all `FeeStructure`, explicitly out of Phase 3 scope) | `grep -c "const STATUS_"` |
 | CI workflow / Larastan / Pint config | none of the three exist | `.github/workflows`, `phpstan.neon`, `pint.json` all absent |
@@ -209,3 +211,23 @@ The suite has been the regression gate for every change since Phase 1 — green 
 - **`FeeStructure` enum conversion**: not part of Phase 3's named scope; its `const STATUS_*` constants remain.
 - **`Admin\BillingController` / `Admin\EmailManagementController` size**: both exceed the ~400-line guideline (560 and 586 lines respectively) and were never in scope for Phase 4's named controller list — see §2.1.
 - **Merge cadence**: the master plan calls for shipping each phase as its own small PR; in practice this branch (`khai-QA-refactor`) has accumulated many commits ahead of `origin` with nothing merged to `main` — a known, acknowledged risk, parked by explicit Wanderer decision this round (no push/merge without asking first).
+- **Full-page messenger re-enable**: still disabled on `khai-QA-refactor` (deliberate, reversible — commented routes in `routes/web.php`, `FullPageMessengerTest` marked skipped), still live on `main`. Flagged again in §11; no action taken — this is a pending product decision for the Wanderer, not implementation work.
+- **No general teacher "My Profile" page**: `main` has one (`resources/views/teacher/profile.blade.php`, `TeacherDashboardController::updateProfile`); `khai-QA-refactor` does not. The §11 Teacher Claims port worked around this with a claims-scoped bank-details modal rather than building the full profile page, which was out of scope. If a general profile page is ever built, the bank-details fields should be folded into it and the scoped modal retired.
+
+---
+
+## 11. Business-Drift Reconciliation (`main` → `khai-QA-refactor`, 2026-11-11)
+
+While this branch was doing architectural QA work (Phases 0–5 above), `main` kept shipping real product features directly — most were absorbed in an integration pass on 2026-10-22/23, but 13 commits landed on `main` after that pass and were never ported. A reconnaissance pass (merge-base diff + direct `git show` reads of every relevant `main` commit) found four genuine business-feature gaps and one live production bug hiding behind one of them. All four were ported in four independently-tested, independently-committed slices, following this branch's established service-extraction pattern rather than `main`'s monolithic-controller approach (not mergeable/cherry-pickable — `main`'s `AdminDashboardController` is still 4,570 lines; this branch's is 459 lines + domain services).
+
+| # | Area | Before (this branch, pre-11-11) | After (now) | Commit | New tests |
+|---|---|---|---|---|---|
+| 1 | Diagnostic manual-grading + status column | No admin UI to award marks on `[MANUAL]`-flagged questions; `student_assignments.status` was still a native `ENUM('pending','submitted','graded','late')` while the already-ported grading engine wrote `'pending_review'` into it — live `SQLSTATE[01000]: 1265` truncation on any submission with a manual question | Admin can view/edit per-question marks + feedback + status override via `POST /admin/diagnostic/{id}/grade`; column widened to `VARCHAR(30)`; diagnostic roster narrowed from "all active students" to assigned/enrolled/level-matched | `8b09dc2` | +5 (1 in `DiagnosticFlexibleGradingTest`, 4 in new `DiagnosticManualGradingTest`) |
+| 2 | Parent Accounts directory | No admin UI to link/unlink parent↔student accounts (pivot table existed, unused by any UI); `Student::parent_user_id` was not mass-assignable — a latent bug that would have silently dropped any future write to it | Admin `#parent-accounts` tab: link/unlink, `is_primary` exclusivity enforced, legacy column kept in sync both directions; `parent_user_id` added to `$fillable` | `c1ffcf9` | +7 (new `ParentAccountManagementTest`) |
+| 3 | Teacher Class Fee Claims | Did not exist on this branch at all — no table, no model, no routes, no UI, on either side | Full lifecycle: teacher submits (live-class or manual, default RM50/class, proof upload, duplicate-claim guard) → admin approves/rejects/marks paid (auto-generated transfer reference) → teacher notified at each step. Teacher bank-details capture added as a claims-scoped modal (this branch has no general profile page, unlike `main`) | `673b69f` | +12 (6 in new `TeacherClaimManagementTest`, 6 in new `ClaimSubmissionTest`) |
+| 4 | Assignment targeting | A task was always assigned to every enrolled student in the course — no per-student targeting | Teacher can target "All Students" or "Selected Students Only" when creating a task; `StudentAssignment` rows, notifications, and the tasks-page roster/counts all narrow to the chosen set | `5cfb010` | +3 (new `AssignmentTargetingTest`) |
+| — | Full-page messenger | Flagged as a known divergence (disabled here, live on `main`) | Unchanged — explicitly out of scope, left for a separate Wanderer product decision | — | — |
+
+**Suite progression across the four slices** (full `php artisan test` run after each, 0 failures throughout): 349 → 354 → 361 → 373 → **376 passing**, 2 skipped. Final: 378 test methods, 1,145 assertions.
+
+**Files touched:** 8b09dc2 (8 files, +658/−80), c1ffcf9 (9 files, +855), 673b69f (16 files, +2327/−3), 5cfb010 (5 files, +191/−16).
