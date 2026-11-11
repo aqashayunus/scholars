@@ -1254,7 +1254,8 @@ class TeacherDashboardController extends Controller
             'class_title'         => 'required|string|max:255',
             'class_date'          => 'required|date',
             'duration_minutes'    => 'required|integer|min:15|max:480',
-            'rate_per_class'      => 'nullable|numeric|min:0',
+            'rate_per_class'      => 'nullable|numeric|min:0.01',
+            'amount'              => 'nullable|numeric|min:0.01',
             'teacher_notes'       => 'nullable|string|max:2000',
             'proof_attachment'    => 'nullable|file|max:10240|mimes:jpg,jpeg,png,pdf',
         ]);
@@ -1288,7 +1289,13 @@ class TeacherDashboardController extends Controller
             $proofPath = $request->file('proof_attachment')->store('claim_proofs', 'public');
         }
 
-        $ratePerClass = 50.00; // Fixed RM 50 per class as requested
+        // Teacher can edit the amount, preset default is 50.00
+        $ratePerClass = 50.00;
+        if ($request->filled('rate_per_class') && is_numeric($request->input('rate_per_class'))) {
+            $ratePerClass = max(0.01, (float) $request->input('rate_per_class'));
+        } elseif ($request->filled('amount') && is_numeric($request->input('amount'))) {
+            $ratePerClass = max(0.01, (float) $request->input('amount'));
+        }
 
         $claim = TeacherClassClaim::create([
             'claim_number'          => TeacherClassClaim::generateClaimNumber(),
@@ -1311,12 +1318,13 @@ class TeacherDashboardController extends Controller
 
         // Notify Admins
         $adminUsers = User::where('role', 'admin')->get();
+        $formattedAmount = number_format($claim->amount, 2);
         foreach ($adminUsers as $admin) {
             UserNotification::create([
                 'user_id' => $admin->id,
                 'type'    => 'claim',
                 'title'   => 'New Teacher Class Claim Received',
-                'message' => "Cikgu {$teacher->user->name} has submitted a class fee claim of RM 50.00 ({$claim->claim_number}) for '{$claim->class_title}' ({$claim->subject_name}).",
+                'message' => "Cikgu {$teacher->user->name} has submitted a class fee claim of RM {$formattedAmount} ({$claim->claim_number}) for '{$claim->class_title}' ({$claim->subject_name}).",
             ]);
         }
 
