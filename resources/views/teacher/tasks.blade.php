@@ -34,6 +34,43 @@
             currentPage: 1,
 
             tasks: JSON.parse(document.getElementById('tasks-data')?.textContent || '[]'),
+            coursesMap: @json($coursesStudentsMap ?? []),
+
+            // Assignment student selection state
+            assignmentCourseId: '',
+            assignTargetAssignment: 'all',
+            selectedStudentIdsAssignment: [],
+            studentSearchAssignment: '',
+
+            // Quiz student selection state
+            quizCourseId: '',
+            assignTargetQuiz: 'all',
+            selectedStudentIdsQuiz: [],
+            studentSearchQuiz: '',
+
+            // Assessment student selection state
+            assessmentCourseId: '',
+            assignTargetAssessment: 'all',
+            selectedStudentIdsAssessment: [],
+            studentSearchAssessment: '',
+
+            // Exam student selection state
+            examCourseId: '',
+            assignTargetExam: 'all',
+            selectedStudentIdsExam: [],
+            studentSearchExam: '',
+
+            getStudentsForCourse(courseId) {
+                if (!courseId || !this.coursesMap || !this.coursesMap[courseId]) return [];
+                return this.coursesMap[courseId];
+            },
+
+            getFilteredStudents(courseId, searchQuery) {
+                const list = this.getStudentsForCourse(courseId);
+                if (!searchQuery) return list;
+                const q = searchQuery.toLowerCase();
+                return list.filter(s => (s.name && s.name.toLowerCase().includes(q)) || (s.email && s.email.toLowerCase().includes(q)));
+            },
 
             init() {
                 this.restoreQuizDraft();
@@ -244,6 +281,14 @@
                 if (p >= 1 && p <= this.totalPages) {
                     this.currentPage = p;
                 }
+            },
+            resetFilters() {
+                this.searchQuery = '';
+                this.selectedType = 'all';
+                this.selectedClass = 'all';
+                this.selectedSubject = 'all';
+                this.selectedStatus = 'all';
+                this.currentPage = 1;
             }
         }));
     });
@@ -281,7 +326,7 @@
             </div>
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             <div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-2xl text-xs font-bold shadow-sm space-y-1">
                 <p class="font-black">Please fix the following errors:</p>
                 <ul class="list-disc list-inside font-medium space-y-0.5">
@@ -451,7 +496,15 @@
                                 </td>
 
                                 {{-- Type (Clean Text Typography - No Color Badge) --}}
-                                <td class="py-3.5 px-4 font-semibold text-gray-800 text-xs" x-text="tk.type"></td>
+                                <td class="py-3.5 px-4 font-semibold text-gray-800 text-xs">
+                                    <div x-text="tk.type"></div>
+                                    <template x-if="tk.assign_target === 'selected'">
+                                        <div class="inline-flex items-center gap-1 text-[10px] text-blue-600 font-bold mt-0.5">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            <span>Selected Students</span>
+                                        </div>
+                                    </template>
+                                </td>
 
                                 {{-- Subject & Class --}}
                                 <td class="py-3.5 px-4">
@@ -512,9 +565,18 @@
                                 </td>
                             </tr>
                         </template>
-                        <tr x-show="filteredTasks.length === 0">
-                            <td colspan="7" class="py-8 text-center text-gray-400 font-semibold">
-                                No tasks found matching criteria. Click <strong>+ Create New Task</strong> to create one.
+                        <tr x-show="tasks.length === 0">
+                            <td colspan="7" class="py-12 text-center text-gray-400 font-medium">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                    <p class="text-sm font-bold text-gray-700">No tasks or assessments created yet</p>
+                                    <p class="text-xs text-gray-400">Assignments, quizzes, and exams you create for your classes will appear here.</p>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr x-show="tasks.length > 0 && filteredTasks.length === 0">
+                            <td colspan="7" class="py-10 text-center text-gray-400 font-semibold">
+                                No tasks found matching your search or filters. Click <button type="button" @click="resetFilters()" class="text-blue-600 underline font-bold cursor-pointer hover:text-blue-700">Reset Filters</button> to view all tasks.
                             </td>
                         </tr>
                     </tbody>
@@ -608,7 +670,7 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" x-model="assignmentCourseId" @change="selectedStudentIdsAssignment = []" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
                                     <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
@@ -658,11 +720,93 @@
                                 <input type="time" name="due_time" value="23:59" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none">
                             </div>
                         </div>
+
+                        {{-- ── STUDENT ASSIGNMENT TARGET (All vs Selected) ── --}}
+                        <div class="space-y-2.5 pt-3 border-t border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <label class="font-extrabold text-gray-900 block text-xs">Assign Target *</label>
+                                <span class="text-[11px] text-gray-400 font-semibold" x-text="assignmentCourseId ? `${getStudentsForCourse(assignmentCourseId).length} Enrolled Student(s)` : 'Select class above'"></span>
+                            </div>
+                            
+                            <input type="hidden" name="assign_target" :value="assignTargetAssignment">
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetAssignment === 'all' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="all" x-model="assignTargetAssignment" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">All Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5" x-text="assignmentCourseId ? `Assign to all ${getStudentsForCourse(assignmentCourseId).length} student(s)` : 'Assign to all students in class'"></p>
+                                </label>
+
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetAssignment === 'selected' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="selected" x-model="assignTargetAssignment" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">Selected Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5">Choose specific students (remedial, catch-up)</p>
+                                </label>
+                            </div>
+
+                            {{-- Interactive Student Checklist when "Selected Students" is active --}}
+                            <div x-show="assignTargetAssignment === 'selected'" x-transition class="space-y-2 p-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl">
+                                <template x-if="!assignmentCourseId">
+                                    <div class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 border border-gray-200/0 text-xs text-gray-500 font-medium">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Please select a Class & Subject above first.</span>
+                                    </div>
+                                </template>
+
+                                <template x-if="assignmentCourseId">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-2 text-[11px]">
+                                                <button type="button" @click="selectedStudentIdsAssignment = getStudentsForCourse(assignmentCourseId).map(s => s.id)" class="text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Select All</button>
+                                                <span class="text-gray-300">•</span>
+                                                <button type="button" @click="selectedStudentIdsAssignment = []" class="text-gray-500 hover:text-gray-700 font-bold cursor-pointer">Clear</button>
+                                            </div>
+                                        </div>
+
+                                        {{-- Filter search input if course has more than 3 students --}}
+                                        <div x-show="getStudentsForCourse(assignmentCourseId).length > 3">
+                                            <input type="text" x-model="studentSearchAssignment" placeholder="Type student name to search..." class="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                                        </div>
+
+                                        <div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                                            <template x-for="st in getFilteredStudents(assignmentCourseId, studentSearchAssignment)" :key="st.id">
+                                                <label class="flex items-center justify-between p-2 rounded-xl bg-white border hover:bg-blue-50/40 cursor-pointer transition-colors"
+                                                       :class="selectedStudentIdsAssignment.includes(st.id) ? 'border-blue-300 shadow-2xs' : 'border-gray-200'">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <input type="checkbox" name="student_ids[]" :value="st.id" x-model="selectedStudentIdsAssignment" class="rounded text-blue-600 focus:ring-blue-500">
+                                                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[10px]" x-text="st.initials"></div>
+                                                        <span class="font-bold text-gray-900 text-xs" x-text="st.name"></span>
+                                                    </div>
+                                                    <span class="text-[10px] text-gray-400 font-semibold" x-text="st.level || ''"></span>
+                                                </label>
+                                            </template>
+                                            <template x-if="getStudentsForCourse(assignmentCourseId).length === 0">
+                                                <p class="text-center py-3 text-xs text-gray-400 font-semibold">No students currently enrolled in this class.</p>
+                                            </template>
+                                        </div>
+
+                                        <p x-show="selectedStudentIdsAssignment.length === 0 && getStudentsForCourse(assignmentCourseId).length > 0" class="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
+                                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            <span>Please select at least one student before assigning.</span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                        <button type="submit" 
+                                :disabled="isSubmitting || (assignTargetAssignment === 'selected' && (!assignmentCourseId || selectedStudentIdsAssignment.length === 0))" 
+                                :class="(assignTargetAssignment === 'selected' && (!assignmentCourseId || selectedStudentIdsAssignment.length === 0)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'"
+                                class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5">
                             <span x-text="isSubmitting ? 'Publishing...' : 'Publish Assignment'"></span>
                         </button>
                     </div>
@@ -675,7 +819,7 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" x-model="quizCourseId" @change="selectedStudentIdsQuiz = []" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
                                     <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
@@ -702,6 +846,84 @@
                             <div>
                                 <label class="font-extrabold text-gray-900 block mb-1">Due Date</label>
                                 <input type="date" name="due_date" min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d', strtotime('+7 days')) }}" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none">
+                            </div>
+                        </div>
+
+                        {{-- ── STUDENT ASSIGNMENT TARGET (All vs Selected) ── --}}
+                        <div class="space-y-2.5 pt-3 border-t border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <label class="font-extrabold text-gray-900 block text-xs">Assign Target *</label>
+                                <span class="text-[11px] text-gray-400 font-semibold" x-text="quizCourseId ? `${getStudentsForCourse(quizCourseId).length} Enrolled Student(s)` : 'Select class above'"></span>
+                            </div>
+                            
+                            <input type="hidden" name="assign_target" :value="assignTargetQuiz">
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetQuiz === 'all' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="all" x-model="assignTargetQuiz" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">All Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5" x-text="quizCourseId ? `Assign to all ${getStudentsForCourse(quizCourseId).length} student(s)` : 'Assign to all students in class'"></p>
+                                </label>
+
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetQuiz === 'selected' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="selected" x-model="assignTargetQuiz" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">Selected Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5">Choose specific students (remedial, catch-up)</p>
+                                </label>
+                            </div>
+
+                            <div x-show="assignTargetQuiz === 'selected'" x-transition class="space-y-2 p-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl">
+                                <template x-if="!quizCourseId">
+                                    <div class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 border border-gray-200/70 text-xs text-gray-500 font-medium">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Please select a Class & Subject above first.</span>
+                                    </div>
+                                </template>
+
+                                <template x-if="quizCourseId">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-extrabold text-gray-800 text-[11px]" x-text="`${selectedStudentIdsQuiz.length} of ${getStudentsForCourse(quizCourseId).length} student(s) selected`"></span>
+                                            <div class="flex items-center gap-2 text-[11px]">
+                                                <button type="button" @click="selectedStudentIdsQuiz = getStudentsForCourse(quizCourseId).map(s => s.id)" class="text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Select All</button>
+                                                <span class="text-gray-300">•</span>
+                                                <button type="button" @click="selectedStudentIdsQuiz = []" class="text-gray-500 hover:text-gray-700 font-bold cursor-pointer">Clear</button>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="getStudentsForCourse(quizCourseId).length > 3">
+                                            <input type="text" x-model="studentSearchQuiz" placeholder="Type student name to search..." class="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                                        </div>
+
+                                        <div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                                            <template x-for="st in getFilteredStudents(quizCourseId, studentSearchQuiz)" :key="st.id">
+                                                <label class="flex items-center justify-between p-2 rounded-xl bg-white border hover:bg-blue-50/40 cursor-pointer transition-colors"
+                                                       :class="selectedStudentIdsQuiz.includes(st.id) ? 'border-blue-300 shadow-2xs' : 'border-gray-200'">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <input type="checkbox" name="student_ids[]" :value="st.id" x-model="selectedStudentIdsQuiz" class="rounded text-blue-600 focus:ring-blue-500">
+                                                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[10px]" x-text="st.initials"></div>
+                                                        <span class="font-bold text-gray-900 text-xs" x-text="st.name"></span>
+                                                    </div>
+                                                    <span class="text-[10px] text-gray-400 font-semibold" x-text="st.level || ''"></span>
+                                                </label>
+                                            </template>
+                                            <template x-if="getStudentsForCourse(quizCourseId).length === 0">
+                                                <p class="text-center py-3 text-xs text-gray-400 font-semibold">No students currently enrolled in this class.</p>
+                                            </template>
+                                        </div>
+
+                                        <p x-show="selectedStudentIdsQuiz.length === 0 && getStudentsForCourse(quizCourseId).length > 0" class="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
+                                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            <span>Please select at least one student before assigning.</span>
+                                        </p>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
@@ -769,7 +991,10 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                        <button type="submit" 
+                                :disabled="isSubmitting || (assignTargetQuiz === 'selected' && (!quizCourseId || selectedStudentIdsQuiz.length === 0))" 
+                                :class="(assignTargetQuiz === 'selected' && (!quizCourseId || selectedStudentIdsQuiz.length === 0)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'"
+                                class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5">
                             <span x-text="isSubmitting ? 'Publishing...' : 'Publish Quiz'"></span>
                         </button>
                     </div>
@@ -783,7 +1008,7 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" x-model="assessmentCourseId" @change="selectedStudentIdsAssessment = []" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
                                     <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
@@ -823,11 +1048,92 @@
                                 <input type="time" name="due_time" value="23:59" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none">
                             </div>
                         </div>
+
+                        {{-- ── STUDENT ASSIGNMENT TARGET (All vs Selected) ── --}}
+                        <div class="space-y-2.5 pt-3 border-t border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <label class="font-extrabold text-gray-900 block text-xs">Assign Target *</label>
+                                <span class="text-[11px] text-gray-400 font-semibold" x-text="assessmentCourseId ? `${getStudentsForCourse(assessmentCourseId).length} Enrolled Student(s)` : 'Select class above'"></span>
+                            </div>
+                            
+                            <input type="hidden" name="assign_target" :value="assignTargetAssessment">
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetAssessment === 'all' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="all" x-model="assignTargetAssessment" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">All Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5" x-text="assessmentCourseId ? `Assign to all ${getStudentsForCourse(assessmentCourseId).length} student(s)` : 'Assign to all students in class'"></p>
+                                </label>
+
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetAssessment === 'selected' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="selected" x-model="assignTargetAssessment" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">Selected Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5">Choose specific students (remedial, catch-up)</p>
+                                </label>
+                            </div>
+
+                            <div x-show="assignTargetAssessment === 'selected'" x-transition class="space-y-2 p-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl">
+                                <template x-if="!assessmentCourseId">
+                                    <div class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 border border-gray-200/70 text-xs text-gray-500 font-medium">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Please select a Class & Subject above first.</span>
+                                    </div>
+                                </template>
+
+                                <template x-if="assessmentCourseId">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-extrabold text-gray-800 text-[11px]" x-text="`${selectedStudentIdsAssessment.length} of ${getStudentsForCourse(assessmentCourseId).length} student(s) selected`"></span>
+                                            <div class="flex items-center gap-2 text-[11px]">
+                                                <button type="button" @click="selectedStudentIdsAssessment = getStudentsForCourse(assessmentCourseId).map(s => s.id)" class="text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Select All</button>
+                                                <span class="text-gray-300">•</span>
+                                                <button type="button" @click="selectedStudentIdsAssessment = []" class="text-gray-500 hover:text-gray-700 font-bold cursor-pointer">Clear</button>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="getStudentsForCourse(assessmentCourseId).length > 3">
+                                            <input type="text" x-model="studentSearchAssessment" placeholder="Type student name to search..." class="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                                        </div>
+
+                                        <div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                                            <template x-for="st in getFilteredStudents(assessmentCourseId, studentSearchAssessment)" :key="st.id">
+                                                <label class="flex items-center justify-between p-2 rounded-xl bg-white border hover:bg-blue-50/40 cursor-pointer transition-colors"
+                                                       :class="selectedStudentIdsAssessment.includes(st.id) ? 'border-blue-300 shadow-2xs' : 'border-gray-200'">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <input type="checkbox" name="student_ids[]" :value="st.id" x-model="selectedStudentIdsAssessment" class="rounded text-blue-600 focus:ring-blue-500">
+                                                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[10px]" x-text="st.initials"></div>
+                                                        <span class="font-bold text-gray-900 text-xs" x-text="st.name"></span>
+                                                    </div>
+                                                    <span class="text-[10px] text-gray-400 font-semibold" x-text="st.level || ''"></span>
+                                                </label>
+                                            </template>
+                                            <template x-if="getStudentsForCourse(assessmentCourseId).length === 0">
+                                                <p class="text-center py-3 text-xs text-gray-400 font-semibold">No students currently enrolled in this class.</p>
+                                            </template>
+                                        </div>
+
+                                        <p x-show="selectedStudentIdsAssessment.length === 0 && getStudentsForCourse(assessmentCourseId).length > 0" class="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
+                                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            <span>Please select at least one student before assigning.</span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                        <button type="submit" 
+                                :disabled="isSubmitting || (assignTargetAssessment === 'selected' && (!assessmentCourseId || selectedStudentIdsAssessment.length === 0))" 
+                                :class="(assignTargetAssessment === 'selected' && (!assessmentCourseId || selectedStudentIdsAssessment.length === 0)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'"
+                                class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5">
                             <span x-text="isSubmitting ? 'Publishing...' : 'Publish Assessment'"></span>
                         </button>
                     </div>
@@ -841,7 +1147,7 @@
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Class & Subject *</label>
-                            <select name="course_id" required class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
+                            <select name="course_id" required x-model="examCourseId" @change="selectedStudentIdsExam = []" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-3.5 pr-9 py-2.5 text-xs font-bold outline-none cursor-pointer">
                                 <option value="">Select class</option>
                                 @foreach($courses as $c)
                                     <option value="{{ $c->id }}">{{ $c->title }} ({{ $c->subject->display_name ?? ($c->subject->name ?? 'Subject') }})</option>
@@ -881,11 +1187,92 @@
                             <input type="file" name="file" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                             <p class="text-[10px] text-gray-400 mt-0.5">Supports PDF, Word, ZIP (Max: 50MB)</p>
                         </div>
+
+                        {{-- ── STUDENT ASSIGNMENT TARGET (All vs Selected) ── --}}
+                        <div class="space-y-2.5 pt-3 border-t border-gray-100">
+                            <div class="flex items-center justify-between">
+                                <label class="font-extrabold text-gray-900 block text-xs">Assign Target *</label>
+                                <span class="text-[11px] text-gray-400 font-semibold" x-text="examCourseId ? `${getStudentsForCourse(examCourseId).length} Enrolled Student(s)` : 'Select class above'"></span>
+                            </div>
+                            
+                            <input type="hidden" name="assign_target" :value="assignTargetExam">
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetExam === 'all' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="all" x-model="assignTargetExam" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">All Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5" x-text="examCourseId ? `Assign to all ${getStudentsForCourse(examCourseId).length} student(s)` : 'Assign to all students in class'"></p>
+                                </label>
+
+                                <label class="relative flex flex-col p-3 rounded-2xl border-2 cursor-pointer transition-all"
+                                       :class="assignTargetExam === 'selected' ? 'border-blue-600 bg-blue-50/40 shadow-2xs' : 'border-gray-200 bg-gray-50/70 hover:bg-gray-100/70'">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <input type="radio" value="selected" x-model="assignTargetExam" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-black text-gray-900 text-xs">Selected Students</span>
+                                    </div>
+                                    <p class="text-[11px] text-gray-500 font-medium pl-5">Choose specific candidates / examinees</p>
+                                </label>
+                            </div>
+
+                            <div x-show="assignTargetExam === 'selected'" x-transition class="space-y-2 p-3.5 bg-gray-50/80 border border-gray-200 rounded-2xl">
+                                <template x-if="!examCourseId">
+                                    <div class="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-gray-50 border border-gray-200/70 text-xs text-gray-500 font-medium">
+                                        <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                        <span>Please select a Class & Subject above first.</span>
+                                    </div>
+                                </template>
+
+                                <template x-if="examCourseId">
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span class="font-extrabold text-gray-800 text-[11px]" x-text="`${selectedStudentIdsExam.length} of ${getStudentsForCourse(examCourseId).length} student(s) selected`"></span>
+                                            <div class="flex items-center gap-2 text-[11px]">
+                                                <button type="button" @click="selectedStudentIdsExam = getStudentsForCourse(examCourseId).map(s => s.id)" class="text-blue-600 hover:text-blue-800 font-bold cursor-pointer">Select All</button>
+                                                <span class="text-gray-300">•</span>
+                                                <button type="button" @click="selectedStudentIdsExam = []" class="text-gray-500 hover:text-gray-700 font-bold cursor-pointer">Clear</button>
+                                            </div>
+                                        </div>
+
+                                        <div x-show="getStudentsForCourse(examCourseId).length > 3">
+                                            <input type="text" x-model="studentSearchExam" placeholder="Type student name to search..." class="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 font-medium">
+                                        </div>
+
+                                        <div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+                                            <template x-for="st in getFilteredStudents(examCourseId, studentSearchExam)" :key="st.id">
+                                                <label class="flex items-center justify-between p-2 rounded-xl bg-white border hover:bg-blue-50/40 cursor-pointer transition-colors"
+                                                       :class="selectedStudentIdsExam.includes(st.id) ? 'border-blue-300 shadow-2xs' : 'border-gray-200'">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <input type="checkbox" name="student_ids[]" :value="st.id" x-model="selectedStudentIdsExam" class="rounded text-blue-600 focus:ring-blue-500">
+                                                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-black text-[10px]" x-text="st.initials"></div>
+                                                        <span class="font-bold text-gray-900 text-xs" x-text="st.name"></span>
+                                                    </div>
+                                                    <span class="text-[10px] text-gray-400 font-semibold" x-text="st.level || ''"></span>
+                                                </label>
+                                            </template>
+                                            <template x-if="getStudentsForCourse(examCourseId).length === 0">
+                                                <p class="text-center py-3 text-xs text-gray-400 font-semibold">No students currently enrolled in this class.</p>
+                                            </template>
+                                        </div>
+
+                                        <p x-show="selectedStudentIdsExam.length === 0 && getStudentsForCourse(examCourseId).length > 0" class="flex items-center gap-1.5 text-[11px] text-gray-500 font-medium pt-1">
+                                            <svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                            <span>Please select at least one student before assigning.</span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 text-xs font-extrabold">
                         <button type="button" @click="showCreateModal = false" class="py-2.5 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors cursor-pointer">Cancel</button>
-                        <button type="submit" :disabled="isSubmitting" class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer hover:shadow-md disabled:opacity-50 inline-flex items-center gap-1.5">
+                        <button type="submit" 
+                                :disabled="isSubmitting || (assignTargetExam === 'selected' && (!examCourseId || selectedStudentIdsExam.length === 0))" 
+                                :class="(assignTargetExam === 'selected' && (!examCourseId || selectedStudentIdsExam.length === 0)) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md'"
+                                class="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm disabled:opacity-50 inline-flex items-center gap-1.5">
                             <span x-text="isSubmitting ? 'Publishing...' : 'Schedule & Publish Exam'"></span>
                         </button>
                     </div>
@@ -903,6 +1290,9 @@
                         <div class="flex items-center gap-2 text-xs font-bold">
                             <h3 class="font-heading font-black text-lg text-gray-900" x-text="selectedTask?.name || selectedTask?.title || 'Task Details'"></h3>
                             <span class="font-bold text-gray-700 text-xs" x-text="`• ${selectedTask?.type || 'Assignment'}`"></span>
+                            <template x-if="selectedTask?.assign_target === 'selected'">
+                                <span class="py-0.5 px-2 bg-blue-50 text-blue-700 rounded-lg text-[10px] font-black border border-blue-200">Selected Students</span>
+                            </template>
                         </div>
                         <p class="text-xs text-gray-500 font-medium mt-0.5" x-text="(selectedTask?.class || 'Class') + ' • ' + (selectedTask?.subject || 'Subject') + ' • Due: ' + (selectedTask?.dueDate || '–')"></p>
                         <template x-if="selectedTask?.attachmentUrl">
@@ -931,7 +1321,7 @@
 
                     <div class="p-4 bg-gray-50 rounded-2xl text-center flex flex-col justify-center">
                         <span class="text-2xl font-black text-gray-900 block" x-text="selectedTask?.totalStudents || 0"></span>
-                        <span class="text-xs font-bold text-gray-400">Total Enrolled Students</span>
+                        <span class="text-xs font-bold text-gray-400" x-text="selectedTask?.assign_target === 'selected' ? 'Assigned Students' : 'Total Enrolled Students'"></span>
                     </div>
 
                     <div class="p-4 bg-gray-50 rounded-2xl text-center flex flex-col justify-center">

@@ -455,12 +455,9 @@
                         </div>
 
                         {{-- Action Buttons --}}
-                        <div class="grid grid-cols-2 gap-2 text-xs font-extrabold pt-2">
-                            <a href="{{ route('teacher.students') }}" class="py-2.5 bg-white hover:bg-gray-50 text-blue-700 rounded-xl border border-blue-200 transition-colors shadow-2xs cursor-pointer text-center">
+                        <div class="pt-2 text-xs font-extrabold">
+                            <a href="{{ route('teacher.students') }}" class="block w-full py-2.5 bg-white hover:bg-gray-50 text-blue-700 rounded-xl border border-blue-200 transition-colors shadow-2xs cursor-pointer text-center">
                                 View Full Profile
-                            </a>
-                            <a href="{{ route('teacher.messages') }}" class="py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors shadow-sm cursor-pointer text-center">
-                                Message Student
                             </a>
                         </div>
 

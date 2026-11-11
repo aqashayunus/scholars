@@ -8,6 +8,7 @@ class Assignment extends Model
 {
     protected $fillable = [
         'course_id',
+        'assign_target',
         'subject_id',
         'is_global',
         'target_level',

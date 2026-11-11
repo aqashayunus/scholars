@@ -332,9 +332,10 @@ class PageController extends Controller
             }
 
             if (!$course) {
+                $assignedTeacher = $subject->teachers()->first();
                 $course = Course::create([
                     'subject_id'    => $subject->id,
-                    'teacher_id'    => $defaultTeacher?->id ?? 1,
+                    'teacher_id'    => $assignedTeacher?->id,
                     'title'         => $subject->name,
                     'description'   => 'Comprehensive learning course for ' . $subject->name,
                     'level'         => $effectiveLevel,

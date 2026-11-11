@@ -11,13 +11,15 @@ class Teacher extends Model
 
     protected $fillable = [
         'user_id', 'application_status', 'qualification', 'experience_years', 'bio',
-        'teaching_style', 'rating', 'total_students', 'photo', 'specialization'
+        'teaching_style', 'rating', 'total_students', 'photo', 'specialization',
+        'bank_name', 'bank_account_number', 'bank_account_holder'
     ];
 
     public function user()     { return $this->belongsTo(User::class); }
     public function courses()           { return $this->hasMany(Course::class); }
     public function learningMaterials() { return $this->hasMany(LearningMaterial::class); }
     public function subjects()          { return $this->belongsToMany(Subject::class, 'teacher_subject'); }
+    public function claims()            { return $this->hasMany(TeacherClassClaim::class); }
 
     public function getNameAttribute()  { return $this->user->name; }
     public function getEmailAttribute() { return $this->user->email; }

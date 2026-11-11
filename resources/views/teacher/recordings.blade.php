@@ -22,6 +22,11 @@
                                        (r.course && r.course.subject && (r.course.subject.display_name === this.selectedSubject || r.course.subject.name === this.selectedSubject));
                 return matchesQuery && matchesClass && matchesSubject;
             });
+        },
+        resetFilters() {
+            this.searchQuery = '';
+            this.selectedClass = 'all';
+            this.selectedSubject = 'all';
         }
     }" class="space-y-6">
 
@@ -36,7 +41,7 @@
             </div>
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             <div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded-2xl text-xs font-bold shadow-sm space-y-1">
                 <p class="font-black">Please fix the following issues:</p>
                 <ul class="list-disc list-inside font-medium space-y-0.5">
@@ -109,28 +114,35 @@
 
         {{-- ── 2. SEARCH & FILTER BAR ── --}}
         <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="relative">
-                    <input type="text" x-model="searchQuery" placeholder="Search recording title or topic..." class="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+            <div class="flex flex-col xl:flex-row items-stretch xl:items-center gap-3">
+                <div class="relative flex-1 min-w-[220px]">
+                    <input type="text" x-model="searchQuery" placeholder="Search recording title or topic..." class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-9 pr-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium">
                     <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                 </div>
 
-                <div>
-                    <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Class: All Levels</option>
-                        @foreach($courses->pluck('level')->unique() as $lvl)
-                            <option value="{{ $lvl }}">{{ $lvl }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 xl:flex xl:items-center gap-2.5">
+                    <div class="w-full xl:w-auto xl:min-w-[150px]">
+                        <select x-model="selectedClass" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Class: All Levels</option>
+                            @foreach($courses->pluck('level')->unique() as $lvl)
+                                <option value="{{ $lvl }}">{{ $lvl }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div>
-                    <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                        <option value="all">Subject: All Subjects</option>
-                        @foreach($subjects as $s)
-                            <option value="{{ $s->display_name ?? $s->name }}">{{ $s->display_name ?? $s->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="w-full xl:w-auto xl:min-w-[160px]">
+                        <select x-model="selectedSubject" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
+                            <option value="all">Subject: All Subjects</option>
+                            @foreach($subjects as $s)
+                                <option value="{{ $s->display_name ?? $s->name }}">{{ $s->display_name ?? $s->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <button type="button" @click="resetFilters()" class="col-span-2 sm:col-span-1 xl:col-auto py-2.5 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-2xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center gap-1" title="Reset all search queries and filters">
+                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        <span>Reset</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -211,17 +223,20 @@
             </template>
         </div>
 
-        <template x-if="filteredRecordings.length === 0">
-            <div class="bg-white rounded-3xl p-12 text-center border border-gray-100 space-y-3">
-                <div class="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        {{-- Empty States --}}
+        <template x-if="recordings.length === 0">
+            <div class="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-sm">
+                <div class="flex flex-col items-center justify-center gap-2">
+                    <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <p class="text-sm font-bold text-gray-700">No class recordings uploaded yet</p>
+                    <p class="text-xs text-gray-400">Class replays and recordings you upload for your students will appear here.</p>
                 </div>
-                <h4 class="font-heading font-black text-base text-gray-900">No Class Recordings Available</h4>
-                <p class="text-xs text-gray-500 max-w-md mx-auto">There are currently no recorded class videos or replays available for your assigned classes. Click below to upload your first recording.</p>
-                <button @click="showUploadModal = true" class="py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5 mx-auto">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-                    <span>Upload Recording Now</span>
-                </button>
+            </div>
+        </template>
+
+        <template x-if="recordings.length > 0 && filteredRecordings.length === 0">
+            <div class="bg-white rounded-3xl p-10 text-center border border-gray-100 shadow-sm text-gray-400 font-semibold text-xs">
+                No class recordings found matching your search or filters. Click <button type="button" @click="resetFilters()" class="text-blue-600 underline font-bold cursor-pointer hover:text-blue-700">Reset Filters</button> to view all recordings.
             </div>
         </template>
 

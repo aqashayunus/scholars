@@ -312,7 +312,7 @@
                         ['value' => '10,000+', 'label' => 'Students Enrolled'],
                         ['value' => '95%',     'label' => 'Improvement Rate'],
                         ['value' => '8',       'label' => 'Core Subjects'],
-                        ['value' => 'Since 2015', 'label' => 'Proven Track Record'],
+                        ['value' => 'Since 2026', 'label' => 'Proven Track Record'],
                     ];
                 @endphp
                 @foreach ($stats as $stat)

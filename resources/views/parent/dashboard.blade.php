@@ -81,6 +81,7 @@
                         </span>
                     </div>
 
+                    <span class="uppercase tracking-wider text-[11px] font-black text-rose-600 block mb-1">Payment Required</span>
                     <h2 class="font-heading font-black text-2xl sm:text-3xl text-gray-900 mb-2">
                         Account Access Restricted
                     </h2>

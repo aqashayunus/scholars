@@ -242,7 +242,12 @@ class Student extends Model
         // 2. Enrolled Course assignments
         $courseIds = Enrollment::where('student_id', $this->id)->pluck('course_id')->toArray();
         if (!empty($courseIds)) {
-            $courseAssignments = Assignment::whereIn('course_id', $courseIds)->get();
+            $courseAssignments = Assignment::whereIn('course_id', $courseIds)
+                ->where(function ($q) {
+                    $q->whereNull('assign_target')
+                      ->orWhere('assign_target', 'all');
+                })
+                ->get();
             foreach ($courseAssignments as $ca) {
                 StudentAssignment::firstOrCreate([
                     'student_id'    => $this->id,

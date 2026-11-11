@@ -502,6 +502,17 @@ class DiagnosticTestController extends Controller
         $formattedDuration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
 
         return response()->json([
+            'success'            => true,
+            'student_name'       => $studentAssignment->student?->user?->name ?? 'Student',
+            'student_level'      => $studentAssignment->student?->level ?? 'Academic',
+            'test_title'         => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
+            'score'              => $studentAssignment->score ?? 0,
+            'tahap_kepandaian'   => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
+            'tahap_description'  => $studentAssignment->getTahapDescription(),
+            'tahap_badge_class'  => $studentAssignment->getTahapBadgeClass(),
+            'formatted_duration' => $formattedDuration,
+            'submitted_at'       => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
+            'answers_breakdown'  => array_values($answers),
             'success'               => true,
             'student_assignment_id' => $studentAssignment->id,
             'student_name'          => $studentAssignment->student?->user?->name ?? 'Student',
@@ -620,7 +631,9 @@ class DiagnosticTestController extends Controller
     {
         try {
             // Ensure status column allows 'pending_review' without ENUM truncation error
-            DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+            }
         } catch (\Throwable $e) {
             // Ignore if no DDL permissions or already updated
         }

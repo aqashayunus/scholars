@@ -3,33 +3,38 @@
 
     @php
         $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
-        $fallbackCourses = $teacher->courses;
-        if ($assignedSubjectIds->isNotEmpty()) {
-            $subjectCourses = \App\Models\Course::whereIn('subject_id', $assignedSubjectIds)->with('subject')->get();
-            $fallbackCourses = $fallbackCourses->merge($subjectCourses)->unique('id');
-        }
+        $coursesList = collect($courses ?? ($assignedSubjectIds->isNotEmpty() 
+            ? \App\Models\Course::whereIn('subject_id', $assignedSubjectIds)->with('subject')->get()
+            : $teacher->courses));
+        $subjectList = collect($teacher->subjects ?? []);
 
-        $filterClasses = $filterClasses ?? $fallbackCourses->map(function ($c) use ($fallbackCourses) {
+        $filterClasses = $filterClasses ?? $coursesList->map(function ($c) use ($coursesList) {
             if ($c->subject?->display_name) {
                 return $c->subject->display_name;
             }
-            $sameTitleCount = $fallbackCourses->where('title', $c->title)->count();
+            $sameTitleCount = $coursesList->where('title', $c->title)->count();
             if ($sameTitleCount > 1 && $c->level) {
                 return $c->title . ' (' . $c->level . ')';
             }
             return $c->title ?: ($c->subject?->display_name ?? $c->subject?->name);
         })->merge(
-            $teacher->subjects ? $teacher->subjects->map(fn($s) => $s->display_name ?: $s->name) : collect()
+            $subjectList->map(fn($s) => $s->display_name ?: $s->name)
         )->filter()->unique()->values();
 
-        $filterForms = $filterForms ?? ($teacher->subjects ? $teacher->subjects->pluck('form_year')->filter() : collect())
-            ->merge($fallbackCourses->pluck('level'))
-            ->merge($teacher->subjects ? $teacher->subjects->pluck('level') : collect())
-            ->merge(collect($mappedStudents)->pluck('class'))
+        $filterForms = $filterForms ?? $subjectList->pluck('form_year')->filter()
+            ->merge($coursesList->map(fn($c) => $c->subject?->form_year ?: $c->level))
+            ->merge(collect($mappedStudents)->flatMap(fn($s) => $s['course_levels'] ?? [$s['class']]))
+            ->map(function($f) {
+                $f = trim($f ?? '');
+                if (preg_match('/(Year\s*\d+|Form\s*\d+|Tingkatan\s*\d+|Tahun\s*\d+|Standard\s*\d+|Preschool|Kindergarten)/i', $f, $m)) {
+                    return ucwords(strtolower($m[1]));
+                }
+                return null;
+            })
             ->filter()->unique()->values();
 
-        $filterSubjects = $filterSubjects ?? ($teacher->subjects ? $teacher->subjects->pluck('name') : collect())
-            ->merge($fallbackCourses->map(fn($c) => $c->subject?->name ?: ($c->subject?->display_name ?: $c->title)))
+        $filterSubjects = $filterSubjects ?? $subjectList->pluck('name')->filter()
+            ->merge($coursesList->map(fn($c) => $c->subject?->name ?: ($c->subject?->display_name ?: $c->title)))
             ->merge(collect($mappedStudents)->flatMap(fn($s) => $s['subject_names'] ?? []))
             ->filter()->unique()->values();
 
@@ -214,7 +219,7 @@
                     {{-- Form Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[135px]">
                         <select x-model="selectedForm" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                            <option value="all">Year / Form: All</option>
+                            <option value="all">Year: All</option>
                             @foreach($filterForms as $frm)
                                 <option value="{{ $frm }}">{{ $frm }}</option>
                             @endforeach
@@ -224,7 +229,7 @@
                     {{-- Subject Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[155px]">
                         <select x-model="selectedSubject" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                            <option value="all">Subject: All Subjects</option>
+                            <option value="all">Subject: All</option>
                             @foreach($filterSubjects as $sbj)
                                 <option value="{{ $sbj }}">{{ $sbj }}</option>
                             @endforeach
@@ -234,7 +239,7 @@
                     {{-- Status Dropdown --}}
                     <div class="w-full xl:w-auto xl:min-w-[155px]">
                         <select x-model="selectedStatus" @change="currentPage = 1" class="w-full bg-gray-50 border border-gray-200/80 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs font-bold text-gray-700 outline-none cursor-pointer">
-                            <option value="all">Status: All Status</option>
+                            <option value="all">Status: All</option>
                             @foreach($filterStatuses as $st)
                                 <option value="{{ $st }}">{{ $st }}</option>
                             @endforeach

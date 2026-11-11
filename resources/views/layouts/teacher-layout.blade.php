@@ -130,6 +130,20 @@
                 <span>Student Monitoring</span>
             </a>
 
+            {{-- Class Fee Claims --}}
+            <a href="{{ route('teacher.claims') }}" class="sidebar-item-dark {{ request()->routeIs('teacher.claims*') ? 'sidebar-item-dark-active' : '' }}">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+                <span>Class Claims</span>
+                @php
+                    $pendingClaimBadge = \App\Models\TeacherClassClaim::where('teacher_id', auth()->user()->teacher?->id)->where('status', 'pending')->count();
+                @endphp
+                @if($pendingClaimBadge > 0)
+                    <span class="ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-900">{{ $pendingClaimBadge }}</span>
+                @endif
+            </a>
+
             {{-- My Profile & Documents --}}
             <a href="{{ route('teacher.profile') }}" class="sidebar-item-dark {{ request()->routeIs('teacher.profile*') ? 'sidebar-item-dark-active' : '' }}">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

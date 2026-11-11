@@ -222,16 +222,16 @@
             <div class="flex flex-wrap items-center gap-3">
                 <div class="relative inline-flex items-center">
                     <select id="teacherClaimsPerPageSelect" onchange="setTeacherClaimsPerPage(this.value)" class="appearance-none !bg-none bg-white hover:bg-gray-50 border border-gray-200 rounded-lg pl-2.5 pr-6 py-1 text-xs font-normal text-gray-700 outline-none focus:outline-none focus:border-slate-400 transition cursor-pointer">
-                        <option value="10" selected>10 rows</option>
-                        <option value="25">25 rows</option>
-                        <option value="50">50 rows</option>
-                        <option value="all">All rows</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="all">All</option>
                     </select>
                     <svg class="w-3.5 h-3.5 text-gray-400 absolute right-2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </div>
 
                 <div class="text-gray-500 font-normal">
-                    Showing <span id="teacherClaimsShowingStart" class="font-semibold text-gray-800">{{ $allTeacherClaims->isEmpty() ? 0 : 1 }}</span> to <span id="teacherClaimsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allTeacherClaims->count()) }}</span> of <span id="teacherClaimsTotalFiltered" class="font-semibold text-gray-800">{{ $allTeacherClaims->count() }}</span> claims
+                    <span id="teacherClaimsShowingStart" class="font-semibold text-gray-800">{{ $allTeacherClaims->isEmpty() ? 0 : 1 }}</span>-<span id="teacherClaimsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allTeacherClaims->count()) }}</span> of <span id="teacherClaimsTotalFiltered" class="font-semibold text-gray-800">{{ $allTeacherClaims->count() }}</span> rows
                     <span id="teacherClaimsTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="teacherClaimsGrandTotal">{{ $allTeacherClaims->count() }}</span> total)</span>
                 </div>
             </div>

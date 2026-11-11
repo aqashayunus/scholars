@@ -15,7 +15,13 @@ return new class extends Migration
         // Change enum('pending', 'submitted', 'graded', 'late') to varchar(30)
         // to prevent 'Data truncated for column status' when setting 'pending_review', 'completed', etc.
         if (Schema::hasTable('student_assignments')) {
-            DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status VARCHAR(30) NOT NULL DEFAULT 'pending'");
+            } else {
+                Schema::table('student_assignments', function (Blueprint $table) {
+                    $table->string('status', 30)->default('pending')->change();
+                });
+            }
         }
     }
 
@@ -24,7 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        if (Schema::hasTable('student_assignments')) {
+        if (Schema::hasTable('student_assignments') && DB::getDriverName() === 'mysql') {
             DB::statement("ALTER TABLE student_assignments MODIFY COLUMN status ENUM('pending', 'submitted', 'graded', 'late') NOT NULL DEFAULT 'pending'");
         }
     }

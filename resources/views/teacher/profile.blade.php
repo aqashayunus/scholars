@@ -62,7 +62,7 @@
             </div>
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs sm:text-sm font-medium shadow-xs">
                 <div class="flex items-center gap-2 font-bold mb-1.5 text-rose-900">
                     <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -523,9 +523,42 @@
                         </div>
                     </div>
 
+                    {{-- Banking & Payout Account Details --}}
+                    <div class="border-t border-gray-100 pt-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-sm font-bold text-gray-900">Banking &amp; Payout Account Details</h2>
+                                <p class="text-xs text-gray-500 mt-0.5">Used for direct bank transfer disbursements when your class fee claims are approved by Aster Edu administration.</p>
+                            </div>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                Direct Payout
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1.5">Bank Name</label>
+                                <input type="text" name="bank_name" value="{{ old('bank_name', $teacher->bank_name) }}" placeholder="e.g. Maybank, CIMB, Public Bank"
+                                       class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1.5">Bank Account Number</label>
+                                <input type="text" name="bank_account_number" value="{{ old('bank_account_number', $teacher->bank_account_number) }}" placeholder="e.g. 114012345678"
+                                       class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1.5">Account Holder Name</label>
+                                <input type="text" name="bank_account_holder" value="{{ old('bank_account_holder', $teacher->bank_account_holder ?? $user->name) }}" placeholder="e.g. As registered with bank"
+                                       class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="border-t border-gray-100 pt-5 flex items-center justify-end">
                         <button type="submit" class="px-6 py-2.5 bg-primary-950 hover:bg-primary-900 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer">
-                            Save Personal Details
+                            Save Personal &amp; Bank Details
                         </button>
                     </div>
                 </form>

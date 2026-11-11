@@ -56,22 +56,36 @@ class TimetableController extends Controller
     {
         $user = auth()->user();
         $teacher = Teacher::where('user_id', $user->id)
-            ->with('courses.subject')
+            ->with(['courses.subject', 'subjects'])
             ->firstOrFail();
 
-        $courses = $teacher->courses()->withCount('enrollments')->with('subject')->get();
+        $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
+        if ($assignedSubjectIds->isNotEmpty()) {
+            $courses = Course::where(function($q) use ($assignedSubjectIds, $teacher) {
+                    $q->whereIn('subject_id', $assignedSubjectIds)
+                      ->orWhere(function($subQ) use ($teacher) {
+                          $subQ->where('teacher_id', $teacher->id)->whereNull('subject_id');
+                      });
+                })->withCount('enrollments')->with('subject')->get();
+        } else {
+            $courses = $teacher->courses()->withCount('enrollments')->with('subject')->get();
+        }
         $subjects = $courses->pluck('subject')->filter()->unique('id')->values();
 
         // Summary stats for timetable header
         $courseIds = $courses->pluck('id');
         $classesThisWeek = LiveClass::where(function ($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
 
         $upcomingCount = LiveClass::where(function ($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->activeOrUpcoming()
             ->count();
@@ -666,10 +680,22 @@ class TimetableController extends Controller
 
     private function appendTeacherClassEvents(Teacher $teacher, Carbon $start, Carbon $end, array &$events): void
     {
-        $courseIds = $teacher->courses->pluck('id');
+        $assignedSubjectIds = $teacher->subjects ? $teacher->subjects->pluck('id') : collect();
+        if ($assignedSubjectIds->isNotEmpty()) {
+            $courseIds = Course::where(function($q) use ($assignedSubjectIds, $teacher) {
+                    $q->whereIn('subject_id', $assignedSubjectIds)
+                      ->orWhere(function($subQ) use ($teacher) {
+                          $subQ->where('teacher_id', $teacher->id)->whereNull('subject_id');
+                      });
+                })->pluck('id');
+        } else {
+            $courseIds = $teacher->courses->pluck('id');
+        }
 
         $classes = LiveClass::where(function ($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+                $q->whereIn('course_id', $courseIds)->orWhere(function($sub) use ($teacher) {
+                    $sub->where('teacher_id', $teacher->id)->whereNull('course_id');
+                });
             })
             ->whereBetween('scheduled_at', [$start, $end])
             ->with(['course.subject', 'course.enrollments'])

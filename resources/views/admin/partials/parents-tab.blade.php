@@ -9,7 +9,6 @@
                 <p class="text-xs text-gray-500 font-normal">Registered guardian accounts and profiles</p>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-xs text-gray-500 font-normal">{{ $allParentsList->count() }} Total Parents</span>
 
                 <div class="relative">
                     <svg class="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +166,7 @@
                 </div>
 
                 <div class="text-gray-500 font-normal">
-                    Showing <span id="parentAccountsShowingStart" class="font-semibold text-gray-800">{{ $allParentsList->isEmpty() ? 0 : 1 }}</span> to <span id="parentAccountsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allParentsList->count()) }}</span> of <span id="parentAccountsTotalFiltered" class="font-semibold text-gray-800">{{ $allParentsList->count() }}</span> parent accounts
+                    <span id="parentAccountsShowingStart" class="font-semibold text-gray-800">{{ $allParentsList->isEmpty() ? 0 : 1 }}</span>-<span id="parentAccountsShowingEnd" class="font-semibold text-gray-800">{{ min(10, $allParentsList->count()) }}</span> of <span id="parentAccountsTotalFiltered" class="font-semibold text-gray-800">{{ $allParentsList->count() }}</span> rows
                     <span id="parentAccountsTotalUnfiltered" class="text-gray-400 text-[11px] hidden">(filtered from <span id="parentAccountsGrandTotal">{{ $allParentsList->count() }}</span> total)</span>
                 </div>
             </div>
