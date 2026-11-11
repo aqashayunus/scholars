@@ -333,6 +333,12 @@
                     <span>Parent Accounts</span>
                 </a>
 
+                {{-- Teacher Class Fee Claims --}}
+                <a href="{{ route('admin.dashboard') }}#teacher-claims" onclick="if(typeof switchTab==='function') switchTab('tab-teacher-claims')" class="sidebar-admin-link" id="nav-teacher-claims">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    <span>Teacher Claims</span>
+                </a>
+
                 {{-- Attendance Management --}}
                 @php
                     $pendingAttendanceCorrectionsCount = \App\Models\AttendanceCorrectionRequest::where('status', 'pending')->count();

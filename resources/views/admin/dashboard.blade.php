@@ -847,6 +847,7 @@
         </div>
 
         @include('admin.partials.parents-tab')
+        @include('admin.partials.teacher-claims-tab')
 
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB 3: STUDENT ENGAGEMENT & TOPIC MASTERY TABLE                   --}}
@@ -7533,6 +7534,9 @@
             }
             if (tabId === 'tab-parent-accounts' && typeof renderParentAccountsPagination === 'function') {
                 renderParentAccountsPagination();
+            }
+            if (tabId === 'tab-teacher-claims' && typeof renderTeacherClaimsPagination === 'function') {
+                renderTeacherClaimsPagination();
             }
             if (window.OSTablePaginator) {
                 window.OSTablePaginator.renderVisible();

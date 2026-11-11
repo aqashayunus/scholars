@@ -11,7 +11,8 @@ class Teacher extends Model
 
     protected $fillable = [
         'user_id', 'qualification', 'experience_years', 'bio',
-        'teaching_style', 'rating', 'total_students', 'photo', 'specialization'
+        'teaching_style', 'rating', 'total_students', 'photo', 'specialization',
+        'bank_name', 'bank_account_number', 'bank_account_holder',
     ];
 
     public function user()     { return $this->belongsTo(User::class); }

@@ -19,6 +19,7 @@ use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
 use App\Services\Admin\ParentAccountService;
 use App\Services\Admin\TeacherApplicationService;
+use App\Services\Admin\TeacherClaimService;
 use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
 use App\Http\Requests\Admin\BlastEngagementEmailRequest;
@@ -380,6 +381,38 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#parent-accounts')
             ->with('success', 'Parent and child link removed successfully.');
+    }
+
+    // ── TEACHER CLASS FEE CLAIMS ────────────────────────────────────────────────
+
+    public function approveTeacherClaim($id, TeacherClaimService $claims)
+    {
+        $claim = $claims->approve($id);
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' approved successfully.");
+    }
+
+    public function rejectTeacherClaim(Request $request, $id, TeacherClaimService $claims)
+    {
+        $claim = $claims->reject($id, $request->input('admin_notes'));
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' marked as rejected.");
+    }
+
+    public function markPaidTeacherClaim(Request $request, $id, TeacherClaimService $claims)
+    {
+        $validated = $request->validate([
+            'payment_method'    => 'nullable|string|max:100',
+            'payment_reference' => 'nullable|string|max:255',
+            'paid_at'           => 'nullable|date',
+        ]);
+
+        $claim = $claims->markPaid((int) $id, $validated);
+
+        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' marked as paid.");
     }
 
     // ── OUTREACH & ENGAGEMENT HUB ─────────────────────────────────────────────

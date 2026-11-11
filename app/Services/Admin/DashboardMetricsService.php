@@ -29,13 +29,16 @@ use App\Models\TeacherApplication;
 use App\Models\TeachingGig;
 use App\Models\User;
 use App\Services\Admin\ParentAccountService;
+use App\Services\Admin\TeacherClaimService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Support\Carbon;
 
 class DashboardMetricsService
 {
-    public function __construct(protected ParentAccountService $parentAccounts)
-    {
+    public function __construct(
+        protected ParentAccountService $parentAccounts,
+        protected TeacherClaimService $teacherClaims
+    ) {
     }
 
     /**
@@ -544,6 +547,9 @@ class DashboardMetricsService
         $allParentsList = $parentsDirectory['allParentsList'];
         $allParentStudentLinks = $parentsDirectory['allParentStudentLinks'];
 
+        // ── Teacher Class Fee Claims ────────────────────────────────────────────
+        $allTeacherClaims = $this->teacherClaims->dashboardData()['allTeacherClaims'];
+
         return [
             'totalUsers' => $totalUsers, 'totalStudents' => $totalStudents, 'totalTeachers' => $totalTeachers, 'totalParents' => $totalParents, 'totalAdmins' => $totalAdmins,
             'totalCourses' => $totalCourses, 'publishedCourses' => $publishedCourses, 'draftCourses' => $draftCourses, 'archivedCourses' => $archivedCourses,
@@ -573,6 +579,7 @@ class DashboardMetricsService
             'attendanceAbsentCount' => $attendanceAbsentCount, 'attendanceExcusedCount' => $attendanceExcusedCount, 'attendancePendingCount' => $attendancePendingCount,
             'pendingAttendanceCorrections' => $pendingAttendanceCorrections, 'attendanceLateThreshold' => $attendanceLateThreshold, 'attendanceEarlyJoinWindow' => $attendanceEarlyJoinWindow, 'attendanceExcusedInDenominator' => $attendanceExcusedInDenominator,
             'allParentsList' => $allParentsList, 'allParentStudentLinks' => $allParentStudentLinks,
+            'allTeacherClaims' => $allTeacherClaims,
         ];
     }
 }

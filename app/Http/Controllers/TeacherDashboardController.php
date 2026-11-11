@@ -8,6 +8,7 @@ use App\Models\LiveClass;
 use App\Models\UserNotification;
 use App\Services\AttendanceService;
 use App\Services\Teacher\AssignmentService;
+use App\Services\Teacher\ClaimService;
 use App\Services\Teacher\ClassScheduleService;
 use App\Services\Teacher\GigService;
 use App\Services\Teacher\MaterialService;
@@ -56,9 +57,29 @@ class TeacherDashboardController extends Controller
         return view('teacher.monitoring', $overview->monitoringData());
     }
 
+    public function claimsIndex(ClaimService $claims)
+    {
+        return view('teacher.claims.index', $claims->claimsIndexData());
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // ACTIONS
     // ─────────────────────────────────────────────────────────────────────────
+
+    public function storeClaim(Request $request, ClaimService $claims)
+    {
+        $claim = $claims->storeClaim($request);
+
+        return redirect()->route('teacher.claims')
+            ->with('success', "Class fee claim '{$claim->claim_number}' for RM " . number_format($claim->amount, 2) . " submitted successfully! Admin will review and authorize payment.");
+    }
+
+    public function updateClaimBankDetails(Request $request, ClaimService $claims)
+    {
+        $claims->updateBankDetails($request);
+
+        return redirect()->route('teacher.claims')->with('success', 'Bank details updated successfully.');
+    }
 
     public function toggleDuty(Request $request, ClassScheduleService $schedule)
     {

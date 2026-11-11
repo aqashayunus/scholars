@@ -192,6 +192,9 @@ Route::get('/teacher/pending', function () {
 // Full teacher dashboard — requires active application_status
 Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 'teacher.active'])->group(function () {
     Route::get('/dashboard', [TeacherDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/claims', [TeacherDashboardController::class, 'claimsIndex'])->name('claims');
+    Route::post('/claims', [TeacherDashboardController::class, 'storeClaim'])->name('claims.store');
+    Route::post('/claims/bank-details', [TeacherDashboardController::class, 'updateClaimBankDetails'])->name('claims.bank-details');
     Route::get('/classes', [TeacherDashboardController::class, 'classes'])->name('classes');
     Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'teacherIndex'])->name('timetable');
     Route::post('/classes', [TeacherDashboardController::class, 'storeClass'])->name('classes.store');
@@ -337,6 +340,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Parent Accounts Directory
     Route::post('/parents/link', [AdminDashboardController::class, 'linkParentStudent'])->name('parents.link');
     Route::post('/parents/unlink', [AdminDashboardController::class, 'unlinkParentStudent'])->name('parents.unlink');
+
+    // Teacher Class Fee Claims
+    Route::post('/teacher-claims/{id}/approve', [AdminDashboardController::class, 'approveTeacherClaim'])->name('teacher-claims.approve');
+    Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
+    Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
 
 
     // Quiz CRUD
