@@ -1,0 +1,3259 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$subjects\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Console/Commands/MigrateLegacyFeeStructurePackages.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/MigrateLegacyFeeStructurePackages.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ProcessClassReminders.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ProcessClassReminders.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Console/Commands/ProcessClassReminders.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Invoice\>\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''payer'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''paymentTransactions'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''reminders'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 5
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Relation ''verifier'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Admin/BillingController.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/Admin/EmailManagementController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Admin/EmailManagementController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Question\:\:\$quiz\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/AdminDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/AdminDashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Auth/AuthenticatedSessionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Offset ''childEmail'' on array\{parent\: App\\Models\\User, student\: App\\Models\\Student, isNew\: true, childPassword\: string, childEmail\: non\-falsy\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Offset ''childPassword'' on array\{parent\: App\\Models\\User, student\: App\\Models\\Student, isNew\: true, childPassword\: string, childEmail\: non\-falsy\-string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Offset ''linkStatus'' on array\{parent\: App\\Models\\User, student\: App\\Models\\Student, isNew\: false, linkStatus\: ''active''\|''already_linked''\|''pending''\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Http/Controllers/Auth/ParentRegistrationController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Auth/StudentRegistrationController.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Http/Controllers/Auth/StudentRegistrationController.php
+
+		-
+			message: '#^Property App\\Models\\Enrollment\:\:\$status \(App\\Enums\\EnrollmentStatus\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/Auth/StudentRegistrationController.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Auth/StudentRegistrationController.php
+
+		-
+			message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/VerifyEmailController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Billing/InvoiceController.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/Billing/InvoiceController.php
+
+		-
+			message: '#^Relation ''paymentTransactions'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Billing/InvoiceController.php
+
+		-
+			message: '#^Relation ''reminders'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Billing/InvoiceController.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/Billing/InvoiceController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Billing/PaymentController.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Billing/PaymentController.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>diagnostic_duration" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/DiagnosticTestController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignmentSubmission\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StudentAssignmentSubmission\>\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignmentSubmission\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StudentAssignmentSubmission\>\:\:\$pages\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignmentSubmission\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StudentAssignmentSubmission\>\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignmentSubmission\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\StudentAssignmentSubmission\>\:\:\$studentAssignment\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignmentSubmission model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Relation ''pages'' is not found in App\\Models\\StudentAssignmentSubmission model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAssignmentSubmission model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Relation ''studentAssignment'' is not found in App\\Models\\StudentAssignmentSubmission model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/InteractiveAssignmentController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Property App\\Models\\Enrollment\:\:\$status \(App\\Enums\\EnrollmentStatus\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''teachers'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''topics'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/PageController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/ParentDashboardController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Http/Controllers/ParentDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\|string\)\: array\{student\: App\\Models\\Student, attPct\: mixed, progressPct\: int, pendingTasks\: mixed\}, Closure\(App\\Models\\Student\)\: array\{student\: App\\Models\\Student, attPct\: mixed, progressPct\: int, pendingTasks\: mixed\} given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/ParentDashboardController.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/ParentDashboardController.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/RecordedClassController.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Http/Controllers/RecordedClassController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:classes\(\) invoked with 0 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Http/Controllers/StudentDashboardController.php
+
+		-
+			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:learning\(\) invoked with 0 parameters, 1 required\.$#'
+			identifier: arguments.count
+			count: 1
+			path: app/Http/Controllers/StudentDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/StudentPracticeController.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/TeacherDashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/TeacherDashboardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/TeacherDashboardController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>total_marks" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/TeacherDashboardController.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Http/Controllers/TimetableController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/EnsureStudentAccessNotRestricted.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''isAccountInactive'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/EnsureUserIsActive.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Middleware/TeacherActiveMiddleware.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Models\\User and ''isAccountInactive'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Requests/Auth/LoginRequest.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EmailCampaignRecipient\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/ProcessCampaignBatchJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EmailCampaignRecipient\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/ProcessCampaignBatchJob.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\EmailCampaignRecipient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Jobs/ProcessCampaignBatchJob.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailCampaign model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Jobs/ProcessCampaignBatchJob.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\EmailCampaignRecipient model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Jobs/ProcessCampaignBatchJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EmailCampaignRecipient\:\:\$campaign\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Jobs/SendEmailMailableJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\InvoiceReminder\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/SendInvoiceReminderJob.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Mail/InvoiceIssuedMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Mail/InvoiceReminderMail.php
+
+		-
+			message: '#^Regex pattern is invalid\: Unknown modifier ''\]'' in pattern\: \#storage/banners/\(\[\^/\?\#\]\+\)\#$#'
+			identifier: regexp.pattern
+			count: 1
+			path: app/Mail/OfficialBrandedMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/ParentLinkRequestMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$paymentTransactions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Relation ''paymentTransactions'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Carbon\\Carbon\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>receipt_number" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Mail/PaymentReceivedMail.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 2
+			path: app/Models/Assignment.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Models/Assignment.php
+
+		-
+			message: '#^Variable \$list in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: app/Models/Assignment.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/ChatMessage.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: app/Models/FeeStructure.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Models/FeeStructure.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''archived''\|''draft''\|''inactive'' and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Models/FeeStructure.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Models/FeeStructure.php
+
+		-
+			message: '#^Match arm comparison between ''annual'' and ''annual'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: app/Models/FeeStructureItem.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Models/Invoice.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/LiveClass.php
+
+		-
+			message: '#^Instanceof between Carbon\\Carbon and Carbon\\Carbon will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Models/LiveClass.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 4
+			path: app/Models/LiveClass.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Payment.php
+
+		-
+			message: '#^Unsafe access to private property App\\Models\\Setting\:\:\$cacheTtl through static\:\:\.$#'
+			identifier: staticClassAccess.privateProperty
+			count: 1
+			path: app/Models/Setting.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Models/Student.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Models/Student.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$interactiveSubmission\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/StudentAssignment.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subject\:\:\$diagnosticTest\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Subject.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Models/Teacher.php
+
+		-
+			message: '#^Parameter \#2 \$times of function str_repeat expects int, float given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Models/Teacher.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Models/TeacherApplication.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$studentProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignmentSubmission\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/StudentAssignmentSubmissionPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$studentProfile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Policies/StudentAssignmentSubmissionPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Policies/StudentAssignmentSubmissionPolicy.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Assignment\:\:\$results\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Property App\\Models\\Assignment\:\:\$file_size \(string\|null\) does not accept \(int\|false\)\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Property App\\Models\\StudentAssignment\:\:\$status \(App\\Enums\\StudentAssignmentStatus\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Relation ''results'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between string and false will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Undefined variable\: \$sectionBMap$#'
+			identifier: variable.undefined
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Variable \$sectionBMap on left side of \?\? is never defined\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Services/Admin/AssignmentQuizService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAttendance\:\:\$liveClass\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Relation ''verifier'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Admin/AttendanceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$priceTiers\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$subjects\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PaymentInvoice\:\:\$remaining\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\PaymentInvoice\:\:\$total_applied\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''priceTiers'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 4
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/BillingAdminService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/ClassSchedulingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\RecordedClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/ClassSchedulingService.php
+
+		-
+			message: '#^Offset ''subject_id'' on non\-empty\-array on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Admin/ClassSchedulingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Subject\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Subject\>\:\:\$teachers\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Relation ''diagnosticTest'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between mixed and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Variable \$fileName on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Services/Admin/CurriculumService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ChatMessage\:\:\$conversation\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$days_overdue\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$is_overdue\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$restriction_date\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$restriction_status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$invoices\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$is_restricted\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$payment_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$restriction_details\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$studentAssignments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$inactivity_reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$inactivity_reasons\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Parameter \#1 \$source of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:concat\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 4
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''author'' is not found in App\\Models\\BlogPost model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''conversation'' is not found in App\\Models\\ChatMessage model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Certificate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''creator'' is not found in App\\Models\\EmailCampaign model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''creator'' is not found in App\\Models\\EmailTemplate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''diagnosticTest'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''feeStructure'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\AttendanceCorrectionRequest model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''parent'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''parents'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''payer'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''paymentTransactions'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''reminders'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''results'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''sender'' is not found in App\\Models\\ChatMessage model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\AttendanceCorrectionRequest model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Certificate model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentTopicMastery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''studentAssignments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''studentProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\StudentTopicMastery model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\SubjectTopic model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\TeachingGig model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''subtopics'' is not found in App\\Models\\SubjectTopic model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\TeachingGig model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''teacherProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailAutomation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailCampaign model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''topics'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\EmailLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\FinancialAuditLog model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\TeacherApplication model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''verifier'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Right side of && is always true\.$#'
+			identifier: booleanAnd.rightAlwaysTrue
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>status" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Admin/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/DiagnosticReviewService.php
+
+		-
+			message: '#^Relation ''children'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/ParentAccountService.php
+
+		-
+			message: '#^Relation ''payments'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/ParentAccountService.php
+
+		-
+			message: '#^Relation ''studentChildren'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/ParentAccountService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\TeacherClassClaim\:\:\$teacher\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Admin/TeacherClaimService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/Admin/TeacherClaimService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\TeacherClassClaim model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/TeacherClaimService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\TeacherClassClaim model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/TeacherClaimService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\TeacherClassClaim model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/TeacherClaimService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$studentProfile\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Property App\\Models\\Enrollment\:\:\$status \(App\\Enums\\EnrollmentStatus\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Relation ''studentProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Relation ''teacherProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/UserManagementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AttendanceCorrectionRequest\:\:\$liveClass\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/AttendanceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AttendanceCorrectionRequest\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/AttendanceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/AttendanceService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Services/AttendanceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\InvoiceReminder\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\InvoiceReminder model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 6
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 3
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 5
+			path: app/Services/BillingNotificationService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ChatMessage\:\:\$replyTo\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ChatMessage\:\:\$sender\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ChatMessageAttachment\:\:\$message\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Conversation\:\:\$lastMessage\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Conversation\:\:\$participants\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\ConversationParticipant\:\:\$conversation\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Enrollment\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Enrollment\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$studentChildren\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$studentProfile\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$teacherProfile\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Support\\Collection\:\:load\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\User\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Parameter \#1 \$source of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:concat\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''attachments'' is not found in App\\Models\\ChatMessage model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''conversation'' is not found in App\\Models\\ConversationParticipant model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''lastMessage'' is not found in App\\Models\\Conversation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''message'' is not found in App\\Models\\ChatMessageAttachment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''participants'' is not found in App\\Models\\Conversation model\.$#'
+			identifier: larastan.relationExistence
+			count: 5
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''reads'' is not found in App\\Models\\ChatMessage model\.$#'
+			identifier: larastan.relationExistence
+			count: 5
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''sender'' is not found in App\\Models\\ChatMessage model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Enrollment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''studentChildren'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''studentProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Relation ''teacherProfile'' is not found in App\\Models\\User model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>experience_years" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>last_read_message_id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>level" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 15
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>original_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>qualification" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>role" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>school_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>specialization" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 4
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>user" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Chat/MessagingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/Email/AudienceResolverService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/AudienceResolverService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 11
+			path: app/Services/Email/AudienceResolverService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Email/AudienceResolverService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\EmailAutomation\:\:\$template\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailAutomationService.php
+
+		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailAutomation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Email/EmailAutomationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Email/EmailAutomationService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Email/EmailSendingService.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/Services/Email/EmailTemplateRenderer.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$teacher\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$parents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$primaryParent\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Call to function is_object\(\) with bool\|float\|int\|string will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Offset ''student_email'' on array\{current_date\: non\-falsy\-string, current_year\: numeric\-string, portal_url\: string, support_email\: mixed, website_url\: mixed, platform_name\: mixed, parent_name\: mixed, parent_email\: string, \.\.\.\}\|array\{current_date\: non\-falsy\-string, current_year\: numeric\-string, portal_url\: string, support_email\: mixed, website_url\: mixed, platform_name\: mixed, teacher_name\?\: mixed, student_name\: mixed, \.\.\.\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<0, max\> given\.$#'
+			identifier: argument.type
+			count: 3
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 4
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Email/EmailVariableRegistry.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$activeEnrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$parents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Relation ''parents'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/InvoiceService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$items\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$priceTiers\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\FeeStructure\:\:\$subjects\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Relation ''priceTiers'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\FeeStructure model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Result of && is always false\.$#'
+			identifier: booleanAnd.alwaysFalse
+			count: 1
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between ''archived''\|''draft''\|''inactive'' and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: app/Services/PackagePricingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Parent/AcademicProgressService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 8
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<1, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between int and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Ternary operator condition is always false\.$#'
+			identifier: ternary.alwaysFalse
+			count: 1
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 3
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Parent/BillingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$is_restricted\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$payment_status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$restriction_details\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Method App\\Services\\Parent\\ChildAccessService\:\:getAuthorizedChild\(\) should return App\\Models\\Student\|null but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Method App\\Services\\Parent\\ChildAccessService\:\:getAuthorizedChild\(\) should return App\\Models\\Student\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Parent/ChildAccessService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PaymentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$invoices\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PaymentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/PaymentService.php
+
+		-
+			message: '#^Offset 3 on array\{non\-empty\-string, ''''\|numeric\-string, ''''\|numeric\-string, string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/PdfDiagnosticParser.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\InvoiceReminder\:\:\$invoice\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReminderService.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\InvoiceReminder model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/ReminderService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$assignments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$attendances\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$quizResults\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Relation ''assignments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Relation ''attendances'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Relation ''quizResults'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 8
+			path: app/Services/Student/AchievementService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 8
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$is_catch_up\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>created_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>updated_at" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Student/AssignmentService.php
+
+		-
+			message: '#^Call to an undefined static method App\\Models\\Invoice\:\:syncStudentInvoices\(\)\.$#'
+			identifier: staticMethod.notFound
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<1, max\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''feeStructure'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''invoice'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''payer'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''payments'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/BillingService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 6
+			path: app/Services/Student/ClassScheduleService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Student/ClassScheduleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 6
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 8
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''quiz'' is not found in App\\Models\\StudentQuiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/DashboardMetricsService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LearningMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/LearningService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/LearningService.php
+
+		-
+			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Student/LearningService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\LearningMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/LearningService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$parents\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Relation ''parent'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Relation ''parents'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/ProfileService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/QuizPerformanceService.php
+
+		-
+			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Student/QuizPerformanceService.php
+
+		-
+			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/StudentAccessRestrictionService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 1
+			path: app/Services/StudentAccessRestrictionService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Assignment\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 6
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$interactiveSubmission\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$student\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 8
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Relation ''interactiveSubmission'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>email" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/Teacher/AssignmentService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$subjects\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\TeacherClassClaim model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\TeacherClassClaim model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ClaimService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\AttendanceCorrectionRequest\:\:\$liveClass\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/ClassScheduleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/ClassScheduleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Teacher/ClassScheduleService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LearningMaterial\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LearningMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\LearningMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Relation ''topicItem'' is not found in App\\Models\\LearningMaterial model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Relation ''topics'' is not found in App\\Models\\Subject model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/MaterialService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAssignment\:\:\$assignment\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentAttendance\:\:\$liveClass\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\StudentQuiz\:\:\$quiz\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 8
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 4
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\AttendanceCorrectionRequest model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''liveClass'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 7
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''quiz'' is not found in App\\Models\\StudentQuiz model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\AttendanceCorrectionRequest model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Relation ''student'' is not found in App\\Models\\StudentAttendance model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>topics" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/Teacher/OverviewService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Teacher/RecordingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Teacher/RecordingService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/RecordingService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/RecordingService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\RecordedClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/RecordingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$subject\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\:\:\$courses\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Teacher\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Teacher\>\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$theme\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Parameter \#1 \$student of method App\\Services\\TimetableService\:\:appendStudentAssignmentEvents\(\) expects App\\Models\\Student, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Parameter \#1 \$student of method App\\Services\\TimetableService\:\:appendStudentClassEvents\(\) expects App\\Models\\Student, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Property App\\Models\\Enrollment\:\:\$status \(App\\Enums\\EnrollmentStatus\) does not accept string\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\Assignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 6
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Ternary operator condition is always true\.$#'
+			identifier: ternary.alwaysTrue
+			count: 3
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>display_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>enrollments" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 11
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 3
+			path: app/Services/TimetableService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>user" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/TimetableService.php
