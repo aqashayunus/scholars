@@ -1,6 +1,6 @@
 # Olympia Scholars — Architecture
 
-**Status as of:** 2026-11-11, branch `khai-QA-refactor`. Last full rewrite was 2026-11-10 against Phases 0–5. This update layers in the business-drift reconciliation pass (§11) completed 2026-11-11 — four slices porting business features `main` had shipped that this branch never absorbed — verified the same way: `php artisan test`, `wc -l`, direct file reads, `git log`, not from memory of the previous version or design intent. Where something is planned but not yet built, it is marked **NOT YET DONE**.
+**Status as of:** 2026-11-11, branch `khai-QA-refactor`. Last full rewrite was 2026-11-10 against Phases 0–5. This update layers in two same-day passes: the business-drift reconciliation (§11, four slices porting business features `main` had shipped that this branch never absorbed) and Phase 6 — CI pipeline + static analysis (§12), which closes the master plan's last unstarted phase. Verified the same way as always: `php artisan test`, `wc -l`, direct file reads, `git log`, not from memory of the previous version or design intent. Where something is planned but not yet built, it is marked **NOT YET DONE**.
 
 Companion documents: [`implementation_plan.md`](../implementation_plan.md) (chatbox spec — now historical, see the notice at its top) and the QA/refactor master plan at `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md`.
 
@@ -172,7 +172,7 @@ Per `C:\Users\kyouscireul\.claude\plans\what-i-need-to-peppy-mitten.md` (v2) and
 | 3 — Enums / Domain Modeling | ✅ Done | 7 backed enums; 2 crash sites + 2 silent-data-bug methods + 1 login-gate security regression found and fixed |
 | 4 — Modularity | ✅ Done | 4th missed route closure extracted; 22 inline `validate()` → FormRequests; both oversized controllers (Admin 1030→388, Parent 539→376) split under 400 lines — see §2.1 for the 2 pre-existing controllers this didn't cover |
 | 5 — Scalability | ✅ Done except 5a | `$fillable` tightened on all 5 flagged models (redone clean after an earlier attempt broke 313 tests → 63 failures); FK audit clean (no bugs); 2 genuinely-missing indexes added; 6 real N+1 sites fixed; a query-budget test harness locks in the 2 fixes with real regression risk. **5a (queue-worker proof on the live cPanel host) blocked on Wanderer/infra access — not done.** |
-| 6 — CI & Static Analysis | ⬜ Not started | No `.github/workflows`, no `phpstan.neon`/Larastan, no `pint.json` |
+| 6 — CI & Static Analysis | ✅ Done | `.github/workflows/ci.yml` (push/PR, any branch); Pint adopted (one-time 319-file formatting pass, verified non-breaking); Larastan installed at level 5 with a 925-finding baseline so CI only fails on new issues — see §12 |
 
 ---
 
@@ -200,14 +200,16 @@ The suite has been the regression gate for every change since Phase 1 — green 
 | Routes | 338 | `grep -c "Route::" routes/web.php` |
 | Backed enums | 7 | `ls app/Enums` |
 | `const STATUS_*` constants remaining | 4 (all `FeeStructure`, explicitly out of Phase 3 scope) | `grep -c "const STATUS_"` |
-| CI workflow / Larastan / Pint config | none of the three exist | `.github/workflows`, `phpstan.neon`, `pint.json` all absent |
+| CI workflow / Larastan / Pint config | all three now exist (§12) | `.github/workflows/ci.yml`, `phpstan.neon`, `pint.json` |
+| Larastan baseline findings | 925 (level 5, `app/` only) | `phpstan-baseline.neon` |
 
 ---
 
 ## 10. Deliberately Deferred / Not Yet Done
 
 - **Phase 5a**: the queue is dispatching jobs into the `jobs` table but nothing has been *proven* to consume them on the production host — no confirmed `queue:work` cron entry. Blocked on the Wanderer granting cPanel/infra access; no further queue work should happen until this passes, per the plan's own instruction.
-- **Phase 6 (CI)**: no CI pipeline, no Larastan/PHPStan, no Pint config exist in this repository as of this writing.
+- **Branch protection**: Phase 6's CI workflow (§12) exists and passes, but requiring it before merge is a GitHub repo-admin setting, not a code change — needs the Wanderer to enable it manually.
+- **Larastan debt paydown**: 925 findings at level 5 are frozen in `phpstan-baseline.neon`, not fixed. Clearing the baseline (and/or raising the level past 5) is deliberately a separate future task, not part of Phase 6.
 - **`FeeStructure` enum conversion**: not part of Phase 3's named scope; its `const STATUS_*` constants remain.
 - **`Admin\BillingController` / `Admin\EmailManagementController` size**: both exceed the ~400-line guideline (560 and 586 lines respectively) and were never in scope for Phase 4's named controller list — see §2.1.
 - **Merge cadence**: the master plan calls for shipping each phase as its own small PR; in practice this branch (`khai-QA-refactor`) has accumulated many commits ahead of `origin` with nothing merged to `main` — a known, acknowledged risk, parked by explicit Wanderer decision this round (no push/merge without asking first).
@@ -231,3 +233,16 @@ While this branch was doing architectural QA work (Phases 0–5 above), `main` k
 **Suite progression across the four slices** (full `php artisan test` run after each, 0 failures throughout): 349 → 354 → 361 → 373 → **376 passing**, 2 skipped. Final: 378 test methods, 1,145 assertions.
 
 **Files touched:** 8b09dc2 (8 files, +658/−80), c1ffcf9 (9 files, +855), 673b69f (16 files, +2327/−3), 5cfb010 (5 files, +191/−16).
+
+---
+
+## 12. Phase 6 — CI Pipeline & Static Analysis (2026-11-11)
+
+The last unstarted phase of the master QA/refactor plan. Two commits, verified end-to-end locally before being pushed (no way to execute a GitHub Actions workflow locally, so correctness of the YAML itself is confirmed by its first real run on `origin`):
+
+- **`b5b72da`** — adopted Laravel's default Pint preset (`pint.json`, nothing to reconcile against since the project never had a style convention) and ran it once across the whole `app/` tree: 319 files reformatted (whitespace, brace-style, import-ordering, string-quote normalization only). `php artisan test` re-run immediately after: still 376 passing / 2 skipped / 0 failures, confirming no behavior change.
+- **`ae8679e`** — added `.github/workflows/ci.yml` (push/PR on any branch; no service containers needed since tests already run on in-memory SQLite — see §1), and Larastan (`larastan/larastan ^3.14`, pulling `phpstan ^2.3`) at **level 5** (a deliberate starting point, not max, for a codebase that has never had static analysis). `phpstan-baseline.neon` freezes the 925 findings that pass already existed, so CI only fails on genuinely new issues going forward — paying down that backlog is explicitly a separate future task.
+
+CI steps, in order: `composer install` → `npm ci && npm run build` (must precede the test step — several `resources/views/auth/*.blade.php` views use `@vite(...)`, which throws without a built manifest) → `composer format:check` (Pint, non-mutating) → `composer analyse` (Larastan against the baseline) → `php artisan test`.
+
+**Not done as part of this phase:** GitHub branch-protection (requiring this check before merge) is a repo-admin setting, not something a commit can configure — flagged for the Wanderer to enable manually once the workflow has run successfully a few times. Clearing or raising the Larastan baseline is also explicitly out of scope here.
