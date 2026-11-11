@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InvoiceStatus;
-use App\Enums\PaymentStatus;
 use App\Http\Requests\Parent\ConnectChildRequest;
 use App\Http\Requests\Parent\CreateCustomInvoiceRequest;
 use App\Http\Requests\Parent\PayChildInvoiceRequest;
@@ -36,41 +35,41 @@ class ParentDashboardController extends Controller
 
     public function dashboard(Request $request)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
+        $child = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
         $isChildRestricted = $child ? $this->restrictionService->isStudentRestricted($child) : false;
         $restrictionDetails = $isChildRestricted ? $this->restrictionService->getRestrictionDetails($child) : null;
 
         if ($isChildRestricted) {
-            $childProgress   = [];
-            $attStats        = ['total'=>0,'attended'=>0,'absent'=>0,'late'=>0,'pct'=>0];
+            $childProgress = [];
+            $attStats = ['total' => 0, 'attended' => 0, 'absent' => 0, 'late' => 0, 'pct' => 0];
             $overallProgress = 0;
-            $needsAttention  = [];
+            $needsAttention = [];
             $upcomingClasses = collect();
-            $nextClass       = null;
+            $nextClass = null;
         } else {
-            $childProgress   = $child ? $this->academic->getChildProgress($child) : [];
-            $attStats        = $child ? $this->academic->getAttendanceStats($child) : ['total'=>0,'attended'=>0,'absent'=>0,'late'=>0,'pct'=>0];
+            $childProgress = $child ? $this->academic->getChildProgress($child) : [];
+            $attStats = $child ? $this->academic->getAttendanceStats($child) : ['total' => 0, 'attended' => 0, 'absent' => 0, 'late' => 0, 'pct' => 0];
             $overallProgress = count($childProgress) > 0
                 ? (int) round(collect($childProgress)->avg('pct'))
                 : 0;
-            $needsAttention  = $this->academic->needsAttention($childProgress);
+            $needsAttention = $this->academic->needsAttention($childProgress);
             $upcomingClasses = $child ? $this->academic->getUpcomingClasses($child, 3) : collect();
-            $nextClass       = $upcomingClasses->first();
+            $nextClass = $upcomingClasses->first();
         }
 
         // Financial metric cards data
         $payments = $this->billing->dashboardPayments($user, $children, $child);
 
-        $summary          = $this->billing->outstandingSummary($payments, $children, $child);
+        $summary = $this->billing->outstandingSummary($payments, $children, $child);
         $totalOutstanding = $summary['totalOutstanding'];
-        $pendingCount     = $summary['pendingCount'];
-        $outstanding      = $totalOutstanding;
-        $lastPaymentMade  = $summary['lastPaymentMade'];
-        $nextPaymentDue   = $summary['nextPaymentDue'];
-        $latestPayment    = $lastPaymentMade;
+        $pendingCount = $summary['pendingCount'];
+        $outstanding = $totalOutstanding;
+        $lastPaymentMade = $summary['lastPaymentMade'];
+        $nextPaymentDue = $summary['nextPaymentDue'];
+        $latestPayment = $lastPaymentMade;
 
         return view('parent.dashboard', compact(
             'children', 'child', 'childProgress', 'attStats', 'overallProgress',
@@ -82,20 +81,21 @@ class ParentDashboardController extends Controller
 
     public function progress(Request $request)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
+        $child = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
         if ($child && $this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
-        $childProgress   = $child ? $this->academic->getChildProgress($child) : [];
+        $childProgress = $child ? $this->academic->getChildProgress($child) : [];
         $overallProgress = count($childProgress) > 0
             ? (int) round(collect($childProgress)->avg('pct'))
             : 0;
-        $needsAttention  = $this->academic->needsAttention($childProgress);
+        $needsAttention = $this->academic->needsAttention($childProgress);
 
         return view('parent.progress', compact(
             'children', 'child', 'childProgress', 'overallProgress', 'needsAttention'
@@ -104,19 +104,20 @@ class ParentDashboardController extends Controller
 
     public function classes(Request $request)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
+        $child = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
         if ($child && $this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
         $upcomingClasses = $child ? $this->academic->getUpcomingClasses($child, 10) : collect();
-        $nextClass       = $upcomingClasses->first();
-        $pastClasses     = $child ? $this->academic->getPastClasses($child, 10) : collect();
-        $attStats        = $child ? $this->academic->getAttendanceStats($child) : ['total'=>0,'attended'=>0,'absent'=>0,'late'=>0,'pct'=>0];
+        $nextClass = $upcomingClasses->first();
+        $pastClasses = $child ? $this->academic->getPastClasses($child, 10) : collect();
+        $attStats = $child ? $this->academic->getAttendanceStats($child) : ['total' => 0, 'attended' => 0, 'absent' => 0, 'late' => 0, 'pct' => 0];
 
         $classesThisWeek = $child
             ? ClassScheduleService::getStudentLiveClassesQuery($child)
@@ -127,8 +128,7 @@ class ParentDashboardController extends Controller
         $attendanceLog = $child
             ? StudentAttendance::where('student_id', $child->id)
                 ->with('liveClass.course.subject')
-                ->whereHas('liveClass', fn($q) =>
-                    $q->whereBetween('scheduled_at', [now()->startOfMonth(), now()->endOfMonth()])
+                ->whereHas('liveClass', fn ($q) => $q->whereBetween('scheduled_at', [now()->startOfMonth(), now()->endOfMonth()])
                 )
                 ->orderByDesc('created_at')
                 ->get()
@@ -143,16 +143,17 @@ class ParentDashboardController extends Controller
 
     public function attendance(Request $request)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user, ['attendances.liveClass']);
-        $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
+        $child = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
         if ($child && $this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
-        $attStats = $child ? $this->academic->getAttendanceStats($child) : ['total'=>0,'attended'=>0,'absent'=>0,'late'=>0,'pct'=>0];
+        $attStats = $child ? $this->academic->getAttendanceStats($child) : ['total' => 0, 'attended' => 0, 'absent' => 0, 'late' => 0, 'pct' => 0];
 
         $attendanceLog = $child
             ? StudentAttendance::where('student_id', $child->id)
@@ -166,10 +167,11 @@ class ParentDashboardController extends Controller
             $att = $this->academic->getAttendanceStats($c);
             $pgs = $c->enrollments->avg('progress_pct') ?? 0;
             $pendingTasks = $c->assignments()->where('status', 'pending')->count();
+
             return [
-                'student'      => $c,
-                'attPct'       => $att['pct'],
-                'progressPct'  => (int) round($pgs),
+                'student' => $c,
+                'attPct' => $att['pct'],
+                'progressPct' => (int) round($pgs),
                 'pendingTasks' => $pendingTasks,
             ];
         });
@@ -185,16 +187,18 @@ class ParentDashboardController extends Controller
 
     public function childProgress(Request $request, $childId)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, (string) $childId);
+        $child = $this->access->getAuthorizedChild($children, (string) $childId);
 
         if ($this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
         $request->merge(['child_id' => $child->id]);
+
         return $this->progress($request);
     }
 
@@ -205,42 +209,47 @@ class ParentDashboardController extends Controller
 
     public function childAttendance(Request $request, $childId)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, (string) $childId);
+        $child = $this->access->getAuthorizedChild($children, (string) $childId);
 
         if ($this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
         $request->merge(['child_id' => $child->id]);
+
         return $this->attendance($request);
     }
 
     public function childClasses(Request $request, $childId)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, (string) $childId);
+        $child = $this->access->getAuthorizedChild($children, (string) $childId);
 
         if ($this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
         $request->merge(['child_id' => $child->id]);
+
         return $this->classes($request);
     }
 
     public function childAssignments(Request $request, $childId)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, (string) $childId);
+        $child = $this->access->getAuthorizedChild($children, (string) $childId);
 
         if ($this->restrictionService->isStudentRestricted($child)) {
             $details = $this->restrictionService->getRestrictionDetails($child);
+
             return response()->view('parent.child-restricted', compact('children', 'child', 'details'), 403);
         }
 
@@ -268,8 +277,8 @@ class ParentDashboardController extends Controller
      */
     public function connectChild(ConnectChildRequest $request)
     {
-        $parent       = auth()->user();
-        $identifier   = trim($request->input('identifier'));
+        $parent = auth()->user();
+        $identifier = trim($request->input('identifier'));
         $relationship = $request->input('relationship', 'Guardian');
 
         $result = $this->access->connectChild($parent, $this->parentLinkService, $identifier, $relationship);
@@ -292,9 +301,9 @@ class ParentDashboardController extends Controller
      */
     public function payments(Request $request)
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $children = $this->access->getParentChildren($user);
-        $child    = $this->access->getAuthorizedChild($children, $request->query('child_id'));
+        $child = $this->access->getAuthorizedChild($children, $request->query('child_id'));
 
         return view('parent.payments', array_merge(
             ['children' => $children, 'child' => $child],
@@ -317,7 +326,7 @@ class ParentDashboardController extends Controller
 
         $result = $this->billing->processPayment($user, $paymentIds, $validated['payment_method'], $validated['bank_name'] ?? null);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return redirect()->back()->withErrors(['payment_ids' => $result['message']]);
         }
 
@@ -329,7 +338,7 @@ class ParentDashboardController extends Controller
      */
     public function payChildInvoice(PayChildInvoiceRequest $request, $id)
     {
-        $parent   = auth()->user();
+        $parent = auth()->user();
         $children = $this->access->getParentChildren($parent);
         $childIds = $children->pluck('id')->toArray();
 
@@ -350,7 +359,7 @@ class ParentDashboardController extends Controller
         return match ($result['status']) {
             'redirect_away' => redirect()->away($result['url']),
             'gateway_error' => back()->with('error', $result['message']),
-            default         => back()->with('success', $result['message']),
+            default => back()->with('success', $result['message']),
         };
     }
 

@@ -15,13 +15,13 @@ class SubjectFactory extends Factory
 
     public function definition(): array
     {
-        $name = fake()->unique()->words(2, true) . ' ' . fake()->randomElement(['Studies', 'Science', 'Mathematics']);
+        $name = fake()->unique()->words(2, true).' '.fake()->randomElement(['Studies', 'Science', 'Mathematics']);
 
         return [
-            'name'      => $name,
-            'slug'      => Str::slug($name) . '-' . fake()->unique()->numberBetween(1000, 999999),
+            'name' => $name,
+            'slug' => Str::slug($name).'-'.fake()->unique()->numberBetween(1000, 999999),
             'is_active' => true,
-            'level'     => 'SPM',
+            'level' => 'SPM',
         ];
     }
 }

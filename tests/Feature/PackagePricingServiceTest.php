@@ -2,12 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\FeeStructure;
-use App\Models\FeeStructureItem;
-use App\Models\FeeStructurePriceTier;
+use App\Models\Invoice;
+use App\Models\Student;
 use App\Models\Subject;
+use App\Models\Teacher;
+use App\Models\User;
+use App\Services\InvoiceService;
 use App\Services\PackagePricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -44,27 +50,27 @@ class PackagePricingServiceTest extends TestCase
     private function makeSubject(string $name, float $monthlyFee = 90.00): Subject
     {
         return Subject::create([
-            'name'           => $name,
-            'slug'           => \Illuminate\Support\Str::slug($name . '-' . uniqid()),
+            'name' => $name,
+            'slug' => Str::slug($name.'-'.uniqid()),
             'education_type' => 'secondary',
-            'stage'          => 'Upper Secondary',
-            'form_year'      => 'Form 5',
-            'category'       => 'Core',
-            'is_active'      => true,
-            'monthly_fee'    => $monthlyFee,
+            'stage' => 'Upper Secondary',
+            'form_year' => 'Form 5',
+            'category' => 'Core',
+            'is_active' => true,
+            'monthly_fee' => $monthlyFee,
         ]);
     }
 
     private function makeFeeStructure(array $attrs = []): FeeStructure
     {
         return FeeStructure::create(array_merge([
-            'name'            => 'Test Package',
-            'amount'          => 250.00,
+            'name' => 'Test Package',
+            'amount' => 250.00,
             'education_level' => 'Form 5',
-            'frequency'       => 'monthly',
-            'is_active'       => true,
-            'package_type'    => FeeStructure::TYPE_INDIVIDUAL,
-            'status'          => FeeStructure::STATUS_ACTIVE,
+            'frequency' => 'monthly',
+            'is_active' => true,
+            'package_type' => FeeStructure::TYPE_INDIVIDUAL,
+            'status' => FeeStructure::STATUS_ACTIVE,
         ], $attrs));
     }
 
@@ -74,19 +80,19 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_fixed_bundle_correct_subjects_returns_package_price(): void
     {
-        $physics   = $this->makeSubject('Physics');
+        $physics = $this->makeSubject('Physics');
         $chemistry = $this->makeSubject('Chemistry');
-        $biology   = $this->makeSubject('Biology');
+        $biology = $this->makeSubject('Biology');
 
         $pkg = $this->makeFeeStructure([
-            'name'         => 'SPM Science Package',
-            'amount'       => 250.00,
+            'name' => 'SPM Science Package',
+            'amount' => 250.00,
             'package_type' => FeeStructure::TYPE_FIXED_BUNDLE,
         ]);
         $pkg->subjects()->sync([
-            $physics->id   => ['is_required' => true, 'sort_order' => 0],
+            $physics->id => ['is_required' => true, 'sort_order' => 0],
             $chemistry->id => ['is_required' => true, 'sort_order' => 1],
-            $biology->id   => ['is_required' => true, 'sort_order' => 2],
+            $biology->id => ['is_required' => true, 'sort_order' => 2],
         ]);
 
         $subjectIds = [$physics->id, $chemistry->id, $biology->id];
@@ -102,16 +108,16 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_fixed_bundle_wrong_subjects_throws_validation(): void
     {
-        $physics   = $this->makeSubject('Physics');
+        $physics = $this->makeSubject('Physics');
         $chemistry = $this->makeSubject('Chemistry');
-        $biology   = $this->makeSubject('Biology');
-        $math      = $this->makeSubject('Mathematics');
+        $biology = $this->makeSubject('Biology');
+        $math = $this->makeSubject('Mathematics');
 
         $pkg = $this->makeFeeStructure(['package_type' => FeeStructure::TYPE_FIXED_BUNDLE]);
         $pkg->subjects()->sync([
-            $physics->id   => ['is_required' => true, 'sort_order' => 0],
+            $physics->id => ['is_required' => true, 'sort_order' => 0],
             $chemistry->id => ['is_required' => true, 'sort_order' => 1],
-            $biology->id   => ['is_required' => true, 'sort_order' => 2],
+            $biology->id => ['is_required' => true, 'sort_order' => 2],
         ]);
 
         $this->expectException(ValidationException::class);
@@ -120,15 +126,15 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_fixed_bundle_missing_subject_throws_validation(): void
     {
-        $physics   = $this->makeSubject('Physics');
+        $physics = $this->makeSubject('Physics');
         $chemistry = $this->makeSubject('Chemistry');
-        $biology   = $this->makeSubject('Biology');
+        $biology = $this->makeSubject('Biology');
 
         $pkg = $this->makeFeeStructure(['package_type' => FeeStructure::TYPE_FIXED_BUNDLE]);
         $pkg->subjects()->sync([
-            $physics->id   => ['is_required' => true, 'sort_order' => 0],
+            $physics->id => ['is_required' => true, 'sort_order' => 0],
             $chemistry->id => ['is_required' => true, 'sort_order' => 1],
-            $biology->id   => ['is_required' => true, 'sort_order' => 2],
+            $biology->id => ['is_required' => true, 'sort_order' => 2],
         ]);
 
         $this->expectException(ValidationException::class);
@@ -146,10 +152,10 @@ class PackagePricingServiceTest extends TestCase
         $s2 = $this->makeSubject('English');
 
         $pkg = $this->makeFeeStructure([
-            'package_type'    => FeeStructure::TYPE_PICK_N,
-            'minimum_subjects'=> 3,
-            'maximum_subjects'=> 3,
-            'amount'          => 210.00,
+            'package_type' => FeeStructure::TYPE_PICK_N,
+            'minimum_subjects' => 3,
+            'maximum_subjects' => 3,
+            'amount' => 210.00,
         ]);
         $pkg->subjects()->sync([
             $s1->id => ['is_required' => false, 'sort_order' => 0],
@@ -167,10 +173,10 @@ class PackagePricingServiceTest extends TestCase
         $s3 = $this->makeSubject('Mathematics');
 
         $pkg = $this->makeFeeStructure([
-            'package_type'    => FeeStructure::TYPE_PICK_N,
-            'minimum_subjects'=> 3,
-            'maximum_subjects'=> 3,
-            'amount'          => 210.00,
+            'package_type' => FeeStructure::TYPE_PICK_N,
+            'minimum_subjects' => 3,
+            'maximum_subjects' => 3,
+            'amount' => 210.00,
         ]);
         $pkg->subjects()->sync([
             $s1->id => ['is_required' => false, 'sort_order' => 0],
@@ -193,10 +199,10 @@ class PackagePricingServiceTest extends TestCase
         $s4 = $this->makeSubject('Science');
 
         $pkg = $this->makeFeeStructure([
-            'package_type'    => FeeStructure::TYPE_PICK_N,
-            'minimum_subjects'=> 3,
-            'maximum_subjects'=> 3,
-            'amount'          => 210.00,
+            'package_type' => FeeStructure::TYPE_PICK_N,
+            'minimum_subjects' => 3,
+            'maximum_subjects' => 3,
+            'amount' => 210.00,
         ]);
         $pkg->subjects()->sync([
             $s1->id => ['is_required' => false, 'sort_order' => 0],
@@ -217,10 +223,10 @@ class PackagePricingServiceTest extends TestCase
         $outsider = $this->makeSubject('Biology'); // NOT in the pool
 
         $pkg = $this->makeFeeStructure([
-            'package_type'    => FeeStructure::TYPE_PICK_N,
-            'minimum_subjects'=> 3,
-            'maximum_subjects'=> 3,
-            'amount'          => 210.00,
+            'package_type' => FeeStructure::TYPE_PICK_N,
+            'minimum_subjects' => 3,
+            'maximum_subjects' => 3,
+            'amount' => 210.00,
         ]);
         $pkg->subjects()->sync([
             $s1->id => ['is_required' => false, 'sort_order' => 0],
@@ -240,7 +246,7 @@ class PackagePricingServiceTest extends TestCase
     {
         $pkg = $this->makeFeeStructure([
             'package_type' => FeeStructure::TYPE_TIERED,
-            'amount'       => 0,
+            'amount' => 0,
         ]);
 
         $pkg->priceTiers()->createMany([
@@ -317,13 +323,13 @@ class PackagePricingServiceTest extends TestCase
             ['name' => 'Registration', 'item_type' => 'registration',  'amount' => 50.00,  'billing_frequency' => 'one_time', 'sort_order' => 2],
         ]);
 
-        $physics   = $this->makeSubject('Physics');
+        $physics = $this->makeSubject('Physics');
         $chemistry = $this->makeSubject('Chemistry');
-        $biology   = $this->makeSubject('Biology');
+        $biology = $this->makeSubject('Biology');
         $pkg->subjects()->sync([
-            $physics->id   => ['is_required' => true, 'sort_order' => 0],
+            $physics->id => ['is_required' => true, 'sort_order' => 0],
             $chemistry->id => ['is_required' => true, 'sort_order' => 1],
-            $biology->id   => ['is_required' => true, 'sort_order' => 2],
+            $biology->id => ['is_required' => true, 'sort_order' => 2],
         ]);
 
         $result = $this->svc->calculate($pkg, [$physics->id, $chemistry->id, $biology->id]);
@@ -349,7 +355,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_package_after_effective_until_throws(): void
     {
         $pkg = $this->makeFeeStructure([
-            'effective_from'  => now()->subYear()->toDateString(),
+            'effective_from' => now()->subYear()->toDateString(),
             'effective_until' => now()->subDay()->toDateString(), // expired yesterday
         ]);
 
@@ -360,7 +366,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_package_during_validity_passes(): void
     {
         $pkg = $this->makeFeeStructure([
-            'effective_from'  => now()->subMonth()->toDateString(),
+            'effective_from' => now()->subMonth()->toDateString(),
             'effective_until' => now()->addMonth()->toDateString(),
         ]);
 
@@ -383,7 +389,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_draft_package_throws(): void
     {
         $pkg = $this->makeFeeStructure([
-            'status'    => FeeStructure::STATUS_DRAFT,
+            'status' => FeeStructure::STATUS_DRAFT,
             'is_active' => false,
         ]);
 
@@ -394,7 +400,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_inactive_package_throws(): void
     {
         $pkg = $this->makeFeeStructure([
-            'status'    => FeeStructure::STATUS_INACTIVE,
+            'status' => FeeStructure::STATUS_INACTIVE,
             'is_active' => false,
         ]);
 
@@ -405,7 +411,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_archived_package_throws(): void
     {
         $pkg = $this->makeFeeStructure([
-            'status'    => FeeStructure::STATUS_ARCHIVED,
+            'status' => FeeStructure::STATUS_ARCHIVED,
             'is_active' => false,
         ]);
 
@@ -416,7 +422,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_active_package_passes(): void
     {
         $pkg = $this->makeFeeStructure([
-            'status'    => FeeStructure::STATUS_ACTIVE,
+            'status' => FeeStructure::STATUS_ACTIVE,
             'is_active' => true,
         ]);
         $result = $this->svc->calculate($pkg, []);
@@ -430,7 +436,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_server_ignores_frontend_price_and_recalculates(): void
     {
         $pkg = $this->makeFeeStructure([
-            'amount'       => 250.00,
+            'amount' => 250.00,
             'package_type' => FeeStructure::TYPE_FIXED_BUNDLE,
         ]);
         $physics = $this->makeSubject('Physics');
@@ -452,7 +458,7 @@ class PackagePricingServiceTest extends TestCase
     public function test_legacy_individual_package_with_no_subjects_uses_flat_amount(): void
     {
         $pkg = $this->makeFeeStructure([
-            'amount'       => 180.00,
+            'amount' => 180.00,
             'package_type' => FeeStructure::TYPE_INDIVIDUAL,
         ]);
         // No explicit subjects assigned — legacy mode
@@ -468,7 +474,7 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_overlapping_tiers_are_rejected(): void
     {
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $this->expectException(ValidationException::class);
 
         $this->svc->validateTiers([
             ['minimum_subjects' => 1, 'maximum_subjects' => 3, 'price' => 90.00],
@@ -494,48 +500,48 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_historical_invoice_immutability_when_package_price_or_version_changes(): void
     {
-        $teacherUser = \App\Models\User::factory()->create(['role' => 'teacher']);
-        \App\Models\Teacher::create([
+        $teacherUser = User::factory()->create(['role' => 'teacher']);
+        Teacher::create([
             'user_id' => $teacherUser->id,
             'qualification' => 'Degree',
             'specialization' => 'Academic',
         ]);
 
-        $studentUser = \App\Models\User::factory()->create(['role' => 'student']);
-        $student = \App\Models\Student::create([
+        $studentUser = User::factory()->create(['role' => 'student']);
+        $student = Student::create([
             'user_id' => $studentUser->id,
-            'level'   => 'Form 5',
-            'status'  => 'active',
+            'level' => 'Form 5',
+            'status' => 'active',
         ]);
 
         $physics = $this->makeSubject('Physics', 90.00);
 
-        $course = \App\Models\Course::create([
-            'subject_id'    => $physics->id,
-            'teacher_id'    => 1,
-            'title'         => 'Physics Form 5',
-            'level'         => 'Form 5',
-            'status'        => 'published',
+        $course = Course::create([
+            'subject_id' => $physics->id,
+            'teacher_id' => 1,
+            'title' => 'Physics Form 5',
+            'level' => 'Form 5',
+            'status' => 'published',
             'total_lessons' => 10,
         ]);
 
-        \App\Models\Enrollment::create([
+        Enrollment::create([
             'student_id' => $student->id,
-            'course_id'  => $course->id,
-            'status'     => 'active',
+            'course_id' => $course->id,
+            'status' => 'active',
         ]);
 
         // 1. Initial Package at RM250
         $pkg = $this->makeFeeStructure([
-            'name'         => 'SPM Core v1',
-            'amount'       => 250.00,
+            'name' => 'SPM Core v1',
+            'amount' => 250.00,
             'package_type' => FeeStructure::TYPE_FIXED_BUNDLE,
-            'version'      => 1,
+            'version' => 1,
         ]);
         $pkg->subjects()->sync([$physics->id => ['is_required' => true, 'sort_order' => 0]]);
 
         // 2. Generate Invoice under v1
-        $invoice = app(\App\Services\InvoiceService::class)->generateForStudent($student, $pkg->id);
+        $invoice = app(InvoiceService::class)->generateForStudent($student, $pkg->id);
         $this->assertEquals(250.00, (float) $invoice->total_amount);
         $originalItemId = $invoice->items->first()->id;
         $originalAmount = (float) $invoice->items->first()->amount;
@@ -545,7 +551,7 @@ class PackagePricingServiceTest extends TestCase
         $pkg->update(['amount' => 280.00, 'name' => 'SPM Core v2', 'version' => 2]);
 
         // 4. Verify historical invoice remains exactly RM250 (immutable snapshot)
-        $invoiceFresh = \App\Models\Invoice::with('items')->find($invoice->id);
+        $invoiceFresh = Invoice::with('items')->find($invoice->id);
         $this->assertEquals(250.00, (float) $invoiceFresh->total_amount);
         $this->assertEquals(250.00, (float) $invoiceFresh->items->first()->amount);
         $this->assertEquals($originalItemId, $invoiceFresh->items->first()->id);
@@ -557,15 +563,15 @@ class PackagePricingServiceTest extends TestCase
 
     public function test_targeted_student_package_not_available_to_other_students(): void
     {
-        $u1 = \App\Models\User::factory()->create(['role' => 'student']);
-        $studentA = \App\Models\Student::create(['user_id' => $u1->id, 'level' => 'Form 5']);
+        $u1 = User::factory()->create(['role' => 'student']);
+        $studentA = Student::create(['user_id' => $u1->id, 'level' => 'Form 5']);
 
-        $u2 = \App\Models\User::factory()->create(['role' => 'student']);
-        $studentB = \App\Models\Student::create(['user_id' => $u2->id, 'level' => 'Form 5']);
+        $u2 = User::factory()->create(['role' => 'student']);
+        $studentB = Student::create(['user_id' => $u2->id, 'level' => 'Form 5']);
 
         $targetedPkg = $this->makeFeeStructure([
-            'name'       => 'Special Scholarship Plan',
-            'amount'     => 50.00,
+            'name' => 'Special Scholarship Plan',
+            'amount' => 50.00,
             'student_id' => $studentA->id,
         ]);
 

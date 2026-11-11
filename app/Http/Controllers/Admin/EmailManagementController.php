@@ -7,20 +7,16 @@ use App\Models\EmailAutomation;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailLog;
-use App\Models\EmailSuppression;
 use App\Models\EmailTemplate;
 use App\Models\Setting;
-use App\Models\User;
 use App\Services\Email\AudienceResolverService;
 use App\Services\Email\EmailAutomationService;
 use App\Services\Email\EmailSendingService;
 use App\Services\Email\EmailTemplateRenderer;
-use App\Services\Email\EmailVariableRegistry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -38,11 +34,11 @@ class EmailManagementController extends Controller
         $recipients = AudienceResolverService::resolve($audienceType, is_array($filters) ? $filters : []);
 
         return response()->json([
-            'count'  => $recipients->count(),
-            'sample' => $recipients->take(8)->map(fn($r) => [
-                'name'  => $r['name'] ?? 'N/A',
+            'count' => $recipients->count(),
+            'sample' => $recipients->take(8)->map(fn ($r) => [
+                'name' => $r['name'] ?? 'N/A',
                 'email' => $r['email'],
-                'type'  => ucfirst($r['recipient_type']),
+                'type' => ucfirst($r['recipient_type']),
             ]),
         ]);
     }
@@ -53,40 +49,40 @@ class EmailManagementController extends Controller
     public function previewTemplate(Request $request): JsonResponse
     {
         $request->validate([
-            'subject'   => 'nullable|string|max:255',
-            'body'      => 'required|string',
+            'subject' => 'nullable|string|max:255',
+            'body' => 'required|string',
             'cta_label' => 'nullable|string|max:100',
-            'cta_url'   => 'nullable|string|max:500',
+            'cta_url' => 'nullable|string|max:500',
         ]);
 
         // Sample context data for preview
         $sampleContext = [
-            'parent_name'        => 'Puan Siti Aminah binti Razali',
-            'parent_email'       => 'siti.aminah@example.com',
-            'parent_phone'       => '+60 12-345 6789',
-            'student_name'       => 'Muhammad Danish bin Razak',
-            'student_id'         => 'STU-00142',
-            'student_email'      => 'danish.razak@example.com',
-            'programme_name'     => 'Olympia Secondary Core Programme (Form 3)',
-            'subject_name'       => 'Mathematics (Form 3)',
-            'class_name'         => 'Form 3 Advanced Mathematics — Cohort Alpha',
-            'teacher_name'       => 'Ustaz Daniel bin Ahmad',
-            'invoice_number'     => 'INV-2026-00389',
-            'invoice_amount'     => 'RM 350.00',
-            'amount_paid'        => 'RM 350.00',
+            'parent_name' => 'Puan Siti Aminah binti Razali',
+            'parent_email' => 'siti.aminah@example.com',
+            'parent_phone' => '+60 12-345 6789',
+            'student_name' => 'Muhammad Danish bin Razak',
+            'student_id' => 'STU-00142',
+            'student_email' => 'danish.razak@example.com',
+            'programme_name' => 'Olympia Secondary Core Programme (Form 3)',
+            'subject_name' => 'Mathematics (Form 3)',
+            'class_name' => 'Form 3 Advanced Mathematics — Cohort Alpha',
+            'teacher_name' => 'Ustaz Daniel bin Ahmad',
+            'invoice_number' => 'INV-2026-00389',
+            'invoice_amount' => 'RM 350.00',
+            'amount_paid' => 'RM 350.00',
             'outstanding_amount' => 'RM 0.00',
-            'due_date'           => now()->addDays(7)->format('d M Y'),
-            'payment_date'       => now()->format('d M Y, h:i A'),
-            'payment_reference'  => 'FPX-MY-20261005-9921',
-            'payment_status'     => 'PAID',
-            'receipt_number'     => 'REC-2026-00214',
-            'class_date'         => now()->addDay()->format('d M Y'),
-            'class_time'         => '08:00 PM',
-            'class_schedule'     => now()->addDay()->format('d M Y, 08:00 PM (60 mins)'),
-            'meeting_url'        => url('/student/dashboard#timetable'),
-            'class_status'       => 'UPCOMING',
-            'assessment_name'    => 'Diagnostic Test 1: Algebraic Expressions',
-            'score'              => '92% (Grade A)',
+            'due_date' => now()->addDays(7)->format('d M Y'),
+            'payment_date' => now()->format('d M Y, h:i A'),
+            'payment_reference' => 'FPX-MY-20261005-9921',
+            'payment_status' => 'PAID',
+            'receipt_number' => 'REC-2026-00214',
+            'class_date' => now()->addDay()->format('d M Y'),
+            'class_time' => '08:00 PM',
+            'class_schedule' => now()->addDay()->format('d M Y, 08:00 PM (60 mins)'),
+            'meeting_url' => url('/student/dashboard#timetable'),
+            'class_status' => 'UPCOMING',
+            'assessment_name' => 'Diagnostic Test 1: Algebraic Expressions',
+            'score' => '92% (Grade A)',
         ];
 
         $rendered = EmailTemplateRenderer::render(
@@ -99,8 +95,8 @@ class EmailManagementController extends Controller
         );
 
         return response()->json([
-            'subject'    => $rendered['subject'],
-            'html'       => $rendered['html'],
+            'subject' => $rendered['subject'],
+            'html' => $rendered['html'],
             'plain_text' => $rendered['plain_text'],
         ]);
     }
@@ -111,30 +107,30 @@ class EmailManagementController extends Controller
     public function storeTemplate(Request $request)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'category'  => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
-            'subject'   => 'required|string|max:255',
-            'body'      => 'required|string',
+            'name' => 'required|string|max:255',
+            'category' => 'required|string|in:'.implode(',', array_keys(EmailTemplate::categories())),
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
             'cta_label' => 'nullable|string|max:100',
-            'cta_url'   => 'nullable|string|max:500',
+            'cta_url' => 'nullable|string|max:500',
         ]);
 
-        $key = Str::slug($request->category . ' ' . $request->name, '_');
+        $key = Str::slug($request->category.' '.$request->name, '_');
         $uniqueKey = $key;
         $counter = 1;
         while (EmailTemplate::where('key', $uniqueKey)->exists()) {
-            $uniqueKey = $key . '_' . $counter++;
+            $uniqueKey = $key.'_'.$counter++;
         }
 
         $template = EmailTemplate::create([
-            'name'       => $request->name,
-            'key'        => $uniqueKey,
-            'category'   => $request->category,
-            'subject'    => $request->subject,
-            'body'       => $request->body,
-            'cta_label'  => $request->cta_label,
-            'cta_url'    => $request->cta_url,
-            'status'     => EmailTemplate::STATUS_ACTIVE,
+            'name' => $request->name,
+            'key' => $uniqueKey,
+            'category' => $request->category,
+            'subject' => $request->subject,
+            'body' => $request->body,
+            'cta_label' => $request->cta_label,
+            'cta_url' => $request->cta_url,
+            'status' => EmailTemplate::STATUS_ACTIVE,
             'created_by' => auth()->id(),
             'updated_by' => auth()->id(),
         ]);
@@ -142,7 +138,7 @@ class EmailManagementController extends Controller
         // Record initial version
         $template->recordVersion(auth()->id());
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
             ->with('success', "Email template '{$template->name}' created successfully.");
     }
 
@@ -152,28 +148,28 @@ class EmailManagementController extends Controller
     public function updateTemplate(Request $request, EmailTemplate $template)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'category'  => 'required|string|in:' . implode(',', array_keys(EmailTemplate::categories())),
-            'subject'   => 'required|string|max:255',
-            'body'      => 'required|string',
+            'name' => 'required|string|max:255',
+            'category' => 'required|string|in:'.implode(',', array_keys(EmailTemplate::categories())),
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
             'cta_label' => 'nullable|string|max:100',
-            'cta_url'   => 'nullable|string|max:500',
+            'cta_url' => 'nullable|string|max:500',
         ]);
 
         // Save snapshot to version history
         $template->recordVersion(auth()->id());
 
         $template->update([
-            'name'       => $request->name,
-            'category'   => $request->category,
-            'subject'    => $request->subject,
-            'body'       => $request->body,
-            'cta_label'  => $request->cta_label,
-            'cta_url'    => $request->cta_url,
+            'name' => $request->name,
+            'category' => $request->category,
+            'subject' => $request->subject,
+            'body' => $request->body,
+            'cta_label' => $request->cta_label,
+            'cta_url' => $request->cta_url,
             'updated_by' => auth()->id(),
         ]);
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
             ->with('success', "Template '{$template->name}' updated successfully (Version saved).");
     }
 
@@ -183,8 +179,8 @@ class EmailManagementController extends Controller
     public function duplicateTemplate(EmailTemplate $template)
     {
         $newTemplate = $template->replicate();
-        $newTemplate->name = $template->name . ' (Copy)';
-        $newTemplate->key  = $template->key . '_copy_' . Str::random(4);
+        $newTemplate->name = $template->name.' (Copy)';
+        $newTemplate->key = $template->key.'_copy_'.Str::random(4);
         $newTemplate->status = EmailTemplate::STATUS_ACTIVE;
         $newTemplate->created_by = auth()->id();
         $newTemplate->updated_by = auth()->id();
@@ -192,7 +188,7 @@ class EmailManagementController extends Controller
 
         $newTemplate->recordVersion(auth()->id());
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
             ->with('success', "Template duplicated as '{$newTemplate->name}'.");
     }
 
@@ -207,8 +203,8 @@ class EmailManagementController extends Controller
 
         $template->update(['status' => $newStatus, 'updated_by' => auth()->id()]);
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
-            ->with('success', "Template status changed to " . ucfirst($newStatus) . ".");
+        return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
+            ->with('success', 'Template status changed to '.ucfirst($newStatus).'.');
     }
 
     /**
@@ -218,7 +214,7 @@ class EmailManagementController extends Controller
     {
         $template->update(['status' => EmailTemplate::STATUS_ARCHIVED, 'updated_by' => auth()->id()]);
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
             ->with('success', "Template '{$template->name}' archived.");
     }
 
@@ -229,42 +225,42 @@ class EmailManagementController extends Controller
     {
         $request->validate([
             'test_email' => 'required|email',
-            'subject'    => 'required|string|max:255',
-            'body'       => 'required|string',
-            'cta_label'  => 'nullable|string|max:100',
-            'cta_url'    => 'nullable|string|max:500',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+            'cta_label' => 'nullable|string|max:100',
+            'cta_url' => 'nullable|string|max:500',
         ]);
 
         $recipientEmail = strtolower(trim($request->test_email));
 
         $context = [
-            'recipient_name'  => auth()->user()->name ?? 'Administrator',
+            'recipient_name' => auth()->user()->name ?? 'Administrator',
             'recipient_email' => $recipientEmail,
-            'parent_name'     => 'Puan Siti Aminah (Sample)',
-            'student_name'    => 'Muhammad Danish (Sample)',
-            'student_id'      => 'STU-00142',
-            'programme_name'  => 'Olympia Secondary Core Programme',
-            'subject_name'    => 'Mathematics (Form 3)',
-            'class_name'      => 'Form 3 Advanced Mathematics',
-            'teacher_name'    => 'Ustaz Daniel bin Ahmad',
-            'invoice_number'  => 'INV-2026-TEST',
-            'invoice_amount'  => 'RM 350.00',
-            'amount_paid'     => 'RM 350.00',
+            'parent_name' => 'Puan Siti Aminah (Sample)',
+            'student_name' => 'Muhammad Danish (Sample)',
+            'student_id' => 'STU-00142',
+            'programme_name' => 'Olympia Secondary Core Programme',
+            'subject_name' => 'Mathematics (Form 3)',
+            'class_name' => 'Form 3 Advanced Mathematics',
+            'teacher_name' => 'Ustaz Daniel bin Ahmad',
+            'invoice_number' => 'INV-2026-TEST',
+            'invoice_amount' => 'RM 350.00',
+            'amount_paid' => 'RM 350.00',
             'outstanding_amount' => 'RM 0.00',
-            'due_date'        => now()->addDays(7)->format('d M Y'),
-            'payment_date'    => now()->format('d M Y, h:i A'),
-            'payment_status'  => 'PAID',
-            'receipt_number'  => 'REC-2026-TEST',
-            'class_date'      => now()->addDay()->format('d M Y'),
-            'class_time'      => '08:00 PM',
-            'meeting_url'     => url('/student/dashboard#timetable'),
-            'score'           => '95%',
+            'due_date' => now()->addDays(7)->format('d M Y'),
+            'payment_date' => now()->format('d M Y, h:i A'),
+            'payment_status' => 'PAID',
+            'receipt_number' => 'REC-2026-TEST',
+            'class_date' => now()->addDay()->format('d M Y'),
+            'class_time' => '08:00 PM',
+            'meeting_url' => url('/student/dashboard#timetable'),
+            'score' => '95%',
         ];
 
         try {
             $log = EmailSendingService::send(
                 $recipientEmail,
-                '[TEST] ' . $request->subject,
+                '[TEST] '.$request->subject,
                 $request->body,
                 $context,
                 'test',
@@ -277,15 +273,15 @@ class EmailManagementController extends Controller
             );
 
             if ($log && $log->status === EmailLog::STATUS_FAILED) {
-                return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
-                    ->with('error', "Test email failed: " . ($log->error_message ?? 'Mail delivery failed. Please check your SMTP mail settings.'));
+                return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
+                    ->with('error', 'Test email failed: '.($log->error_message ?? 'Mail delivery failed. Please check your SMTP mail settings.'));
             }
 
-            return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
+            return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
                 ->with('success', "Test email sent successfully to {$recipientEmail}. Check your inbox or mail log.");
         } catch (\Throwable $e) {
-            return redirect()->to(route('admin.dashboard') . '#emailsettings-templates')
-                ->with('error', "Could not send test email: " . $e->getMessage());
+            return redirect()->to(route('admin.dashboard').'#emailsettings-templates')
+                ->with('error', 'Could not send test email: '.$e->getMessage());
         }
     }
 
@@ -295,71 +291,77 @@ class EmailManagementController extends Controller
     public function storeCampaign(Request $request)
     {
         $request->validate([
-            'name'             => 'required|string|max:255',
-            'category'         => 'required|string',
-            'description'      => 'nullable|string|max:1000',
-            'subject'          => 'required|string|max:255',
-            'body'             => 'required|string',
-            'cta_label'        => 'nullable|string|max:100',
-            'cta_url'          => 'nullable|string|max:500',
-            'template_id'      => 'nullable|exists:email_templates,id',
-            'audience_type'    => 'required|string|in:' . implode(',', array_keys(AudienceResolverService::supportedAudiences())),
-            'delivery_type'    => 'required|in:immediate,scheduled,draft',
-            'scheduled_at'     => 'nullable|required_if:delivery_type,scheduled|date|after:now',
+            'name' => 'required|string|max:255',
+            'category' => 'required|string',
+            'description' => 'nullable|string|max:1000',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string',
+            'cta_label' => 'nullable|string|max:100',
+            'cta_url' => 'nullable|string|max:500',
+            'template_id' => 'nullable|exists:email_templates,id',
+            'audience_type' => 'required|string|in:'.implode(',', array_keys(AudienceResolverService::supportedAudiences())),
+            'delivery_type' => 'required|in:immediate,scheduled,draft',
+            'scheduled_at' => 'nullable|required_if:delivery_type,scheduled|date|after:now',
             'programme_filter' => 'nullable|string',
-            'subject_filter'   => 'nullable|exists:subjects,id',
-            'class_filter'     => 'nullable|exists:live_classes,id',
+            'subject_filter' => 'nullable|exists:subjects,id',
+            'class_filter' => 'nullable|exists:live_classes,id',
         ]);
 
         $filters = [];
-        if ($request->filled('programme_filter')) $filters['programme'] = $request->programme_filter;
-        if ($request->filled('subject_filter'))   $filters['subject_id'] = $request->subject_filter;
-        if ($request->filled('class_filter'))     $filters['class_id'] = $request->class_filter;
+        if ($request->filled('programme_filter')) {
+            $filters['programme'] = $request->programme_filter;
+        }
+        if ($request->filled('subject_filter')) {
+            $filters['subject_id'] = $request->subject_filter;
+        }
+        if ($request->filled('class_filter')) {
+            $filters['class_id'] = $request->class_filter;
+        }
 
         // Resolve recipients
         $recipients = AudienceResolverService::resolve($request->audience_type, $filters);
 
         if ($request->delivery_type !== 'draft' && $recipients->isEmpty()) {
-            return back()->with('error', "Cannot launch campaign: no active, non-suppressed recipients matched the selected audience.");
+            return back()->with('error', 'Cannot launch campaign: no active, non-suppressed recipients matched the selected audience.');
         }
 
         $status = match ($request->delivery_type) {
             'immediate' => EmailCampaign::STATUS_QUEUED,
             'scheduled' => EmailCampaign::STATUS_SCHEDULED,
-            default     => EmailCampaign::STATUS_DRAFT,
+            default => EmailCampaign::STATUS_DRAFT,
         };
 
         $scheduledAt = $request->delivery_type === 'scheduled' ? $request->scheduled_at : null;
 
         $campaign = EmailCampaign::create([
-            'name'             => $request->name,
-            'category'         => $request->category,
-            'description'      => $request->description,
-            'subject'          => $request->subject,
-            'body'             => $request->body,
-            'cta_label'        => $request->cta_label,
-            'cta_url'          => $request->cta_url,
-            'template_id'      => $request->template_id ?: null,
-            'audience_type'    => $request->audience_type,
+            'name' => $request->name,
+            'category' => $request->category,
+            'description' => $request->description,
+            'subject' => $request->subject,
+            'body' => $request->body,
+            'cta_label' => $request->cta_label,
+            'cta_url' => $request->cta_url,
+            'template_id' => $request->template_id ?: null,
+            'audience_type' => $request->audience_type,
             'audience_filters' => $filters,
             'total_recipients' => $recipients->count(),
-            'sent_count'       => 0,
-            'failed_count'     => 0,
-            'status'           => $status,
-            'scheduled_at'     => $scheduledAt,
-            'created_by'       => auth()->id(),
+            'sent_count' => 0,
+            'failed_count' => 0,
+            'status' => $status,
+            'scheduled_at' => $scheduledAt,
+            'created_by' => auth()->id(),
         ]);
 
         // Populate campaign recipients
         foreach ($recipients as $r) {
             EmailCampaignRecipient::create([
-                'email_campaign_id'  => $campaign->id,
-                'user_id'            => $r['user_id'],
-                'email'              => $r['email'],
-                'name'               => $r['name'],
-                'recipient_type'     => $r['recipient_type'],
+                'email_campaign_id' => $campaign->id,
+                'user_id' => $r['user_id'],
+                'email' => $r['email'],
+                'name' => $r['name'],
+                'recipient_type' => $r['recipient_type'],
                 'related_student_id' => $r['related_student_id'],
-                'status'             => EmailCampaignRecipient::STATUS_PENDING,
+                'status' => EmailCampaignRecipient::STATUS_PENDING,
             ]);
         }
 
@@ -368,12 +370,12 @@ class EmailManagementController extends Controller
             EmailSendingService::dispatchCampaign($campaign);
             $msg = "Campaign '{$campaign->name}' queued for sending to {$recipients->count()} recipient(s).";
         } elseif ($campaign->status === EmailCampaign::STATUS_SCHEDULED) {
-            $msg = "Campaign '{$campaign->name}' scheduled to send at " . Carbon::parse($scheduledAt)->format('d M Y, h:i A') . " to {$recipients->count()} recipient(s).";
+            $msg = "Campaign '{$campaign->name}' scheduled to send at ".Carbon::parse($scheduledAt)->format('d M Y, h:i A')." to {$recipients->count()} recipient(s).";
         } else {
             $msg = "Campaign '{$campaign->name}' saved as draft with {$recipients->count()} recipient(s).";
         }
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-campaigns')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-campaigns')
             ->with('success', $msg);
     }
 
@@ -382,13 +384,13 @@ class EmailManagementController extends Controller
      */
     public function cancelCampaign(EmailCampaign $campaign)
     {
-        if (!$campaign->isCancellable()) {
+        if (! $campaign->isCancellable()) {
             return back()->with('error', "Campaign cannot be cancelled in its current state ({$campaign->status}).");
         }
 
         $campaign->update(['status' => EmailCampaign::STATUS_CANCELLED]);
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-campaigns')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-campaigns')
             ->with('success', "Campaign '{$campaign->name}' has been cancelled.");
     }
 
@@ -397,10 +399,11 @@ class EmailManagementController extends Controller
      */
     public function toggleAutomation(EmailAutomation $automation)
     {
-        $automation->update(['is_enabled' => !$automation->is_enabled]);
+        $automation->update(['is_enabled' => ! $automation->is_enabled]);
 
         $statusStr = $automation->is_enabled ? 'enabled' : 'disabled';
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-automations')
+
+        return redirect()->to(route('admin.dashboard').'#emailsettings-automations')
             ->with('success', "Automation '{$automation->name}' is now {$statusStr}.");
     }
 
@@ -411,15 +414,15 @@ class EmailManagementController extends Controller
     {
         $request->validate([
             'email_template_id' => 'required|exists:email_templates,id',
-            'delay_minutes'     => 'nullable|integer|min:0|max:10080',
+            'delay_minutes' => 'nullable|integer|min:0|max:10080',
         ]);
 
         $automation->update([
             'email_template_id' => $request->email_template_id,
-            'delay_minutes'     => (int) ($request->delay_minutes ?? 0),
+            'delay_minutes' => (int) ($request->delay_minutes ?? 0),
         ]);
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-automations')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-automations')
             ->with('success', "Automation '{$automation->name}' updated.");
     }
 
@@ -435,39 +438,40 @@ class EmailManagementController extends Controller
         $adminEmail = strtolower(trim($request->test_email));
 
         $testContext = [
-            'recipient_name'  => auth()->user()->name ?? 'Administrator',
+            'recipient_name' => auth()->user()->name ?? 'Administrator',
             'recipient_email' => $adminEmail,
-            'parent_name'     => auth()->user()->name ?? 'Administrator',
-            'student_name'    => 'Muhammad Danish (Test)',
-            'student_id'      => 'STU-00142',
-            'programme_name'  => 'Olympia Scholars Core Package',
-            'subject_name'    => 'Mathematics',
-            'class_name'      => 'Form 3 Mathematics Alpha',
-            'teacher_name'    => 'Ustaz Daniel',
-            'invoice_number'  => 'INV-TEST-001',
-            'invoice_amount'  => 'RM 350.00',
-            'amount_paid'     => 'RM 350.00',
+            'parent_name' => auth()->user()->name ?? 'Administrator',
+            'student_name' => 'Muhammad Danish (Test)',
+            'student_id' => 'STU-00142',
+            'programme_name' => 'Olympia Scholars Core Package',
+            'subject_name' => 'Mathematics',
+            'class_name' => 'Form 3 Mathematics Alpha',
+            'teacher_name' => 'Ustaz Daniel',
+            'invoice_number' => 'INV-TEST-001',
+            'invoice_amount' => 'RM 350.00',
+            'amount_paid' => 'RM 350.00',
             'outstanding_amount' => 'RM 0.00',
-            'due_date'        => now()->addDays(7)->format('d M Y'),
-            'payment_date'    => now()->format('d M Y, h:i A'),
-            'class_date'      => now()->addDay()->format('d M Y'),
-            'class_time'      => '08:00 PM',
-            'meeting_url'     => url('/student/dashboard#timetable'),
-            'score'           => '95%',
+            'due_date' => now()->addDays(7)->format('d M Y'),
+            'payment_date' => now()->format('d M Y, h:i A'),
+            'class_date' => now()->addDay()->format('d M Y'),
+            'class_time' => '08:00 PM',
+            'meeting_url' => url('/student/dashboard#timetable'),
+            'score' => '95%',
         ];
 
-        $res = EmailAutomationService::trigger($automation->key, $testContext, 'test_' . Str::random(8), sync: true, isTest: true);
+        $res = EmailAutomationService::trigger($automation->key, $testContext, 'test_'.Str::random(8), sync: true, isTest: true);
 
         $isSuccess = is_array($res) ? ($res['success'] ?? false) : (bool) $res;
 
         if ($isSuccess) {
-            return redirect()->to(route('admin.dashboard') . '#emailsettings-automations')
+            return redirect()->to(route('admin.dashboard').'#emailsettings-automations')
                 ->with('success', "Automation test triggered! An email has been dispatched to {$adminEmail}.");
         } else {
-            $errorMsg = is_array($res) && !empty($res['error'])
+            $errorMsg = is_array($res) && ! empty($res['error'])
                 ? $res['error']
                 : 'Could not trigger automation. Ensure template is active and mail server is reachable.';
-            return redirect()->to(route('admin.dashboard') . '#emailsettings-automations')
+
+            return redirect()->to(route('admin.dashboard').'#emailsettings-automations')
                 ->with('error', "Automation test failed: {$errorMsg}");
         }
     }
@@ -482,7 +486,7 @@ class EmailManagementController extends Controller
         if ($success) {
             return back()->with('success', "Email #{$log->id} re-queued for delivery.");
         } else {
-            return back()->with('error', "Could not retry email #{$log->id}: " . ($log->error_message ?? 'Status is not failed'));
+            return back()->with('error', "Could not retry email #{$log->id}: ".($log->error_message ?? 'Status is not failed'));
         }
     }
 
@@ -503,20 +507,20 @@ class EmailManagementController extends Controller
             $s = $request->search;
             $query->where(function ($q) use ($s) {
                 $q->where('recipient_email', 'like', "%{$s}%")
-                  ->orWhere('recipient_name', 'like', "%{$s}%")
-                  ->orWhere('subject', 'like', "%{$s}%");
+                    ->orWhere('recipient_name', 'like', "%{$s}%")
+                    ->orWhere('subject', 'like', "%{$s}%");
             });
         }
 
         $logs = $query->take(2000)->get();
 
-        $fileName = 'olympia_email_logs_' . date('Y-m-d_His') . '.csv';
+        $fileName = 'olympia_email_logs_'.date('Y-m-d_His').'.csv';
         $headers = [
-            'Content-type'        => 'text/csv',
+            'Content-type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         return response()->stream(function () use ($logs) {
@@ -525,7 +529,7 @@ class EmailManagementController extends Controller
 
             foreach ($logs as $l) {
                 fputcsv($handle, [
-                    'LOG-' . str_pad($l->id, 6, '0', STR_PAD_LEFT),
+                    'LOG-'.str_pad($l->id, 6, '0', STR_PAD_LEFT),
                     $l->created_at ? $l->created_at->format('Y-m-d H:i:s') : 'N/A',
                     $l->recipient_name ?? 'N/A',
                     $l->recipient_email,
@@ -548,14 +552,14 @@ class EmailManagementController extends Controller
     public function updateSettings(Request $request)
     {
         $request->validate([
-            'sender_display_name'    => 'required|string|max:100',
-            'sender_email_address'   => 'required|email|max:150',
-            'reply_to_email'         => 'nullable|email|max:150',
+            'sender_display_name' => 'required|string|max:100',
+            'sender_email_address' => 'required|email|max:150',
+            'reply_to_email' => 'nullable|email|max:150',
             'official_support_email' => 'required|email|max:150',
-            'official_website_url'   => 'required|url|max:255',
-            'official_email_footer'  => 'required|string|max:500',
-            'email_banner_url'       => 'nullable|url|max:500',
-            'banner_image'           => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072', // max 3MB
+            'official_website_url' => 'required|url|max:255',
+            'official_email_footer' => 'required|string|max:500',
+            'email_banner_url' => 'nullable|url|max:500',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:3072', // max 3MB
         ]);
 
         Setting::set('sender_display_name', $request->sender_display_name, 'email', 'Official Email Sender Name');
@@ -573,14 +577,14 @@ class EmailManagementController extends Controller
         // Handle Banner image upload (takes priority if new file uploaded)
         if ($request->hasFile('banner_image')) {
             $file = $request->file('banner_image');
-            $filename = 'email-banner-' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'email-banner-'.time().'.'.$file->getClientOriginalExtension();
             $path = $file->storeAs('public/banners', $filename);
             // Publicly accessible storage link
-            $publicUrl = asset('storage/banners/' . $filename);
+            $publicUrl = asset('storage/banners/'.$filename);
             Setting::set('email_banner_url', $publicUrl, 'email', 'Custom Email Banner URL');
         }
 
-        return redirect()->to(route('admin.dashboard') . '#emailsettings-settings')
+        return redirect()->to(route('admin.dashboard').'#emailsettings-settings')
             ->with('success', 'Official email settings and institutional branding updated successfully.');
     }
 }

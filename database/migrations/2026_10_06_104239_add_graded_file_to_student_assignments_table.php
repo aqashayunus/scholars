@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('student_assignments', function (Blueprint $table) {
-            if (!Schema::hasColumn('student_assignments', 'graded_file_path')) {
+            if (! Schema::hasColumn('student_assignments', 'graded_file_path')) {
                 $table->string('graded_file_path')->nullable()->after('file_name');
             }
-            if (!Schema::hasColumn('student_assignments', 'graded_file_name')) {
+            if (! Schema::hasColumn('student_assignments', 'graded_file_name')) {
                 $table->string('graded_file_name')->nullable()->after('graded_file_path');
             }
         });

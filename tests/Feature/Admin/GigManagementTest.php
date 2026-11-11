@@ -18,21 +18,21 @@ class GigManagementTest extends TestCase
         $subject = Subject::factory()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.gigs.store'), [
-            'title'            => 'Weekend SPM Physics Tuition',
-            'subject_id'       => $subject->id,
-            'scheduled_at'     => now()->addDays(3)->toDateTimeString(),
+            'title' => 'Weekend SPM Physics Tuition',
+            'subject_id' => $subject->id,
+            'scheduled_at' => now()->addDays(3)->toDateTimeString(),
             'duration_minutes' => 90,
-            'payout_amount'    => 120.00,
+            'payout_amount' => 120.00,
         ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('teaching_gigs', [
-            'title'         => 'Weekend SPM Physics Tuition',
-            'subject_id'    => $subject->id,
-            'status'        => 'open',
-            'surge_bonus'   => 0,
+            'title' => 'Weekend SPM Physics Tuition',
+            'subject_id' => $subject->id,
+            'status' => 'open',
+            'surge_bonus' => 0,
             'payout_amount' => 120.00,
         ]);
     }
@@ -42,11 +42,11 @@ class GigManagementTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAs($admin)->post(route('admin.gigs.store'), [
-            'title'            => 'Orphan Gig',
-            'subject_id'       => 99999,
-            'scheduled_at'     => now()->addDay()->toDateTimeString(),
+            'title' => 'Orphan Gig',
+            'subject_id' => 99999,
+            'scheduled_at' => now()->addDay()->toDateTimeString(),
             'duration_minutes' => 60,
-            'payout_amount'    => 50,
+            'payout_amount' => 50,
         ]);
 
         $response->assertSessionHasErrors('subject_id');
@@ -58,13 +58,13 @@ class GigManagementTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $subject = Subject::factory()->create();
         $gig = TeachingGig::create([
-            'subject_id'       => $subject->id,
-            'title'            => 'Cancelled Session',
-            'scheduled_at'     => now()->addDay(),
+            'subject_id' => $subject->id,
+            'title' => 'Cancelled Session',
+            'scheduled_at' => now()->addDay(),
             'duration_minutes' => 60,
-            'payout_amount'    => 80,
-            'surge_bonus'      => 0,
-            'status'           => 'open',
+            'payout_amount' => 80,
+            'surge_bonus' => 0,
+            'status' => 'open',
         ]);
 
         $response = $this->actingAs($admin)->delete(route('admin.gigs.destroy', $gig->id));

@@ -13,10 +13,12 @@ use App\Models\Payment;
 use App\Models\PaymentInvoice;
 use App\Models\Setting;
 use App\Services\BillingNotificationService;
+use App\Services\Billplz\BillplzService;
 use App\Services\InvoiceService;
 use App\Services\PackagePricingService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -36,14 +38,14 @@ class BillingAdminService
     {
         $payments = Payment::with(['user', 'course'])->latest('id')->get();
         $symbol = Setting::get('currency_symbol', 'RM');
-        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))) . '_payments_' . date('Y-m-d_His') . '.csv';
+        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))).'_payments_'.date('Y-m-d_His').'.csv';
 
         $headers = [
-            'Content-type'        => 'text/csv',
+            'Content-type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         return response()->stream(function () use ($payments, $symbol) {
@@ -52,8 +54,8 @@ class BillingAdminService
 
             foreach ($payments as $pay) {
                 fputcsv($handle, [
-                    'INV-' . str_pad($pay->id, 5, '0', STR_PAD_LEFT),
-                    $pay->user->name ?? 'User #' . $pay->user_id,
+                    'INV-'.str_pad($pay->id, 5, '0', STR_PAD_LEFT),
+                    $pay->user->name ?? 'User #'.$pay->user_id,
                     $pay->user->email ?? 'N/A',
                     $pay->course->title ?? $pay->description ?? 'Tuition Fee',
                     $pay->payment_method ?? 'FPX Online',
@@ -70,14 +72,14 @@ class BillingAdminService
     public function exportEnrollmentsCsv(): StreamedResponse
     {
         $enrollments = Enrollment::with(['student.user', 'course.subject', 'course.teacher.user'])->latest('id')->get();
-        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))) . '_enrollments_' . date('Y-m-d_His') . '.csv';
+        $fileName = strtolower(str_replace(' ', '_', Setting::get('platform_name', 'olympiascholar'))).'_enrollments_'.date('Y-m-d_His').'.csv';
 
         $headers = [
-            'Content-type'        => 'text/csv',
+            'Content-type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
         return response()->stream(function () use ($enrollments) {
@@ -86,10 +88,10 @@ class BillingAdminService
 
             foreach ($enrollments as $enr) {
                 fputcsv($handle, [
-                    'ENR-' . str_pad($enr->id, 5, '0', STR_PAD_LEFT),
-                    $enr->student?->user?->name ?? 'Student #' . $enr->student_id,
+                    'ENR-'.str_pad($enr->id, 5, '0', STR_PAD_LEFT),
+                    $enr->student?->user?->name ?? 'Student #'.$enr->student_id,
                     $enr->student?->user?->email ?? 'N/A',
-                    $enr->course->title ?? 'Course #' . $enr->course_id,
+                    $enr->course->title ?? 'Course #'.$enr->course_id,
                     $enr->course->subject->name ?? 'General',
                     $enr->course->teacher->user->name ?? 'Staff',
                     $enr->progress_pct ?? 0,
@@ -106,13 +108,13 @@ class BillingAdminService
     public function createFeeStructure(Request $request): FeeStructure
     {
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'amount'          => 'required|numeric|min:0',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0',
             'education_level' => 'required|string|max:100',
-            'frequency'       => 'required|in:monthly,term,one_time,yearly',
-            'is_active'       => 'nullable',
-            'student_id'      => 'nullable|exists:students,id',
+            'frequency' => 'required|in:monthly,term,one_time,yearly',
+            'is_active' => 'nullable',
+            'student_id' => 'nullable|exists:students,id',
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
@@ -123,11 +125,11 @@ class BillingAdminService
         $fee = FeeStructure::create($validated);
 
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'package_created',
+            'user_id' => auth()->id(),
+            'action' => 'package_created',
             'target_type' => 'FeeStructure',
-            'ip_address'  => $request->ip(),
-            'details'     => "Created fee structure '{$fee->name}' at RM {$fee->amount}" . ($fee->student_id ? " (Targeted to student #{$fee->student_id})" : ""),
+            'ip_address' => $request->ip(),
+            'details' => "Created fee structure '{$fee->name}' at RM {$fee->amount}".($fee->student_id ? " (Targeted to student #{$fee->student_id})" : ''),
         ]);
 
         return $fee;
@@ -136,31 +138,31 @@ class BillingAdminService
     public function updateFeeStructure(FeeStructure $fee, Request $request): FeeStructure
     {
         $validated = $request->validate([
-            'name'            => 'required|string|max:255',
-            'description'     => 'nullable|string',
-            'amount'          => 'required|numeric|min:0',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0',
             'education_level' => 'required|string|max:100',
-            'frequency'       => 'required|in:monthly,term,one_time,yearly',
-            'is_active'       => 'nullable',
-            'student_id'      => 'nullable|exists:students,id',
+            'frequency' => 'required|in:monthly,term,one_time,yearly',
+            'is_active' => 'nullable',
+            'student_id' => 'nullable|exists:students,id',
             // Package engine fields
-            'package_type'     => 'nullable|in:individual,fixed_bundle,pick_n,tiered,custom',
+            'package_type' => 'nullable|in:individual,fixed_bundle,pick_n,tiered,custom',
             'minimum_subjects' => 'nullable|integer|min:1|max:20',
             'maximum_subjects' => 'nullable|integer|min:1|max:20|gte:minimum_subjects',
-            'effective_from'   => 'nullable|date',
-            'effective_until'  => 'nullable|date|after_or_equal:effective_from',
-            'status'           => 'nullable|in:draft,active,inactive,archived',
-            'subjects'               => 'nullable|array',
-            'subjects.*.subject_id'  => 'required|exists:subjects,id',
+            'effective_from' => 'nullable|date',
+            'effective_until' => 'nullable|date|after_or_equal:effective_from',
+            'status' => 'nullable|in:draft,active,inactive,archived',
+            'subjects' => 'nullable|array',
+            'subjects.*.subject_id' => 'required|exists:subjects,id',
             'subjects.*.is_required' => 'required|boolean',
-            'subjects.*.sort_order'  => 'nullable|integer|min:0',
+            'subjects.*.sort_order' => 'nullable|integer|min:0',
         ]);
 
-        $validated['is_active']  = $request->boolean('is_active', true);
+        $validated['is_active'] = $request->boolean('is_active', true);
         $validated['student_id'] = $request->filled('student_id') ? $validated['student_id'] : null;
 
         $oldValues = $fee->only(['name', 'amount', 'package_type', 'status']);
-        $fee->update(\Illuminate\Support\Arr::except($validated, ['subjects']));
+        $fee->update(Arr::except($validated, ['subjects']));
 
         // Sync subjects inline when submitted alongside the general update
         // (the dedicated updateFeeStructureSubjects endpoint still exists
@@ -170,10 +172,10 @@ class BillingAdminService
             foreach ($validated['subjects'] ?? [] as $idx => $sub) {
                 $syncData[$sub['subject_id']] = [
                     'is_required' => (bool) $sub['is_required'],
-                    'sort_order'  => (int) ($sub['sort_order'] ?? $idx),
+                    'sort_order' => (int) ($sub['sort_order'] ?? $idx),
                 ];
             }
-            if (!empty($syncData)) {
+            if (! empty($syncData)) {
                 $fee->subjects()->sync($syncData);
             }
         } elseif (($validated['package_type'] ?? null) === 'individual') {
@@ -181,12 +183,12 @@ class BillingAdminService
         }
 
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'package_updated',
+            'user_id' => auth()->id(),
+            'action' => 'package_updated',
             'target_type' => 'FeeStructure',
-            'target_id'   => $fee->id,
-            'ip_address'  => $request->ip(),
-            'details'     => json_encode([
+            'target_id' => $fee->id,
+            'ip_address' => $request->ip(),
+            'details' => json_encode([
                 'old' => $oldValues,
                 'new' => $fee->only(['name', 'amount', 'package_type', 'status']),
             ]),
@@ -214,10 +216,10 @@ class BillingAdminService
     public function syncFeeStructureSubjects(FeeStructure $fee, Request $request): void
     {
         $validated = $request->validate([
-            'subjects'                  => 'nullable|array',
-            'subjects.*.subject_id'     => 'required|exists:subjects,id',
-            'subjects.*.is_required'    => 'required|boolean',
-            'subjects.*.sort_order'     => 'nullable|integer|min:0',
+            'subjects' => 'nullable|array',
+            'subjects.*.subject_id' => 'required|exists:subjects,id',
+            'subjects.*.is_required' => 'required|boolean',
+            'subjects.*.sort_order' => 'nullable|integer|min:0',
         ]);
 
         DB::transaction(function () use ($fee, $validated, $request) {
@@ -225,18 +227,18 @@ class BillingAdminService
             foreach ($validated['subjects'] ?? [] as $idx => $sub) {
                 $syncData[$sub['subject_id']] = [
                     'is_required' => (bool) $sub['is_required'],
-                    'sort_order'  => (int) ($sub['sort_order'] ?? $idx),
+                    'sort_order' => (int) ($sub['sort_order'] ?? $idx),
                 ];
             }
             $fee->subjects()->sync($syncData);
 
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'subject_sync',
+                'user_id' => auth()->id(),
+                'action' => 'subject_sync',
                 'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['subject_ids' => array_keys($syncData)]),
+                'target_id' => $fee->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode(['subject_ids' => array_keys($syncData)]),
             ]);
         });
     }
@@ -247,16 +249,16 @@ class BillingAdminService
     public function syncFeeStructureItems(FeeStructure $fee, Request $request): void
     {
         $validated = $request->validate([
-            'items'                      => 'nullable|array',
-            'items.*.name'               => 'required|string|max:255',
-            'items.*.description'        => 'nullable|string',
-            'items.*.item_type'          => 'required|in:registration,tuition,material,resource,assessment,deposit,other',
-            'items.*.amount'             => 'required|numeric|min:0',
-            'items.*.quantity'           => 'nullable|integer|min:1',
-            'items.*.billing_frequency'  => 'required|in:one_time,monthly,term,annual',
-            'items.*.is_optional'        => 'nullable|boolean',
-            'items.*.is_refundable'      => 'nullable|boolean',
-            'items.*.sort_order'         => 'nullable|integer|min:0',
+            'items' => 'nullable|array',
+            'items.*.name' => 'required|string|max:255',
+            'items.*.description' => 'nullable|string',
+            'items.*.item_type' => 'required|in:registration,tuition,material,resource,assessment,deposit,other',
+            'items.*.amount' => 'required|numeric|min:0',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.billing_frequency' => 'required|in:one_time,monthly,term,annual',
+            'items.*.is_optional' => 'nullable|boolean',
+            'items.*.is_refundable' => 'nullable|boolean',
+            'items.*.sort_order' => 'nullable|integer|min:0',
         ]);
 
         DB::transaction(function () use ($fee, $validated, $request) {
@@ -264,25 +266,25 @@ class BillingAdminService
 
             foreach ($validated['items'] ?? [] as $idx => $item) {
                 $fee->items()->create([
-                    'name'              => $item['name'],
-                    'description'       => $item['description'] ?? null,
-                    'item_type'         => $item['item_type'],
-                    'amount'            => $item['amount'],
-                    'quantity'          => $item['quantity'] ?? 1,
+                    'name' => $item['name'],
+                    'description' => $item['description'] ?? null,
+                    'item_type' => $item['item_type'],
+                    'amount' => $item['amount'],
+                    'quantity' => $item['quantity'] ?? 1,
                     'billing_frequency' => $item['billing_frequency'],
-                    'is_optional'       => $item['is_optional'] ?? false,
-                    'is_refundable'     => $item['is_refundable'] ?? false,
-                    'sort_order'        => $item['sort_order'] ?? $idx,
+                    'is_optional' => $item['is_optional'] ?? false,
+                    'is_refundable' => $item['is_refundable'] ?? false,
+                    'sort_order' => $item['sort_order'] ?? $idx,
                 ]);
             }
 
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'billing_component_sync',
+                'user_id' => auth()->id(),
+                'action' => 'billing_component_sync',
                 'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['items_count' => count($validated['items'] ?? [])]),
+                'target_id' => $fee->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode(['items_count' => count($validated['items'] ?? [])]),
             ]);
         });
     }
@@ -293,11 +295,11 @@ class BillingAdminService
     public function syncFeeStructureTiers(FeeStructure $fee, Request $request): void
     {
         $validated = $request->validate([
-            'tiers'                       => 'required|array|min:1',
-            'tiers.*.minimum_subjects'    => 'required|integer|min:1',
-            'tiers.*.maximum_subjects'    => 'required|integer|min:1|gte:tiers.*.minimum_subjects',
-            'tiers.*.price'               => 'required|numeric|min:0',
-            'tiers.*.sort_order'          => 'nullable|integer|min:0',
+            'tiers' => 'required|array|min:1',
+            'tiers.*.minimum_subjects' => 'required|integer|min:1',
+            'tiers.*.maximum_subjects' => 'required|integer|min:1|gte:tiers.*.minimum_subjects',
+            'tiers.*.price' => 'required|numeric|min:0',
+            'tiers.*.sort_order' => 'nullable|integer|min:0',
         ]);
 
         // Validate non-overlapping tiers
@@ -310,18 +312,18 @@ class BillingAdminService
                 $fee->priceTiers()->create([
                     'minimum_subjects' => $tier['minimum_subjects'],
                     'maximum_subjects' => $tier['maximum_subjects'],
-                    'price'            => $tier['price'],
-                    'sort_order'       => $tier['sort_order'] ?? $idx,
+                    'price' => $tier['price'],
+                    'sort_order' => $tier['sort_order'] ?? $idx,
                 ]);
             }
 
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'pricing_changed',
+                'user_id' => auth()->id(),
+                'action' => 'pricing_changed',
                 'target_type' => 'FeeStructure',
-                'target_id'   => $fee->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['tiers' => $validated['tiers']]),
+                'target_id' => $fee->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode(['tiers' => $validated['tiers']]),
             ]);
         });
     }
@@ -336,17 +338,17 @@ class BillingAdminService
 
         return DB::transaction(function () use ($original, $request) {
             $new = $original->replicate(['student_id', 'parent_fee_structure_id', 'version', 'deleted_at']);
-            $new->name      = 'Copy of ' . $original->name;
-            $new->status    = FeeStructure::STATUS_DRAFT;
+            $new->name = 'Copy of '.$original->name;
+            $new->status = FeeStructure::STATUS_DRAFT;
             $new->is_active = false;
-            $new->version   = 1;
+            $new->version = 1;
             $new->parent_fee_structure_id = null;
             $new->save();
 
             foreach ($original->subjects as $subject) {
                 $new->subjects()->attach($subject->id, [
                     'is_required' => $subject->pivot->is_required,
-                    'sort_order'  => $subject->pivot->sort_order,
+                    'sort_order' => $subject->pivot->sort_order,
                 ]);
             }
 
@@ -362,12 +364,12 @@ class BillingAdminService
             }
 
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'package_duplicated',
+                'user_id' => auth()->id(),
+                'action' => 'package_duplicated',
                 'target_type' => 'FeeStructure',
-                'target_id'   => $new->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode(['original_id' => $original->id, 'original_name' => $original->name]),
+                'target_id' => $new->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode(['original_id' => $original->id, 'original_name' => $original->name]),
             ]);
 
             return $new;
@@ -383,10 +385,10 @@ class BillingAdminService
         $original = FeeStructure::with(['subjects', 'items', 'priceTiers'])->findOrFail($id);
 
         $validated = $request->validate([
-            'amount'          => 'nullable|numeric|min:0',
-            'effective_from'  => 'nullable|date',
+            'amount' => 'nullable|numeric|min:0',
+            'effective_from' => 'nullable|date',
             'effective_until' => 'nullable|date|after_or_equal:effective_from',
-            'notes'           => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         return DB::transaction(function () use ($original, $validated, $request) {
@@ -394,21 +396,27 @@ class BillingAdminService
 
             $new = $original->replicate(['deleted_at', 'version']);
             $new->version = $original->version + 1;
-            $new->name    = $original->name . ' v' . $new->version;
+            $new->name = $original->name.' v'.$new->version;
             $new->parent_fee_structure_id = $original->parent_fee_structure_id ?? $original->id;
-            $new->status    = FeeStructure::STATUS_DRAFT;
+            $new->status = FeeStructure::STATUS_DRAFT;
             $new->is_active = false;
 
-            if (isset($validated['amount']))          $new->amount         = $validated['amount'];
-            if (isset($validated['effective_from']))  $new->effective_from = $validated['effective_from'];
-            if (isset($validated['effective_until'])) $new->effective_until = $validated['effective_until'];
+            if (isset($validated['amount'])) {
+                $new->amount = $validated['amount'];
+            }
+            if (isset($validated['effective_from'])) {
+                $new->effective_from = $validated['effective_from'];
+            }
+            if (isset($validated['effective_until'])) {
+                $new->effective_until = $validated['effective_until'];
+            }
 
             $new->save();
 
             foreach ($original->subjects as $subject) {
                 $new->subjects()->attach($subject->id, [
                     'is_required' => $subject->pivot->is_required,
-                    'sort_order'  => $subject->pivot->sort_order,
+                    'sort_order' => $subject->pivot->sort_order,
                 ]);
             }
 
@@ -424,15 +432,15 @@ class BillingAdminService
             }
 
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'package_version_created',
+                'user_id' => auth()->id(),
+                'action' => 'package_version_created',
                 'target_type' => 'FeeStructure',
-                'target_id'   => $new->id,
-                'ip_address'  => $request->ip(),
-                'details'     => json_encode([
-                    'original_id'  => $original->id,
-                    'new_version'  => $new->version,
-                    'notes'        => $validated['notes'] ?? null,
+                'target_id' => $new->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode([
+                    'original_id' => $original->id,
+                    'new_version' => $new->version,
+                    'notes' => $validated['notes'] ?? null,
                 ]),
             ]);
 
@@ -448,12 +456,12 @@ class BillingAdminService
         $fee = FeeStructure::with('subjects')->findOrFail($id);
 
         return [
-            'package_type'     => $fee->package_type ?? 'individual',
+            'package_type' => $fee->package_type ?? 'individual',
             'minimum_subjects' => $fee->minimum_subjects,
             'maximum_subjects' => $fee->maximum_subjects,
-            'subjects'         => $fee->subjects->map(fn ($s) => [
-                'id'          => $s->id,
-                'name'        => $s->name,
+            'subjects' => $fee->subjects->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
                 'is_required' => (bool) $s->pivot->is_required,
                 'monthly_fee' => (float) ($s->monthly_fee ?? 0),
             ]),
@@ -471,7 +479,7 @@ class BillingAdminService
     {
         $fee = FeeStructure::with(['subjects', 'items', 'priceTiers'])->findOrFail($id);
 
-        if (!$fee->is_available) {
+        if (! $fee->is_available) {
             return ['error' => 'Package is not available.', 'status' => 422];
         }
 
@@ -479,6 +487,7 @@ class BillingAdminService
 
         try {
             $pricing = $this->pricing->calculate($fee, $subjectIds);
+
             return ['pricing' => $pricing->toArray(), 'status' => 200];
         } catch (\Exception $e) {
             return ['error' => $e->getMessage(), 'status' => 422];
@@ -492,15 +501,15 @@ class BillingAdminService
         $oldDueDate = $invoice->due_date ? $invoice->due_date->toDateString() : null;
 
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'billing_period' => 'nullable|string|max:100',
-            'due_date'       => 'required|date',
-            'notes'          => 'nullable|string|max:1000',
+            'due_date' => 'required|date',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $dueDateChanged = $oldDueDate !== Carbon::parse($validated['due_date'])->toDateString();
 
-        if (isset($validated['notes']) && !Schema::hasColumn('invoices', 'notes')) {
+        if (isset($validated['notes']) && ! Schema::hasColumn('invoices', 'notes')) {
             $validated['description'] = $validated['notes'];
             unset($validated['notes']);
         }
@@ -525,7 +534,7 @@ class BillingAdminService
 
         $validated = $request->validate([
             'due_date' => 'required|date',
-            'reason'   => 'nullable|string|max:255',
+            'reason' => 'nullable|string|max:255',
         ]);
 
         $invoice->due_date = $validated['due_date'];
@@ -533,7 +542,7 @@ class BillingAdminService
 
         $this->syncInvoiceDueDateChange($invoice, $validated['reason'] ?? null, $oldDueDate);
 
-        $message = "Due date for invoice {$invoice->invoice_number} updated to " . $invoice->due_date->format('d M Y') . ".";
+        $message = "Due date for invoice {$invoice->invoice_number} updated to ".$invoice->due_date->format('d M Y').'.';
 
         return ['invoice' => $invoice->fresh(), 'message' => $message];
     }
@@ -541,22 +550,22 @@ class BillingAdminService
     public function updateDefaultDueDays(Request $request): void
     {
         $validated = $request->validate([
-            'invoice_due_days'             => 'required|integer|min:1|max:180',
+            'invoice_due_days' => 'required|integer|min:1|max:180',
             'bundle_elective_discount_pct' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        Setting::set('billing.invoice_due_days', (string)$validated['invoice_due_days'], 'billing', 'Invoice Due Days (after issue date)');
+        Setting::set('billing.invoice_due_days', (string) $validated['invoice_due_days'], 'billing', 'Invoice Due Days (after issue date)');
         if (isset($validated['bundle_elective_discount_pct'])) {
-            Setting::set('billing.bundle_elective_discount_pct', (string)$validated['bundle_elective_discount_pct'], 'billing', 'Bundle Elective Add-on Discount (%)');
+            Setting::set('billing.bundle_elective_discount_pct', (string) $validated['bundle_elective_discount_pct'], 'billing', 'Bundle Elective Add-on Discount (%)');
         }
         Setting::clearCache();
 
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_default_due_days',
+            'user_id' => auth()->id(),
+            'action' => 'update_default_due_days',
             'target_type' => 'Setting',
-            'ip_address'  => $request->ip(),
-            'details'     => "Updated default invoice payment due timeline to {$validated['invoice_due_days']} days (bundle elective discount: " . ($validated['bundle_elective_discount_pct'] ?? '0') . "%).",
+            'ip_address' => $request->ip(),
+            'details' => "Updated default invoice payment due timeline to {$validated['invoice_due_days']} days (bundle elective discount: ".($validated['bundle_elective_discount_pct'] ?? '0').'%).',
         ]);
     }
 
@@ -569,12 +578,12 @@ class BillingAdminService
         $today = now()->startOfDay();
 
         // 1. Reconcile status if invoice is active (not fully paid and not cancelled)
-        if (!in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
+        if (! in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
             if ($newDueDate->lt($today)) {
                 $invoice->status = InvoiceStatus::Overdue;
             } else {
                 // If it was overdue, lift overdue back to partially_paid or issued
-                if ((float)$invoice->amount_paid > 0) {
+                if ((float) $invoice->amount_paid > 0) {
                     $invoice->status = InvoiceStatus::PartiallyPaid;
                 } else {
                     $invoice->status = InvoiceStatus::Issued;
@@ -599,13 +608,13 @@ class BillingAdminService
         $oldDueDateStr = $oldDueDate ? Carbon::parse($oldDueDate)->format('d M Y') : 'N/A';
 
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_invoice_due_date',
+            'user_id' => auth()->id(),
+            'action' => 'update_invoice_due_date',
             'target_type' => 'Invoice',
-            'target_id'   => $invoice->id,
-            'ip_address'  => request()->ip(),
-            'details'     => "Updated due date for invoice #{$invoice->invoice_number} from {$oldDueDateStr} to {$newDueDateStr}." .
-                             ($reason ? " Reason: {$reason}" : ""),
+            'target_id' => $invoice->id,
+            'ip_address' => request()->ip(),
+            'details' => "Updated due date for invoice #{$invoice->invoice_number} from {$oldDueDateStr} to {$newDueDateStr}.".
+                             ($reason ? " Reason: {$reason}" : ''),
         ]);
 
         // 5. Notify Users (Student & Parents) without mentioning admin
@@ -615,7 +624,7 @@ class BillingAdminService
     public function deleteInvoice(int $id): string
     {
         $invoice = Invoice::findOrFail($id);
-        $number  = $invoice->invoice_number;
+        $number = $invoice->invoice_number;
 
         // 1. Collect linked payment IDs BEFORE deleting pivot rows
         $linkedPaymentIds = PaymentInvoice::where('invoice_id', $id)->pluck('payment_id');
@@ -638,7 +647,9 @@ class BillingAdminService
 
         foreach ($linkedPaymentIds as $paymentId) {
             $payment = $payments->get($paymentId);
-            if (!$payment) continue;
+            if (! $payment) {
+                continue;
+            }
             $row = $remainingByPaymentId->get($paymentId);
             $remaining = $row ? (int) $row->remaining : 0;
             $adminNote = "Invoice {$number} deleted by admin.";
@@ -664,18 +675,18 @@ class BillingAdminService
     public function updateFinanceSettings(Request $request): void
     {
         $validated = $request->validate([
-            'company_bank_name'           => 'nullable|string|max:255',
-            'company_bank_account_name'   => 'nullable|string|max:255',
+            'company_bank_name' => 'nullable|string|max:255',
+            'company_bank_account_name' => 'nullable|string|max:255',
             'company_bank_account_number' => 'nullable|string|max:255',
-            'company_bank_instructions'   => 'nullable|string',
-            'gateway_provider'            => 'nullable|string|max:100',
-            'gateway_merchant_id'         => 'nullable|string|max:255',
-            'gateway_sandbox_mode'        => 'nullable|boolean',
-            'billplz_api_key'             => 'nullable|string|max:255',
-            'billplz_x_signature_key'     => 'nullable|string|max:255',
-            'billplz_collection_id'       => 'nullable|string|max:255',
-            'billplz_sandbox'             => 'nullable|boolean',
-            'is_gateway_form'             => 'nullable|boolean',
+            'company_bank_instructions' => 'nullable|string',
+            'gateway_provider' => 'nullable|string|max:100',
+            'gateway_merchant_id' => 'nullable|string|max:255',
+            'gateway_sandbox_mode' => 'nullable|boolean',
+            'billplz_api_key' => 'nullable|string|max:255',
+            'billplz_x_signature_key' => 'nullable|string|max:255',
+            'billplz_collection_id' => 'nullable|string|max:255',
+            'billplz_sandbox' => 'nullable|boolean',
+            'is_gateway_form' => 'nullable|boolean',
         ]);
 
         if ($request->has('company_bank_name')) {
@@ -713,35 +724,35 @@ class BillingAdminService
         }
 
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'update_settings',
+            'user_id' => auth()->id(),
+            'action' => 'update_settings',
             'target_type' => 'FinanceSettings',
-            'ip_address'  => $request->ip(),
-            'details'     => "Updated company banking & Billplz payment gateway settings.",
+            'ip_address' => $request->ip(),
+            'details' => 'Updated company banking & Billplz payment gateway settings.',
         ]);
     }
 
     public function revealGatewayCredentials(Request $request): array
     {
         FinancialAuditLog::create([
-            'user_id'     => auth()->id(),
-            'action'      => 'view_credentials',
+            'user_id' => auth()->id(),
+            'action' => 'view_credentials',
             'target_type' => 'GatewayCredentials',
-            'ip_address'  => $request->ip(),
-            'details'     => "Admin revealed sensitive payment gateway credentials.",
+            'ip_address' => $request->ip(),
+            'details' => 'Admin revealed sensitive payment gateway credentials.',
         ]);
 
-        $billplzService = new \App\Services\Billplz\BillplzService();
+        $billplzService = new BillplzService;
 
         return [
-            'success'                 => true,
-            'merchant_id'             => Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
-            'api_key'                 => $billplzService->getApiKey() ?: 'sk_live_' . md5('osc_live_secret_key_prod'),
-            'billplz_api_key'         => $billplzService->getApiKey() ?: '',
+            'success' => true,
+            'merchant_id' => Setting::get('gateway_merchant_id', 'OSC_MERCHANT_8892'),
+            'api_key' => $billplzService->getApiKey() ?: 'sk_live_'.md5('osc_live_secret_key_prod'),
+            'billplz_api_key' => $billplzService->getApiKey() ?: '',
             'billplz_x_signature_key' => $billplzService->getXSignatureKey() ?: '',
-            'billplz_collection_id'   => $billplzService->getCollectionId() ?: '',
-            'billplz_sandbox'         => $billplzService->isSandbox(),
-            'provider'                => Setting::get('gateway_provider', 'billplz'),
+            'billplz_collection_id' => $billplzService->getCollectionId() ?: '',
+            'billplz_sandbox' => $billplzService->isSandbox(),
+            'provider' => Setting::get('gateway_provider', 'billplz'),
         ];
     }
 
@@ -750,10 +761,10 @@ class BillingAdminService
      */
     public function testBillplzConnection(Request $request): array
     {
-        $billplzService = new \App\Services\Billplz\BillplzService();
-        $apiKey       = $request->filled('api_key') ? trim($request->input('api_key')) : null;
+        $billplzService = new BillplzService;
+        $apiKey = $request->filled('api_key') ? trim($request->input('api_key')) : null;
         $collectionId = $request->filled('collection_id') ? trim($request->input('collection_id')) : null;
-        $isSandbox    = $request->has('sandbox') ? $request->boolean('sandbox') : null;
+        $isSandbox = $request->has('sandbox') ? $request->boolean('sandbox') : null;
 
         return $billplzService->testConnection($apiKey, $collectionId, $isSandbox);
     }

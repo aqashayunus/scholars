@@ -38,6 +38,7 @@ class ProcessClassReminders extends Command
 
         if ($upcomingClasses->isEmpty()) {
             $this->line('  No upcoming classes found within window.');
+
             return Command::SUCCESS;
         }
 
@@ -45,19 +46,24 @@ class ProcessClassReminders extends Command
 
         foreach ($upcomingClasses as $class) {
             $course = $class->course;
-            if (!$course) continue;
+            if (! $course) {
+                continue;
+            }
 
             $enrollments = $course->enrollments ?? collect();
 
             foreach ($enrollments as $enrollment) {
                 $student = $enrollment->student;
-                if (!$student) continue;
+                if (! $student) {
+                    continue;
+                }
 
                 $idempotencyKey = "class_{$class->id}_student_{$student->id}_reminder";
 
                 if ($isDryRun) {
                     $this->line("  [dry-run] Would trigger reminder for Student #{$student->id} ({$student->user?->name}) — Class: {$class->title}");
                     $dispatched++;
+
                     continue;
                 }
 
@@ -66,9 +72,9 @@ class ProcessClassReminders extends Command
                         'upcoming_class_reminder',
                         [
                             'live_class' => $class,
-                            'course'     => $course,
-                            'student'    => $student,
-                            'user'       => $student->user,
+                            'course' => $course,
+                            'student' => $student,
+                            'user' => $student->user,
                         ],
                         $idempotencyKey
                     );
@@ -77,12 +83,13 @@ class ProcessClassReminders extends Command
                         $dispatched++;
                     }
                 } catch (\Throwable $e) {
-                    Log::error("[ProcessClassReminders] Failed for class #{$class->id}, student #{$student->id}: " . $e->getMessage());
+                    Log::error("[ProcessClassReminders] Failed for class #{$class->id}, student #{$student->id}: ".$e->getMessage());
                 }
             }
         }
 
         $this->info("  Processed: {$dispatched} reminder(s) dispatched.");
+
         return Command::SUCCESS;
     }
 }

@@ -5,7 +5,6 @@ namespace Tests\Feature\Admin;
 use App\Models\Teacher;
 use App\Models\TeacherClassClaim;
 use App\Models\User;
-use App\Models\UserNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,21 +16,21 @@ class TeacherClaimManagementTest extends TestCase
     {
         $teacherUser = User::factory()->create(['role' => 'teacher']);
         $teacher = Teacher::create([
-            'user_id'          => $teacherUser->id,
-            'qualification'    => 'B.Ed',
+            'user_id' => $teacherUser->id,
+            'qualification' => 'B.Ed',
             'experience_years' => 3,
         ]);
 
         return TeacherClassClaim::create(array_merge([
-            'claim_number'     => TeacherClassClaim::generateClaimNumber(),
-            'teacher_id'       => $teacher->id,
-            'subject_name'     => 'Mathematics',
-            'class_title'      => 'Algebra Revision',
-            'class_date'       => now()->subDay(),
+            'claim_number' => TeacherClassClaim::generateClaimNumber(),
+            'teacher_id' => $teacher->id,
+            'subject_name' => 'Mathematics',
+            'class_title' => 'Algebra Revision',
+            'class_date' => now()->subDay(),
             'duration_minutes' => 60,
-            'rate_per_class'   => 50.00,
-            'amount'           => 50.00,
-            'status'           => 'pending',
+            'rate_per_class' => 50.00,
+            'amount' => 50.00,
+            'status' => 'pending',
         ], $overrides));
     }
 
@@ -49,7 +48,7 @@ class TeacherClaimManagementTest extends TestCase
         $this->assertNotNull($claim->approved_at);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $claim->teacher->user_id,
-            'type'    => 'claim',
+            'type' => 'claim',
         ]);
     }
 
@@ -90,7 +89,7 @@ class TeacherClaimManagementTest extends TestCase
         $claim = $this->makeClaim(['status' => 'approved']);
 
         $this->actingAs($admin)->post(route('admin.teacher-claims.mark-paid', $claim->id), [
-            'payment_method'    => 'DuitNow QR',
+            'payment_method' => 'DuitNow QR',
             'payment_reference' => 'MBB-12345',
         ]);
 

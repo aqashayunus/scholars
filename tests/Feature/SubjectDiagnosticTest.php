@@ -3,14 +3,13 @@
 namespace Tests\Feature;
 
 use App\Enums\StudentAssignmentStatus;
+use App\Http\Controllers\Auth\StudentRegistrationController;
 use App\Models\Assignment;
-use App\Models\Course;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\User;
-use App\Http\Controllers\Auth\StudentRegistrationController;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -27,7 +26,7 @@ class SubjectDiagnosticTest extends TestCase
         parent::setUp();
 
         $this->adminUser = User::factory()->create([
-            'role'      => 'admin',
+            'role' => 'admin',
             'is_active' => true,
         ]);
     }
@@ -37,31 +36,31 @@ class SubjectDiagnosticTest extends TestCase
         $subject = Subject::firstOrCreate(
             ['slug' => 'test-math-f4'],
             [
-                'name'           => 'Test Mathematics Form 4',
+                'name' => 'Test Mathematics Form 4',
                 'education_type' => 'secondary',
-                'stage'          => 'Upper Secondary',
-                'form_year'      => 'Form 4',
-                'category'       => 'Core',
-                'code'           => 'TEST-MATH-F4',
-                'is_active'      => true,
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 4',
+                'category' => 'Core',
+                'code' => 'TEST-MATH-F4',
+                'is_active' => true,
             ]
         );
 
         $diagnostic = Assignment::create([
-            'title'              => 'Form 4 Mathematics Diagnostic Assessment',
-            'type'               => 'Diagnostic Test',
+            'title' => 'Form 4 Mathematics Diagnostic Assessment',
+            'type' => 'Diagnostic Test',
             'time_limit_minutes' => 30,
-            'total_questions'    => 20,
-            'is_global'          => false,
+            'total_questions' => 20,
+            'is_global' => false,
         ]);
 
         $response = $this->actingAs($this->adminUser)
             ->post(route('admin.subjects.diagnostic.set', $subject->id), [
-                'diagnostic_assignment_id'    => $diagnostic->id,
+                'diagnostic_assignment_id' => $diagnostic->id,
                 'diagnostic_duration_minutes' => 20,
             ]);
 
-        $response->assertRedirect(route('admin.dashboard') . '#courses-subjects');
+        $response->assertRedirect(route('admin.dashboard').'#courses-subjects');
         $subject->refresh();
 
         $this->assertEquals($diagnostic->id, $subject->diagnostic_assignment_id);
@@ -75,26 +74,26 @@ class SubjectDiagnosticTest extends TestCase
         $subject = Subject::firstOrCreate(
             ['slug' => 'test-sci-f4'],
             [
-                'name'           => 'Test Science Form 4',
+                'name' => 'Test Science Form 4',
                 'education_type' => 'secondary',
-                'stage'          => 'Upper Secondary',
-                'form_year'      => 'Form 4',
-                'category'       => 'Core',
-                'code'           => 'TEST-SCI-F4',
-                'is_active'      => true,
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 4',
+                'category' => 'Core',
+                'code' => 'TEST-SCI-F4',
+                'is_active' => true,
             ]
         );
 
         $response = $this->actingAs($this->adminUser)
             ->post(route('admin.subjects.diagnostic.create', $subject->id), [
-                'title'                       => 'Diagnostic Assessment: Science (Form 4)',
-                'total_questions'             => 25,
+                'title' => 'Diagnostic Assessment: Science (Form 4)',
+                'total_questions' => 25,
                 'diagnostic_duration_minutes' => 20,
-                'total_marks'                 => 25,
-                'answer_key'                  => 'A,B,C,D,A',
+                'total_marks' => 25,
+                'answer_key' => 'A,B,C,D,A',
             ]);
 
-        $response->assertRedirect(route('admin.dashboard') . '#courses-subjects');
+        $response->assertRedirect(route('admin.dashboard').'#courses-subjects');
         $subject->refresh();
 
         $this->assertNotNull($subject->diagnostic_assignment_id);
@@ -112,19 +111,19 @@ class SubjectDiagnosticTest extends TestCase
     {
         $diagnostic = Assignment::create([
             'title' => 'Form 5 English Diagnostic',
-            'type'  => 'Diagnostic Test',
+            'type' => 'Diagnostic Test',
         ]);
 
         $subject = Subject::firstOrCreate(
             ['slug' => 'test-eng-f5'],
             [
-                'name'                     => 'Test English Form 5',
-                'education_type'           => 'secondary',
-                'stage'                    => 'Upper Secondary',
-                'form_year'                => 'Form 5',
-                'category'                 => 'Core',
-                'code'                     => 'TEST-ENG-F5',
-                'is_active'                => true,
+                'name' => 'Test English Form 5',
+                'education_type' => 'secondary',
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 5',
+                'category' => 'Core',
+                'code' => 'TEST-ENG-F5',
+                'is_active' => true,
                 'diagnostic_assignment_id' => $diagnostic->id,
             ]
         );
@@ -132,7 +131,7 @@ class SubjectDiagnosticTest extends TestCase
         $response = $this->actingAs($this->adminUser)
             ->delete(route('admin.subjects.diagnostic.detach', $subject->id));
 
-        $response->assertRedirect(route('admin.dashboard') . '#courses-subjects');
+        $response->assertRedirect(route('admin.dashboard').'#courses-subjects');
         $subject->refresh();
 
         $this->assertNull($subject->diagnostic_assignment_id);
@@ -145,30 +144,30 @@ class SubjectDiagnosticTest extends TestCase
     {
         $teacherUser = User::factory()->create(['role' => 'teacher']);
         $teacher = Teacher::create([
-            'user_id'       => $teacherUser->id,
+            'user_id' => $teacherUser->id,
             'qualification' => 'Degree in Education',
         ]);
 
         $mathDiagnostic = Assignment::create([
             'title' => 'Mathematics Diagnostic',
-            'type'  => 'Diagnostic Test',
+            'type' => 'Diagnostic Test',
         ]);
 
         $scienceDiagnostic = Assignment::create([
             'title' => 'Science Diagnostic',
-            'type'  => 'Diagnostic Test',
+            'type' => 'Diagnostic Test',
         ]);
 
         $math = Subject::firstOrCreate(
             ['slug' => 'test-math-reg'],
             [
-                'name'                     => 'Test Math Reg',
-                'education_type'           => 'secondary',
-                'stage'                    => 'Upper Secondary',
-                'form_year'                => 'Form 4',
-                'category'                 => 'Core',
-                'code'                     => 'TMATH',
-                'is_active'                => true,
+                'name' => 'Test Math Reg',
+                'education_type' => 'secondary',
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 4',
+                'category' => 'Core',
+                'code' => 'TMATH',
+                'is_active' => true,
                 'diagnostic_assignment_id' => $mathDiagnostic->id,
             ]
         );
@@ -176,13 +175,13 @@ class SubjectDiagnosticTest extends TestCase
         $science = Subject::firstOrCreate(
             ['slug' => 'test-sci-reg'],
             [
-                'name'                     => 'Test Sci Reg',
-                'education_type'           => 'secondary',
-                'stage'                    => 'Upper Secondary',
-                'form_year'                => 'Form 4',
-                'category'                 => 'Core',
-                'code'                     => 'TSCI',
-                'is_active'                => true,
+                'name' => 'Test Sci Reg',
+                'education_type' => 'secondary',
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 4',
+                'category' => 'Core',
+                'code' => 'TSCI',
+                'is_active' => true,
                 'diagnostic_assignment_id' => $scienceDiagnostic->id,
             ]
         );
@@ -190,7 +189,7 @@ class SubjectDiagnosticTest extends TestCase
         $studentUser = User::factory()->create(['role' => 'student']);
         $student = Student::create([
             'user_id' => $studentUser->id,
-            'level'   => 'Form 4',
+            'level' => 'Form 4',
         ]);
 
         // Enroll student in both subjects
@@ -202,15 +201,15 @@ class SubjectDiagnosticTest extends TestCase
 
         // Verify diagnostic tests were auto-assigned for both subjects
         $this->assertDatabaseHas('student_assignments', [
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $mathDiagnostic->id,
-            'status'        => 'pending',
+            'status' => 'pending',
         ]);
 
         $this->assertDatabaseHas('student_assignments', [
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $scienceDiagnostic->id,
-            'status'        => 'pending',
+            'status' => 'pending',
         ]);
     }
 
@@ -221,13 +220,13 @@ class SubjectDiagnosticTest extends TestCase
         $subject = Subject::firstOrCreate(
             ['slug' => 'test-bm-f4'],
             [
-                'name'           => 'Test Bahasa Melayu Form 4',
+                'name' => 'Test Bahasa Melayu Form 4',
                 'education_type' => 'secondary',
-                'stage'          => 'Upper Secondary',
-                'form_year'      => 'Form 4',
-                'category'       => 'Core',
-                'code'           => 'TEST-BM-F4',
-                'is_active'      => true,
+                'stage' => 'Upper Secondary',
+                'form_year' => 'Form 4',
+                'category' => 'Core',
+                'code' => 'TEST-BM-F4',
+                'is_active' => true,
             ]
         );
 
@@ -235,16 +234,16 @@ class SubjectDiagnosticTest extends TestCase
 
         $response = $this->actingAs($this->adminUser)
             ->post(route('admin.subjects.diagnostic.create', $subject->id), [
-                'title'                       => 'Diagnostic Assessment: BM Worksheet',
-                'total_questions'             => 10,
+                'title' => 'Diagnostic Assessment: BM Worksheet',
+                'total_questions' => 10,
                 'diagnostic_duration_minutes' => 30,
-                'total_marks'                 => 100,
-                'answer_key'                  => 'A,B,C,D',
-                'file'                        => $wordDoc,
-                'is_interactive_pdf'          => 1, // Accidentally checked interactive PDF with docx
+                'total_marks' => 100,
+                'answer_key' => 'A,B,C,D',
+                'file' => $wordDoc,
+                'is_interactive_pdf' => 1, // Accidentally checked interactive PDF with docx
             ]);
 
-        $response->assertRedirect(route('admin.dashboard') . '#courses-subjects');
+        $response->assertRedirect(route('admin.dashboard').'#courses-subjects');
         $subject->refresh();
 
         $created = $subject->diagnosticTest;
@@ -260,27 +259,27 @@ class SubjectDiagnosticTest extends TestCase
         $studentUser = User::factory()->create(['role' => 'student']);
         $student = Student::create([
             'user_id' => $studentUser->id,
-            'level'   => 'Form 4',
+            'level' => 'Form 4',
         ]);
 
         $diagnostic = Assignment::create([
-            'title'              => 'Physics Diagnostic Assessment',
-            'type'               => 'Diagnostic Test',
+            'title' => 'Physics Diagnostic Assessment',
+            'type' => 'Diagnostic Test',
             'time_limit_minutes' => 30,
-            'total_questions'    => 5,
-            'is_global'          => false,
+            'total_questions' => 5,
+            'is_global' => false,
         ]);
 
         $sa = StudentAssignment::create([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $diagnostic->id,
-            'status'        => 'pending',
+            'status' => 'pending',
         ]);
 
         // Student sends autosave draft request
         $response = $this->actingAs($studentUser)
             ->postJson(route('student.diagnostic.save-draft', $diagnostic->id), [
-                'answers'            => ['q1' => 'B', 'q2' => 'D', 'q3' => 'A'],
+                'answers' => ['q1' => 'B', 'q2' => 'D', 'q3' => 'A'],
                 'time_taken_seconds' => 140,
             ]);
 
@@ -315,22 +314,22 @@ class SubjectDiagnosticTest extends TestCase
         $studentUser = User::factory()->create(['role' => 'student']);
         $student = Student::create([
             'user_id' => $studentUser->id,
-            'level'   => 'Form 1',
+            'level' => 'Form 1',
         ]);
 
         $dummyPdf = UploadedFile::fake()->create('form1_diagnostic.pdf', 100, 'application/pdf');
         $savedPath = $dummyPdf->store('assignments', 'public');
 
         $diagnostic = Assignment::create([
-            'title'              => 'Diagnostic Assessment: Form 1 Mathematics',
-            'type'               => 'Diagnostic Test',
-            'topic'              => 'General Diagnostic',
-            'target_level'       => 'Form 1',
+            'title' => 'Diagnostic Assessment: Form 1 Mathematics',
+            'type' => 'Diagnostic Test',
+            'topic' => 'General Diagnostic',
+            'target_level' => 'Form 1',
             'time_limit_minutes' => 30,
-            'total_questions'    => 10,
-            'is_global'          => true,
-            'file_path'          => $savedPath,
-            'file_name'          => 'form1_diagnostic.pdf',
+            'total_questions' => 10,
+            'is_global' => true,
+            'file_path' => $savedPath,
+            'file_name' => 'form1_diagnostic.pdf',
         ]);
 
         $takeResponse = $this->actingAs($studentUser)
@@ -340,7 +339,7 @@ class SubjectDiagnosticTest extends TestCase
         $takeResponse->assertViewHas('hasPdfFile', true);
         $takeResponse->assertViewHas('documentType', 'pdf');
         $takeResponse->assertViewHas('pdfUrl');
-        
+
         // Assert the student is NEVER given a download button
         $takeResponse->assertDontSee('Download Assessment File');
         $takeResponse->assertDontSee('Download the file below to view the questions');

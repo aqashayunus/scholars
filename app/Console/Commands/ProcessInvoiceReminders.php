@@ -20,7 +20,7 @@ class ProcessInvoiceReminders extends Command
     protected $description = 'Mark overdue invoices and dispatch scheduled invoice reminder emails to the queue.';
 
     public function __construct(
-        private InvoiceService  $invoiceService,
+        private InvoiceService $invoiceService,
         private ReminderService $reminderService,
     ) {
         parent::__construct();
@@ -30,7 +30,7 @@ class ProcessInvoiceReminders extends Command
     {
         $isDryRun = $this->option('dry-run');
 
-        $this->info('[Scholars Billing] Processing invoice reminders — ' . now()->toDateTimeString());
+        $this->info('[Scholars Billing] Processing invoice reminders — '.now()->toDateTimeString());
 
         if ($isDryRun) {
             $this->warn('DRY RUN MODE — no emails will be dispatched.');
@@ -38,7 +38,7 @@ class ProcessInvoiceReminders extends Command
 
         // Step 1: Mark any overdue invoices
         $this->line('→ Checking for overdue invoices...');
-        if (!$isDryRun) {
+        if (! $isDryRun) {
             $overdueCount = $this->invoiceService->markOverdueInvoices();
             $this->line("  Marked {$overdueCount} invoice(s) as OVERDUE.");
         } else {
@@ -47,7 +47,7 @@ class ProcessInvoiceReminders extends Command
 
         // Step 2: Dispatch due reminder emails
         $this->line('→ Dispatching due reminder emails...');
-        if (!$isDryRun) {
+        if (! $isDryRun) {
             $dispatched = $this->reminderService->dispatchDueReminders();
             $this->line("  Dispatched {$dispatched} reminder job(s) to the queue.");
         } else {

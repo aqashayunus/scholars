@@ -33,8 +33,8 @@ class FeeStructurePriceTier extends Model
     protected $casts = [
         'minimum_subjects' => 'integer',
         'maximum_subjects' => 'integer',
-        'price'            => 'decimal:2',
-        'sort_order'       => 'integer',
+        'price' => 'decimal:2',
+        'sort_order' => 'integer',
     ];
 
     public function feeStructure()

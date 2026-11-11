@@ -32,16 +32,19 @@ class EmailLog extends Model
     ];
 
     protected $casts = [
-        'attempts'     => 'integer',
-        'queued_at'    => 'datetime',
-        'sent_at'      => 'datetime',
+        'attempts' => 'integer',
+        'queued_at' => 'datetime',
+        'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
     ];
 
-    public const STATUS_QUEUED    = 'queued';
-    public const STATUS_SENT      = 'sent';
+    public const STATUS_QUEUED = 'queued';
+
+    public const STATUS_SENT = 'sent';
+
     public const STATUS_DELIVERED = 'delivered';
-    public const STATUS_FAILED    = 'failed';
+
+    public const STATUS_FAILED = 'failed';
 
     public function campaign()
     {

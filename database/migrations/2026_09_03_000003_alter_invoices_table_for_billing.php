@@ -54,17 +54,17 @@ return new class extends Migration
 
         // Step 4: Add new columns
         Schema::table('invoices', function (Blueprint $table) {
-            if (!Schema::hasColumn('invoices', 'issued_date')) {
+            if (! Schema::hasColumn('invoices', 'issued_date')) {
                 $table->date('issued_date')->nullable()->after('due_date')
-                      ->comment('Date the invoice was formally issued (status changed to issued)');
+                    ->comment('Date the invoice was formally issued (status changed to issued)');
             }
-            if (!Schema::hasColumn('invoices', 'billing_period')) {
+            if (! Schema::hasColumn('invoices', 'billing_period')) {
                 $table->string('billing_period', 30)->nullable()->after('issued_date')
-                      ->comment('Human-readable billing period, e.g. "September 2026"');
+                    ->comment('Human-readable billing period, e.g. "September 2026"');
             }
-            if (!Schema::hasColumn('invoices', 'amount_paid')) {
+            if (! Schema::hasColumn('invoices', 'amount_paid')) {
                 $table->decimal('amount_paid', 10, 2)->default(0.00)->after('total_amount')
-                      ->comment('Running total of successful payments applied to this invoice');
+                    ->comment('Running total of successful payments applied to this invoice');
             }
         });
 

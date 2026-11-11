@@ -14,9 +14,9 @@ class UpdateSubtopicRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'          => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'default_status' => 'required|in:Mastered,In Progress,Needs Practice,Not Started',
-            'order'          => 'required|integer|min:1',
+            'order' => 'required|integer|min:1',
         ];
     }
 }

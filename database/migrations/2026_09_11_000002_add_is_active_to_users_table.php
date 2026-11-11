@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('users', 'is_active')) {
+        if (! Schema::hasColumn('users', 'is_active')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->boolean('is_active')->default(true)->after('role')->index();
             });

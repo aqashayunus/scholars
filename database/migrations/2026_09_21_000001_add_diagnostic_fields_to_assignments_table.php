@@ -12,25 +12,25 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            if (!Schema::hasColumn('assignments', 'answer_key')) {
+            if (! Schema::hasColumn('assignments', 'answer_key')) {
                 $table->text('answer_key')->nullable()->after('instructions');
             }
-            if (!Schema::hasColumn('assignments', 'total_questions')) {
+            if (! Schema::hasColumn('assignments', 'total_questions')) {
                 $table->integer('total_questions')->nullable()->default(10)->after('answer_key');
             }
-            if (!Schema::hasColumn('assignments', 'time_limit_minutes')) {
+            if (! Schema::hasColumn('assignments', 'time_limit_minutes')) {
                 $table->integer('time_limit_minutes')->nullable()->default(20)->after('total_questions');
             }
         });
 
         Schema::table('student_assignments', function (Blueprint $table) {
-            if (!Schema::hasColumn('student_assignments', 'answers_json')) {
+            if (! Schema::hasColumn('student_assignments', 'answers_json')) {
                 $table->text('answers_json')->nullable()->after('submission_notes');
             }
-            if (!Schema::hasColumn('student_assignments', 'tahap_kepandaian')) {
+            if (! Schema::hasColumn('student_assignments', 'tahap_kepandaian')) {
                 $table->string('tahap_kepandaian', 50)->nullable()->after('score');
             }
-            if (!Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
+            if (! Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
                 $table->integer('time_taken_seconds')->nullable()->after('tahap_kepandaian');
             }
         });

@@ -6,11 +6,14 @@ use App\Enums\StudentAssignmentStatus;
 use App\Models\Assignment;
 use App\Models\Student;
 use App\Models\StudentAssignment;
+use App\Services\Admin\DiagnosticReviewService;
+use App\Services\Grading\DiagnosticGradingEngine;
+use App\Services\Grading\DiagnosticRuleParser;
 use App\Services\PdfDiagnosticParser;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class DiagnosticTestController extends Controller
@@ -26,39 +29,40 @@ class DiagnosticTestController extends Controller
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
         $assignment = Assignment::findOrFail($id);
-        if (!$assignment->isDiagnostic()) {
+        if (! $assignment->isDiagnostic()) {
             return redirect()->route('student.tasks')->with('error', 'The requested assessment is not a diagnostic test.');
         }
 
         $studentAssignment = StudentAssignment::firstOrCreate([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
         ], [
             'status' => 'pending',
         ]);
 
-        $questionsList  = $assignment->getQuestionsList();
+        $questionsList = $assignment->getQuestionsList();
         $totalQuestions = count($questionsList);
 
         $filePath = $assignment->file_path;
-        $hasDocument = !empty($filePath);
+        $hasDocument = ! empty($filePath);
         $ext = strtolower(pathinfo($filePath ?? '', PATHINFO_EXTENSION));
         $isDocx = in_array($ext, ['docx', 'doc']);
         $isImage = in_array($ext, ['png', 'jpg', 'jpeg', 'webp']);
-        $isPdf = empty($ext) || $ext === 'pdf' || (!$isDocx && !$isImage && $hasDocument);
+        $isPdf = empty($ext) || $ext === 'pdf' || (! $isDocx && ! $isImage && $hasDocument);
         $documentType = $isDocx ? 'docx' : ($isImage ? 'image' : ($hasDocument ? 'pdf' : 'none'));
 
         // Resolve PDF file path safely across local, VPS, and cPanel storage locations
         $resolvedPdfPath = self::resolvePdfPath($filePath);
-        $parsedPdf       = ['total_pages' => 0, 'questions' => []];
-        $pdfUrl          = null;
+        $parsedPdf = ['total_pages' => 0, 'questions' => []];
+        $pdfUrl = null;
 
         if ($hasDocument) {
             $pdfUrl = route('student.diagnostic.pdf', $assignment->id);
             if ($resolvedPdfPath && $isPdf) {
                 try {
                     $parsedPdf = $pdfParser->parsePdf($resolvedPdfPath);
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                }
             }
         }
 
@@ -69,20 +73,20 @@ class DiagnosticTestController extends Controller
             $pdfQ = $parsedPdf['questions'][$qNum] ?? null;
 
             return [
-                'number'         => $q['number'],
-                'type'           => $q['type'],
-                'title'          => $q['title'],
-                'image'          => $q['image'] ?? ($pdfQ['image'] ?? null),
-                'page_number'    => $pdfQ['page'] ?? ($q['page_number'] ?? 1),
-                'prompt'         => $pdfQ['prompt'] ?? ($q['prompt'] ?? null),
+                'number' => $q['number'],
+                'type' => $q['type'],
+                'title' => $q['title'],
+                'image' => $q['image'] ?? ($pdfQ['image'] ?? null),
+                'page_number' => $pdfQ['page'] ?? ($q['page_number'] ?? 1),
+                'prompt' => $pdfQ['prompt'] ?? ($q['prompt'] ?? null),
                 'options_labels' => $pdfQ['options'] ?? ($q['options_labels'] ?? []),
-                'passage'        => $pdfQ['passage'] ?? ($q['passage'] ?? null),
-                'has_pdf_data'   => !empty($pdfQ),
+                'passage' => $pdfQ['passage'] ?? ($q['passage'] ?? null),
+                'has_pdf_data' => ! empty($pdfQ),
             ];
         }, $questionsList);
 
-        $mcqCount       = count(array_filter($questionsList, fn($q) => $q['type'] === 'mcq'));
-        $fillBlankCount = count(array_filter($questionsList, fn($q) => $q['type'] === 'fill_in_blank'));
+        $mcqCount = count(array_filter($questionsList, fn ($q) => $q['type'] === 'mcq'));
+        $fillBlankCount = count(array_filter($questionsList, fn ($q) => $q['type'] === 'fill_in_blank'));
         // Backed-enum comparison — StudentAssignmentStatus has no 'completed' case; that
         // value was never valid here even before the enum conversion.
         $isCompleted = in_array($studentAssignment->status, [
@@ -90,31 +94,31 @@ class DiagnosticTestController extends Controller
             StudentAssignmentStatus::Graded,
             StudentAssignmentStatus::PendingReview,
         ], true);
-        $draftAnswers   = (!$isCompleted && is_array($studentAssignment->answers_json)) ? $studentAssignment->answers_json : [];
+        $draftAnswers = (! $isCompleted && is_array($studentAssignment->answers_json)) ? $studentAssignment->answers_json : [];
 
         $cleanRelPath = $filePath ? ltrim(str_replace('\\', '/', $filePath), '/') : '';
 
         return view('student.diagnostic', [
-            'student'                => $student,
-            'assignment'             => $assignment,
-            'studentAssignment'      => $studentAssignment,
-            'questionsList'          => $studentQuestions,
-            'totalQuestions'         => $totalQuestions,
-            'mcqCount'               => $mcqCount,
-            'fillBlankCount'         => $fillBlankCount,
-            'timeLimitMinutes'       => $assignment->subject?->diagnostic_duration ?? ($assignment->time_limit_minutes ?: 20),
-            'isCompleted'            => $isCompleted,
-            'answersSummary'         => $studentAssignment->answers_json ?: [],
-            'draftAnswers'           => $draftAnswers,
-            'hasSectionB'            => $fillBlankCount > 0,
-            'sectionBQuestions'      => $fillBlankCount,
-            'pdfUrl'                 => $pdfUrl,
-            'pdfTotalPages'          => $parsedPdf['total_pages'] ?? 1,
-            'hasPdfFile'             => ($hasDocument && $documentType === 'pdf'),
-            'hasDocument'            => $hasDocument,
-            'documentType'           => $documentType,
-            'directFileUrl'          => $cleanRelPath ? asset('storage/' . $cleanRelPath) : null,
-            'expectedFilePath'       => $filePath,
+            'student' => $student,
+            'assignment' => $assignment,
+            'studentAssignment' => $studentAssignment,
+            'questionsList' => $studentQuestions,
+            'totalQuestions' => $totalQuestions,
+            'mcqCount' => $mcqCount,
+            'fillBlankCount' => $fillBlankCount,
+            'timeLimitMinutes' => $assignment->subject?->diagnostic_duration ?? ($assignment->time_limit_minutes ?: 20),
+            'isCompleted' => $isCompleted,
+            'answersSummary' => $studentAssignment->answers_json ?: [],
+            'draftAnswers' => $draftAnswers,
+            'hasSectionB' => $fillBlankCount > 0,
+            'sectionBQuestions' => $fillBlankCount,
+            'pdfUrl' => $pdfUrl,
+            'pdfTotalPages' => $parsedPdf['total_pages'] ?? 1,
+            'hasPdfFile' => ($hasDocument && $documentType === 'pdf'),
+            'hasDocument' => $hasDocument,
+            'documentType' => $documentType,
+            'directFileUrl' => $cleanRelPath ? asset('storage/'.$cleanRelPath) : null,
+            'expectedFilePath' => $filePath,
         ]);
     }
 
@@ -127,12 +131,12 @@ class DiagnosticTestController extends Controller
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
         $assignment = Assignment::findOrFail($id);
-        if (!$assignment->isDiagnostic()) {
+        if (! $assignment->isDiagnostic()) {
             return response()->json(['success' => false, 'message' => 'Invalid diagnostic test.'], 400);
         }
 
         $studentAssignment = StudentAssignment::firstOrCreate([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
         ], [
             'status' => 'pending',
@@ -144,7 +148,7 @@ class DiagnosticTestController extends Controller
             StudentAssignmentStatus::PendingReview,
         ], true);
 
-        if (!$isCompleted) {
+        if (! $isCompleted) {
             self::ensureDiagnosticColumnsExist();
             $answers = $request->input('answers', []);
             $timeTakenSeconds = (int) $request->input('time_taken_seconds', 0);
@@ -156,14 +160,14 @@ class DiagnosticTestController extends Controller
             if (Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
                 $updatePayload['time_taken_seconds'] = $timeTakenSeconds;
             }
-            if (!empty($updatePayload)) {
+            if (! empty($updatePayload)) {
                 $studentAssignment->update($updatePayload);
             }
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Progress saved successfully.'
+            'message' => 'Progress saved successfully.',
         ]);
     }
 
@@ -178,61 +182,63 @@ class DiagnosticTestController extends Controller
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
         $assignment = Assignment::findOrFail($id);
-        if (!$assignment->isDiagnostic()) {
+        if (! $assignment->isDiagnostic()) {
             abort(404, 'Assessment is not a diagnostic test.');
         }
 
         $resolvedPath = self::resolvePdfPath($assignment->file_path);
 
         // Fallback to Storage disk 'public' if direct filesystem path failed
-        if (!$resolvedPath || !file_exists($resolvedPath)) {
+        if (! $resolvedPath || ! file_exists($resolvedPath)) {
             $clean = preg_replace('#^(public/|storage/)+#', '', ltrim(str_replace('\\', '/', $assignment->file_path ?? ''), '/'));
             try {
                 if (Storage::disk('public')->exists($clean)) {
                     $ext = strtolower(pathinfo($clean, PATHINFO_EXTENSION));
                     $contentType = match ($ext) {
-                        'pdf'         => 'application/pdf',
-                        'png'         => 'image/png',
+                        'pdf' => 'application/pdf',
+                        'png' => 'image/png',
                         'jpg', 'jpeg' => 'image/jpeg',
-                        'webp'        => 'image/webp',
-                        'docx'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'doc'         => 'application/msword',
-                        default       => 'application/pdf',
+                        'webp' => 'image/webp',
+                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'doc' => 'application/msword',
+                        default => 'application/pdf',
                     };
+
                     return Storage::disk('public')->response($clean, basename($clean), [
-                        'Content-Type'           => $contentType,
-                        'Content-Disposition'    => 'inline; filename="' . basename($clean) . '"',
-                        'Cache-Control'          => 'private, max-age=86400',
+                        'Content-Type' => $contentType,
+                        'Content-Disposition' => 'inline; filename="'.basename($clean).'"',
+                        'Cache-Control' => 'private, max-age=86400',
                         'X-Content-Type-Options' => 'nosniff',
                     ]);
                 }
-            } catch (\Throwable $e) {}
+            } catch (\Throwable $e) {
+            }
 
             return response()->json([
-                'error'          => 'Assessment document file not found on server.',
-                'expected_file'  => $assignment->file_path,
+                'error' => 'Assessment document file not found on server.',
+                'expected_file' => $assignment->file_path,
                 'searched_paths' => [
-                    storage_path('app/public/' . ltrim(str_replace('\\', '/', $assignment->file_path ?? ''), '/')),
-                    public_path('storage/' . ltrim(str_replace('\\', '/', $assignment->file_path ?? ''), '/')),
+                    storage_path('app/public/'.ltrim(str_replace('\\', '/', $assignment->file_path ?? ''), '/')),
+                    public_path('storage/'.ltrim(str_replace('\\', '/', $assignment->file_path ?? ''), '/')),
                 ],
             ], 404);
         }
 
         $ext = strtolower(pathinfo($resolvedPath, PATHINFO_EXTENSION));
         $contentType = match ($ext) {
-            'pdf'         => 'application/pdf',
-            'png'         => 'image/png',
+            'pdf' => 'application/pdf',
+            'png' => 'image/png',
             'jpg', 'jpeg' => 'image/jpeg',
-            'webp'        => 'image/webp',
-            'docx'        => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'doc'         => 'application/msword',
-            default       => 'application/pdf',
+            'webp' => 'image/webp',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc' => 'application/msword',
+            default => 'application/pdf',
         };
 
         return response()->file($resolvedPath, [
-            'Content-Type'           => $contentType,
-            'Content-Disposition'    => 'inline; filename="' . basename($resolvedPath) . '"',
-            'Cache-Control'          => 'private, max-age=86400',
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'inline; filename="'.basename($resolvedPath).'"',
+            'Cache-Control' => 'private, max-age=86400',
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
@@ -270,17 +276,19 @@ class DiagnosticTestController extends Controller
             if (Storage::disk('public')->exists($normalized)) {
                 $candidates[] = Storage::disk('public')->path($normalized);
             }
-            if (Storage::disk('public')->exists('assignments/' . $filename)) {
-                $candidates[] = Storage::disk('public')->path('assignments/' . $filename);
+            if (Storage::disk('public')->exists('assignments/'.$filename)) {
+                $candidates[] = Storage::disk('public')->path('assignments/'.$filename);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         // 2. Try Laravel Storage disk('local')
         try {
             if (Storage::disk('local')->exists($clean)) {
                 $candidates[] = Storage::disk('local')->path($clean);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         // 3. Candidate base directories across Local, VPS, cPanel shared hosting
         $baseDirs = [
@@ -292,13 +300,13 @@ class DiagnosticTestController extends Controller
             base_path('storage'),
             base_path('public_html/storage'),
             base_path('public_html'),
-            dirname(base_path()) . '/public_html/storage',
-            dirname(base_path()) . '/public_html',
+            dirname(base_path()).'/public_html/storage',
+            dirname(base_path()).'/public_html',
         ];
 
-        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+        if (! empty($_SERVER['DOCUMENT_ROOT'])) {
             $docRoot = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/');
-            $baseDirs[] = $docRoot . '/storage';
+            $baseDirs[] = $docRoot.'/storage';
             $baseDirs[] = $docRoot;
         }
 
@@ -306,14 +314,14 @@ class DiagnosticTestController extends Controller
             $clean,
             $normalized,
             ltrim($normalized, '/'),
-            'assignments/' . $filename,
+            'assignments/'.$filename,
             $filename,
         ]);
 
         foreach ($baseDirs as $dir) {
             $dir = rtrim(str_replace('\\', '/', $dir), '/');
             foreach ($subPaths as $sub) {
-                $candidates[] = $dir . '/' . ltrim($sub, '/');
+                $candidates[] = $dir.'/'.ltrim($sub, '/');
             }
         }
 
@@ -335,9 +343,9 @@ class DiagnosticTestController extends Controller
             base_path('public_html/storage'),
             base_path('storage/assignments'),
         ];
-        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
-            $searchDirs[] = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/') . '/storage/assignments';
-            $searchDirs[] = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/') . '/storage';
+        if (! empty($_SERVER['DOCUMENT_ROOT'])) {
+            $searchDirs[] = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/').'/storage/assignments';
+            $searchDirs[] = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/').'/storage';
         }
 
         foreach (array_unique($searchDirs) as $searchDir) {
@@ -346,7 +354,7 @@ class DiagnosticTestController extends Controller
                 if (is_array($files)) {
                     foreach ($files as $f) {
                         if ($f !== '.' && $f !== '..' && strtolower($f) === $lowerFilename) {
-                            $full = rtrim(str_replace('\\', '/', $searchDir), '/') . '/' . $f;
+                            $full = rtrim(str_replace('\\', '/', $searchDir), '/').'/'.$f;
                             if (is_file($full)) {
                                 return $full;
                             }
@@ -370,30 +378,30 @@ class DiagnosticTestController extends Controller
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
         $assignment = Assignment::findOrFail($id);
-        if (!$assignment->isDiagnostic()) {
+        if (! $assignment->isDiagnostic()) {
             return response()->json(['success' => false, 'message' => 'Invalid diagnostic test.'], 400);
         }
 
         $studentAssignment = StudentAssignment::firstOrCreate([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
         ], [
             'status' => 'pending',
         ]);
 
-        $submittedAnswers  = $request->input('answers', []);   // ['1' => 'A', '2' => 'photosynthesis', ...]
+        $submittedAnswers = $request->input('answers', []);   // ['1' => 'A', '2' => 'photosynthesis', ...]
         $submittedSectionB = $request->input('section_b', []); // legacy fallback
-        $timeTakenSeconds  = (int) $request->input('time_taken_seconds', 0);
+        $timeTakenSeconds = (int) $request->input('time_taken_seconds', 0);
 
         // Merge legacy section_b into answers keyed by question number
         foreach ($submittedSectionB as $k => $v) {
-            if (!isset($submittedAnswers[$k])) {
+            if (! isset($submittedAnswers[$k])) {
                 $submittedAnswers[$k] = $v;
             }
         }
 
         // ── Grade with flexible engine ─────────────────────────────────────
-        $engine = new \App\Services\Grading\DiagnosticGradingEngine();
+        $engine = new DiagnosticGradingEngine;
         $result = $engine->gradeSubmission($assignment, $submittedAnswers);
 
         // Use total_possible as base for percentage when it differs from question count
@@ -403,23 +411,23 @@ class DiagnosticTestController extends Controller
         }
 
         // Percentage is marks-based (not question-count-based)
-        $score           = $result['percentage'];
-        $totalScore      = $result['total_score'];
-        $totalPossible   = $result['total_possible'];
-        $correctCount    = $result['correct_count'];
-        $mcqCorrect      = $result['mcq_correct'];
-        $mcqTotal        = $result['mcq_total'];
-        $fillCorrect     = $result['fill_correct'];
-        $fillTotal       = $result['fill_total'];
-        $hasManual       = $result['has_manual'];
-        $allBreakdown    = $result['breakdown'];
+        $score = $result['percentage'];
+        $totalScore = $result['total_score'];
+        $totalPossible = $result['total_possible'];
+        $correctCount = $result['correct_count'];
+        $mcqCorrect = $result['mcq_correct'];
+        $mcqTotal = $result['mcq_total'];
+        $fillCorrect = $result['fill_correct'];
+        $fillTotal = $result['fill_total'];
+        $hasManual = $result['has_manual'];
+        $allBreakdown = $result['breakdown'];
 
         // Tahap Kepandaian based on marks percentage
         $tahapKepandaian = match (true) {
             $score >= 80 => 'Cemerlang',
             $score >= 60 => 'Baik',
             $score >= 40 => 'Sederhana',
-            default      => 'Perlu Bimbingan',
+            default => 'Perlu Bimbingan',
         };
 
         // If any question needs manual review, mark as pending_review instead of graded
@@ -429,8 +437,8 @@ class DiagnosticTestController extends Controller
 
         // Build dynamic update payload defensively
         $updatePayload = [
-            'status'       => $status,
-            'score'        => $score,
+            'status' => $status,
+            'score' => $score,
             'submitted_at' => now(),
         ];
 
@@ -447,18 +455,18 @@ class DiagnosticTestController extends Controller
         $studentAssignment->update($updatePayload);
 
         return response()->json([
-            'success'         => true,
-            'score'           => $score,
-            'total_score'     => $totalScore,
-            'total_possible'  => $totalPossible,
-            'correct_count'   => $correctCount,
+            'success' => true,
+            'score' => $score,
+            'total_score' => $totalScore,
+            'total_possible' => $totalPossible,
+            'correct_count' => $correctCount,
             'total_questions' => $totalQuestions,
-            'mcq_correct'     => $mcqCorrect,
-            'mcq_total'       => $mcqTotal,
-            'fill_correct'    => $fillCorrect,
-            'fill_total'      => $fillTotal,
-            'has_manual'      => $hasManual,
-            'message'         => $hasManual
+            'mcq_correct' => $mcqCorrect,
+            'mcq_total' => $mcqTotal,
+            'fill_correct' => $fillCorrect,
+            'fill_total' => $fillTotal,
+            'has_manual' => $hasManual,
+            'message' => $hasManual
                 ? 'Ujian diagnostik dihantar. Sesetengah soalan memerlukan semakan guru.'
                 : 'Ujian diagnostik berjaya dihantar dan dinilai secara automatik!',
         ]);
@@ -470,33 +478,33 @@ class DiagnosticTestController extends Controller
      */
     public function testGradingRule(Request $request)
     {
-        $rule          = $request->input('rule', '');
+        $rule = $request->input('rule', '');
         $studentAnswer = $request->input('student_answer', '');
-        $maxMarks      = (float) $request->input('max_marks', 1.0);
-        $questionType  = $request->input('question_type', 'fill_in_blank');
+        $maxMarks = (float) $request->input('max_marks', 1.0);
+        $questionType = $request->input('question_type', 'fill_in_blank');
 
         // Parse & validate the rule
-        $validation = \App\Services\Grading\DiagnosticRuleParser::validate($rule);
+        $validation = DiagnosticRuleParser::validate($rule);
 
         // Grade the sample answer
-        $engine = new \App\Services\Grading\DiagnosticGradingEngine();
+        $engine = new DiagnosticGradingEngine;
         $result = $engine->gradeQuestion($rule, $studentAnswer, $maxMarks, $questionType);
 
         return response()->json([
-            'success'       => true,
-            'rule'          => $rule,
-            'rule_type'     => $validation['type'],
+            'success' => true,
+            'rule' => $rule,
+            'rule_type' => $validation['type'],
             'is_valid_rule' => $validation['valid'],
-            'rule_errors'   => $validation['errors'],
+            'rule_errors' => $validation['errors'],
             'rule_warnings' => $validation['warnings'],
-            'student_answer'=> $studentAnswer,
-            'max_marks'     => $maxMarks,
-            'score'         => $result['score'],
-            'is_correct'    => $result['is_correct'],
-            'is_partial'    => $result['is_partial'],
-            'is_manual'     => $result['is_manual'],
-            'matched'       => $result['matched_criteria'],
-            'feedback'      => $result['feedback'],
+            'student_answer' => $studentAnswer,
+            'max_marks' => $maxMarks,
+            'score' => $result['score'],
+            'is_correct' => $result['is_correct'],
+            'is_partial' => $result['is_partial'],
+            'is_manual' => $result['is_manual'],
+            'matched' => $result['matched_criteria'],
+            'feedback' => $result['feedback'],
         ]);
     }
 
@@ -507,27 +515,27 @@ class DiagnosticTestController extends Controller
     {
         $studentAssignment = StudentAssignment::with(['student.user', 'assignment'])->findOrFail($id);
 
-        $answers   = $studentAssignment->answers_json ?: [];
+        $answers = $studentAssignment->answers_json ?: [];
         $timeTaken = $studentAssignment->time_taken_seconds ?: 0;
-        $minutes   = floor($timeTaken / 60);
-        $seconds   = $timeTaken % 60;
+        $minutes = floor($timeTaken / 60);
+        $seconds = $timeTaken % 60;
         $formattedDuration = $minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s";
 
         return response()->json([
-            'success'               => true,
+            'success' => true,
             'student_assignment_id' => $studentAssignment->id,
-            'student_name'          => $studentAssignment->student?->user?->name ?? 'Student',
-            'student_level'         => $studentAssignment->student?->level ?? 'Academic',
-            'test_title'            => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
-            'score'                 => $studentAssignment->score ?? 0,
-            'status'                => $studentAssignment->status,
-            'tahap_kepandaian'      => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
-            'tahap_description'     => $studentAssignment->getTahapDescription(),
-            'tahap_badge_class'     => $studentAssignment->getTahapBadgeClass(),
-            'teacher_feedback'      => $studentAssignment->teacher_feedback ?? '',
-            'formatted_duration'    => $formattedDuration,
-            'submitted_at'          => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
-            'answers_breakdown'     => array_values($answers),
+            'student_name' => $studentAssignment->student?->user?->name ?? 'Student',
+            'student_level' => $studentAssignment->student?->level ?? 'Academic',
+            'test_title' => $studentAssignment->assignment?->title ?? 'Diagnostic Test',
+            'score' => $studentAssignment->score ?? 0,
+            'status' => $studentAssignment->status,
+            'tahap_kepandaian' => $studentAssignment->tahap_kepandaian ?? 'Belum Diuji',
+            'tahap_description' => $studentAssignment->getTahapDescription(),
+            'tahap_badge_class' => $studentAssignment->getTahapBadgeClass(),
+            'teacher_feedback' => $studentAssignment->teacher_feedback ?? '',
+            'formatted_duration' => $formattedDuration,
+            'submitted_at' => $studentAssignment->submitted_at ? $studentAssignment->submitted_at->format('d M Y, h:i A') : 'Pending',
+            'answers_breakdown' => array_values($answers),
         ]);
     }
 
@@ -535,14 +543,14 @@ class DiagnosticTestController extends Controller
      * Admin grading / review endpoint to award marks and override diagnostic test scores
      * for questions the flexible grading engine flagged as requiring manual review.
      */
-    public function saveAdminGrade(Request $request, $id, \App\Services\Admin\DiagnosticReviewService $reviewService)
+    public function saveAdminGrade(Request $request, $id, DiagnosticReviewService $reviewService)
     {
         $studentAssignment = StudentAssignment::with(['student.user', 'assignment'])->findOrFail($id);
 
         $validated = $request->validate([
-            'scores'           => 'required|array',
+            'scores' => 'required|array',
             'teacher_feedback' => 'nullable|string|max:3000',
-            'status'           => 'nullable|string|in:graded,pending_review,submitted',
+            'status' => 'nullable|string|in:graded,pending_review,submitted',
         ]);
 
         $result = $reviewService->saveAdminGrade(
@@ -576,45 +584,45 @@ class DiagnosticTestController extends Controller
         }
 
         try {
-            if (!Schema::hasColumn('student_assignments', 'tahap_kepandaian') ||
-                !Schema::hasColumn('student_assignments', 'answers_json') ||
-                !Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
+            if (! Schema::hasColumn('student_assignments', 'tahap_kepandaian') ||
+                ! Schema::hasColumn('student_assignments', 'answers_json') ||
+                ! Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
 
                 Schema::table('student_assignments', function (Blueprint $table) {
-                    if (!Schema::hasColumn('student_assignments', 'tahap_kepandaian')) {
+                    if (! Schema::hasColumn('student_assignments', 'tahap_kepandaian')) {
                         $table->string('tahap_kepandaian', 50)->nullable()->after('score');
                     }
-                    if (!Schema::hasColumn('student_assignments', 'answers_json')) {
+                    if (! Schema::hasColumn('student_assignments', 'answers_json')) {
                         $table->longText('answers_json')->nullable()->after('submission_notes');
                     }
-                    if (!Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
+                    if (! Schema::hasColumn('student_assignments', 'time_taken_seconds')) {
                         $table->integer('time_taken_seconds')->nullable()->after('tahap_kepandaian');
                     }
                 });
             }
         } catch (\Throwable $e) {
-            Log::warning('Auto-migration for student_assignments failed: ' . $e->getMessage());
+            Log::warning('Auto-migration for student_assignments failed: '.$e->getMessage());
         }
 
         try {
-            if (!Schema::hasColumn('assignments', 'answer_key') ||
-                !Schema::hasColumn('assignments', 'total_questions') ||
-                !Schema::hasColumn('assignments', 'time_limit_minutes')) {
+            if (! Schema::hasColumn('assignments', 'answer_key') ||
+                ! Schema::hasColumn('assignments', 'total_questions') ||
+                ! Schema::hasColumn('assignments', 'time_limit_minutes')) {
 
                 Schema::table('assignments', function (Blueprint $table) {
-                    if (!Schema::hasColumn('assignments', 'answer_key')) {
+                    if (! Schema::hasColumn('assignments', 'answer_key')) {
                         $table->longText('answer_key')->nullable()->after('instructions');
                     }
-                    if (!Schema::hasColumn('assignments', 'total_questions')) {
+                    if (! Schema::hasColumn('assignments', 'total_questions')) {
                         $table->integer('total_questions')->nullable()->default(10)->after('answer_key');
                     }
-                    if (!Schema::hasColumn('assignments', 'time_limit_minutes')) {
+                    if (! Schema::hasColumn('assignments', 'time_limit_minutes')) {
                         $table->integer('time_limit_minutes')->nullable()->default(20)->after('total_questions');
                     }
                 });
             }
         } catch (\Throwable $e) {
-            Log::warning('Auto-migration for assignments failed: ' . $e->getMessage());
+            Log::warning('Auto-migration for assignments failed: '.$e->getMessage());
         }
     }
 }

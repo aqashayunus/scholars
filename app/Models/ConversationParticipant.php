@@ -19,10 +19,10 @@ class ConversationParticipant extends Model
 
     protected $casts = [
         'last_read_at' => 'datetime',
-        'muted_at'     => 'datetime',
-        'archived_at'  => 'datetime',
-        'joined_at'    => 'datetime',
-        'left_at'      => 'datetime',
+        'muted_at' => 'datetime',
+        'archived_at' => 'datetime',
+        'joined_at' => 'datetime',
+        'left_at' => 'datetime',
     ];
 
     public function user()

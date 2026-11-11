@@ -17,13 +17,13 @@ class StudentPracticeController extends Controller
         }
 
         $student = Student::firstOrCreate([
-            'user_id' => $user->id
+            'user_id' => $user->id,
         ], [
             'level' => 'SPM',
             'total_points' => 0,
         ]);
         $masteries = StudentTopicMastery::where('student_id', $student->id)->get();
-        $subjects  = Subject::where('is_active', true)->get();
+        $subjects = Subject::where('is_active', true)->get();
 
         // Personal study streak & confidence stats (non-competitive)
         $studyStreakDays = 5;
@@ -36,6 +36,7 @@ class StudentPracticeController extends Controller
     public function generateQuiz(Request $request)
     {
         $topic = $request->input('topic', 'General Revision');
+
         return redirect()->back()->with('success', "Diagnostic practice session created for '{$topic}'. Start practicing at your own pace!");
     }
 }

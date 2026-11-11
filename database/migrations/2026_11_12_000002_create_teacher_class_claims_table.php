@@ -11,20 +11,20 @@ return new class extends Migration
         // 1. Add bank details to teachers table if not exists
         if (Schema::hasTable('teachers')) {
             Schema::table('teachers', function (Blueprint $table) {
-                if (!Schema::hasColumn('teachers', 'bank_name')) {
+                if (! Schema::hasColumn('teachers', 'bank_name')) {
                     $table->string('bank_name', 100)->nullable()->after('specialization');
                 }
-                if (!Schema::hasColumn('teachers', 'bank_account_number')) {
+                if (! Schema::hasColumn('teachers', 'bank_account_number')) {
                     $table->string('bank_account_number', 50)->nullable()->after('bank_name');
                 }
-                if (!Schema::hasColumn('teachers', 'bank_account_holder')) {
+                if (! Schema::hasColumn('teachers', 'bank_account_holder')) {
                     $table->string('bank_account_holder', 255)->nullable()->after('bank_account_number');
                 }
             });
         }
 
         // 2. Create teacher_class_claims table
-        if (!Schema::hasTable('teacher_class_claims')) {
+        if (! Schema::hasTable('teacher_class_claims')) {
             Schema::create('teacher_class_claims', function (Blueprint $table) {
                 $table->id();
                 $table->string('claim_number', 50)->unique();
@@ -61,10 +61,16 @@ return new class extends Migration
         if (Schema::hasTable('teachers')) {
             Schema::table('teachers', function (Blueprint $table) {
                 $cols = [];
-                if (Schema::hasColumn('teachers', 'bank_name')) $cols[] = 'bank_name';
-                if (Schema::hasColumn('teachers', 'bank_account_number')) $cols[] = 'bank_account_number';
-                if (Schema::hasColumn('teachers', 'bank_account_holder')) $cols[] = 'bank_account_holder';
-                if (!empty($cols)) {
+                if (Schema::hasColumn('teachers', 'bank_name')) {
+                    $cols[] = 'bank_name';
+                }
+                if (Schema::hasColumn('teachers', 'bank_account_number')) {
+                    $cols[] = 'bank_account_number';
+                }
+                if (Schema::hasColumn('teachers', 'bank_account_holder')) {
+                    $cols[] = 'bank_account_holder';
+                }
+                if (! empty($cols)) {
                     $table->dropColumn($cols);
                 }
             });

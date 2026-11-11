@@ -7,9 +7,15 @@ use App\Enums\StudentAssignmentStatus;
 use App\Enums\StudentStatus;
 use App\Models\AcademicEvent;
 use App\Models\Assignment;
+use App\Models\AttendanceCorrectionRequest;
 use App\Models\BlogPost;
+use App\Models\Certificate;
 use App\Models\ChatMessage;
 use App\Models\Course;
+use App\Models\EmailAutomation;
+use App\Models\EmailCampaign;
+use App\Models\EmailLog;
+use App\Models\EmailTemplate;
 use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\FinancialAuditLog;
@@ -21,6 +27,7 @@ use App\Models\RecordedClass;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentAssignment;
+use App\Models\StudentAttendance;
 use App\Models\StudentTopicMastery;
 use App\Models\Subject;
 use App\Models\SubjectTopic;
@@ -28,18 +35,18 @@ use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\TeachingGig;
 use App\Models\User;
-use App\Services\Admin\ParentAccountService;
-use App\Services\Admin\TeacherClaimService;
+use App\Services\Email\AudienceResolverService;
+use App\Services\Email\EmailVariableRegistry;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardMetricsService
 {
     public function __construct(
         protected ParentAccountService $parentAccounts,
         protected TeacherClaimService $teacherClaims
-    ) {
-    }
+    ) {}
 
     /**
      * Builds the full view-model for the admin dashboard. Pure aggregation —
@@ -49,51 +56,51 @@ class DashboardMetricsService
     public function build(?int $selectedDiagnosticId): array
     {
         // ── 1. Core Platform Counts ──────────────────────────────────────────
-        $totalUsers        = User::count();
-        $totalStudents     = User::where('role', 'student')->count();
-        $totalTeachers     = User::where('role', 'teacher')->count();
-        $totalParents      = User::where('role', 'parent')->count();
-        $totalAdmins       = User::where('role', 'admin')->count();
+        $totalUsers = User::count();
+        $totalStudents = User::where('role', 'student')->count();
+        $totalTeachers = User::where('role', 'teacher')->count();
+        $totalParents = User::where('role', 'parent')->count();
+        $totalAdmins = User::where('role', 'admin')->count();
 
-        $totalCourses      = Course::count();
-        $publishedCourses  = Course::where('status', 'published')->count();
-        $draftCourses      = Course::where('status', 'draft')->count();
-        $archivedCourses   = Course::where('status', 'archived')->count();
+        $totalCourses = Course::count();
+        $publishedCourses = Course::where('status', 'published')->count();
+        $draftCourses = Course::where('status', 'draft')->count();
+        $archivedCourses = Course::where('status', 'archived')->count();
 
         $activeEnrollments = Enrollment::count();
-        $totalSubjects     = Subject::count();
-        $totalLiveClasses  = LiveClass::count();
-        $totalGigs         = TeachingGig::count();
-        $totalRecordings   = RecordedClass::count();
-        $totalMasteries    = StudentTopicMastery::count();
+        $totalSubjects = Subject::count();
+        $totalLiveClasses = LiveClass::count();
+        $totalGigs = TeachingGig::count();
+        $totalRecordings = RecordedClass::count();
+        $totalMasteries = StudentTopicMastery::count();
 
         // Timetable Metrics
         $now = Carbon::now();
         $startOfWeek = $now->copy()->startOfWeek();
         $endOfWeek = $now->copy()->endOfWeek();
         $totalClassesThisWeek = LiveClass::whereBetween('scheduled_at', [$startOfWeek, $endOfWeek])->count();
-        $classesToday         = LiveClass::whereDate('scheduled_at', $now->toDateString())->count();
-        $rescheduledCount     = LiveClass::where('is_rescheduled', true)->count();
-        $academicEventsCount  = AcademicEvent::count();
+        $classesToday = LiveClass::whereDate('scheduled_at', $now->toDateString())->count();
+        $rescheduledCount = LiveClass::where('is_rescheduled', true)->count();
+        $academicEventsCount = AcademicEvent::count();
 
         // ── 2. Financial Metrics (pulled from DB settings) ───────────────────
-        $teacherCutPct        = (float) Setting::get('teacher_cut_pct', 65);
-        $currencySymbol       = Setting::get('currency_symbol', 'RM');
+        $teacherCutPct = (float) Setting::get('teacher_cut_pct', 65);
+        $currencySymbol = Setting::get('currency_symbol', 'RM');
 
-        $paidStatuses         = ['paid', 'successful', 'approved', 'completed', 'success'];
-        $totalRevenue         = (float) Payment::whereIn('status', $paidStatuses)->sum('amount');
-        $totalInvoicesCount   = Payment::count();
-        $paidInvoicesCount    = Payment::whereIn('status', $paidStatuses)->count();
+        $paidStatuses = ['paid', 'successful', 'approved', 'completed', 'success'];
+        $totalRevenue = (float) Payment::whereIn('status', $paidStatuses)->sum('amount');
+        $totalInvoicesCount = Payment::count();
+        $paidInvoicesCount = Payment::whereIn('status', $paidStatuses)->count();
         $pendingInvoicesCount = Payment::whereIn('status', ['pending', 'unpaid', 'under_review'])->count();
-        $teacherPayoutEst     = $totalRevenue * ($teacherCutPct / 100);
-        $netPlatformMargin    = $totalRevenue * ((100 - $teacherCutPct) / 100);
-        $avgTeacherRating     = round((float) Teacher::avg('rating') ?: 4.85, 2);
+        $teacherPayoutEst = $totalRevenue * ($teacherCutPct / 100);
+        $netPlatformMargin = $totalRevenue * ((100 - $teacherCutPct) / 100);
+        $avgTeacherRating = round((float) Teacher::avg('rating') ?: 4.85, 2);
 
         // ── 3. Full Database Collections ─────────────────────────────────────
-        $allPayments          = Payment::with(['user', 'course.subject', 'student.user', 'payer', 'invoice'])->latest('id')->get();
-        $allFeeStructures     = FeeStructure::with(['student.user', 'subjects'])->latest('id')->get();
-        $allInvoices          = Invoice::with(['student.user', 'student.parents', 'student.parent', 'feeStructure', 'items', 'reminders', 'paymentTransactions.payer', 'paymentTransactions.user'])->latest('id')->get();
-        $allStudentsList      = Student::whereHas('user', function ($q) {
+        $allPayments = Payment::with(['user', 'course.subject', 'student.user', 'payer', 'invoice'])->latest('id')->get();
+        $allFeeStructures = FeeStructure::with(['student.user', 'subjects'])->latest('id')->get();
+        $allInvoices = Invoice::with(['student.user', 'student.parents', 'student.parent', 'feeStructure', 'items', 'reminders', 'paymentTransactions.payer', 'paymentTransactions.user'])->latest('id')->get();
+        $allStudentsList = Student::whereHas('user', function ($q) {
             $q->where('role', 'student');
         })->with([
             'user',
@@ -126,30 +133,30 @@ class DashboardMetricsService
         }
         $restrictedStudentsCount = $allStudentsList->where('is_restricted', true)->count();
 
-        $allCertificates      = \App\Models\Certificate::with(['student.user', 'course.subject'])->latest('id')->get();
-        $financialLogs        = FinancialAuditLog::with('user')->latest('id')->take(30)->get();
-        $pendingProofPayments     = Payment::where('payment_method', 'bank_transfer')->where('status', 'pending')->with(['student.user', 'payer', 'invoice'])->get();
-        $allVerificationPayments  = Payment::where(function ($q) {
+        $allCertificates = Certificate::with(['student.user', 'course.subject'])->latest('id')->get();
+        $financialLogs = FinancialAuditLog::with('user')->latest('id')->take(30)->get();
+        $pendingProofPayments = Payment::where('payment_method', 'bank_transfer')->where('status', 'pending')->with(['student.user', 'payer', 'invoice'])->get();
+        $allVerificationPayments = Payment::where(function ($q) {
             $q->where('payment_method', 'bank_transfer')->orWhereNotNull('proof_file_path');
         })->with(['student.user', 'payer', 'invoice', 'invoices'])->latest('id')->get();
-        $allEnrollments       = Enrollment::with(['student.user', 'course.subject', 'course.teacher.user'])->latest('id')->get();
-        $allTeachers          = Teacher::with(['user', 'courses.enrollments', 'courses.subject', 'subjects'])->get();
-        $allCourses           = Course::with(['teacher.user', 'subject.topics.subtopics'])->withCount('enrollments')->get();
-        $allUsers             = User::latest('id')->get();
-        $allGigs              = TeachingGig::with(['teacher.user', 'subject'])->latest('id')->get();
-        $allMasteries         = StudentTopicMastery::with(['student.user', 'subject'])->latest('id')->take(40)->get();
-        $allSubjects          = Subject::with(['topics.subtopics', 'diagnosticTest'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
+        $allEnrollments = Enrollment::with(['student.user', 'course.subject', 'course.teacher.user'])->latest('id')->get();
+        $allTeachers = Teacher::with(['user', 'courses.enrollments', 'courses.subject', 'subjects'])->get();
+        $allCourses = Course::with(['teacher.user', 'subject.topics.subtopics'])->withCount('enrollments')->get();
+        $allUsers = User::latest('id')->get();
+        $allGigs = TeachingGig::with(['teacher.user', 'subject'])->latest('id')->get();
+        $allMasteries = StudentTopicMastery::with(['student.user', 'subject'])->latest('id')->take(40)->get();
+        $allSubjects = Subject::with(['topics.subtopics', 'diagnosticTest'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
         $missingSubjectDiagnosticCount = $allSubjects->where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
-        $allTopics            = SubjectTopic::with(['subject', 'subtopics'])->orderBy('subject_id')->orderBy('chapter_number')->get();
-        $allLiveClasses       = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user'])->latest('id')->get();
-        $allRecordedClasses   = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
-        $allQuizzes           = Quiz::with(['course.subject', 'questions'])->latest('id')->get();
-        $teacherApplications  = TeacherApplication::with('user')->latest('id')->get();
+        $allTopics = SubjectTopic::with(['subject', 'subtopics'])->orderBy('subject_id')->orderBy('chapter_number')->get();
+        $allLiveClasses = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user'])->latest('id')->get();
+        $allRecordedClasses = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
+        $allQuizzes = Quiz::with(['course.subject', 'questions'])->latest('id')->get();
+        $teacherApplications = TeacherApplication::with('user')->latest('id')->get();
 
         // ── 3c. Student Diagnostic Test Insights ─────────────────────────────
         $diagnosticTests = Assignment::where('type', 'Diagnostic Test')->with('subject')->latest('id')->get();
         $activeDiagnostic = $selectedDiagnosticId ? $diagnosticTests->firstWhere('id', $selectedDiagnosticId) : $diagnosticTests->first();
-        $activeDiagId    = $activeDiagnostic?->id;
+        $activeDiagId = $activeDiagnostic?->id;
 
         // Narrow the roster to students who are actually eligible for the active
         // diagnostic: explicitly assigned, enrolled in a course of its subject, or
@@ -199,39 +206,39 @@ class DashboardMetricsService
                 $formattedTime = $timeTaken > 0 ? ($minutes > 0 ? "{$minutes}m {$seconds}s" : "{$seconds}s") : '-';
 
                 return (object) [
-                    'id'                    => $st->id,
-                    'student_id'            => $st->id,
+                    'id' => $st->id,
+                    'student_id' => $st->id,
                     'student_assignment_id' => $sa?->id,
-                    'name'                  => $st->user?->name ?? 'Student #' . $st->id,
-                    'email'                 => $st->user?->email ?? '-',
-                    'level'                 => $st->level ?: 'All Levels',
-                    'is_completed'          => $isCompleted,
-                    'status'                => $isCompleted ? 'Completed' : 'Pending',
-                    'raw_status'            => $sa?->status ?? 'pending',
-                    'score'                 => $score,
-                    'tahap_kepandaian'      => $tahap,
-                    'formatted_time'        => $formattedTime,
-                    'submitted_at'          => $sa?->submitted_at,
-                    'badge_class'           => match ($tahap) {
-                        'Cemerlang'       => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                        'Baik'            => 'bg-blue-50 text-blue-700 border-blue-200',
-                        'Sederhana'       => 'bg-amber-50 text-amber-700 border-amber-200',
+                    'name' => $st->user?->name ?? 'Student #'.$st->id,
+                    'email' => $st->user?->email ?? '-',
+                    'level' => $st->level ?: 'All Levels',
+                    'is_completed' => $isCompleted,
+                    'status' => $isCompleted ? 'Completed' : 'Pending',
+                    'raw_status' => $sa?->status ?? 'pending',
+                    'score' => $score,
+                    'tahap_kepandaian' => $tahap,
+                    'formatted_time' => $formattedTime,
+                    'submitted_at' => $sa?->submitted_at,
+                    'badge_class' => match ($tahap) {
+                        'Cemerlang' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        'Baik' => 'bg-blue-50 text-blue-700 border-blue-200',
+                        'Sederhana' => 'bg-amber-50 text-amber-700 border-amber-200',
                         'Perlu Bimbingan' => 'bg-rose-50 text-rose-700 border-rose-200',
-                        default           => 'bg-gray-100 text-gray-700 border-gray-200',
+                        default => 'bg-gray-100 text-gray-700 border-gray-200',
                     },
-                    'answers_breakdown'     => $sa?->answers_json ?: [],
+                    'answers_breakdown' => $sa?->answers_json ?: [],
                 ];
             });
 
-        $diagnosticTotalStudents       = $allDiagnosticStudents->count();
-        $diagnosticCompletedCount       = $allDiagnosticStudents->where('is_completed', true)->count();
-        $diagnosticPendingCount         = $diagnosticTotalStudents - $diagnosticCompletedCount;
-        $diagnosticCompletionRate       = $diagnosticTotalStudents > 0 ? round(($diagnosticCompletedCount / $diagnosticTotalStudents) * 100) : 0;
-        $diagnosticAvgScore             = $diagnosticCompletedCount > 0 ? round($allDiagnosticStudents->where('is_completed', true)->avg('score')) : 0;
-        $diagnosticCemerlangCount       = $allDiagnosticStudents->where('tahap_kepandaian', 'Cemerlang')->count();
-        $diagnosticBaikCount            = $allDiagnosticStudents->where('tahap_kepandaian', 'Baik')->count();
-        $diagnosticSederhanaCount       = $allDiagnosticStudents->where('tahap_kepandaian', 'Sederhana')->count();
-        $diagnosticPerluBimbinganCount  = $allDiagnosticStudents->where('tahap_kepandaian', 'Perlu Bimbingan')->count();
+        $diagnosticTotalStudents = $allDiagnosticStudents->count();
+        $diagnosticCompletedCount = $allDiagnosticStudents->where('is_completed', true)->count();
+        $diagnosticPendingCount = $diagnosticTotalStudents - $diagnosticCompletedCount;
+        $diagnosticCompletionRate = $diagnosticTotalStudents > 0 ? round(($diagnosticCompletedCount / $diagnosticTotalStudents) * 100) : 0;
+        $diagnosticAvgScore = $diagnosticCompletedCount > 0 ? round($allDiagnosticStudents->where('is_completed', true)->avg('score')) : 0;
+        $diagnosticCemerlangCount = $allDiagnosticStudents->where('tahap_kepandaian', 'Cemerlang')->count();
+        $diagnosticBaikCount = $allDiagnosticStudents->where('tahap_kepandaian', 'Baik')->count();
+        $diagnosticSederhanaCount = $allDiagnosticStudents->where('tahap_kepandaian', 'Sederhana')->count();
+        $diagnosticPerluBimbinganCount = $allDiagnosticStudents->where('tahap_kepandaian', 'Perlu Bimbingan')->count();
 
         // ── 3b. Non-Active & Engagement Roster ──────────────────────────────
         // Criteria:
@@ -280,15 +287,16 @@ class DashboardMetricsService
                 if ($inactiveTeacherUserIds->contains($u->id)) {
                     $reasons[] = 'Teacher Deactivated';
                 }
-                $u->inactivity_reason  = implode(', ', $reasons) ?: 'Inactive';
+                $u->inactivity_reason = implode(', ', $reasons) ?: 'Inactive';
                 $u->inactivity_reasons = $reasons;
+
                 return $u;
             });
 
         $nonActiveStudentsCount = $nonActiveUsers->where('role', 'student')->count();
         $nonActiveTeachersCount = $nonActiveUsers->where('role', 'teacher')->count();
-        $nonActiveParentsCount  = $nonActiveUsers->where('role', 'parent')->count();
-        $nonActiveUsersCount    = $nonActiveUsers->count();
+        $nonActiveParentsCount = $nonActiveUsers->where('role', 'parent')->count();
+        $nonActiveUsersCount = $nonActiveUsers->count();
 
         // ── 4. Charts & Analytics ─────────────────────────────────────────────
         $subjectEnrollments = Course::withCount('enrollments')
@@ -297,14 +305,14 @@ class DashboardMetricsService
             ->get();
 
         $subjectLabels = $subjectEnrollments->pluck('title')->take(6)->toArray();
-        $subjectData   = $subjectEnrollments->pluck('enrollments_count')->take(6)->toArray();
+        $subjectData = $subjectEnrollments->pluck('enrollments_count')->take(6)->toArray();
 
         // Real revenue breakdown by streams: Course Fees, Enrolled Tuition, Assessments, Materials, Mastery Subscriptions
         $streamTotals = [
-            'Course Fees'           => 0.0,
-            'Enrolled Tuition'      => 0.0,
-            'Assessments'           => 0.0,
-            'Materials'             => 0.0,
+            'Course Fees' => 0.0,
+            'Enrolled Tuition' => 0.0,
+            'Assessments' => 0.0,
+            'Materials' => 0.0,
             'Mastery Subscriptions' => 0.0,
         ];
 
@@ -350,7 +358,7 @@ class DashboardMetricsService
                             $categorized = true;
                         }
                     } else {
-                        $desc = strtolower(($inv->title ?? '') . ' ' . ($inv->description ?? ''));
+                        $desc = strtolower(($inv->title ?? '').' '.($inv->description ?? ''));
                         if (str_contains($desc, 'course') || $inv->course_id) {
                             $streamTotals['Course Fees'] += $invShare;
                         } elseif (str_contains($desc, 'assessment') || str_contains($desc, 'exam')) {
@@ -367,8 +375,8 @@ class DashboardMetricsService
                 }
             }
 
-            if (!$categorized) {
-                $desc = strtolower(($payment->description ?? '') . ' ' . ($payment->course->title ?? ''));
+            if (! $categorized) {
+                $desc = strtolower(($payment->description ?? '').' '.($payment->course->title ?? ''));
                 if ($payment->course_id || str_contains($desc, 'course')) {
                     $streamTotals['Course Fees'] += $amt;
                 } elseif (str_contains($desc, 'assessment') || str_contains($desc, 'exam') || str_contains($desc, 'quiz')) {
@@ -388,31 +396,31 @@ class DashboardMetricsService
         }
 
         $revenueLabels = array_keys($streamTotals);
-        $revenueData   = array_map(fn ($v) => round($v, 2), array_values($streamTotals));
+        $revenueData = array_map(fn ($v) => round($v, 2), array_values($streamTotals));
 
         // ── 5. Audit Logs ─────────────────────────────────────────────────────
         $payLogs = Payment::with(['user', 'course'])->latest('id')->take(10)->get()->map(function ($p) {
             return [
-                'id'        => 'PAY-' . str_pad($p->id, 5, '0', STR_PAD_LEFT),
-                'user'      => $p->user->name ?? 'User #' . $p->user_id,
-                'role'      => ucfirst($p->user->role ?? 'Student'),
-                'action'    => 'Payment of RM ' . number_format($p->amount, 2) . ' for ' . ($p->course->title ?? $p->description ?? 'Course Fee'),
-                'module'    => 'Financials',
-                'status'    => strtoupper($p->status?->value ?? 'PAID'),
-                'date'      => $p->paid_at ? $p->paid_at->format('d M Y, H:i') : ($p->created_at ? $p->created_at->format('d M Y, H:i') : 'Recent'),
+                'id' => 'PAY-'.str_pad($p->id, 5, '0', STR_PAD_LEFT),
+                'user' => $p->user->name ?? 'User #'.$p->user_id,
+                'role' => ucfirst($p->user->role ?? 'Student'),
+                'action' => 'Payment of RM '.number_format($p->amount, 2).' for '.($p->course->title ?? $p->description ?? 'Course Fee'),
+                'module' => 'Financials',
+                'status' => strtoupper($p->status?->value ?? 'PAID'),
+                'date' => $p->paid_at ? $p->paid_at->format('d M Y, H:i') : ($p->created_at ? $p->created_at->format('d M Y, H:i') : 'Recent'),
                 'timestamp' => $p->paid_at ? $p->paid_at->timestamp : ($p->created_at ? $p->created_at->timestamp : 0),
             ];
         });
 
         $enrollLogs = Enrollment::with(['student.user', 'course'])->latest('id')->take(10)->get()->map(function ($e) {
             return [
-                'id'        => 'ENR-' . str_pad($e->id, 5, '0', STR_PAD_LEFT),
-                'user'      => $e->student?->user?->name ?? 'Student #' . $e->student_id,
-                'role'      => 'Student',
-                'action'    => 'Enrolled into ' . ($e->course->title ?? 'Course #' . $e->course_id) . ' (' . ($e->progress_pct ?? 0) . '% Progress)',
-                'module'    => 'Enrollments',
-                'status'    => 'ACTIVE',
-                'date'      => $e->created_at ? $e->created_at->format('d M Y, H:i') : 'Recent',
+                'id' => 'ENR-'.str_pad($e->id, 5, '0', STR_PAD_LEFT),
+                'user' => $e->student?->user?->name ?? 'Student #'.$e->student_id,
+                'role' => 'Student',
+                'action' => 'Enrolled into '.($e->course->title ?? 'Course #'.$e->course_id).' ('.($e->progress_pct ?? 0).'% Progress)',
+                'module' => 'Enrollments',
+                'status' => 'ACTIVE',
+                'date' => $e->created_at ? $e->created_at->format('d M Y, H:i') : 'Recent',
                 'timestamp' => $e->created_at ? $e->created_at->timestamp : 0,
             ];
         });
@@ -420,27 +428,28 @@ class DashboardMetricsService
         $msgLogs = ChatMessage::with(['sender', 'conversation.participants.user'])
             ->latest('id')->take(10)->get()->map(function ($m) {
                 $receiver = $m->conversation?->otherParticipant($m->sender_id);
+
                 return [
-                    'id'        => 'MSG-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
-                    'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
-                    'role'      => ucfirst($m->sender->role ?? 'User'),
-                    'action'    => 'Sent live communication message to ' . ($receiver->name ?? 'a conversation'),
-                    'module'    => 'Messenger',
-                    'status'    => 'SENT',
-                    'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
+                    'id' => 'MSG-'.str_pad($m->id, 5, '0', STR_PAD_LEFT),
+                    'user' => $m->sender->name ?? 'User #'.$m->sender_id,
+                    'role' => ucfirst($m->sender->role ?? 'User'),
+                    'action' => 'Sent live communication message to '.($receiver->name ?? 'a conversation'),
+                    'module' => 'Messenger',
+                    'status' => 'SENT',
+                    'date' => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
                     'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
                 ];
             });
 
         $userLogs = User::latest('id')->take(10)->get()->map(function ($u) {
             return [
-                'id'        => 'USR-' . str_pad($u->id, 5, '0', STR_PAD_LEFT),
-                'user'      => $u->name,
-                'role'      => ucfirst($u->role),
-                'action'    => 'Registered account profile (' . $u->email . ')',
-                'module'    => 'Auth / Profile',
-                'status'    => 'VERIFIED',
-                'date'      => $u->created_at ? $u->created_at->format('d M Y, H:i') : 'Recent',
+                'id' => 'USR-'.str_pad($u->id, 5, '0', STR_PAD_LEFT),
+                'user' => $u->name,
+                'role' => ucfirst($u->role),
+                'action' => 'Registered account profile ('.$u->email.')',
+                'module' => 'Auth / Profile',
+                'status' => 'VERIFIED',
+                'date' => $u->created_at ? $u->created_at->format('d M Y, H:i') : 'Recent',
                 'timestamp' => $u->created_at ? $u->created_at->timestamp : 0,
             ];
         });
@@ -452,9 +461,9 @@ class DashboardMetricsService
 
         $popupSettings = [
             'enabled' => Setting::get('parent_greeting_enabled', '1'),
-            'title'   => Setting::get('parent_greeting_title', 'Welcome to Olympia Scholars'),
-            'body'    => Setting::get('parent_greeting_body', "We are thrilled to partner with you in nurturing your child's academic growth, curiosity, and confidence. Here is everything you need to stay connected with their learning journey."),
-            'image'   => Setting::get('parent_greeting_image', 'images/welcome-parent-greeting.jpg'),
+            'title' => Setting::get('parent_greeting_title', 'Welcome to Olympia Scholars'),
+            'body' => Setting::get('parent_greeting_body', "We are thrilled to partner with you in nurturing your child's academic growth, curiosity, and confidence. Here is everything you need to stay connected with their learning journey."),
+            'image' => Setting::get('parent_greeting_image', 'images/welcome-parent-greeting.jpg'),
         ];
         $allBlogPosts = BlogPost::with('author')->latest('created_at')->get();
         $allTasks = Assignment::with(['course.subject', 'results.student.user'])
@@ -463,83 +472,83 @@ class DashboardMetricsService
 
         // ── Email Management & Blast System ───────────────────────────────
         $emailStats = [
-            'total_sent'          => \App\Models\EmailLog::whereIn('status', [\App\Models\EmailLog::STATUS_SENT, \App\Models\EmailLog::STATUS_DELIVERED])->count(),
-            'processed'           => \App\Models\EmailLog::count(),
-            'failed'              => \App\Models\EmailLog::where('status', \App\Models\EmailLog::STATUS_FAILED)->count(),
-            'pending'             => \App\Models\EmailLog::where('status', \App\Models\EmailLog::STATUS_QUEUED)->count(),
-            'scheduled_campaigns' => \App\Models\EmailCampaign::where('status', \App\Models\EmailCampaign::STATUS_SCHEDULED)->count(),
-            'active_automations'  => \App\Models\EmailAutomation::where('is_enabled', true)->count(),
+            'total_sent' => EmailLog::whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])->count(),
+            'processed' => EmailLog::count(),
+            'failed' => EmailLog::where('status', EmailLog::STATUS_FAILED)->count(),
+            'pending' => EmailLog::where('status', EmailLog::STATUS_QUEUED)->count(),
+            'scheduled_campaigns' => EmailCampaign::where('status', EmailCampaign::STATUS_SCHEDULED)->count(),
+            'active_automations' => EmailAutomation::where('is_enabled', true)->count(),
         ];
 
-        $emailTemplates     = \App\Models\EmailTemplate::with('creator')->notArchived()->orderBy('category')->orderBy('name')->get();
-        $emailCampaigns     = \App\Models\EmailCampaign::with(['template', 'creator'])->latest('id')->take(30)->get();
-        $emailAutomations   = \App\Models\EmailAutomation::with('template')->get();
-        $emailLogs          = \App\Models\EmailLog::with(['template', 'user'])->latest('id')->take(60)->get();
-        $emailCategories    = \App\Models\EmailTemplate::categories();
-        $availableVariables = \App\Services\Email\EmailVariableRegistry::flatList();
-        $supportedAudiences = \App\Services\Email\AudienceResolverService::supportedAudiences();
+        $emailTemplates = EmailTemplate::with('creator')->notArchived()->orderBy('category')->orderBy('name')->get();
+        $emailCampaigns = EmailCampaign::with(['template', 'creator'])->latest('id')->take(30)->get();
+        $emailAutomations = EmailAutomation::with('template')->get();
+        $emailLogs = EmailLog::with(['template', 'user'])->latest('id')->take(60)->get();
+        $emailCategories = EmailTemplate::categories();
+        $availableVariables = EmailVariableRegistry::flatList();
+        $supportedAudiences = AudienceResolverService::supportedAudiences();
 
         $emailSettings = [
-            'sender_display_name'    => Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars')),
-            'sender_email_address'   => Setting::get('sender_email_address', config('mail.from.address', 'noreply@olympiascholars.edu.my')),
-            'reply_to_email'         => Setting::get('reply_to_email', config('mail.from.address', 'support@olympiascholars.edu.my')),
+            'sender_display_name' => Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars')),
+            'sender_email_address' => Setting::get('sender_email_address', config('mail.from.address', 'noreply@olympiascholars.edu.my')),
+            'reply_to_email' => Setting::get('reply_to_email', config('mail.from.address', 'support@olympiascholars.edu.my')),
             'official_support_email' => Setting::get('official_support_email', 'support@olympiascholars.edu.my'),
-            'official_website_url'   => Setting::get('official_website_url', config('app.url', 'https://olympiascholars.edu.my')),
-            'official_email_footer'  => Setting::get('official_email_footer', 'Olympia Scholars • Dedicated to Educational Excellence • Kuala Lumpur, Malaysia'),
-            'email_banner_url'       => Setting::get('email_banner_url', asset('images/email-banner.png')),
-            'mail_mailer'            => config('mail.default', 'smtp'),
-            'mail_host'              => config('mail.mailers.smtp.host', 'smtp.gmail.com'),
-            'mail_port'              => config('mail.mailers.smtp.port', 587),
-            'mail_encryption'        => config('mail.mailers.smtp.encryption', 'tls'),
+            'official_website_url' => Setting::get('official_website_url', config('app.url', 'https://olympiascholars.edu.my')),
+            'official_email_footer' => Setting::get('official_email_footer', 'Olympia Scholars • Dedicated to Educational Excellence • Kuala Lumpur, Malaysia'),
+            'email_banner_url' => Setting::get('email_banner_url', asset('images/email-banner.png')),
+            'mail_mailer' => config('mail.default', 'smtp'),
+            'mail_host' => config('mail.mailers.smtp.host', 'smtp.gmail.com'),
+            'mail_port' => config('mail.mailers.smtp.port', 587),
+            'mail_encryption' => config('mail.mailers.smtp.encryption', 'tls'),
         ];
 
         // 7-day sending trend data
         $emailTrendsLabels = [];
-        $emailTrendsSent   = [];
+        $emailTrendsSent = [];
         $emailTrendsFailed = [];
         for ($i = 6; $i >= 0; $i--) {
             $day = now()->subDays($i);
             $dayStr = $day->format('Y-m-d');
             $emailTrendsLabels[] = $day->format('d M');
-            $emailTrendsSent[]   = \App\Models\EmailLog::whereDate('created_at', $dayStr)->whereIn('status', [\App\Models\EmailLog::STATUS_SENT, \App\Models\EmailLog::STATUS_DELIVERED])->count();
-            $emailTrendsFailed[] = \App\Models\EmailLog::whereDate('created_at', $dayStr)->where('status', \App\Models\EmailLog::STATUS_FAILED)->count();
+            $emailTrendsSent[] = EmailLog::whereDate('created_at', $dayStr)->whereIn('status', [EmailLog::STATUS_SENT, EmailLog::STATUS_DELIVERED])->count();
+            $emailTrendsFailed[] = EmailLog::whereDate('created_at', $dayStr)->where('status', EmailLog::STATUS_FAILED)->count();
         }
 
         // Category breakdown
-        $catCounts = \App\Models\EmailLog::select('category', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+        $catCounts = EmailLog::select('category', DB::raw('count(*) as total'))
             ->groupBy('category')
             ->pluck('total', 'category')
             ->toArray();
         $emailCategoryLabels = [];
-        $emailCategoryData   = [];
+        $emailCategoryData = [];
         foreach ($emailCategories as $ckey => $clabel) {
             $emailCategoryLabels[] = $clabel;
-            $emailCategoryData[]   = $catCounts[$ckey] ?? 0;
+            $emailCategoryData[] = $catCounts[$ckey] ?? 0;
         }
 
         // ── Attendance Hub Data ─────────────────────────────────────────────
-        $allAttendances = \App\Models\StudentAttendance::with([
+        $allAttendances = StudentAttendance::with([
             'student.user',
             'liveClass.course.subject',
             'liveClass.teacher.user',
             'verifier',
         ])->latest('id')->take(500)->get();
 
-        $attendanceTotalRecords  = \App\Models\StudentAttendance::count();
-        $attendanceAttendedCount = \App\Models\StudentAttendance::where('status', 'attended')->count();
-        $attendanceLateCount     = \App\Models\StudentAttendance::where('status', 'late')->count();
-        $attendanceAbsentCount   = \App\Models\StudentAttendance::where('status', 'absent')->count();
-        $attendanceExcusedCount  = \App\Models\StudentAttendance::where('status', 'excused')->count();
-        $attendancePendingCount  = \App\Models\StudentAttendance::where('status', 'pending_verification')->count();
+        $attendanceTotalRecords = StudentAttendance::count();
+        $attendanceAttendedCount = StudentAttendance::where('status', 'attended')->count();
+        $attendanceLateCount = StudentAttendance::where('status', 'late')->count();
+        $attendanceAbsentCount = StudentAttendance::where('status', 'absent')->count();
+        $attendanceExcusedCount = StudentAttendance::where('status', 'excused')->count();
+        $attendancePendingCount = StudentAttendance::where('status', 'pending_verification')->count();
 
-        $pendingAttendanceCorrections = \App\Models\AttendanceCorrectionRequest::where('status', 'pending')
+        $pendingAttendanceCorrections = AttendanceCorrectionRequest::where('status', 'pending')
             ->with(['student.user', 'liveClass.course.subject'])
             ->latest()
             ->take(10)
             ->get();
 
-        $attendanceLateThreshold        = (int) Setting::get('attendance.late_threshold_minutes', 15);
-        $attendanceEarlyJoinWindow      = (int) Setting::get('attendance.early_join_window_minutes', 15);
+        $attendanceLateThreshold = (int) Setting::get('attendance.late_threshold_minutes', 15);
+        $attendanceEarlyJoinWindow = (int) Setting::get('attendance.early_join_window_minutes', 15);
         $attendanceExcusedInDenominator = (bool) Setting::get('attendance.excused_in_denominator', 0);
 
         // ── Parents & Linkages Directory ──────────────────────────────────────

@@ -56,7 +56,7 @@ class FinanceController extends Controller
         $fee = FeeStructure::findOrFail($id);
         $billing->syncFeeStructureSubjects($fee, $request);
 
-        return response()->json(['success' => true, 'message' => 'Subjects updated for "' . $fee->name . '".']);
+        return response()->json(['success' => true, 'message' => 'Subjects updated for "'.$fee->name.'".']);
     }
 
     /**
@@ -147,7 +147,7 @@ class FinanceController extends Controller
         $invoice = Invoice::findOrFail($id);
         $invoice = $billing->updateInvoice($invoice, $request);
 
-        return redirect()->to(route('admin.dashboard') . '#financials')
+        return redirect()->to(route('admin.dashboard').'#financials')
             ->with('success', "Invoice {$invoice->invoice_number} updated successfully.");
     }
 
@@ -164,7 +164,7 @@ class FinanceController extends Controller
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#financials')
+        return redirect()->to(route('admin.dashboard').'#financials')
             ->with('success', $result['message']);
     }
 
@@ -172,15 +172,15 @@ class FinanceController extends Controller
     {
         $billing->updateDefaultDueDays($request);
 
-        return redirect()->to(route('admin.dashboard') . '#financials')
-            ->with('success', "Billing policies updated successfully.");
+        return redirect()->to(route('admin.dashboard').'#financials')
+            ->with('success', 'Billing policies updated successfully.');
     }
 
     public function destroyInvoice($id, BillingAdminService $billing)
     {
         $number = $billing->deleteInvoice($id);
 
-        return redirect()->to(route('admin.dashboard') . '#financials')
+        return redirect()->to(route('admin.dashboard').'#financials')
             ->with('success', "Invoice {$number} deleted. Linked pending payments have been reset.");
     }
 }

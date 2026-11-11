@@ -14,7 +14,7 @@ class UpdateTeacherSubjectsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'subject_ids'   => 'nullable|array',
+            'subject_ids' => 'nullable|array',
             'subject_ids.*' => 'exists:subjects,id',
         ];
     }

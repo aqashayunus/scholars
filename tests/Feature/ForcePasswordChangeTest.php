@@ -14,9 +14,9 @@ class ForcePasswordChangeTest extends TestCase
     public function test_a_flagged_user_is_redirected_to_set_a_new_password(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Flagged User',
-            'email'    => 'flagged@test.com',
-            'role'     => 'student',
+            'name' => 'Flagged User',
+            'email' => 'flagged@test.com',
+            'role' => 'student',
             'password' => Hash::make('temp-password'),
         ]);
         $user->must_change_password = true;
@@ -30,16 +30,16 @@ class ForcePasswordChangeTest extends TestCase
     public function test_setting_a_new_password_clears_the_flag_and_restores_access(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Flagged User 2',
-            'email'    => 'flagged2@test.com',
-            'role'     => 'student',
+            'name' => 'Flagged User 2',
+            'email' => 'flagged2@test.com',
+            'role' => 'student',
             'password' => Hash::make('temp-password'),
         ]);
         $user->must_change_password = true;
         $user->save();
 
         $response = $this->actingAs($user)->post(route('password.force.update'), [
-            'password'              => 'BrandNewPassword1!',
+            'password' => 'BrandNewPassword1!',
             'password_confirmation' => 'BrandNewPassword1!',
         ]);
 
@@ -57,9 +57,9 @@ class ForcePasswordChangeTest extends TestCase
     public function test_flagged_user_can_still_reach_the_set_password_screen_itself(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Flagged User 3',
-            'email'    => 'flagged3@test.com',
-            'role'     => 'student',
+            'name' => 'Flagged User 3',
+            'email' => 'flagged3@test.com',
+            'role' => 'student',
             'password' => Hash::make('temp-password'),
         ]);
         $user->must_change_password = true;

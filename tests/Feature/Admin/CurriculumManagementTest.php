@@ -31,12 +31,12 @@ class CurriculumManagementTest extends TestCase
         $teacher = Teacher::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.courses.store'), [
-            'title'       => 'SPM Add Maths',
-            'subject_id'  => $subject->id,
-            'teacher_id'  => $teacher->id,
-            'level'       => 'SPM',
+            'title' => 'SPM Add Maths',
+            'subject_id' => $subject->id,
+            'teacher_id' => $teacher->id,
+            'level' => 'SPM',
             'monthly_fee' => 150,
-            'status'      => 'published',
+            'status' => 'published',
         ]);
 
         $response->assertRedirect();
@@ -51,11 +51,11 @@ class CurriculumManagementTest extends TestCase
         $subject->teachers()->attach($teacher->id);
 
         $response = $this->actingAs($this->admin)->post(route('admin.courses.store'), [
-            'title'       => 'Fallback Course',
-            'subject_id'  => $subject->id,
-            'level'       => 'SPM',
+            'title' => 'Fallback Course',
+            'subject_id' => $subject->id,
+            'level' => 'SPM',
             'monthly_fee' => 80,
-            'status'      => 'draft',
+            'status' => 'draft',
         ]);
 
         $response->assertRedirect();
@@ -70,11 +70,11 @@ class CurriculumManagementTest extends TestCase
         $course = Course::factory()->create(['subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.courses.update', $course->id), [
-            'title'       => 'Updated Title',
-            'subject_id'  => $subject->id,
-            'level'       => 'SPM',
+            'title' => 'Updated Title',
+            'subject_id' => $subject->id,
+            'level' => 'SPM',
             'monthly_fee' => 200,
-            'status'      => 'published',
+            'status' => 'published',
         ]);
 
         $response->assertRedirect();
@@ -99,13 +99,13 @@ class CurriculumManagementTest extends TestCase
     public function test_admin_can_create_single_subject_with_auto_generated_slug_and_code(): void
     {
         $response = $this->actingAs($this->admin)->post(route('admin.subjects.store'), [
-            'name'           => 'Biology',
+            'name' => 'Biology',
             'education_type' => 'secondary',
-            'stage'          => 'Upper Secondary',
-            'form_year'      => 'Form 5',
-            'category'       => 'Core',
-            'level'          => 'SPM',
-            'color'          => '#22c55e',
+            'stage' => 'Upper Secondary',
+            'form_year' => 'Form 5',
+            'category' => 'Core',
+            'level' => 'SPM',
+            'color' => '#22c55e',
         ]);
 
         $response->assertRedirect();
@@ -139,14 +139,14 @@ class CurriculumManagementTest extends TestCase
         Subject::factory()->create(['slug' => 'history-form-4']);
 
         $response = $this->actingAs($this->admin)->post(route('admin.subjects.store'), [
-            'name'           => 'History',
-            'slug'           => 'history-form-4',
+            'name' => 'History',
+            'slug' => 'history-form-4',
             'education_type' => 'secondary',
-            'stage'          => 'Upper Secondary',
-            'form_year'      => 'Form 4',
-            'category'       => 'Core',
-            'level'          => 'SPM',
-            'color'          => '#000000',
+            'stage' => 'Upper Secondary',
+            'form_year' => 'Form 4',
+            'category' => 'Core',
+            'level' => 'SPM',
+            'color' => '#000000',
         ]);
 
         $response->assertRedirect();
@@ -169,7 +169,7 @@ class CurriculumManagementTest extends TestCase
     {
         $response = $this->actingAs($this->admin)->post(route('admin.topics.store'), [
             'subject_id' => 99999,
-            'title'      => 'Orphan Topic',
+            'title' => 'Orphan Topic',
         ]);
 
         $response->assertRedirect();
@@ -184,7 +184,7 @@ class CurriculumManagementTest extends TestCase
 
         $response = $this->actingAs($this->admin)->post(route('admin.topics.store'), [
             'subject_id' => $subject->id,
-            'title'      => 'New Chapter',
+            'title' => 'New Chapter',
         ]);
 
         $response->assertRedirect();
@@ -197,7 +197,7 @@ class CurriculumManagementTest extends TestCase
 
         $response = $this->actingAs($this->admin)->post(route('admin.topics.store'), [
             'subject_id' => $subject->id,
-            'topics'     => [
+            'topics' => [
                 ['title' => 'Chapter A'],
                 ['title' => 'Chapter B'],
             ],
@@ -226,7 +226,7 @@ class CurriculumManagementTest extends TestCase
         $topic = SubjectTopic::create(['subject_id' => $subject->id, 'chapter_number' => 1, 'title' => 'Chapter 1']);
 
         $response = $this->actingAs($this->admin)->post(route('admin.topics.subtopics.store', $topic->id), [
-            'title'          => 'Checkpoint 1',
+            'title' => 'Checkpoint 1',
             'default_status' => 'Not Started',
         ]);
 
@@ -257,9 +257,9 @@ class CurriculumManagementTest extends TestCase
         $subtopic = $topic->subtopics()->create(['title' => 'Old', 'default_status' => 'Not Started', 'order' => 1]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.subtopics.update', $subtopic->id), [
-            'title'          => 'Renamed',
+            'title' => 'Renamed',
             'default_status' => 'Mastered',
-            'order'          => 1,
+            'order' => 1,
         ]);
 
         $response->assertRedirect();

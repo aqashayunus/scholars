@@ -16,11 +16,11 @@ class SubmissionPageFactory extends Factory
     public function definition(): array
     {
         return [
-            'submission_id'   => StudentAssignmentSubmission::factory(),
-            'page_number'     => 1,
+            'submission_id' => StudentAssignmentSubmission::factory(),
+            'page_number' => 1,
             'annotation_json' => null,
-            'stroke_count'    => 0,
-            'page_version'    => 1,
+            'stroke_count' => 0,
+            'page_version' => 1,
         ];
     }
 }

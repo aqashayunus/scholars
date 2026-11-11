@@ -13,7 +13,7 @@ class ClassRequest extends Model
         'reason',
         'requested_at',
         'status',
-        'admin_note'
+        'admin_note',
     ];
 
     protected $casts = [

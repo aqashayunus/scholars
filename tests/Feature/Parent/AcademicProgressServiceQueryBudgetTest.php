@@ -21,8 +21,8 @@ use Tests\TestCase;
  */
 class AcademicProgressServiceQueryBudgetTest extends TestCase
 {
-    use RefreshDatabase;
     use CountsQueries;
+    use RefreshDatabase;
 
     public function test_query_count_does_not_scale_with_enrollment_count(): void
     {

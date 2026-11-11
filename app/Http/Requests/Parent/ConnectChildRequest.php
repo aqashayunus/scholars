@@ -14,7 +14,7 @@ class ConnectChildRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'identifier'   => 'required|string|max:255',
+            'identifier' => 'required|string|max:255',
             'relationship' => 'nullable|string|max:30',
         ];
     }

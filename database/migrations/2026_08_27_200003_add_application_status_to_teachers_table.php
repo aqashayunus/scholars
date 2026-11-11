@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Add application_status to teachers table if not already present
-        if (!Schema::hasColumn('teachers', 'application_status')) {
+        if (! Schema::hasColumn('teachers', 'application_status')) {
             Schema::table('teachers', function (Blueprint $table) {
                 $table->string('application_status', 20)->default('active')->after('id');
             });

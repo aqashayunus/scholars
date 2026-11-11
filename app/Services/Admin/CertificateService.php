@@ -20,20 +20,20 @@ class CertificateService
             $filePath = $file->store('certificates', 'public');
         }
 
-        $certNumber = !empty($validated['cert_number'])
+        $certNumber = ! empty($validated['cert_number'])
             ? $validated['cert_number']
-            : ('OSC-' . date('Y') . '-' . strtoupper(substr(md5(uniqid()), 0, 6)));
+            : ('OSC-'.date('Y').'-'.strtoupper(substr(md5(uniqid()), 0, 6)));
 
         $certificate = Certificate::create([
-            'student_id'  => $validated['student_id'],
-            'course_id'   => $validated['course_id'] ?? null,
-            'title'       => $validated['title'],
-            'subtitle'    => $validated['subtitle'] ?? null,
+            'student_id' => $validated['student_id'],
+            'course_id' => $validated['course_id'] ?? null,
+            'title' => $validated['title'],
+            'subtitle' => $validated['subtitle'] ?? null,
             'cert_number' => $certNumber,
-            'file_path'   => $filePath,
-            'file_name'   => $fileName,
-            'issued_at'   => $validated['issued_at'] ?? now(),
-            'issued_by'   => $validated['issued_by'] ?? (auth()->user()->name ?? 'Academy Administration'),
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+            'issued_at' => $validated['issued_at'] ?? now(),
+            'issued_by' => $validated['issued_by'] ?? (auth()->user()->name ?? 'Academy Administration'),
             'description' => $validated['description'] ?? null,
         ]);
 
@@ -54,15 +54,15 @@ class CertificateService
     private function notifyRecipients(int $studentId, string $title): void
     {
         $student = Student::find($studentId);
-        if (!$student) {
+        if (! $student) {
             return;
         }
 
         if ($student->user_id) {
             UserNotification::create([
                 'user_id' => $student->user_id,
-                'type'    => 'certificate',
-                'title'   => 'NEW CERTIFICATE AWARDED',
+                'type' => 'certificate',
+                'title' => 'NEW CERTIFICATE AWARDED',
                 'message' => "Congratulations! You have been awarded an official certificate: '{$title}'. View it in your Achievements tab.",
                 'read_at' => null,
             ]);
@@ -73,8 +73,8 @@ class CertificateService
         foreach ($parents as $parent) {
             UserNotification::create([
                 'user_id' => $parent->id,
-                'type'    => 'certificate',
-                'title'   => 'STUDENT CERTIFICATE AWARDED',
+                'type' => 'certificate',
+                'title' => 'STUDENT CERTIFICATE AWARDED',
                 'message' => "Congratulations! {$studentName} has been awarded an official certificate: '{$title}'.",
                 'read_at' => null,
             ]);

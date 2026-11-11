@@ -34,8 +34,8 @@ class PackagePricingService
     /**
      * Retrieve packages available for a given context.
      *
-     * @param  string|null $educationLevel  e.g. 'Form 5', 'Year 4'
-     * @param  int|null    $studentId       for targeted package filtering
+     * @param  string|null  $educationLevel  e.g. 'Form 5', 'Year 4'
+     * @param  int|null  $studentId  for targeted package filtering
      * @return Collection<FeeStructure>
      */
     public function getAvailablePackages(?string $educationLevel = null, ?int $studentId = null): Collection
@@ -46,8 +46,8 @@ class PackagePricingService
         if ($educationLevel) {
             $query->where(function ($q) use ($educationLevel) {
                 $q->where('education_level', 'All')
-                  ->orWhere('education_level', $educationLevel)
-                  ->orWhere('education_level', 'like', '%' . explode(' ', $educationLevel)[0] . '%');
+                    ->orWhere('education_level', $educationLevel)
+                    ->orWhere('education_level', 'like', '%'.explode(' ', $educationLevel)[0].'%');
             });
         }
 
@@ -56,7 +56,7 @@ class PackagePricingService
         if ($studentId) {
             $query->where(function ($q) use ($studentId) {
                 $q->whereNull('student_id')
-                  ->orWhere('student_id', $studentId);
+                    ->orWhere('student_id', $studentId);
             });
         } else {
             $query->whereNull('student_id');
@@ -86,7 +86,7 @@ class PackagePricingService
                 $level = $feeStructure->education_level;
                 $q->where(function ($inner) use ($level) {
                     $inner->where('form_year', $level)
-                          ->orWhere('stage', 'like', '%' . $level . '%');
+                        ->orWhere('stage', 'like', '%'.$level.'%');
                 });
             })
             ->orderBy('order')
@@ -97,8 +97,8 @@ class PackagePricingService
     /**
      * Validate that the provided subject IDs are acceptable for the given package.
      *
-     * @param  FeeStructure $feeStructure
-     * @param  int[]        $subjectIds
+     * @param  int[]  $subjectIds
+     *
      * @throws ValidationException if selection is invalid
      */
     public function validateSubjectSelection(FeeStructure $feeStructure, array $subjectIds): void
@@ -132,9 +132,9 @@ class PackagePricingService
      *
      * Returns a PricingResult value object. The frontend price is NEVER trusted.
      *
-     * @param  FeeStructure $feeStructure  Must be loaded with items and priceTiers
-     * @param  int[]        $subjectIds    Subject IDs selected by the student
-     * @return PricingResult
+     * @param  FeeStructure  $feeStructure  Must be loaded with items and priceTiers
+     * @param  int[]  $subjectIds  Subject IDs selected by the student
+     *
      * @throws \RuntimeException if pricing cannot be determined
      */
     public function calculate(FeeStructure $feeStructure, array $subjectIds = []): PricingResult
@@ -150,9 +150,9 @@ class PackagePricingService
 
         // Determine the base tuition price based on package type
         $tuitionPrice = match ($packageType) {
-            FeeStructure::TYPE_TIERED       => $this->resolveTieredPrice($feeStructure, count($subjectIds)),
-            FeeStructure::TYPE_INDIVIDUAL   => $this->resolveIndividualPrice($feeStructure, $subjects),
-            default                         => (float) $feeStructure->amount, // fixed_bundle, pick_n, custom
+            FeeStructure::TYPE_TIERED => $this->resolveTieredPrice($feeStructure, count($subjectIds)),
+            FeeStructure::TYPE_INDIVIDUAL => $this->resolveIndividualPrice($feeStructure, $subjects),
+            default => (float) $feeStructure->amount, // fixed_bundle, pick_n, custom
         };
 
         // Build line items
@@ -162,15 +162,15 @@ class PackagePricingService
         $subtotal = collect($lineItems)->sum('amount');
 
         return new PricingResult(
-            feeStructureId:  $feeStructure->id,
-            packageName:     $feeStructure->name,
-            packageType:     $packageType,
-            subjectIds:      $subjectIds,
-            tuitionPrice:    $tuitionPrice,
-            lineItems:       $lineItems,
-            subtotal:        $subtotal,
-            discountAmount:  0.0,  // Promotions extend here in a future phase
-            totalAmount:     $subtotal,
+            feeStructureId: $feeStructure->id,
+            packageName: $feeStructure->name,
+            packageType: $packageType,
+            subjectIds: $subjectIds,
+            tuitionPrice: $tuitionPrice,
+            lineItems: $lineItems,
+            subtotal: $subtotal,
+            discountAmount: 0.0,  // Promotions extend here in a future phase
+            totalAmount: $subtotal,
         );
     }
 
@@ -188,7 +188,7 @@ class PackagePricingService
         $tier = $feeStructure->priceTiers
             ->first(fn ($t) => $t->appliesTo($subjectCount));
 
-        if (!$tier) {
+        if (! $tier) {
             throw new \RuntimeException(
                 "No pricing tier defined for {$subjectCount} subject(s) in package \"{$feeStructure->name}\"."
             );
@@ -200,12 +200,15 @@ class PackagePricingService
     /**
      * Validate that price tiers are non-overlapping and cover a contiguous range.
      *
-     * @param  FeeStructurePriceTier[] $tiers
+     * @param  FeeStructurePriceTier[]  $tiers
+     *
      * @throws ValidationException
      */
     public function validateTiers(array $tiers): void
     {
-        if (empty($tiers)) return;
+        if (empty($tiers)) {
+            return;
+        }
 
         // Sort by minimum
         usort($tiers, fn ($a, $b) => $a['minimum_subjects'] <=> $b['minimum_subjects']);
@@ -239,14 +242,14 @@ class PackagePricingService
         $isActive = $feeStructure->status === FeeStructure::STATUS_ACTIVE
             || ($feeStructure->status === null && $feeStructure->is_active);
 
-        if (!$isActive) {
+        if (! $isActive) {
             throw new \RuntimeException(
                 "Package \"{$feeStructure->name}\" is not active (status: {$feeStructure->status_label})."
             );
         }
 
         // Effective date check
-        if (!$feeStructure->is_currently_valid) {
+        if (! $feeStructure->is_currently_valid) {
             throw new \RuntimeException(
                 "Package \"{$feeStructure->name}\" is outside its validity period."
             );
@@ -268,7 +271,7 @@ class PackagePricingService
         if ($selectedSorted !== $requiredIds) {
             throw ValidationException::withMessages([
                 'subjects' => "Fixed bundle \"{$feeStructure->name}\" requires exactly: "
-                    . $feeStructure->subjects->pluck('name')->implode(', ') . '.',
+                    .$feeStructure->subjects->pluck('name')->implode(', ').'.',
             ]);
         }
     }
@@ -315,9 +318,9 @@ class PackagePricingService
         $allowedIds = $feeStructure->subjects->pluck('id')->toArray();
 
         foreach ($subjectIds as $id) {
-            if (!in_array($id, $allowedIds)) {
+            if (! in_array($id, $allowedIds)) {
                 $subject = Subject::find($id);
-                $subjectLabel = $subject ? $subject->name : '#' . $id;
+                $subjectLabel = $subject ? $subject->name : '#'.$id;
                 throw ValidationException::withMessages([
                     'subjects' => "Subject \"{$subjectLabel}\" is not part of package \"{$feeStructure->name}\".",
                 ]);
@@ -327,7 +330,9 @@ class PackagePricingService
 
     private function validateSubjectsExist(array $subjectIds): void
     {
-        if (empty($subjectIds)) return;
+        if (empty($subjectIds)) {
+            return;
+        }
 
         $found = Subject::whereIn('id', $subjectIds)->where('is_active', true)->count();
         if ($found !== count($subjectIds)) {
@@ -341,7 +346,10 @@ class PackagePricingService
 
     private function resolveTieredPrice(FeeStructure $feeStructure, int $count): float
     {
-        if ($count === 0) return 0.0;
+        if ($count === 0) {
+            return 0.0;
+        }
+
         return (float) $this->resolveTier($feeStructure, $count)->price;
     }
 
@@ -351,6 +359,7 @@ class PackagePricingService
             // Fallback to flat amount
             return (float) ($feeStructure->amount ?? 0);
         }
+
         return $subjects->sum(fn ($s) => (float) ($s->monthly_fee ?? 0));
     }
 
@@ -364,7 +373,7 @@ class PackagePricingService
      *
      * All values are snapshotted at calculation time for historical immutability.
      *
-     * @return array[]  Each element is an array suitable for InvoiceItem::create()
+     * @return array[] Each element is an array suitable for InvoiceItem::create()
      */
     public function buildLineItems(FeeStructure $feeStructure, Collection $subjects, float $tuitionPrice): array
     {
@@ -387,34 +396,35 @@ class PackagePricingService
             $lineAmount = round((float) $item->amount * max(1, (int) $item->quantity), 2);
 
             $lines[] = [
-                'subject_id'       => null,
-                'description'      => $item->name . ($item->description ? ': ' . $item->description : ''),
-                'item_type'        => $item->item_type,
-                'package_name'     => $packageName,
-                'billing_frequency'=> $item->billing_frequency,
-                'unit_price'       => (float) $item->amount,
-                'quantity'         => max(1, (int) $item->quantity),
-                'amount'           => $lineAmount,
+                'subject_id' => null,
+                'description' => $item->name.($item->description ? ': '.$item->description : ''),
+                'item_type' => $item->item_type,
+                'package_name' => $packageName,
+                'billing_frequency' => $item->billing_frequency,
+                'unit_price' => (float) $item->amount,
+                'quantity' => max(1, (int) $item->quantity),
+                'amount' => $lineAmount,
             ];
         }
+
         return $lines;
     }
 
     private function buildTuitionLine(FeeStructure $feeStructure, Collection $subjects, float $tuitionPrice, string $packageName): array
     {
         $subjectNames = $subjects->isNotEmpty()
-            ? ' (' . $subjects->pluck('name')->implode(', ') . ')'
+            ? ' ('.$subjects->pluck('name')->implode(', ').')'
             : '';
 
         return [
-            'subject_id'       => null,
-            'description'      => $packageName . $subjectNames,
-            'item_type'        => 'tuition',
-            'package_name'     => $packageName,
-            'billing_frequency'=> $feeStructure->frequency ?? 'monthly',
-            'unit_price'       => $tuitionPrice,
-            'quantity'         => 1,
-            'amount'           => $tuitionPrice,
+            'subject_id' => null,
+            'description' => $packageName.$subjectNames,
+            'item_type' => 'tuition',
+            'package_name' => $packageName,
+            'billing_frequency' => $feeStructure->frequency ?? 'monthly',
+            'unit_price' => $tuitionPrice,
+            'quantity' => 1,
+            'amount' => $tuitionPrice,
         ];
     }
 }

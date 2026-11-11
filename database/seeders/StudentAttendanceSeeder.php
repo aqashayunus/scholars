@@ -3,8 +3,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Student;
+use App\Models\Course;
 use App\Models\LiveClass;
+use App\Models\Student;
 use App\Models\StudentAttendance;
 use Illuminate\Database\Seeder;
 
@@ -17,12 +18,12 @@ class StudentAttendanceSeeder extends Seeder
 
         if ($pastClasses->isEmpty()) {
             // Create a few past classes for demonstration
-            $course = \App\Models\Course::first();
+            $course = Course::first();
             if ($course) {
                 for ($i = 1; $i <= 8; $i++) {
                     LiveClass::create([
                         'course_id' => $course->id,
-                        'title' => 'Live Session: Module ' . $i,
+                        'title' => 'Live Session: Module '.$i,
                         'scheduled_at' => now()->startOfMonth()->addDays($i * 2)->setHour(20),
                         'duration_minutes' => 90,
                         'meeting_url' => 'https://meet.google.com/xyz-demo',

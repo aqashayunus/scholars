@@ -19,6 +19,7 @@ class RoleMiddleware
             if (preg_match('#student/fees/([0-9]+)#', $request->path(), $matches)) {
                 return redirect()->route('parent.fees.show', $matches[1]);
             }
+
             return redirect()->route('parent.fees');
         }
 
@@ -27,6 +28,7 @@ class RoleMiddleware
             if (preg_match('#parent/fees/([0-9]+)#', $request->path(), $matches)) {
                 return redirect()->route('student.fees.show', $matches[1]);
             }
+
             return redirect()->route('student.fees');
         }
 

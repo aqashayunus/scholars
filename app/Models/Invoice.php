@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\InvoiceStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 class Invoice extends Model
 {
@@ -27,13 +26,13 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'subtotal'        => 'decimal:2',
+        'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
-        'total_amount'    => 'decimal:2',
-        'amount_paid'     => 'decimal:2',
-        'issued_date'     => 'date',
-        'due_date'        => 'date',
-        'status'          => InvoiceStatus::class,
+        'total_amount' => 'decimal:2',
+        'amount_paid' => 'decimal:2',
+        'issued_date' => 'date',
+        'due_date' => 'date',
+        'status' => InvoiceStatus::class,
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -70,8 +69,8 @@ class Invoice extends Model
     public function paymentTransactions()
     {
         return $this->belongsToMany(Payment::class, 'payment_invoices')
-                    ->withPivot('amount_applied')
-                    ->withTimestamps();
+            ->withPivot('amount_applied')
+            ->withTimestamps();
     }
 
     public function reminders()
@@ -103,12 +102,12 @@ class Invoice extends Model
     public function getStatusBadgeClassAttribute(): string
     {
         return match ($this->status) {
-            InvoiceStatus::Draft         => 'badge-secondary',
-            InvoiceStatus::Issued        => 'badge-info',
+            InvoiceStatus::Draft => 'badge-secondary',
+            InvoiceStatus::Issued => 'badge-info',
             InvoiceStatus::PartiallyPaid => 'badge-warning',
-            InvoiceStatus::Paid          => 'badge-success',
-            InvoiceStatus::Overdue       => 'badge-danger',
-            InvoiceStatus::Cancelled     => 'badge-dark',
+            InvoiceStatus::Paid => 'badge-success',
+            InvoiceStatus::Overdue => 'badge-danger',
+            InvoiceStatus::Cancelled => 'badge-dark',
         };
     }
 
@@ -142,6 +141,6 @@ class Invoice extends Model
      */
     public function isPastDue(): bool
     {
-        return $this->due_date && $this->due_date->isPast() && !$this->isFullyPaid();
+        return $this->due_date && $this->due_date->isPast() && ! $this->isFullyPaid();
     }
 }

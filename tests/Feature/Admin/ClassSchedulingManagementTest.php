@@ -7,10 +7,8 @@ use App\Models\Enrollment;
 use App\Models\LiveClass;
 use App\Models\RecordedClass;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\User;
-use App\Models\UserNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -35,33 +33,33 @@ class ClassSchedulingManagementTest extends TestCase
         $student = Student::factory()->create();
         Enrollment::create([
             'student_id' => $student->id,
-            'course_id'  => $course->id,
-            'status'     => 'active',
+            'course_id' => $course->id,
+            'status' => 'active',
         ]);
 
         $response = $this->actingAs($this->admin)->post(route('admin.live-classes.store'), [
-            'course_id'        => $course->id,
-            'topic'            => 'Algebra',
-            'title'            => 'Live Algebra Session',
-            'scheduled_at'     => now()->addDay()->toDateTimeString(),
+            'course_id' => $course->id,
+            'topic' => 'Algebra',
+            'title' => 'Live Algebra Session',
+            'scheduled_at' => now()->addDay()->toDateTimeString(),
             'duration_minutes' => 60,
         ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('live_classes', [
             'course_id' => $course->id,
-            'title'     => 'Live Algebra Session',
+            'title' => 'Live Algebra Session',
         ]);
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $teacher->user_id,
-            'type'    => 'live_class',
-            'title'   => 'LIVE CLASS SCHEDULED',
+            'type' => 'live_class',
+            'title' => 'LIVE CLASS SCHEDULED',
         ]);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $student->user_id,
-            'type'    => 'live_class',
-            'title'   => 'NEW LIVE CLASS SCHEDULED',
+            'type' => 'live_class',
+            'title' => 'NEW LIVE CLASS SCHEDULED',
         ]);
     }
 
@@ -71,10 +69,10 @@ class ClassSchedulingManagementTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
 
         $this->actingAs($this->admin)->post(route('admin.live-classes.store'), [
-            'course_id'        => $course->id,
-            'topic'            => 'Geometry',
-            'title'            => 'Live Geometry Session',
-            'scheduled_at'     => now()->addDay()->toDateTimeString(),
+            'course_id' => $course->id,
+            'topic' => 'Geometry',
+            'title' => 'Live Geometry Session',
+            'scheduled_at' => now()->addDay()->toDateTimeString(),
             'duration_minutes' => 45,
         ]);
 
@@ -86,18 +84,18 @@ class ClassSchedulingManagementTest extends TestCase
     {
         $course = Course::factory()->create();
         $liveClass = LiveClass::create([
-            'course_id'        => $course->id,
-            'topic'            => 'Old Topic',
-            'title'            => 'Old Title',
-            'scheduled_at'     => now()->addDay(),
+            'course_id' => $course->id,
+            'topic' => 'Old Topic',
+            'title' => 'Old Title',
+            'scheduled_at' => now()->addDay(),
             'duration_minutes' => 60,
         ]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.live-classes.update', $liveClass->id), [
-            'course_id'        => $course->id,
-            'topic'            => 'New Topic',
-            'title'            => 'New Title',
-            'scheduled_at'     => now()->addDays(2)->toDateTimeString(),
+            'course_id' => $course->id,
+            'topic' => 'New Topic',
+            'title' => 'New Title',
+            'scheduled_at' => now()->addDays(2)->toDateTimeString(),
             'duration_minutes' => 90,
         ]);
 
@@ -109,10 +107,10 @@ class ClassSchedulingManagementTest extends TestCase
     {
         $course = Course::factory()->create();
         $liveClass = LiveClass::create([
-            'course_id'        => $course->id,
-            'topic'            => 'Topic',
-            'title'            => 'To Remove',
-            'scheduled_at'     => now()->addDay(),
+            'course_id' => $course->id,
+            'topic' => 'Topic',
+            'title' => 'To Remove',
+            'scheduled_at' => now()->addDay(),
             'duration_minutes' => 60,
         ]);
 
@@ -130,15 +128,15 @@ class ClassSchedulingManagementTest extends TestCase
         $student = Student::factory()->create();
         Enrollment::create([
             'student_id' => $student->id,
-            'course_id'  => $course->id,
-            'status'     => 'active',
+            'course_id' => $course->id,
+            'status' => 'active',
         ]);
 
         $response = $this->actingAs($this->admin)->post(route('admin.recorded-classes.store'), [
-            'course_id'        => $course->id,
-            'title'            => 'Recorded Lesson 1',
-            'topic_name'       => 'Fractions',
-            'video_url'        => 'https://videos.example.com/1',
+            'course_id' => $course->id,
+            'title' => 'Recorded Lesson 1',
+            'topic_name' => 'Fractions',
+            'video_url' => 'https://videos.example.com/1',
             'duration_minutes' => 30,
         ]);
 
@@ -146,25 +144,25 @@ class ClassSchedulingManagementTest extends TestCase
         $this->assertDatabaseHas('recorded_classes', ['title' => 'Recorded Lesson 1', 'views_count' => 0]);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $student->user_id,
-            'type'    => 'course',
-            'title'   => 'NEW RECORDED LESSON AVAILABLE',
+            'type' => 'course',
+            'title' => 'NEW RECORDED LESSON AVAILABLE',
         ]);
     }
 
     public function test_admin_can_update_recorded_class(): void
     {
         $recordedClass = RecordedClass::create([
-            'title'            => 'Old Title',
-            'topic_name'       => 'Topic',
-            'video_url'        => 'https://videos.example.com/2',
+            'title' => 'Old Title',
+            'topic_name' => 'Topic',
+            'video_url' => 'https://videos.example.com/2',
             'duration_minutes' => 20,
-            'views_count'      => 5,
+            'views_count' => 5,
         ]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.recorded-classes.update', $recordedClass->id), [
-            'title'            => 'New Title',
-            'topic_name'       => 'Topic',
-            'video_url'        => 'https://videos.example.com/2',
+            'title' => 'New Title',
+            'topic_name' => 'Topic',
+            'video_url' => 'https://videos.example.com/2',
             'duration_minutes' => 25,
         ]);
 
@@ -175,9 +173,9 @@ class ClassSchedulingManagementTest extends TestCase
     public function test_admin_can_delete_recorded_class(): void
     {
         $recordedClass = RecordedClass::create([
-            'title'            => 'To Remove',
-            'topic_name'       => 'Topic',
-            'video_url'        => 'https://videos.example.com/3',
+            'title' => 'To Remove',
+            'topic_name' => 'Topic',
+            'video_url' => 'https://videos.example.com/3',
             'duration_minutes' => 15,
         ]);
 

@@ -19,7 +19,7 @@ class Question extends Model
         'option_c',
         'option_d',
         'correct_option',
-        'explanation'
+        'explanation',
     ];
 
     public function quiz()

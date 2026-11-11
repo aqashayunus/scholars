@@ -40,10 +40,10 @@ class ProfileService
         // Look up parent by hashed IC
         $icHash = User::hashIc($rawIc);
         $parentUser = User::where('ic_number_hash', $icHash)
-                          ->where('role', 'parent')
-                          ->first();
+            ->where('role', 'parent')
+            ->first();
 
-        if (!$parentUser) {
+        if (! $parentUser) {
             return [
                 'success' => false,
                 'field_error' => 'No parent account found with that IC number. Please check and try again.',
@@ -66,16 +66,16 @@ class ProfileService
         // Create the link
         DB::table('parent_student')->insertOrIgnore([
             'parent_user_id' => $parentUser->id,
-            'student_id'     => $student->id,
-            'relationship'   => $relationship,
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => $relationship,
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Backfill legacy column if empty
-        if (!$student->parent_user_id) {
+        if (! $student->parent_user_id) {
             $student->parent_user_id = $parentUser->id;
             $student->save();
         }
@@ -108,7 +108,7 @@ class ProfileService
         }
 
         $user->name = $validated['name'];
-        if (!empty($validated['email'])) {
+        if (! empty($validated['email'])) {
             if ($user->email !== $validated['email']) {
                 $user->email_verified_at = null;
             }

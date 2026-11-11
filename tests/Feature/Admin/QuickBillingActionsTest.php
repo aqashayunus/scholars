@@ -26,6 +26,7 @@ class QuickBillingActionsTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private Student $student;
 
     protected function setUp(): void
@@ -40,16 +41,16 @@ class QuickBillingActionsTest extends TestCase
     private function makeInvoice(): Invoice
     {
         return Invoice::factory()->create([
-            'student_id'     => $this->student->id,
-            'invoice_number' => 'INV-QBA-' . uniqid(),
-            'title'          => 'Tuition Fee',
+            'student_id' => $this->student->id,
+            'invoice_number' => 'INV-QBA-'.uniqid(),
+            'title' => 'Tuition Fee',
             'billing_period' => 'October 2026',
-            'subtotal'       => 500.00,
-            'total_amount'   => 500.00,
-            'amount_paid'    => 0.00,
-            'issued_date'    => now()->toDateString(),
-            'due_date'       => now()->addDays(10)->toDateString(),
-            'status'         => InvoiceStatus::Issued,
+            'subtotal' => 500.00,
+            'total_amount' => 500.00,
+            'amount_paid' => 0.00,
+            'issued_date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'status' => InvoiceStatus::Issued,
         ]);
     }
 
@@ -72,7 +73,7 @@ class QuickBillingActionsTest extends TestCase
 
         $response = $this->actingAs($this->admin)
             ->post(route('admin.invoices.record-payment', $invoice->id), [
-                'amount'         => 200.00,
+                'amount' => 200.00,
                 'payment_method' => 'cash',
             ]);
 
@@ -86,7 +87,7 @@ class QuickBillingActionsTest extends TestCase
         // Payment<->Invoice is linked via the payment_invoices pivot, not a
         // direct FK column on payments.
         $this->assertDatabaseHas('payment_invoices', [
-            'invoice_id'     => $invoice->id,
+            'invoice_id' => $invoice->id,
             'amount_applied' => 200.00,
         ]);
         $this->assertEquals(200.00, $invoice->fresh()->amount_paid);
@@ -96,16 +97,16 @@ class QuickBillingActionsTest extends TestCase
     {
         $invoice = $this->makeInvoice();
         $payment = Payment::create([
-            'user_id'        => $this->student->user_id,
-            'invoice_id'     => $invoice->id,
-            'student_id'     => $this->student->id,
-            'payer_id'       => $this->student->user_id,
-            'payer_type'     => 'student',
-            'description'    => 'Bank transfer proof',
-            'amount'         => 500.00,
+            'user_id' => $this->student->user_id,
+            'invoice_id' => $invoice->id,
+            'student_id' => $this->student->id,
+            'payer_id' => $this->student->user_id,
+            'payer_type' => 'student',
+            'description' => 'Bank transfer proof',
+            'amount' => 500.00,
             'payment_method' => 'bank_transfer',
-            'reference_no'   => 'REF-QBA-1',
-            'status'         => PaymentStatus::Pending,
+            'reference_no' => 'REF-QBA-1',
+            'status' => PaymentStatus::Pending,
         ]);
 
         $response = $this->actingAs($this->admin)
@@ -120,16 +121,16 @@ class QuickBillingActionsTest extends TestCase
     {
         $invoice = $this->makeInvoice();
         $payment = Payment::create([
-            'user_id'        => $this->student->user_id,
-            'invoice_id'     => $invoice->id,
-            'student_id'     => $this->student->id,
-            'payer_id'       => $this->student->user_id,
-            'payer_type'     => 'student',
-            'description'    => 'Bank transfer proof',
-            'amount'         => 500.00,
+            'user_id' => $this->student->user_id,
+            'invoice_id' => $invoice->id,
+            'student_id' => $this->student->id,
+            'payer_id' => $this->student->user_id,
+            'payer_type' => 'student',
+            'description' => 'Bank transfer proof',
+            'amount' => 500.00,
             'payment_method' => 'bank_transfer',
-            'reference_no'   => 'REF-QBA-2',
-            'status'         => PaymentStatus::Pending,
+            'reference_no' => 'REF-QBA-2',
+            'status' => PaymentStatus::Pending,
         ]);
 
         $response = $this->actingAs($this->admin)
@@ -149,28 +150,28 @@ class QuickBillingActionsTest extends TestCase
         // original Phase 4 route-closure extraction pass.
         $response = $this->actingAs($this->admin)
             ->post(route('admin.invoices.store'), [
-                'student_id'      => $this->student->id,
-                'title'           => 'November Tuition',
-                'subtotal'        => 300.00,
+                'student_id' => $this->student->id,
+                'title' => 'November Tuition',
+                'subtotal' => 300.00,
                 'discount_amount' => 50.00,
-                'due_date'        => now()->addDays(14)->toDateString(),
+                'due_date' => now()->addDays(14)->toDateString(),
             ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('invoices', [
-            'student_id'      => $this->student->id,
-            'title'           => 'November Tuition',
-            'subtotal'        => 300.00,
+            'student_id' => $this->student->id,
+            'title' => 'November Tuition',
+            'subtotal' => 300.00,
             'discount_amount' => 50.00,
-            'total_amount'    => 250.00,
-            'status'          => InvoiceStatus::Issued->value,
+            'total_amount' => 250.00,
+            'status' => InvoiceStatus::Issued->value,
         ]);
         $this->assertDatabaseHas('invoice_items', [
             'description' => 'November Tuition',
-            'unit_price'  => 300.00,
-            'amount'      => 300.00,
+            'unit_price' => 300.00,
+            'amount' => 300.00,
         ]);
     }
 
@@ -181,10 +182,10 @@ class QuickBillingActionsTest extends TestCase
         // that made the closure look "quick" in the first place.
         $response = $this->actingAs($this->admin)
             ->post(route('admin.invoices.store'), [
-                'student_id'     => $this->student->id,
+                'student_id' => $this->student->id,
                 'billing_period' => 'November 2026',
-                'due_date'       => now()->addDays(14)->toDateString(),
-                'items'          => [
+                'due_date' => now()->addDays(14)->toDateString(),
+                'items' => [
                     ['description' => 'Tuition', 'amount' => 200.00],
                     ['description' => 'Materials', 'amount' => 50.00],
                 ],
@@ -192,8 +193,8 @@ class QuickBillingActionsTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('invoices', [
-            'student_id'   => $this->student->id,
-            'subtotal'     => 250.00,
+            'student_id' => $this->student->id,
+            'subtotal' => 250.00,
             'total_amount' => 250.00,
         ]);
         $this->assertDatabaseHas('invoice_items', ['description' => 'Materials', 'amount' => 50.00]);
@@ -203,16 +204,16 @@ class QuickBillingActionsTest extends TestCase
     {
         $invoice = $this->makeInvoice();
         $payment = Payment::create([
-            'user_id'        => $this->student->user_id,
-            'invoice_id'     => $invoice->id,
-            'student_id'     => $this->student->id,
-            'payer_id'       => $this->student->user_id,
-            'payer_type'     => 'student',
-            'description'    => 'Bank transfer proof',
-            'amount'         => 500.00,
+            'user_id' => $this->student->user_id,
+            'invoice_id' => $invoice->id,
+            'student_id' => $this->student->id,
+            'payer_id' => $this->student->user_id,
+            'payer_type' => 'student',
+            'description' => 'Bank transfer proof',
+            'amount' => 500.00,
             'payment_method' => 'bank_transfer',
-            'reference_no'   => 'REF-QBA-3',
-            'status'         => PaymentStatus::Pending,
+            'reference_no' => 'REF-QBA-3',
+            'status' => PaymentStatus::Pending,
         ]);
 
         $response = $this->actingAs($this->admin)

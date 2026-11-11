@@ -28,7 +28,9 @@ class EventsJsonTest extends TestCase
     use RefreshDatabase;
 
     private Teacher $teacher;
+
     private Course $course;
+
     private LiveClass $liveClass;
 
     protected function setUp(): void
@@ -42,21 +44,21 @@ class EventsJsonTest extends TestCase
 
         $subject = Subject::create(['name' => 'Physics', 'slug' => 'physics-tt', 'level' => 'SPM']);
         $this->course = Course::create([
-            'title'      => 'SPM Physics',
+            'title' => 'SPM Physics',
             'subject_id' => $subject->id,
             'teacher_id' => $this->teacher->id,
-            'level'      => 'SPM',
-            'status'     => 'published',
-            'price'      => 50.00,
+            'level' => 'SPM',
+            'status' => 'published',
+            'price' => 50.00,
         ]);
 
         $this->liveClass = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Mechanics Session',
-            'scheduled_at'     => Carbon::parse('2026-10-16 10:00:00'),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Mechanics Session',
+            'scheduled_at' => Carbon::parse('2026-10-16 10:00:00'),
             'duration_minutes' => 60,
-            'meeting_url'      => 'https://meet.test/physics',
+            'meeting_url' => 'https://meet.test/physics',
         ]);
     }
 
@@ -78,7 +80,7 @@ class EventsJsonTest extends TestCase
         $response->assertOk();
         $response->assertJson(['success' => true]);
         $events = $response->json('events');
-        $this->assertTrue(collect($events)->contains(fn($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
+        $this->assertTrue(collect($events)->contains(fn ($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
     }
 
     public function test_parent_role_events_json_does_not_crash_and_includes_the_childs_live_class(): void
@@ -94,7 +96,7 @@ class EventsJsonTest extends TestCase
         $response->assertOk();
         $response->assertJson(['success' => true]);
         $events = $response->json('events');
-        $this->assertTrue(collect($events)->contains(fn($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
+        $this->assertTrue(collect($events)->contains(fn ($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
     }
 
     public function test_teacher_role_events_json_includes_own_class(): void
@@ -104,6 +106,6 @@ class EventsJsonTest extends TestCase
 
         $response->assertOk();
         $events = $response->json('events');
-        $this->assertTrue(collect($events)->contains(fn($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
+        $this->assertTrue(collect($events)->contains(fn ($e) => $e['type'] === 'live_class' && $e['class_id'] === $this->liveClass->id));
     }
 }

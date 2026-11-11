@@ -6,6 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Models\Enrollment;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -33,7 +34,7 @@ class EnrollmentStatusTest extends TestCase
     {
         $enrollment = Enrollment::factory()->create(['status' => EnrollmentStatus::Completed]);
 
-        $raw = \Illuminate\Support\Facades\DB::table('enrollments')->where('id', $enrollment->id)->value('status');
+        $raw = DB::table('enrollments')->where('id', $enrollment->id)->value('status');
 
         $this->assertSame('completed', $raw);
     }
@@ -54,10 +55,10 @@ class EnrollmentStatusTest extends TestCase
     public function test_where_in_with_enum_cases_matches_by_value_not_reference(): void
     {
         $student = Student::factory()->create();
-        $enrolled  = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Enrolled]);
-        $active    = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Active]);
+        $enrolled = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Enrolled]);
+        $active = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Active]);
         $completed = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Completed]);
-        $dropped   = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Dropped]);
+        $dropped = Enrollment::factory()->create(['student_id' => $student->id, 'status' => EnrollmentStatus::Dropped]);
 
         $matched = Enrollment::where('student_id', $student->id)
             ->whereIn('status', [EnrollmentStatus::Enrolled, EnrollmentStatus::Active, EnrollmentStatus::Completed])

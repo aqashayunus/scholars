@@ -32,19 +32,21 @@ class ChatAuthorizationTest extends TestCase
     private function makeParent(string $email): User
     {
         return User::factory()->create([
-            'name' => 'Parent ' . $email, 'email' => $email, 'role' => 'parent', 'password' => Hash::make('password'),
+            'name' => 'Parent '.$email, 'email' => $email, 'role' => 'parent', 'password' => Hash::make('password'),
         ]);
     }
 
     private function makeStudentWithUser(string $email, ?int $parentUserId = null): Student
     {
-        $u = User::factory()->create(['name' => 'Student ' . $email, 'email' => $email, 'role' => 'student', 'password' => Hash::make('password')]);
+        $u = User::factory()->create(['name' => 'Student '.$email, 'email' => $email, 'role' => 'student', 'password' => Hash::make('password')]);
+
         return Student::factory()->create(['user_id' => $u->id, 'parent_user_id' => $parentUserId, 'level' => 'SPM']);
     }
 
     private function makeTeacherWithUser(string $email): Teacher
     {
-        $u = User::factory()->create(['name' => 'Teacher ' . $email, 'email' => $email, 'role' => 'teacher', 'password' => Hash::make('password')]);
+        $u = User::factory()->create(['name' => 'Teacher '.$email, 'email' => $email, 'role' => 'teacher', 'password' => Hash::make('password')]);
+
         return Teacher::create(['user_id' => $u->id, 'specialization' => 'Math', 'qualification' => 'B.Ed', 'rating' => 5.0, 'experience_years' => 1]);
     }
 
@@ -87,10 +89,10 @@ class ChatAuthorizationTest extends TestCase
         $pendingParent = $this->makeParent('pending@test.com');
         DB::table('parent_student')->insert([
             'parent_user_id' => $pendingParent->id,
-            'student_id'     => $student->id,
-            'status'         => 'pending',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->findOrCreate($pendingParent, $student->user_id);
@@ -212,10 +214,10 @@ class ChatAuthorizationTest extends TestCase
         $pendingParent = $this->makeParent('pending2@test.com');
         DB::table('parent_student')->insert([
             'parent_user_id' => $pendingParent->id,
-            'student_id'     => $student->id,
-            'status'         => 'pending',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($pendingParent)->getJson(route('chat.directory'));

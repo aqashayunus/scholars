@@ -17,8 +17,8 @@ class UserNotificationFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'type'    => 'info',
-            'title'   => fake()->sentence(3),
+            'type' => 'info',
+            'title' => fake()->sentence(3),
             'message' => fake()->sentence(),
             'read_at' => null,
         ];

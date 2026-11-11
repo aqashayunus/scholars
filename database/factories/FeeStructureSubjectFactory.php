@@ -18,9 +18,9 @@ class FeeStructureSubjectFactory extends Factory
     {
         return [
             'fee_structure_id' => FeeStructure::factory(),
-            'subject_id'       => Subject::factory(),
-            'is_required'      => true,
-            'sort_order'       => 0,
+            'subject_id' => Subject::factory(),
+            'is_required' => true,
+            'sort_order' => 0,
         ];
     }
 }

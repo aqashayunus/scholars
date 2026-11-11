@@ -14,15 +14,15 @@ return new class extends Migration
         Schema::table('assignments', function (Blueprint $table) {
             $table->foreignId('course_id')->nullable()->change();
 
-            if (!Schema::hasColumn('assignments', 'is_global')) {
+            if (! Schema::hasColumn('assignments', 'is_global')) {
                 $table->boolean('is_global')->default(false)->after('course_id');
             }
 
-            if (!Schema::hasColumn('assignments', 'target_level')) {
+            if (! Schema::hasColumn('assignments', 'target_level')) {
                 $table->string('target_level')->nullable()->after('is_global');
             }
 
-            if (!Schema::hasColumn('assignments', 'created_by_admin')) {
+            if (! Schema::hasColumn('assignments', 'created_by_admin')) {
                 $table->boolean('created_by_admin')->default(false)->after('target_level');
             }
         });

@@ -7,7 +7,6 @@ use App\Enums\StudentStatus;
 use App\Models\Invoice;
 use App\Models\Student;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 class StudentAccessRestrictionService
 {
@@ -66,16 +65,16 @@ class StudentAccessRestrictionService
         $restrictionDate = $earliestDueDate->copy()->addDay();
 
         return [
-            'is_restricted'       => true,
-            'status'              => 'RESTRICTED',
-            'outstanding_amount'  => $totalOutstanding,
-            'overdue_invoices'    => $overdueInvoices,
-            'earliest_due_date'   => $earliestDueDate,
-            'days_overdue'        => $daysOverdue,
-            'restriction_date'    => $restrictionDate,
-            'primary_invoice'     => $earliestInvoice,
-            'invoice_count'       => $overdueInvoices->count(),
-            'message'             => "This student's access is temporarily restricted due to an outstanding payment. Please settle the outstanding balance to restore access.",
+            'is_restricted' => true,
+            'status' => 'RESTRICTED',
+            'outstanding_amount' => $totalOutstanding,
+            'overdue_invoices' => $overdueInvoices,
+            'earliest_due_date' => $earliestDueDate,
+            'days_overdue' => $daysOverdue,
+            'restriction_date' => $restrictionDate,
+            'primary_invoice' => $earliestInvoice,
+            'invoice_count' => $overdueInvoices->count(),
+            'message' => "This student's access is temporarily restricted due to an outstanding payment. Please settle the outstanding balance to restore access.",
         ];
     }
 

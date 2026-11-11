@@ -37,8 +37,8 @@ class AssignmentTargetingTest extends TestCase
         }
 
         $response = $this->actingAsTeacher()->post(route('teacher.classes.tasks.store', $course->id), [
-            'title'         => 'Homework for Everyone',
-            'due_date'      => now()->addDays(3)->toDateString(),
+            'title' => 'Homework for Everyone',
+            'due_date' => now()->addDays(3)->toDateString(),
             'assign_target' => 'all',
         ]);
 
@@ -58,10 +58,10 @@ class AssignmentTargetingTest extends TestCase
         $chosen = $students->take(2)->pluck('id')->all();
 
         $response = $this->actingAsTeacher()->post(route('teacher.classes.tasks.store', $course->id), [
-            'title'         => 'Homework for Selected',
-            'due_date'      => now()->addDays(3)->toDateString(),
+            'title' => 'Homework for Selected',
+            'due_date' => now()->addDays(3)->toDateString(),
             'assign_target' => 'selected',
-            'student_ids'   => $chosen,
+            'student_ids' => $chosen,
         ]);
 
         $response->assertRedirect();
@@ -85,10 +85,10 @@ class AssignmentTargetingTest extends TestCase
         $chosen = $students->take(2)->pluck('id')->all();
 
         $this->actingAsTeacher()->post(route('teacher.classes.tasks.store', $course->id), [
-            'title'         => 'Targeted Task',
-            'due_date'      => now()->addDays(3)->toDateString(),
+            'title' => 'Targeted Task',
+            'due_date' => now()->addDays(3)->toDateString(),
             'assign_target' => 'selected',
-            'student_ids'   => $chosen,
+            'student_ids' => $chosen,
         ]);
 
         $response = $this->actingAsTeacher()->get(route('teacher.tasks'));
@@ -96,6 +96,7 @@ class AssignmentTargetingTest extends TestCase
         $response->assertOk();
         $response->assertViewHas('mappedTasks', function ($tasks) {
             $task = collect($tasks)->firstWhere('title', 'Targeted Task');
+
             return $task !== null
                 && $task['assign_target'] === 'selected'
                 && $task['totalStudents'] === 2

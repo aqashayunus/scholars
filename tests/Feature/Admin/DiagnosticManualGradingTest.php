@@ -18,53 +18,53 @@ class DiagnosticManualGradingTest extends TestCase
     {
         $studentUser = User::factory()->create(['role' => 'student', 'is_active' => true]);
         $student = Student::create([
-            'user_id'    => $studentUser->id,
-            'parent_id'  => null,
-            'level'      => 'Form 4',
+            'user_id' => $studentUser->id,
+            'parent_id' => null,
+            'level' => 'Form 4',
             'birth_date' => '2008-01-01',
-            'school'     => 'SMK Olympian',
-            'gender'     => 'Male',
+            'school' => 'SMK Olympian',
+            'gender' => 'Male',
         ]);
 
         $assignment = Assignment::create([
-            'title'              => 'Diagnostic With Essay Question',
-            'type'               => 'Diagnostic Test',
+            'title' => 'Diagnostic With Essay Question',
+            'type' => 'Diagnostic Test',
             'time_limit_minutes' => 30,
-            'total_questions'    => 2,
-            'is_global'          => false,
+            'total_questions' => 2,
+            'is_global' => false,
         ]);
 
         return StudentAssignment::create([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
-            'status'        => StudentAssignmentStatus::PendingReview,
-            'score'         => 20,
-            'answers_json'  => [
+            'status' => StudentAssignmentStatus::PendingReview,
+            'score' => 20,
+            'answers_json' => [
                 [
-                    'section'         => 'A',
-                    'type'            => 'mcq',
+                    'section' => 'A',
+                    'type' => 'mcq',
                     'question_number' => 1,
-                    'title'           => 'Question 1',
-                    'student_choice'  => 'A',
-                    'correct_option'  => 'A',
-                    'is_correct'      => true,
-                    'is_partial'      => false,
-                    'is_manual'       => false,
-                    'score'           => 1.0,
-                    'max_marks'       => 1.0,
+                    'title' => 'Question 1',
+                    'student_choice' => 'A',
+                    'correct_option' => 'A',
+                    'is_correct' => true,
+                    'is_partial' => false,
+                    'is_manual' => false,
+                    'score' => 1.0,
+                    'max_marks' => 1.0,
                 ],
                 [
-                    'section'         => 'B',
-                    'type'            => 'fill_in_blank',
+                    'section' => 'B',
+                    'type' => 'fill_in_blank',
                     'question_number' => 2,
-                    'title'           => 'Question 2 (essay)',
-                    'student_choice'  => 'A long essay answer.',
-                    'correct_option'  => '(Manual review)',
-                    'is_correct'      => false,
-                    'is_partial'      => false,
-                    'is_manual'       => true,
-                    'score'           => 0.0,
-                    'max_marks'       => 4.0,
+                    'title' => 'Question 2 (essay)',
+                    'student_choice' => 'A long essay answer.',
+                    'correct_option' => '(Manual review)',
+                    'is_correct' => false,
+                    'is_partial' => false,
+                    'is_manual' => true,
+                    'score' => 0.0,
+                    'max_marks' => 4.0,
                 ],
             ],
         ]);
@@ -76,9 +76,9 @@ class DiagnosticManualGradingTest extends TestCase
         $studentAssignment = $this->makeSubmittedDiagnostic();
 
         $response = $this->actingAs($admin)->postJson(route('admin.diagnostic.grade', $studentAssignment->id), [
-            'scores'           => ['1' => 1.0, '2' => 3.0],
+            'scores' => ['1' => 1.0, '2' => 3.0],
             'teacher_feedback' => 'Good structure, minor gaps.',
-            'status'           => 'graded',
+            'status' => 'graded',
         ]);
 
         $response->assertStatus(200)

@@ -10,10 +10,8 @@ class DiagnosticReviewService
      * Apply admin-awarded marks (and optional override status/feedback) to a diagnostic
      * submission's per-question breakdown, recompute the overall score, and persist it.
      *
-     * @param  StudentAssignment $studentAssignment
-     * @param  array<string,float|int|string> $scores  question_number => awarded marks
-     * @param  string|null $teacherFeedback
-     * @param  string|null $status  explicit override ('graded'|'pending_review'|'submitted'); auto-derived when null
+     * @param  array<string,float|int|string>  $scores  question_number => awarded marks
+     * @param  string|null  $status  explicit override ('graded'|'pending_review'|'submitted'); auto-derived when null
      * @return array{score:int,tahap_kepandaian:string,status:string,total_earned:float,total_possible:float}
      */
     public function saveAdminGrade(
@@ -30,18 +28,18 @@ class DiagnosticReviewService
             foreach ($questionsList as $q) {
                 $qNum = (string) ($q['number'] ?? 1);
                 $answersBreakdown[] = [
-                    'section'         => ($q['type'] ?? '') === 'mcq' ? 'A' : 'B',
-                    'type'            => $q['type'] ?? 'mcq',
+                    'section' => ($q['type'] ?? '') === 'mcq' ? 'A' : 'B',
+                    'type' => $q['type'] ?? 'mcq',
                     'question_number' => (int) $qNum,
-                    'title'           => $q['title'] ?? ('Question ' . $qNum),
-                    'student_choice'  => '—',
-                    'correct_option'  => (string) ($q['correct_answer'] ?? ''),
-                    'is_correct'      => false,
-                    'is_partial'      => false,
-                    'is_manual'       => false,
-                    'score'           => 0.0,
-                    'max_marks'       => (float) ($q['marks'] ?? 1.0),
-                    'feedback'        => '',
+                    'title' => $q['title'] ?? ('Question '.$qNum),
+                    'student_choice' => '—',
+                    'correct_option' => (string) ($q['correct_answer'] ?? ''),
+                    'is_correct' => false,
+                    'is_partial' => false,
+                    'is_manual' => false,
+                    'score' => 0.0,
+                    'max_marks' => (float) ($q['marks'] ?? 1.0),
+                    'feedback' => '',
                 ];
             }
         }
@@ -61,7 +59,7 @@ class DiagnosticReviewService
                 $item['is_correct'] = ($awarded >= $maxMarks);
                 $item['is_partial'] = ($awarded > 0 && $awarded < $maxMarks);
                 $item['is_manual'] = false;
-            } elseif (!empty($item['is_manual'])) {
+            } elseif (! empty($item['is_manual'])) {
                 $hasPendingManual = true;
             }
 
@@ -76,25 +74,25 @@ class DiagnosticReviewService
             $percentage >= 80 => 'Cemerlang',
             $percentage >= 60 => 'Baik',
             $percentage >= 40 => 'Sederhana',
-            default           => 'Perlu Bimbingan',
+            default => 'Perlu Bimbingan',
         };
 
         $newStatus = $status ?: ($hasPendingManual ? 'pending_review' : 'graded');
 
         $studentAssignment->update([
-            'score'            => $percentage,
+            'score' => $percentage,
             'tahap_kepandaian' => $tahapKepandaian,
-            'status'           => $newStatus,
-            'answers_json'     => array_values($answersBreakdown),
+            'status' => $newStatus,
+            'answers_json' => array_values($answersBreakdown),
             'teacher_feedback' => $teacherFeedback ?? $studentAssignment->teacher_feedback,
         ]);
 
         return [
-            'score'           => $percentage,
-            'tahap_kepandaian'=> $tahapKepandaian,
-            'status'          => $newStatus,
-            'total_earned'    => $totalEarned,
-            'total_possible'  => $totalPossible,
+            'score' => $percentage,
+            'tahap_kepandaian' => $tahapKepandaian,
+            'status' => $newStatus,
+            'total_earned' => $totalEarned,
+            'total_possible' => $totalPossible,
         ];
     }
 }

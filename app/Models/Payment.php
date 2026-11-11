@@ -34,10 +34,10 @@ class Payment extends Model
     ];
 
     protected $casts = [
-        'amount'          => 'decimal:2',
+        'amount' => 'decimal:2',
         'gateway_payload' => 'array',
-        'paid_at'         => 'datetime',
-        'status'          => PaymentStatus::class,
+        'paid_at' => 'datetime',
+        'status' => PaymentStatus::class,
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -69,8 +69,8 @@ class Payment extends Model
     public function invoices()
     {
         return $this->belongsToMany(Invoice::class, 'payment_invoices')
-                    ->withPivot('amount_applied')
-                    ->withTimestamps();
+            ->withPivot('amount_applied')
+            ->withTimestamps();
     }
 
     public function paymentInvoices()
@@ -92,7 +92,7 @@ class Payment extends Model
 
     public function getProofUrlAttribute(): ?string
     {
-        return $this->proof_file_path ? asset('storage/' . $this->proof_file_path) : null;
+        return $this->proof_file_path ? asset('storage/'.$this->proof_file_path) : null;
     }
 
     public function isSuccessful(): bool
@@ -111,14 +111,14 @@ class Payment extends Model
      */
     public static function generateReceiptNumber(): string
     {
-        $year    = date('Y');
-        $prefix  = "RCP-{$year}-";
-        $last    = static::where('receipt_number', 'like', "{$prefix}%")
-                         ->orderByDesc('receipt_number')
-                         ->value('receipt_number');
+        $year = date('Y');
+        $prefix = "RCP-{$year}-";
+        $last = static::where('receipt_number', 'like', "{$prefix}%")
+            ->orderByDesc('receipt_number')
+            ->value('receipt_number');
 
         $nextSeq = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
 
-        return $prefix . str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($nextSeq, 5, '0', STR_PAD_LEFT);
     }
 }

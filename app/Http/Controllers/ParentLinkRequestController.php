@@ -13,7 +13,7 @@ class ParentLinkRequestController extends Controller
     {
         $row = DB::table('parent_student')->where('id', $pivot)->first();
 
-        if (!$row) {
+        if (! $row) {
             return view('parent-link-requests.result', [
                 'outcome' => 'not_found',
             ]);
@@ -28,7 +28,7 @@ class ParentLinkRequestController extends Controller
         }
 
         DB::table('parent_student')->where('id', $pivot)->update([
-            'status'     => 'active',
+            'status' => 'active',
             'updated_at' => now(),
         ]);
 
@@ -42,7 +42,7 @@ class ParentLinkRequestController extends Controller
     {
         $row = DB::table('parent_student')->where('id', $pivot)->first();
 
-        if (!$row) {
+        if (! $row) {
             return view('parent-link-requests.result', ['outcome' => 'not_found']);
         }
 
@@ -51,7 +51,7 @@ class ParentLinkRequestController extends Controller
         }
 
         DB::table('parent_student')->where('id', $pivot)->update([
-            'status'     => 'denied',
+            'status' => 'denied',
             'updated_at' => now(),
         ]);
 

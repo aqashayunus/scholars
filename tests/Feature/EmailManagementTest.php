@@ -13,7 +13,6 @@ use App\Models\Student;
 use App\Models\User;
 use App\Services\Email\AudienceResolverService;
 use App\Services\Email\EmailAutomationService;
-use App\Services\Email\EmailSendingService;
 use App\Services\Email\EmailTemplateRenderer;
 use App\Services\Email\EmailVariableRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,8 +26,11 @@ class EmailManagementTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $parentUser;
+
     private User $studentUser;
+
     private Student $student;
 
     protected function setUp(): void
@@ -37,33 +39,33 @@ class EmailManagementTest extends TestCase
 
         // 1. Create Admin
         $this->admin = User::factory()->create([
-            'name'     => 'System Admin',
-            'email'    => 'admin@olympianscholars.my',
-            'role'     => 'admin',
+            'name' => 'System Admin',
+            'email' => 'admin@olympianscholars.my',
+            'role' => 'admin',
             'password' => Hash::make('password123'),
         ]);
 
         // 2. Create Parent
         $this->parentUser = User::factory()->create([
-            'name'     => 'Parent Tan',
-            'email'    => 'parent.tan@example.com',
-            'role'     => 'parent',
+            'name' => 'Parent Tan',
+            'email' => 'parent.tan@example.com',
+            'role' => 'parent',
             'password' => Hash::make('password123'),
         ]);
 
         // 3. Create Student
         $this->studentUser = User::factory()->create([
-            'name'     => 'Student Tan Wei',
-            'email'    => 'wei@olympianscholars.my',
-            'role'     => 'student',
+            'name' => 'Student Tan Wei',
+            'email' => 'wei@olympianscholars.my',
+            'role' => 'student',
             'password' => Hash::make('password123'),
         ]);
 
         $this->student = Student::factory()->create([
-            'user_id'        => $this->studentUser->id,
+            'user_id' => $this->studentUser->id,
             'parent_user_id' => $this->parentUser->id,
-            'level'          => 'SPM',
-            'status'         => 'active',
+            'level' => 'SPM',
+            'status' => 'active',
         ]);
     }
 
@@ -87,10 +89,10 @@ class EmailManagementTest extends TestCase
     public function test_non_admin_cannot_access_email_management_endpoints(): void
     {
         $postResponse = $this->actingAs($this->studentUser)->post(route('admin.email.templates.store'), [
-            'name'        => 'Hacked Template',
-            'category'    => 'general',
-            'subject'     => 'Subject',
-            'body_text'   => 'Body',
+            'name' => 'Hacked Template',
+            'category' => 'general',
+            'subject' => 'Subject',
+            'body_text' => 'Body',
         ]);
         $postResponse->assertStatus(403);
     }
@@ -102,17 +104,17 @@ class EmailManagementTest extends TestCase
     {
         // 1. Create Template
         $storeResponse = $this->actingAs($this->admin)->post(route('admin.email.templates.store'), [
-            'name'        => 'Test Formal Notice',
-            'category'    => 'general',
-            'subject'     => 'Official Notice for {{student_name}}',
-            'body'        => "Dear {{parent_name}},\n\nThis is an official notice regarding {{student_name}}.\n\nRegards,\nOlympia Admin",
-            'cta_label'   => 'View Portal',
-            'cta_url'     => 'https://portal.olympianscholars.my',
+            'name' => 'Test Formal Notice',
+            'category' => 'general',
+            'subject' => 'Official Notice for {{student_name}}',
+            'body' => "Dear {{parent_name}},\n\nThis is an official notice regarding {{student_name}}.\n\nRegards,\nOlympia Admin",
+            'cta_label' => 'View Portal',
+            'cta_url' => 'https://portal.olympianscholars.my',
         ]);
 
         $storeResponse->assertRedirect();
         $this->assertDatabaseHas('email_templates', [
-            'name'     => 'Test Formal Notice',
+            'name' => 'Test Formal Notice',
             'category' => 'general',
         ]);
 
@@ -121,15 +123,15 @@ class EmailManagementTest extends TestCase
 
         // 2. Update Template
         $updateResponse = $this->actingAs($this->admin)->put(route('admin.email.templates.update', $template), [
-            'name'        => 'Updated Formal Notice',
-            'category'    => 'general',
-            'subject'     => 'Updated Notice for {{student_name}}',
-            'body'        => "Dear {{parent_name}},\n\nUpdated text.\n\nRegards,\nOlympia Admin",
+            'name' => 'Updated Formal Notice',
+            'category' => 'general',
+            'subject' => 'Updated Notice for {{student_name}}',
+            'body' => "Dear {{parent_name}},\n\nUpdated text.\n\nRegards,\nOlympia Admin",
         ]);
 
         $updateResponse->assertRedirect();
         $this->assertDatabaseHas('email_templates', [
-            'id'   => $template->id,
+            'id' => $template->id,
             'name' => 'Updated Formal Notice',
         ]);
 
@@ -167,7 +169,7 @@ class EmailManagementTest extends TestCase
         $body = "Dear {{parent_name}},\n\nHello from Olympia.\nMalicious input: {{custom_xss}}";
         $html = EmailTemplateRenderer::renderHtml($body, $renderedVariables);
 
-        $this->assertStringContainsString('Dear ' . strtoupper($this->parentUser->name) . ',', $html);
+        $this->assertStringContainsString('Dear '.strtoupper($this->parentUser->name).',', $html);
         $this->assertStringNotContainsString('<script>alert("XSS")</script>', $html);
         $this->assertStringContainsString('&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;', $html);
     }
@@ -179,15 +181,15 @@ class EmailManagementTest extends TestCase
     {
         // Add a teacher
         User::factory()->create([
-            'name'     => 'Teacher Lee',
-            'email'    => 'lee@olympianscholars.my',
-            'role'     => 'teacher',
+            'name' => 'Teacher Lee',
+            'email' => 'lee@olympianscholars.my',
+            'role' => 'teacher',
             'password' => Hash::make('password123'),
         ]);
 
         // Suppress Parent Tan
         EmailSuppression::create([
-            'email'  => 'parent.tan@example.com',
+            'email' => 'parent.tan@example.com',
             'reason' => 'unsubscribe',
         ]);
 
@@ -210,24 +212,24 @@ class EmailManagementTest extends TestCase
         Queue::fake();
 
         $template = EmailTemplate::create([
-            'name'      => 'Holiday Announcement',
-            'key'       => 'holiday_announce_' . uniqid(),
-            'category'  => 'general',
-            'subject'   => 'Upcoming Term Break Notice',
-            'body'      => 'Term break starts next week.',
-            'status'    => EmailTemplate::STATUS_ACTIVE,
+            'name' => 'Holiday Announcement',
+            'key' => 'holiday_announce_'.uniqid(),
+            'category' => 'general',
+            'subject' => 'Upcoming Term Break Notice',
+            'body' => 'Term break starts next week.',
+            'status' => EmailTemplate::STATUS_ACTIVE,
         ]);
 
         // 1. Create campaign
         $response = $this->actingAs($this->admin)->post(route('admin.email.campaigns.store'), [
-            'name'          => 'Term Break 2026',
-            'category'      => 'general',
+            'name' => 'Term Break 2026',
+            'category' => 'general',
             'audience_type' => 'all_parents',
-            'template_id'   => $template->id,
-            'subject'       => 'Upcoming Term Break Notice',
-            'body'          => 'Term break starts next week.',
+            'template_id' => $template->id,
+            'subject' => 'Upcoming Term Break Notice',
+            'body' => 'Term break starts next week.',
             'delivery_type' => 'scheduled',
-            'scheduled_at'  => now()->addDays(2)->format('Y-m-d H:i'),
+            'scheduled_at' => now()->addDays(2)->format('Y-m-d H:i'),
         ]);
 
         $response->assertRedirect();
@@ -249,33 +251,33 @@ class EmailManagementTest extends TestCase
         Mail::fake();
 
         $template = EmailTemplate::create([
-            'name'      => 'Auto Invoice Issued',
-            'key'       => 'invoice_issued',
-            'category'  => 'payment',
-            'subject'   => 'New Invoice #{{invoice_number}} Issued',
-            'body'      => 'Dear {{parent_name}}, Invoice #{{invoice_number}} for RM {{invoice_amount}} has been issued.',
-            'status'    => EmailTemplate::STATUS_ACTIVE,
+            'name' => 'Auto Invoice Issued',
+            'key' => 'invoice_issued',
+            'category' => 'payment',
+            'subject' => 'New Invoice #{{invoice_number}} Issued',
+            'body' => 'Dear {{parent_name}}, Invoice #{{invoice_number}} for RM {{invoice_amount}} has been issued.',
+            'status' => EmailTemplate::STATUS_ACTIVE,
         ]);
 
         $automation = EmailAutomation::create([
-            'key'               => 'invoice_issued',
-            'trigger_event'     => 'invoice_issued',
-            'name'              => 'Invoice Issued Notice',
-            'category'          => 'payment',
+            'key' => 'invoice_issued',
+            'trigger_event' => 'invoice_issued',
+            'name' => 'Invoice Issued Notice',
+            'category' => 'payment',
             'email_template_id' => $template->id,
-            'is_enabled'        => true,
-            'recipient_type'    => 'parent',
+            'is_enabled' => true,
+            'recipient_type' => 'parent',
         ]);
 
         $invoice = Invoice::factory()->create([
-            'student_id'     => $this->student->id,
+            'student_id' => $this->student->id,
             'invoice_number' => 'INV-2026-TEST-001',
-            'title'          => 'Term Fee',
-            'subtotal'       => 150.00,
-            'total_amount'   => 150.00,
-            'amount_paid'    => 0.00,
-            'due_date'       => now()->addDays(14),
-            'status'         => InvoiceStatus::Issued,
+            'title' => 'Term Fee',
+            'subtotal' => 150.00,
+            'total_amount' => 150.00,
+            'amount_paid' => 0.00,
+            'due_date' => now()->addDays(14),
+            'status' => InvoiceStatus::Issued,
         ]);
 
         // First trigger: should execute
@@ -285,8 +287,8 @@ class EmailManagementTest extends TestCase
             [
                 'invoice' => $invoice,
                 'student' => $this->student,
-                'parent'  => $this->parentUser,
-                'user'    => $this->parentUser,
+                'parent' => $this->parentUser,
+                'user' => $this->parentUser,
             ],
             $idempotencyKey
         );
@@ -294,7 +296,7 @@ class EmailManagementTest extends TestCase
         $this->assertTrue($executedFirst);
         $this->assertDatabaseHas('email_automation_executions', [
             'idempotency_key' => $idempotencyKey,
-            'status'          => 'success',
+            'status' => 'success',
         ]);
 
         // Second trigger with SAME idempotency key: must be skipped!
@@ -323,13 +325,13 @@ class EmailManagementTest extends TestCase
         // Create a failed log
         $log = EmailLog::create([
             'recipient_email' => 'retry.test@example.com',
-            'recipient_type'  => 'parent',
-            'subject'         => 'Test Subject for Retry',
-            'category'        => 'general',
-            'body_preview'    => 'Test body content.',
-            'status'          => EmailLog::STATUS_FAILED,
-            'error_message'   => 'Connection timed out',
-            'attempts'        => 1,
+            'recipient_type' => 'parent',
+            'subject' => 'Test Subject for Retry',
+            'category' => 'general',
+            'body_preview' => 'Test body content.',
+            'status' => EmailLog::STATUS_FAILED,
+            'error_message' => 'Connection timed out',
+            'attempts' => 1,
         ]);
 
         // Retry the log
@@ -350,22 +352,22 @@ class EmailManagementTest extends TestCase
     public function test_admin_can_update_email_settings(): void
     {
         $response = $this->actingAs($this->admin)->post(route('admin.email.settings.update'), [
-            'sender_display_name'    => 'Olympia Scholars Official',
-            'sender_email_address'   => 'notifications@olympianscholars.my',
-            'reply_to_email'         => 'support@olympianscholars.my',
+            'sender_display_name' => 'Olympia Scholars Official',
+            'sender_email_address' => 'notifications@olympianscholars.my',
+            'reply_to_email' => 'support@olympianscholars.my',
             'official_support_email' => 'helpdesk@olympianscholars.my',
-            'official_email_footer'  => 'Official Institutional Communication — Olympia Education Malaysia',
-            'official_website_url'   => 'https://olympianscholars.my',
+            'official_email_footer' => 'Official Institutional Communication — Olympia Education Malaysia',
+            'official_website_url' => 'https://olympianscholars.my',
         ]);
 
         $response->assertRedirect();
 
         $this->assertDatabaseHas('settings', [
-            'key'   => 'sender_display_name',
+            'key' => 'sender_display_name',
             'value' => 'Olympia Scholars Official',
         ]);
         $this->assertDatabaseHas('settings', [
-            'key'   => 'sender_email_address',
+            'key' => 'sender_email_address',
             'value' => 'notifications@olympianscholars.my',
         ]);
     }
@@ -380,22 +382,22 @@ class EmailManagementTest extends TestCase
         $tpl = EmailTemplate::firstOrCreate(
             ['key' => 'test_fire_tpl'],
             [
-                'name'     => 'Test Fire Template',
+                'name' => 'Test Fire Template',
                 'category' => EmailTemplate::CATEGORY_GREETINGS,
-                'subject'  => 'Test Fire Subject',
-                'body'     => 'Hello {{recipient_name}}',
-                'status'   => EmailTemplate::STATUS_ACTIVE,
+                'subject' => 'Test Fire Subject',
+                'body' => 'Hello {{recipient_name}}',
+                'status' => EmailTemplate::STATUS_ACTIVE,
             ]
         );
 
         $automation = EmailAutomation::firstOrCreate(
             ['key' => 'test_fire_auto'],
             [
-                'name'              => 'Test Fire Auto',
-                'category'          => EmailTemplate::CATEGORY_GREETINGS,
-                'trigger_event'     => 'Testing',
+                'name' => 'Test Fire Auto',
+                'category' => EmailTemplate::CATEGORY_GREETINGS,
+                'trigger_event' => 'Testing',
                 'email_template_id' => $tpl->id,
-                'is_enabled'        => true,
+                'is_enabled' => true,
             ]
         );
 

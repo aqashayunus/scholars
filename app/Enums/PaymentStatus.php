@@ -18,5 +18,4 @@ enum PaymentStatus: string
             self::Cancelled => 'Cancelled',
         };
     }
-
 }

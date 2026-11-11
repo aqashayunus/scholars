@@ -19,12 +19,12 @@ class BillingNotificationService
      */
     public static function getStudentParents($student): Collection
     {
-        if (!$student) {
+        if (! $student) {
             return collect();
         }
 
         $parents = collect();
-        if (!empty($student->parent_user_id)) {
+        if (! empty($student->parent_user_id)) {
             $p = User::find($student->parent_user_id);
             if ($p) {
                 $parents->push($p);
@@ -60,8 +60,8 @@ class BillingNotificationService
             if ($student?->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'invoice',
-                    'title'   => 'NEW INVOICE ISSUED',
+                    'type' => 'invoice',
+                    'title' => 'NEW INVOICE ISSUED',
                     'message' => "Invoice #{$invoice->invoice_number} ({$invoice->title}) for RM {$amountFormatted} has been issued. Due: {$dueDateFormatted}.",
                 ]);
             }
@@ -71,13 +71,13 @@ class BillingNotificationService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'invoice',
-                    'title'   => 'NEW INVOICE ISSUED',
+                    'type' => 'invoice',
+                    'title' => 'NEW INVOICE ISSUED',
                     'message' => "Invoice #{$invoice->invoice_number} ({$invoice->title}) for {$studentName} (RM {$amountFormatted}) has been issued. Due: {$dueDateFormatted}.",
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyInvoiceIssued failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyInvoiceIssued failed: '.$e->getMessage());
         }
     }
 
@@ -92,7 +92,7 @@ class BillingNotificationService
             $studentName = $student?->user?->name ?? 'Student';
             $paidFormatted = number_format($amount, 2);
             $balanceFormatted = number_format($invoice->outstanding_amount, 2);
-            $receiptSuffix = $receiptNumber ? " Receipt: {$receiptNumber}." : "";
+            $receiptSuffix = $receiptNumber ? " Receipt: {$receiptNumber}." : '';
 
             if ($isPartial) {
                 $studentTitle = 'PARTIAL PAYMENT AUTHORIZED';
@@ -111,8 +111,8 @@ class BillingNotificationService
             if ($student?->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'payment',
-                    'title'   => $studentTitle,
+                    'type' => 'payment',
+                    'title' => $studentTitle,
                     'message' => $studentMsg,
                 ]);
             }
@@ -121,13 +121,13 @@ class BillingNotificationService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'payment',
-                    'title'   => $parentTitle,
+                    'type' => 'payment',
+                    'title' => $parentTitle,
                     'message' => $parentMsg,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyPaymentRecorded failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyPaymentRecorded failed: '.$e->getMessage());
         }
     }
 
@@ -144,8 +144,8 @@ class BillingNotificationService
             // Notify payer
             UserNotification::create([
                 'user_id' => $payer->id,
-                'type'    => 'payment',
-                'title'   => 'PAYMENT SLIP SUBMITTED',
+                'type' => 'payment',
+                'title' => 'PAYMENT SLIP SUBMITTED',
                 'message' => "Bank transfer slip for invoice #{$invoice->invoice_number} (RM {$amountFormatted}) has been received and is pending verification.",
             ]);
 
@@ -153,8 +153,8 @@ class BillingNotificationService
             if ($student?->user_id && $student->user_id !== $payer->id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'payment',
-                    'title'   => 'PAYMENT SLIP SUBMITTED',
+                    'type' => 'payment',
+                    'title' => 'PAYMENT SLIP SUBMITTED',
                     'message' => "A bank transfer payment of RM {$amountFormatted} for invoice #{$invoice->invoice_number} has been submitted by {$payer->name} and is pending verification.",
                 ]);
             }
@@ -164,13 +164,13 @@ class BillingNotificationService
             foreach ($admins as $admin) {
                 UserNotification::create([
                     'user_id' => $admin->id,
-                    'type'    => 'payment',
-                    'title'   => 'NEW PAYMENT SLIP PENDING',
+                    'type' => 'payment',
+                    'title' => 'NEW PAYMENT SLIP PENDING',
                     'message' => "New bank transfer slip submitted by {$payer->name} for invoice #{$invoice->invoice_number} (RM {$amountFormatted}).",
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyBankTransferSubmitted failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyBankTransferSubmitted failed: '.$e->getMessage());
         }
     }
 
@@ -184,14 +184,14 @@ class BillingNotificationService
             $invoice = $payment->invoice;
             $student = $invoice?->student;
             $amountFormatted = number_format($payment->amount, 2);
-            $receiptSuffix = $payment->receipt_number ? " Receipt: {$payment->receipt_number}." : "";
+            $receiptSuffix = $payment->receipt_number ? " Receipt: {$payment->receipt_number}." : '';
 
             if ($approved) {
                 $title = 'PAYMENT VERIFIED';
                 $message = "Your bank transfer payment of RM {$amountFormatted} for invoice #{$invoice?->invoice_number} has been verified and approved.{$receiptSuffix}";
             } else {
                 $title = 'PAYMENT STATUS UPDATE';
-                $reasonSuffix = $notes ? " Reason: {$notes}." : "";
+                $reasonSuffix = $notes ? " Reason: {$notes}." : '';
                 $message = "Your bank transfer payment of RM {$amountFormatted} for invoice #{$invoice?->invoice_number} could not be verified.{$reasonSuffix}";
             }
 
@@ -199,8 +199,8 @@ class BillingNotificationService
             if ($payment->user_id) {
                 UserNotification::create([
                     'user_id' => $payment->user_id,
-                    'type'    => 'payment',
-                    'title'   => $title,
+                    'type' => 'payment',
+                    'title' => $title,
                     'message' => $message,
                 ]);
             }
@@ -209,8 +209,8 @@ class BillingNotificationService
             if ($student?->user_id && $student->user_id !== $payment->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'payment',
-                    'title'   => $title,
+                    'type' => 'payment',
+                    'title' => $title,
                     'message' => $message,
                 ]);
             }
@@ -222,15 +222,15 @@ class BillingNotificationService
                     if ($parent->id !== $payment->user_id) {
                         UserNotification::create([
                             'user_id' => $parent->id,
-                            'type'    => 'payment',
-                            'title'   => $title,
+                            'type' => 'payment',
+                            'title' => $title,
                             'message' => $message,
                         ]);
                     }
                 }
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyPaymentVerified failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyPaymentVerified failed: '.$e->getMessage());
         }
     }
 
@@ -242,10 +242,14 @@ class BillingNotificationService
         try {
             $reminder->loadMissing(['invoice.student.user']);
             $invoice = $reminder->invoice;
-            if (!$invoice) return;
+            if (! $invoice) {
+                return;
+            }
 
             $recipientUser = User::where('email', $reminder->recipient_email)->first();
-            if (!$recipientUser) return;
+            if (! $recipientUser) {
+                return;
+            }
 
             $isOverdue = str_contains($reminder->reminder_type, 'overdue');
             $title = $isOverdue ? 'INVOICE OVERDUE ALERT' : 'PAYMENT DUE REMINDER';
@@ -254,12 +258,12 @@ class BillingNotificationService
 
             UserNotification::create([
                 'user_id' => $recipientUser->id,
-                'type'    => 'invoice',
-                'title'   => $title,
+                'type' => 'invoice',
+                'title' => $title,
                 'message' => "Payment reminder: Invoice #{$invoice->invoice_number} ({$invoice->title}) has an outstanding balance of RM {$balance}. Due date: {$dueDate}.",
             ]);
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyReminderSent failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyReminderSent failed: '.$e->getMessage());
         }
     }
 
@@ -274,14 +278,14 @@ class BillingNotificationService
             $student = $invoice->student;
             $studentName = $student?->user?->name ?? 'Student';
             $dueDateFormatted = $invoice->due_date ? $invoice->due_date->format('d M Y') : 'Due immediately';
-            $reasonNote = $reason ? " Note: {$reason}." : "";
+            $reasonNote = $reason ? " Note: {$reason}." : '';
 
             // 1. Notify Student
             if ($student?->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'invoice',
-                    'title'   => 'PAYMENT DUE DATE UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'PAYMENT DUE DATE UPDATED',
                     'message' => "The payment due date for invoice #{$invoice->invoice_number} ({$invoice->title}) has been updated to {$dueDateFormatted}.{$reasonNote}",
                 ]);
             }
@@ -291,13 +295,13 @@ class BillingNotificationService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'invoice',
-                    'title'   => 'PAYMENT DUE DATE UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'PAYMENT DUE DATE UPDATED',
                     'message' => "The payment due date for {$studentName}'s invoice #{$invoice->invoice_number} ({$invoice->title}) has been updated to {$dueDateFormatted}.{$reasonNote}",
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyInvoiceDueDateUpdated failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyInvoiceDueDateUpdated failed: '.$e->getMessage());
         }
     }
 
@@ -318,8 +322,8 @@ class BillingNotificationService
             if ($student?->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'invoice',
-                    'title'   => 'INVOICE DETAILS UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'INVOICE DETAILS UPDATED',
                     'message' => "Invoice #{$invoice->invoice_number} has been updated. Amount due: RM {$balanceFormatted}. Due date: {$dueDateFormatted}.",
                 ]);
             }
@@ -329,13 +333,13 @@ class BillingNotificationService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'invoice',
-                    'title'   => 'INVOICE DETAILS UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'INVOICE DETAILS UPDATED',
                     'message' => "Invoice #{$invoice->invoice_number} for {$studentName} has been updated. Amount due: RM {$balanceFormatted}. Due date: {$dueDateFormatted}.",
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyInvoiceUpdated failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyInvoiceUpdated failed: '.$e->getMessage());
         }
     }
 
@@ -355,8 +359,8 @@ class BillingNotificationService
             if ($student?->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'invoice',
-                    'title'   => 'INVOICE STATUS UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'INVOICE STATUS UPDATED',
                     'message' => "The status of invoice #{$invoice->invoice_number} ({$invoice->title}) is now {$statusLabel}.",
                 ]);
             }
@@ -366,14 +370,13 @@ class BillingNotificationService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'invoice',
-                    'title'   => 'INVOICE STATUS UPDATED',
+                    'type' => 'invoice',
+                    'title' => 'INVOICE STATUS UPDATED',
                     'message' => "The status of {$studentName}'s invoice #{$invoice->invoice_number} ({$invoice->title}) is now {$statusLabel}.",
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::error('[BillingNotificationService] notifyInvoiceStatusUpdated failed: ' . $e->getMessage());
+            Log::error('[BillingNotificationService] notifyInvoiceStatusUpdated failed: '.$e->getMessage());
         }
     }
 }
-

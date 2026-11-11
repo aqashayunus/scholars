@@ -12,6 +12,7 @@ use App\Models\StudentTopicMastery;
 use App\Models\User;
 use App\Models\UserNotification;
 use App\Services\StudentAccessRestrictionService;
+use Carbon\Carbon;
 
 class DashboardMetricsService
 {
@@ -19,8 +20,7 @@ class DashboardMetricsService
         private readonly AssignmentService $assignmentService,
         private readonly ClassScheduleService $classSchedule,
         private readonly QuizPerformanceService $quizPerformance,
-    ) {
-    }
+    ) {}
 
     /**
      * Builds the full view-model for the student dashboard.
@@ -29,7 +29,7 @@ class DashboardMetricsService
     {
         $student = Student::where('user_id', $user->id)->first();
 
-        if (!$student) {
+        if (! $student) {
             $student = Student::create([
                 'user_id' => $user->id,
                 'level' => 'SPM',
@@ -40,35 +40,35 @@ class DashboardMetricsService
         PageController::syncStudentEnrollments($student);
         $student->load('enrollments.course.subject', 'enrollments.course.teacher.user');
 
-        $enrollments      = $student->enrollments;
-        $enrolledCourses  = $enrollments->count();
+        $enrollments = $student->enrollments;
+        $enrolledCourses = $enrollments->count();
         $completedLessons = $enrollments->sum('completed_lessons');
 
-        $recordedCount    = RecordedClass::count();
-        $topicMasteries   = StudentTopicMastery::where('student_id', $student->id)->get();
+        $recordedCount = RecordedClass::count();
+        $topicMasteries = StudentTopicMastery::where('student_id', $student->id)->get();
 
         $quizResults = StudentQuiz::where('student_id', $student->id)
-                                  ->with('quiz.course.subject')
-                                  ->latest()->take(5)->get();
+            ->with('quiz.course.subject')
+            ->latest()->take(5)->get();
 
         // Ensure newly enrolled students have tracking records for all course assignments
         $this->assignmentService->syncStudentAssignments($student);
 
         $assignments = StudentAssignment::where('student_id', $student->id)
-                                        ->whereHas('assignment')
-                                        ->with('assignment.course.subject')
-                                        ->latest()->take(6)->get();
+            ->whereHas('assignment')
+            ->with('assignment.course.subject')
+            ->latest()->take(6)->get();
 
         // Real-time live class: fetch next upcoming or ongoing live session
         $upcomingClass = LiveClass::whereHas('course', function ($q) use ($student) {
             $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
         })
-        ->with('course.teacher.user', 'course.subject')
-        ->where(function ($q) {
-            $q->where('scheduled_at', '>=', now()->subMinutes(120));
-        })
-        ->orderBy('scheduled_at', 'asc')
-        ->first();
+            ->with('course.teacher.user', 'course.subject')
+            ->where(function ($q) {
+                $q->where('scheduled_at', '>=', now()->subMinutes(120));
+            })
+            ->orderBy('scheduled_at', 'asc')
+            ->first();
 
         // Check & create real-time class notifications (10 min before & Live now)
         $this->checkLiveClassNotifications($user, $student);
@@ -88,10 +88,11 @@ class DashboardMetricsService
             ->filter(function ($sa) use ($enrollmentsMap) {
                 $courseId = $sa->assignment?->course_id;
                 $enrolledAtStr = $enrollmentsMap[$courseId] ?? null;
-                $enrolledAt = $enrolledAtStr ? \Carbon\Carbon::parse($enrolledAtStr) : ($sa->created_at ?? now());
-                $dueDate = $sa->assignment?->due_date ? \Carbon\Carbon::parse($sa->assignment->due_date) : null;
+                $enrolledAt = $enrolledAtStr ? Carbon::parse($enrolledAtStr) : ($sa->created_at ?? now());
+                $dueDate = $sa->assignment?->due_date ? Carbon::parse($sa->assignment->due_date) : null;
+
                 // Exclude tasks that were already due before the student joined
-                return !($dueDate && $dueDate->lt($enrolledAt->startOfDay()));
+                return ! ($dueDate && $dueDate->lt($enrolledAt->startOfDay()));
             })
             ->count();
         // Dynamic Attendance calculation from centralized helper
@@ -107,10 +108,10 @@ class DashboardMetricsService
         $weeklyLiveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
             $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
         })
-        ->with('course.subject', 'course.teacher.user')
-        ->whereBetween('scheduled_at', [$startOfWeek->copy()->startOfDay(), $startOfWeek->copy()->addDays(6)->endOfDay()])
-        ->orderBy('scheduled_at')
-        ->get();
+            ->with('course.subject', 'course.teacher.user')
+            ->whereBetween('scheduled_at', [$startOfWeek->copy()->startOfDay(), $startOfWeek->copy()->addDays(6)->endOfDay()])
+            ->orderBy('scheduled_at')
+            ->get();
 
         $weekSchedule = [];
         for ($i = 0; $i < 7; $i++) {
@@ -120,10 +121,10 @@ class DashboardMetricsService
             });
 
             $weekSchedule[] = [
-                'dayName'   => $dayDate->format('D'),
+                'dayName' => $dayDate->format('D'),
                 'dayNumber' => $dayDate->format('d M'),
-                'isToday'   => $dayDate->isToday(),
-                'classes'   => $dayClasses,
+                'isToday' => $dayDate->isToday(),
+                'classes' => $dayClasses,
             ];
         }
 
@@ -162,10 +163,10 @@ class DashboardMetricsService
         $enrolledClasses = LiveClass::whereHas('course', function ($q) use ($student) {
             $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
         })
-        ->with('course.teacher.user')
-        ->where('scheduled_at', '>=', $now->copy()->subMinutes(180))
-        ->where('scheduled_at', '<=', $now->copy()->addMinutes(60))
-        ->get();
+            ->with('course.teacher.user')
+            ->where('scheduled_at', '>=', $now->copy()->subMinutes(180))
+            ->where('scheduled_at', '<=', $now->copy()->addMinutes(60))
+            ->get();
 
         if ($enrolledClasses->isEmpty()) {
             return;
@@ -189,7 +190,7 @@ class DashboardMetricsService
             if ($now->gte($startTime) && $now->lte($endTime)) {
                 $uniqueTag = "[LiveClass ID: {$liveClass->id}] [Status: LIVE]";
 
-                if (!isset($alreadyNotifiedTags[$uniqueTag])) {
+                if (! isset($alreadyNotifiedTags[$uniqueTag])) {
                     UserNotification::create([
                         'user_id' => $user->id,
                         'type' => 'class_live',
@@ -203,7 +204,7 @@ class DashboardMetricsService
                 $minutesLeft = max(1, $now->diffInMinutes($startTime));
                 $uniqueTag = "[LiveClass ID: {$liveClass->id}] [Status: 10MIN]";
 
-                if (!isset($alreadyNotifiedTags[$uniqueTag])) {
+                if (! isset($alreadyNotifiedTags[$uniqueTag])) {
                     UserNotification::create([
                         'user_id' => $user->id,
                         'type' => 'class_reminder',

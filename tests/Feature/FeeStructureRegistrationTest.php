@@ -3,11 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
+use App\Models\Course;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
-use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -15,6 +16,7 @@ use Tests\TestCase;
 class FeeStructureRegistrationTest extends TestCase
 {
     use RefreshDatabase;
+
     /**
      * Test registration page renders successfully with dynamic fee structures.
      */
@@ -34,7 +36,7 @@ class FeeStructureRegistrationTest extends TestCase
         $this->withoutExceptionHandling();
         // 1. Create teacher for course foreign key constraint
         $teacherUser = User::factory()->create(['role' => 'teacher']);
-        $teacher = \App\Models\Teacher::create([
+        $teacher = Teacher::create([
             'user_id' => $teacherUser->id,
             'qualification' => 'Degree in Education',
             'specialization' => 'Academic',
@@ -46,11 +48,11 @@ class FeeStructureRegistrationTest extends TestCase
         $fee = FeeStructure::firstOrCreate(
             ['name' => 'SPM Core Monthly Tuition'],
             [
-                'description'     => 'Monthly standard tuition covering core subjects.',
-                'amount'          => 250.00,
+                'description' => 'Monthly standard tuition covering core subjects.',
+                'amount' => 250.00,
                 'education_level' => 'Form 4–5',
-                'frequency'       => 'monthly',
-                'is_active'       => true,
+                'frequency' => 'monthly',
+                'is_active' => true,
             ]
         );
 
@@ -59,10 +61,10 @@ class FeeStructureRegistrationTest extends TestCase
             ['name' => 'Bahasa Melayu'],
             [
                 'education_type' => 'secondary',
-                'form_year'      => 'Form 5',
-                'category'       => 'Core',
-                'monthly_fee'    => 80.00,
-                'is_active'      => true,
+                'form_year' => 'Form 5',
+                'category' => 'Core',
+                'monthly_fee' => 80.00,
+                'is_active' => true,
             ]
         );
 
@@ -70,29 +72,29 @@ class FeeStructureRegistrationTest extends TestCase
             ['name' => 'Mathematics'],
             [
                 'education_type' => 'secondary',
-                'form_year'      => 'Form 5',
-                'category'       => 'Core',
-                'monthly_fee'    => 80.00,
-                'is_active'      => true,
+                'form_year' => 'Form 5',
+                'category' => 'Core',
+                'monthly_fee' => 80.00,
+                'is_active' => true,
             ]
         );
 
         $icNumber = '080512-14-5566';
 
         $payload = [
-            'name'             => 'Aiman Bundler',
-            'ic_number'        => $icNumber,
-            'email'            => 'aiman_bundle_test@example.com',
-            'phone'            => '+60 12-888 9999',
-            'password'         => 'Password123!',
+            'name' => 'Aiman Bundler',
+            'ic_number' => $icNumber,
+            'email' => 'aiman_bundle_test@example.com',
+            'phone' => '+60 12-888 9999',
+            'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-            'nationality'      => 'Malaysian',
-            'state'            => 'Selangor',
-            'programme'        => 'secondary',
-            'level'            => 'Form 5',
-            'school_name'      => 'SMK Taman Melawati',
+            'nationality' => 'Malaysian',
+            'state' => 'Selangor',
+            'programme' => 'secondary',
+            'level' => 'Form 5',
+            'school_name' => 'SMK Taman Melawati',
             'fee_structure_id' => $fee->id,
-            'subjects'         => ['Bahasa Melayu', 'Mathematics'],
+            'subjects' => ['Bahasa Melayu', 'Mathematics'],
         ];
 
         $response = $this->post(route('register.student.submit'), $payload);
@@ -135,7 +137,7 @@ class FeeStructureRegistrationTest extends TestCase
     public function test_student_registration_with_multi_year_selection_enrolls_and_creates_invoice(): void
     {
         $teacherUser = User::factory()->create(['role' => 'teacher']);
-        \App\Models\Teacher::firstOrCreate(['user_id' => $teacherUser->id], [
+        Teacher::firstOrCreate(['user_id' => $teacherUser->id], [
             'qualification' => 'Degree in Education',
             'specialization' => 'Academic',
             'rating' => 5.0,
@@ -146,9 +148,9 @@ class FeeStructureRegistrationTest extends TestCase
             ['name' => 'Bahasa Melayu', 'form_year' => 'Form 4'],
             [
                 'education_type' => 'secondary',
-                'category'       => 'Core',
-                'monthly_fee'    => 80.00,
-                'is_active'      => true,
+                'category' => 'Core',
+                'monthly_fee' => 80.00,
+                'is_active' => true,
             ]
         );
 
@@ -156,25 +158,25 @@ class FeeStructureRegistrationTest extends TestCase
             ['name' => 'Bahasa Melayu', 'form_year' => 'Form 5'],
             [
                 'education_type' => 'secondary',
-                'category'       => 'Core',
-                'monthly_fee'    => 80.00,
-                'is_active'      => true,
+                'category' => 'Core',
+                'monthly_fee' => 80.00,
+                'is_active' => true,
             ]
         );
 
         $payload = [
-            'name'                  => 'Multi Year Student',
-            'ic_number'             => '090303-10-1234',
-            'email'                 => 'multi_year_test@example.com',
-            'phone'                 => '+60 12-777 8888',
-            'password'              => 'Password123!',
+            'name' => 'Multi Year Student',
+            'ic_number' => '090303-10-1234',
+            'email' => 'multi_year_test@example.com',
+            'phone' => '+60 12-777 8888',
+            'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-            'nationality'           => 'Malaysian',
-            'state'                 => 'Selangor',
-            'programme'             => 'secondary',
-            'levels'                => ['Form 4', 'Form 5'],
-            'school_name'           => 'SMK Taman Melawati',
-            'subjects'              => ['Bahasa Melayu - Form 4', 'Bahasa Melayu - Form 5'],
+            'nationality' => 'Malaysian',
+            'state' => 'Selangor',
+            'programme' => 'secondary',
+            'levels' => ['Form 4', 'Form 5'],
+            'school_name' => 'SMK Taman Melawati',
+            'subjects' => ['Bahasa Melayu - Form 4', 'Bahasa Melayu - Form 5'],
         ];
 
         $response = $this->post(route('register.student.submit'), $payload);
@@ -189,7 +191,7 @@ class FeeStructureRegistrationTest extends TestCase
 
         // Assert student is enrolled in courses for both subjects
         $enrolledCourseIds = $student->enrollments->pluck('course_id');
-        $enrolledSubjectIds = \App\Models\Course::whereIn('id', $enrolledCourseIds)->pluck('subject_id')->toArray();
+        $enrolledSubjectIds = Course::whereIn('id', $enrolledCourseIds)->pluck('subject_id')->toArray();
 
         $this->assertContains($bmF4->id, $enrolledSubjectIds);
         $this->assertContains($bmF5->id, $enrolledSubjectIds);

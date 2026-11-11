@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StudentStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -60,8 +61,11 @@ class Student extends Model
     public static function maskedIc(string $ic): string
     {
         $digits = self::normaliseIc($ic);
-        if (strlen($digits) !== 12) return '****-**-****';
-        return '******-**-' . substr($digits, -4);
+        if (strlen($digits) !== 12) {
+            return '****-**-****';
+        }
+
+        return '******-**-'.substr($digits, -4);
     }
 
     /**
@@ -70,14 +74,17 @@ class Student extends Model
     public static function dobFromIc(string $ic): ?string
     {
         $digits = self::normaliseIc($ic);
-        if (strlen($digits) < 6) return null;
+        if (strlen($digits) < 6) {
+            return null;
+        }
         $yy = substr($digits, 0, 2);
         $mm = substr($digits, 2, 2);
         $dd = substr($digits, 4, 2);
         // Determine century: if yy > current 2-digit year, it's 1900s, else 2000s
         $currentYY = (int) date('y');
-        $year = ((int)$yy > $currentYY) ? '19' . $yy : '20' . $yy;
-        return $year . '-' . $mm . '-' . $dd;
+        $year = ((int) $yy > $currentYY) ? '19'.$yy : '20'.$yy;
+
+        return $year.'-'.$mm.'-'.$dd;
     }
 
     /**
@@ -86,8 +93,11 @@ class Student extends Model
     public static function genderFromIc(string $ic): ?string
     {
         $digits = self::normaliseIc($ic);
-        if (strlen($digits) < 12) return null;
+        if (strlen($digits) < 12) {
+            return null;
+        }
         $lastDigit = (int) substr($digits, -1);
+
         return ($lastDigit % 2 === 1) ? 'Male' : 'Female';
     }
 
@@ -101,8 +111,8 @@ class Student extends Model
     public function parents()
     {
         return $this->belongsToMany(User::class, 'parent_student', 'student_id', 'parent_user_id')
-                    ->withPivot('relationship', 'is_primary', 'status')
-                    ->withTimestamps();
+            ->withPivot('relationship', 'is_primary', 'status')
+            ->withTimestamps();
     }
 
     /**
@@ -111,32 +121,87 @@ class Student extends Model
     public function primaryParent()
     {
         return $this->belongsToMany(User::class, 'parent_student', 'student_id', 'parent_user_id')
-                    ->withPivot('relationship', 'is_primary', 'status')
-                    ->wherePivot('is_primary', true)
-                    ->withTimestamps();
+            ->withPivot('relationship', 'is_primary', 'status')
+            ->wherePivot('is_primary', true)
+            ->withTimestamps();
     }
 
     protected $casts = [
         'last_active_at' => 'datetime',
-        'date_of_birth'  => 'date',
-        'status'         => StudentStatus::class,
+        'date_of_birth' => 'date',
+        'status' => StudentStatus::class,
     ];
 
-    public function user()        { return $this->belongsTo(User::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     /** Legacy: single parent via parent_user_id — kept for backward compatibility */
-    public function parent()      { return $this->belongsTo(User::class, 'parent_user_id'); }
-    public function enrollments() { return $this->hasMany(Enrollment::class); }
-    public function courses()     { return $this->hasManyThrough(Course::class, Enrollment::class, 'student_id', 'id', 'id', 'course_id'); }
-    public function assignments() { return $this->hasMany(StudentAssignment::class); }
-    public function studentAssignments() { return $this->hasMany(StudentAssignment::class); }
-    public function quizResults() { return $this->hasMany(StudentQuiz::class); }
-    public function attendances() { return $this->hasMany(StudentAttendance::class); }
-    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
-    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
-    public function certificates() { return $this->hasMany(Certificate::class); }
-    public function invoices()     { return $this->hasMany(Invoice::class); }
-    public function payments()     { return $this->hasMany(Payment::class); }
-    public function feeStructures() { return $this->hasMany(FeeStructure::class); }
+    public function parent()
+    {
+        return $this->belongsTo(User::class, 'parent_user_id');
+    }
+
+    public function enrollments()
+    {
+        return $this->hasMany(Enrollment::class);
+    }
+
+    public function courses()
+    {
+        return $this->hasManyThrough(Course::class, Enrollment::class, 'student_id', 'id', 'id', 'course_id');
+    }
+
+    public function assignments()
+    {
+        return $this->hasMany(StudentAssignment::class);
+    }
+
+    public function studentAssignments()
+    {
+        return $this->hasMany(StudentAssignment::class);
+    }
+
+    public function quizResults()
+    {
+        return $this->hasMany(StudentQuiz::class);
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(StudentAttendance::class);
+    }
+
+    public function attendanceEvents()
+    {
+        return $this->hasMany(AttendanceEvent::class);
+    }
+
+    public function attendanceCorrectionRequests()
+    {
+        return $this->hasMany(AttendanceCorrectionRequest::class);
+    }
+
+    public function certificates()
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function feeStructures()
+    {
+        return $this->hasMany(FeeStructure::class);
+    }
 
     /**
      * Only active enrollments (confirmed/activated — the billing trigger).
@@ -153,8 +218,8 @@ class Student extends Model
     public function enrolledSubjects()
     {
         return $this->hasManyThrough(
-            \App\Models\Subject::class,
-            \App\Models\Course::class,
+            Subject::class,
+            Course::class,
             'id',          // courses.id
             'id',          // subjects.id
             'id',          // students.id (PK)
@@ -165,8 +230,15 @@ class Student extends Model
         );
     }
 
-    public function getNameAttribute()  { return $this->user->name; }
-    public function getEmailAttribute() { return $this->user->email; }
+    public function getNameAttribute()
+    {
+        return $this->user->name;
+    }
+
+    public function getEmailAttribute()
+    {
+        return $this->user->email;
+    }
 
     /**
      * Get the student's study streak days (increases daily since registration day).
@@ -175,11 +247,12 @@ class Student extends Model
     {
         $registrationDate = $this->created_at ?? $this->user?->created_at;
         if ($registrationDate) {
-            $regDay = \Carbon\Carbon::parse($registrationDate)->startOfDay();
+            $regDay = Carbon::parse($registrationDate)->startOfDay();
             $today = now()->startOfDay();
             if ($regDay->lte($today)) {
                 return max(1, (int) $regDay->diffInDays($today) + 1);
             }
+
             return 1;
         }
 
@@ -196,12 +269,12 @@ class Student extends Model
         $days = 1;
 
         if ($registrationDate) {
-            $regDay = \Carbon\Carbon::parse($registrationDate)->startOfDay();
+            $regDay = Carbon::parse($registrationDate)->startOfDay();
             $today = now()->startOfDay();
             if ($regDay->lte($today)) {
                 $days = max(1, (int) $regDay->diffInDays($today) + 1);
             }
-        } elseif (!empty($this->attributes['streak_days'])) {
+        } elseif (! empty($this->attributes['streak_days'])) {
             $days = max(1, (int) $this->attributes['streak_days']);
         }
 
@@ -225,17 +298,17 @@ class Student extends Model
         // 1. Global / Diagnostic tasks
         $globalTasks = Assignment::where(function ($query) {
             $query->where('is_global', true)
-                  ->orWhereNull('course_id');
+                ->orWhereNull('course_id');
         })->where(function ($query) {
             $query->whereNull('target_level')
-                  ->orWhere('target_level', '')
-                  ->orWhere('target_level', 'All Levels')
-                  ->orWhere('target_level', $this->level);
+                ->orWhere('target_level', '')
+                ->orWhere('target_level', 'All Levels')
+                ->orWhere('target_level', $this->level);
         })->get();
 
         foreach ($globalTasks as $task) {
             StudentAssignment::firstOrCreate([
-                'student_id'    => $this->id,
+                'student_id' => $this->id,
                 'assignment_id' => $task->id,
             ], [
                 'status' => 'pending',
@@ -244,11 +317,11 @@ class Student extends Model
 
         // 2. Enrolled Course assignments
         $courseIds = Enrollment::where('student_id', $this->id)->pluck('course_id')->toArray();
-        if (!empty($courseIds)) {
+        if (! empty($courseIds)) {
             $courseAssignments = Assignment::whereIn('course_id', $courseIds)->get();
             foreach ($courseAssignments as $ca) {
                 StudentAssignment::firstOrCreate([
-                    'student_id'    => $this->id,
+                    'student_id' => $this->id,
                     'assignment_id' => $ca->id,
                 ], [
                     'status' => 'pending',
@@ -257,17 +330,17 @@ class Student extends Model
         }
 
         // 3. Subject-specific diagnostic tests for all enrolled subjects
-        if (!empty($courseIds)) {
-            $subjectIds = \App\Models\Course::whereIn('id', $courseIds)
+        if (! empty($courseIds)) {
+            $subjectIds = Course::whereIn('id', $courseIds)
                 ->whereNotNull('subject_id')
                 ->pluck('subject_id')
                 ->unique();
-            $subjectDiagnostics = \App\Models\Subject::whereIn('id', $subjectIds)
+            $subjectDiagnostics = Subject::whereIn('id', $subjectIds)
                 ->whereNotNull('diagnostic_assignment_id')
                 ->pluck('diagnostic_assignment_id');
             foreach ($subjectDiagnostics as $diagId) {
                 StudentAssignment::firstOrCreate([
-                    'student_id'    => $this->id,
+                    'student_id' => $this->id,
                     'assignment_id' => $diagId,
                 ], [
                     'status' => 'pending',

@@ -27,9 +27,9 @@ return new class extends Migration
 
         foreach (['Year 4', 'Year 5', 'Year 6'] as $year) {
             foreach ($primarySubjects as $subj) {
-                $slug = Str::slug($subj['name'] . ' ' . $year);
+                $slug = Str::slug($subj['name'].' '.$year);
                 $codeYearNum = filter_var($year, FILTER_SANITIZE_NUMBER_INT);
-                $code = 'KPM-P' . $codeYearNum . '-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
+                $code = 'KPM-P'.$codeYearNum.'-'.strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
 
                 $existing = DB::table('subjects')
                     ->where('education_type', 'primary')
@@ -37,29 +37,29 @@ return new class extends Migration
                     ->where('form_year', $year)
                     ->first();
 
-                if (!$existing) {
+                if (! $existing) {
                     DB::table('subjects')->insert([
-                        'name'           => $subj['name'],
-                        'slug'           => $slug,
+                        'name' => $subj['name'],
+                        'slug' => $slug,
                         'education_type' => 'primary',
-                        'stage'          => 'Primary',
-                        'form_year'      => $year,
-                        'category'       => $subj['category'],
+                        'stage' => 'Primary',
+                        'form_year' => $year,
+                        'category' => $subj['category'],
                         'stream_package' => $subj['stream_package'],
-                        'code'           => $code,
-                        'description'    => "{$subj['name']} curriculum syllabus for {$year} (KSSR Semakan).",
-                        'level'          => 'Primary',
-                        'color'          => '#3b82f6',
-                        'icon'           => 'academic-cap',
-                        'is_active'      => true,
-                        'monthly_fee'    => $subj['fee'],
-                        'order'          => $order++,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'code' => $code,
+                        'description' => "{$subj['name']} curriculum syllabus for {$year} (KSSR Semakan).",
+                        'level' => 'Primary',
+                        'color' => '#3b82f6',
+                        'icon' => 'academic-cap',
+                        'is_active' => true,
+                        'monthly_fee' => $subj['fee'],
+                        'order' => $order++,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 } else {
                     DB::table('subjects')->where('id', $existing->id)->update([
-                        'is_active'   => true,
+                        'is_active' => true,
                         'monthly_fee' => $subj['fee'],
                     ]);
                 }
@@ -77,9 +77,9 @@ return new class extends Migration
 
         foreach (['Form 1', 'Form 2', 'Form 3'] as $form) {
             foreach ($lowerSecSubjects as $subj) {
-                $slug = Str::slug($subj['name'] . ' ' . $form);
+                $slug = Str::slug($subj['name'].' '.$form);
                 $formNum = filter_var($form, FILTER_SANITIZE_NUMBER_INT);
-                $code = 'KPM-F' . $formNum . '-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
+                $code = 'KPM-F'.$formNum.'-'.strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
 
                 $existing = DB::table('subjects')
                     ->where('education_type', 'secondary')
@@ -88,29 +88,29 @@ return new class extends Migration
                     ->where('form_year', $form)
                     ->first();
 
-                if (!$existing) {
+                if (! $existing) {
                     DB::table('subjects')->insert([
-                        'name'           => $subj['name'],
-                        'slug'           => $slug,
+                        'name' => $subj['name'],
+                        'slug' => $slug,
                         'education_type' => 'secondary',
-                        'stage'          => 'Lower Secondary',
-                        'form_year'      => $form,
-                        'category'       => $subj['category'],
+                        'stage' => 'Lower Secondary',
+                        'form_year' => $form,
+                        'category' => $subj['category'],
                         'stream_package' => $subj['stream_package'],
-                        'code'           => $code,
-                        'description'    => "{$subj['name']} curriculum syllabus for {$form} (KSSM).",
-                        'level'          => 'Lower Secondary',
-                        'color'          => '#3b82f6',
-                        'icon'           => 'academic-cap',
-                        'is_active'      => true,
-                        'monthly_fee'    => $subj['fee'],
-                        'order'          => $order++,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'code' => $code,
+                        'description' => "{$subj['name']} curriculum syllabus for {$form} (KSSM).",
+                        'level' => 'Lower Secondary',
+                        'color' => '#3b82f6',
+                        'icon' => 'academic-cap',
+                        'is_active' => true,
+                        'monthly_fee' => $subj['fee'],
+                        'order' => $order++,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 } else {
                     DB::table('subjects')->where('id', $existing->id)->update([
-                        'is_active'   => true,
+                        'is_active' => true,
                         'monthly_fee' => $subj['fee'],
                     ]);
                 }
@@ -136,9 +136,9 @@ return new class extends Migration
 
         foreach (['Form 4', 'Form 5'] as $form) {
             foreach ($upperSecSubjects as $subj) {
-                $slug = Str::slug($subj['name'] . ' ' . $form);
+                $slug = Str::slug($subj['name'].' '.$form);
                 $formNum = filter_var($form, FILTER_SANITIZE_NUMBER_INT);
-                $code = 'KPM-SPM' . $formNum . '-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
+                $code = 'KPM-SPM'.$formNum.'-'.strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $subj['name']), 0, 3));
 
                 $existing = DB::table('subjects')
                     ->where('education_type', 'secondary')
@@ -147,29 +147,29 @@ return new class extends Migration
                     ->where('form_year', $form)
                     ->first();
 
-                if (!$existing) {
+                if (! $existing) {
                     DB::table('subjects')->insert([
-                        'name'           => $subj['name'],
-                        'slug'           => $slug,
+                        'name' => $subj['name'],
+                        'slug' => $slug,
                         'education_type' => 'secondary',
-                        'stage'          => 'Upper Secondary',
-                        'form_year'      => $form,
-                        'category'       => $subj['category'],
+                        'stage' => 'Upper Secondary',
+                        'form_year' => $form,
+                        'category' => $subj['category'],
                         'stream_package' => $subj['stream_package'],
-                        'code'           => $code,
-                        'description'    => "{$subj['name']} curriculum syllabus for {$form} SPM (KSSM).",
-                        'level'          => 'SPM',
-                        'color'          => '#3b82f6',
-                        'icon'           => 'academic-cap',
-                        'is_active'      => true,
-                        'monthly_fee'    => $subj['fee'],
-                        'order'          => $order++,
-                        'created_at'     => now(),
-                        'updated_at'     => now(),
+                        'code' => $code,
+                        'description' => "{$subj['name']} curriculum syllabus for {$form} SPM (KSSM).",
+                        'level' => 'SPM',
+                        'color' => '#3b82f6',
+                        'icon' => 'academic-cap',
+                        'is_active' => true,
+                        'monthly_fee' => $subj['fee'],
+                        'order' => $order++,
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ]);
                 } else {
                     DB::table('subjects')->where('id', $existing->id)->update([
-                        'is_active'   => true,
+                        'is_active' => true,
                         'monthly_fee' => $subj['fee'],
                     ]);
                 }

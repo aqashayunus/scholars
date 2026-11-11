@@ -7,6 +7,7 @@ use App\Models\EmailAutomationExecution;
 use App\Models\EmailLog;
 use App\Models\EmailTemplate;
 use App\Models\User;
+use App\Services\BillingNotificationService;
 use Illuminate\Support\Facades\Log;
 
 class EmailAutomationService
@@ -19,7 +20,7 @@ class EmailAutomationService
         try {
             $aliases = [
                 'balance_settled' => 'payment_confirmed',
-                'class_reminder'  => 'upcoming_class_reminder',
+                'class_reminder' => 'upcoming_class_reminder',
             ];
             $automationKey = $aliases[$automationKey] ?? $automationKey;
 
@@ -27,29 +28,32 @@ class EmailAutomationService
                 ->where('key', $automationKey)
                 ->first();
 
-            if (!$automation) {
+            if (! $automation) {
                 return $isTest ? ['success' => false, 'error' => "Automation '{$automationKey}' not found in database. Please run: php artisan db:seed --class=EmailTemplateSeeder"] : false;
             }
 
             // Guard: check if enabled by Admin (bypass in test mode)
-            if (!$automation->is_enabled && !$isTest) {
+            if (! $automation->is_enabled && ! $isTest) {
                 self::recordExecution($automation, 'skipped', '', 'Automation disabled by administrator.', $idempotencyKey);
+
                 return false;
             }
 
             // Guard: check if template exists and is active (allow draft in test mode)
             $template = $automation->template;
-            if (!$template) {
+            if (! $template) {
                 self::recordExecution($automation, 'skipped', '', 'Template is missing.', $idempotencyKey);
+
                 return $isTest ? ['success' => false, 'error' => "No template linked to automation '{$automation->name}'. Please select an active template."] : false;
             }
-            if ($template->status !== EmailTemplate::STATUS_ACTIVE && !$isTest) {
+            if ($template->status !== EmailTemplate::STATUS_ACTIVE && ! $isTest) {
                 self::recordExecution($automation, 'skipped', '', 'Template is inactive.', $idempotencyKey);
+
                 return false;
             }
 
             // Guard: Idempotency check (prevent duplicate notifications for same event, skip for tests)
-            if ($idempotencyKey && !$isTest) {
+            if ($idempotencyKey && ! $isTest) {
                 $alreadyExecuted = EmailAutomationExecution::where('email_automation_id', $automation->id)
                     ->where('idempotency_key', $idempotencyKey)
                     ->where('status', 'success')
@@ -57,6 +61,7 @@ class EmailAutomationService
 
                 if ($alreadyExecuted) {
                     Log::info("[EmailAutomationService] Idempotency hit: {$automationKey} with key {$idempotencyKey} already executed. Skipping.");
+
                     return false;
                 }
             }
@@ -66,22 +71,23 @@ class EmailAutomationService
 
             if (empty($recipients)) {
                 self::recordExecution($automation, 'skipped', '', 'No valid recipient email address found in context.', $idempotencyKey);
+
                 return $isTest ? ['success' => false, 'error' => 'No valid recipient email address found in context.'] : false;
             }
 
             $successAny = false;
-            $lastError  = null;
+            $lastError = null;
 
             foreach ($recipients as $rcpt) {
                 $email = strtolower(trim($rcpt['email']));
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     continue;
                 }
 
                 $mergedContext = array_merge($context, [
-                    'recipient_name'  => $rcpt['name'],
+                    'recipient_name' => $rcpt['name'],
                     'recipient_email' => $email,
-                    'recipient_type'  => $rcpt['type'],
+                    'recipient_type' => $rcpt['type'],
                 ]);
 
                 // Send email
@@ -118,18 +124,19 @@ class EmailAutomationService
             if ($isTest) {
                 return [
                     'success' => $successAny,
-                    'error'   => $successAny ? null : ($lastError ?: 'Email could not be delivered to mail server.')
+                    'error' => $successAny ? null : ($lastError ?: 'Email could not be delivered to mail server.'),
                 ];
             }
 
             return $successAny;
 
         } catch (\Throwable $e) {
-            Log::error("[EmailAutomationService] Trigger {$automationKey} failed: " . $e->getMessage());
+            Log::error("[EmailAutomationService] Trigger {$automationKey} failed: ".$e->getMessage());
             if (isset($automation)) {
                 $automation->increment('failure_count');
                 self::recordExecution($automation, 'failed', '', $e->getMessage(), $idempotencyKey);
             }
+
             return $isTest ? ['success' => false, 'error' => $e->getMessage()] : false;
         }
     }
@@ -142,13 +149,14 @@ class EmailAutomationService
         $recipients = [];
 
         // 1. Explicit email passed in context
-        if (!empty($context['recipient_email'])) {
+        if (! empty($context['recipient_email'])) {
             $recipients[] = [
-                'email'   => $context['recipient_email'],
-                'name'    => $context['recipient_name'] ?? 'Recipient',
-                'type'    => $context['recipient_type'] ?? 'custom',
+                'email' => $context['recipient_email'],
+                'name' => $context['recipient_name'] ?? 'Recipient',
+                'type' => $context['recipient_type'] ?? 'custom',
                 'user_id' => $context['user_id'] ?? null,
             ];
+
             return $recipients;
         }
 
@@ -157,9 +165,9 @@ class EmailAutomationService
             $u = $context['user'];
             if ($u->email) {
                 $recipients[] = [
-                    'email'   => $u->email,
-                    'name'    => $u->name,
-                    'type'    => $u->role,
+                    'email' => $u->email,
+                    'name' => $u->name,
+                    'type' => $u->role,
                     'user_id' => $u->id,
                 ];
             }
@@ -171,20 +179,20 @@ class EmailAutomationService
             // Student account email
             if ($student->user && $student->user->email) {
                 $recipients[] = [
-                    'email'   => $student->user->email,
-                    'name'    => $student->user->name,
-                    'type'    => 'student',
+                    'email' => $student->user->email,
+                    'name' => $student->user->name,
+                    'type' => 'student',
                     'user_id' => $student->user->id,
                 ];
             }
             // Linked parent email(s)
-            $parents = \App\Services\BillingNotificationService::getStudentParents($student);
+            $parents = BillingNotificationService::getStudentParents($student);
             foreach ($parents as $p) {
                 if ($p->email) {
                     $recipients[] = [
-                        'email'   => $p->email,
-                        'name'    => $p->name,
-                        'type'    => 'parent',
+                        'email' => $p->email,
+                        'name' => $p->name,
+                        'type' => 'parent',
                         'user_id' => $p->id,
                     ];
                 }
@@ -220,12 +228,12 @@ class EmailAutomationService
     ): void {
         EmailAutomationExecution::create([
             'email_automation_id' => $automation->id,
-            'idempotency_key'     => $idempotencyKey,
-            'status'              => $status,
-            'recipient_email'     => $recipientEmail,
-            'error_message'       => $error ? substr($error, 0, 500) : null,
-            'executed_at'         => now(),
-            'created_at'          => now(),
+            'idempotency_key' => $idempotencyKey,
+            'status' => $status,
+            'recipient_email' => $recipientEmail,
+            'error_message' => $error ? substr($error, 0, 500) : null,
+            'executed_at' => now(),
+            'created_at' => now(),
         ]);
     }
 }

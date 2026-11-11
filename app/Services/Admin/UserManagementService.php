@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UserManagementService
 {
@@ -32,9 +33,9 @@ class UserManagementService
         $passwordText = Str::password(14);
 
         $user = new User([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'phone'    => $validated['phone'] ?? null,
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
             'password' => Hash::make($passwordText),
         ]);
         $user->role = $validated['role'];
@@ -43,16 +44,16 @@ class UserManagementService
 
         if ($user->role === 'student') {
             $student = new Student([
-                'user_id'      => $user->id,
-                'level'        => 'SPM',
+                'user_id' => $user->id,
+                'level' => 'SPM',
                 'total_points' => 0,
             ]);
             $student->parent_user_id = $validated['parent_user_id'] ?? null;
             $student->save();
 
-            if (!empty($validated['courses'])) {
+            if (! empty($validated['courses'])) {
                 foreach ($validated['courses'] as $courseId) {
-                    $enrollment = new Enrollment();
+                    $enrollment = new Enrollment;
                     $enrollment->student_id = $student->id;
                     $enrollment->course_id = $courseId;
                     $enrollment->status = 'active';
@@ -64,7 +65,7 @@ class UserManagementService
                 try {
                     app(InvoiceService::class)->generateForStudent($student);
                 } catch (\Exception $e) {
-                    Log::info("Admin auto-invoice note for student #{$student->id}: " . $e->getMessage());
+                    Log::info("Admin auto-invoice note for student #{$student->id}: ".$e->getMessage());
                 }
             }
         } elseif ($user->role === 'teacher') {
@@ -92,22 +93,22 @@ class UserManagementService
         $user->role = $validated['role'];
         $user->phone = $validated['phone'] ?? null;
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
         $user->save();
 
-        if ($user->role === 'student' && !$user->studentProfile) {
+        if ($user->role === 'student' && ! $user->studentProfile) {
             Student::create(['user_id' => $user->id, 'level' => 'SPM', 'total_points' => 0]);
-        } elseif ($user->role === 'teacher' && !$user->teacherProfile) {
+        } elseif ($user->role === 'teacher' && ! $user->teacherProfile) {
             Teacher::create(['user_id' => $user->id, 'specialization' => 'General Academic', 'qualification' => 'Certified Educator', 'rating' => 5.0, 'experience_years' => 1]);
         }
 
         try {
             UserNotification::create([
                 'user_id' => $user->id,
-                'type'    => 'profile',
-                'title'   => 'ACCOUNT PROFILE UPDATED',
+                'type' => 'profile',
+                'title' => 'ACCOUNT PROFILE UPDATED',
                 'message' => 'Your profile details have been updated.',
                 'read_at' => null,
             ]);
@@ -149,8 +150,8 @@ class UserManagementService
         try {
             UserNotification::create([
                 'user_id' => $user->id,
-                'type'    => 'security',
-                'title'   => 'PASSWORD UPDATED',
+                'type' => 'security',
+                'title' => 'PASSWORD UPDATED',
                 'message' => 'Your account password has been reset by an administrator. You will be asked to set a new password on your next login.',
                 'read_at' => null,
             ]);
@@ -171,15 +172,15 @@ class UserManagementService
             $student->user->save();
         }
 
-        $name = $student->user->name ?? 'Student #' . $id;
+        $name = $student->user->name ?? 'Student #'.$id;
         $label = ucfirst($newStatus->value);
 
         try {
             if ($student->user_id) {
                 UserNotification::create([
                     'user_id' => $student->user_id,
-                    'type'    => 'account',
-                    'title'   => 'ACCOUNT STATUS UPDATED',
+                    'type' => 'account',
+                    'title' => 'ACCOUNT STATUS UPDATED',
                     'message' => "Your student portal account status has been updated to {$label}.",
                     'read_at' => null,
                 ]);
@@ -188,8 +189,8 @@ class UserManagementService
             foreach ($parents as $parent) {
                 UserNotification::create([
                     'user_id' => $parent->id,
-                    'type'    => 'account',
-                    'title'   => 'STUDENT ACCOUNT STATUS UPDATED',
+                    'type' => 'account',
+                    'title' => 'STUDENT ACCOUNT STATUS UPDATED',
                     'message' => "The account status for student {$name} has been updated to {$label}.",
                     'read_at' => null,
                 ]);
@@ -199,12 +200,12 @@ class UserManagementService
 
         try {
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'student_status_changed',
+                'user_id' => auth()->id(),
+                'action' => 'student_status_changed',
                 'target_type' => Student::class,
-                'target_id'   => $student->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "Student '{$name}' (ID: {$student->id}) status set to {$newStatus->value} by Admin.",
+                'target_id' => $student->id,
+                'ip_address' => request()->ip(),
+                'details' => "Student '{$name}' (ID: {$student->id}) status set to {$newStatus->value} by Admin.",
             ]);
         } catch (\Throwable $e) {
             // Ignore audit fail silently to prevent blocking admin action
@@ -228,15 +229,15 @@ class UserManagementService
             $teacher->user->save();
         }
 
-        $name = $teacher->user->name ?? 'Teacher #' . $id;
+        $name = $teacher->user->name ?? 'Teacher #'.$id;
         $label = ucfirst($newStatus);
 
         try {
             if ($teacher->user_id) {
                 UserNotification::create([
                     'user_id' => $teacher->user_id,
-                    'type'    => 'account',
-                    'title'   => 'ACCOUNT STATUS UPDATED',
+                    'type' => 'account',
+                    'title' => 'ACCOUNT STATUS UPDATED',
                     'message' => "Your educator account status has been updated to {$label}.",
                     'read_at' => null,
                 ]);
@@ -246,12 +247,12 @@ class UserManagementService
 
         try {
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'teacher_status_changed',
+                'user_id' => auth()->id(),
+                'action' => 'teacher_status_changed',
                 'target_type' => Teacher::class,
-                'target_id'   => $teacher->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "Teacher '{$name}' (ID: {$teacher->id}) status set to {$newStatus} by Admin for company record archiving.",
+                'target_id' => $teacher->id,
+                'ip_address' => request()->ip(),
+                'details' => "Teacher '{$name}' (ID: {$teacher->id}) status set to {$newStatus} by Admin for company record archiving.",
             ]);
         } catch (\Throwable $e) {
             // Ignore audit fail silently to prevent blocking admin action
@@ -271,7 +272,7 @@ class UserManagementService
             return null;
         }
 
-        $newActive = !$user->is_active;
+        $newActive = ! $user->is_active;
         $user->is_active = $newActive;
         $user->save();
 
@@ -289,8 +290,8 @@ class UserManagementService
         try {
             UserNotification::create([
                 'user_id' => $user->id,
-                'type'    => 'account',
-                'title'   => 'ACCOUNT STATUS UPDATED',
+                'type' => 'account',
+                'title' => 'ACCOUNT STATUS UPDATED',
                 'message' => "Your account has been {$label} by the administrator.",
                 'read_at' => null,
             ]);
@@ -299,12 +300,12 @@ class UserManagementService
 
         try {
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'user_is_active_toggled',
+                'user_id' => auth()->id(),
+                'action' => 'user_is_active_toggled',
                 'target_type' => User::class,
-                'target_id'   => $user->id,
-                'ip_address'  => request()->ip(),
-                'details'     => "User '{$user->name}' (ID: {$user->id}, Role: {$user->role}) {$label} by Admin.",
+                'target_id' => $user->id,
+                'ip_address' => request()->ip(),
+                'details' => "User '{$user->name}' (ID: {$user->id}, Role: {$user->role}) {$label} by Admin.",
             ]);
         } catch (\Throwable $e) {
         }
@@ -379,12 +380,12 @@ class UserManagementService
 
         try {
             FinancialAuditLog::create([
-                'user_id'     => auth()->id(),
-                'action'      => 'engagement_blast_sent',
+                'user_id' => auth()->id(),
+                'action' => 'engagement_blast_sent',
                 'target_type' => User::class,
-                'target_id'   => auth()->id(),
-                'ip_address'  => request()->ip(),
-                'details'     => "Engagement blast '{$validated['blast_subject']}' sent to {$sent} recipient(s) (audience: {$validated['blast_audience']}). Failed: {$failed}.",
+                'target_id' => auth()->id(),
+                'ip_address' => request()->ip(),
+                'details' => "Engagement blast '{$validated['blast_subject']}' sent to {$sent} recipient(s) (audience: {$validated['blast_audience']}). Failed: {$failed}.",
             ]);
         } catch (\Throwable $e) {
         }
@@ -392,7 +393,7 @@ class UserManagementService
         return [$sent, $failed];
     }
 
-    public function exportInactiveUsersCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function exportInactiveUsersCsv(): StreamedResponse
     {
         [$nonActiveUserIds, $restrictedStudentUserIds, $inactiveTeacherUserIds] = $this->nonActiveUserIds();
 
@@ -413,7 +414,7 @@ class UserManagementService
                     $reasons[] = 'Teacher Deactivated';
                 }
                 fputcsv($handle, [
-                    '#' . $u->id,
+                    '#'.$u->id,
                     $u->name,
                     ucfirst($u->role),
                     $u->email,
@@ -423,7 +424,7 @@ class UserManagementService
                 ]);
             }
             fclose($handle);
-        }, 'inactive-users-' . now()->format('Y-m-d') . '.csv', [
+        }, 'inactive-users-'.now()->format('Y-m-d').'.csv', [
             'Content-Type' => 'text/csv',
         ]);
     }

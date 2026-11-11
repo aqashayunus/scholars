@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\LiveClassStatus;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class LiveClass extends Model
 {
@@ -24,11 +26,12 @@ class LiveClass extends Model
         'reschedule_reason',
         'rescheduled_by',
     ];
+
     protected $casts = [
-        'scheduled_at'          => 'datetime',
+        'scheduled_at' => 'datetime',
         'original_scheduled_at' => 'datetime',
-        'duration_minutes'      => 'integer',
-        'is_rescheduled'        => 'boolean',
+        'duration_minutes' => 'integer',
+        'is_rescheduled' => 'boolean',
     ];
 
     protected static function booted()
@@ -51,10 +54,10 @@ class LiveClass extends Model
             return 'live';
         }
 
-        if (!$this->scheduled_at) {
+        if (! $this->scheduled_at) {
             return 'upcoming';
         }
-        $start = $this->scheduled_at instanceof \Carbon\Carbon ? $this->scheduled_at : \Carbon\Carbon::parse($this->scheduled_at);
+        $start = $this->scheduled_at instanceof Carbon ? $this->scheduled_at : Carbon::parse($this->scheduled_at);
         $minutes = (int) ($this->duration_minutes ?: 60);
         $end = $start->copy()->addMinutes($minutes);
         $now = now();
@@ -79,18 +82,42 @@ class LiveClass extends Model
      */
     public function getStatusAttribute($value): LiveClassStatus
     {
-        if (!$this->scheduled_at) {
+        if (! $this->scheduled_at) {
             return LiveClassStatus::tryFrom($value ?? 'upcoming') ?? LiveClassStatus::Upcoming;
         }
+
         return LiveClassStatus::from($this->computed_status);
     }
 
-    public function course()      { return $this->belongsTo(Course::class); }
-    public function teacher()     { return $this->belongsTo(Teacher::class); }
-    public function rescheduler() { return $this->belongsTo(User::class, 'rescheduled_by'); }
-    public function attendances() { return $this->hasMany(StudentAttendance::class); }
-    public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
-    public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class);
+    }
+
+    public function rescheduler()
+    {
+        return $this->belongsTo(User::class, 'rescheduled_by');
+    }
+
+    public function attendances()
+    {
+        return $this->hasMany(StudentAttendance::class);
+    }
+
+    public function attendanceEvents()
+    {
+        return $this->hasMany(AttendanceEvent::class);
+    }
+
+    public function attendanceCorrectionRequests()
+    {
+        return $this->hasMany(AttendanceCorrectionRequest::class);
+    }
 
     public function getAssignedTeacherAttribute()
     {
@@ -103,16 +130,16 @@ class LiveClass extends Model
     public function scopeActiveOrUpcoming($query)
     {
         $now = now();
-        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
         $endExpr = $isSqlite
             ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
-            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+            : 'DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)';
 
         return $query->where('status', '!=', 'cancelled')
             ->where(function ($q) use ($now, $endExpr) {
                 $q->where('status', 'live')
-                  ->orWhere('scheduled_at', '>=', $now)
-                  ->orWhereRaw("{$endExpr} >= ?", [$now]);
+                    ->orWhere('scheduled_at', '>=', $now)
+                    ->orWhereRaw("{$endExpr} >= ?", [$now]);
             });
     }
 
@@ -122,36 +149,50 @@ class LiveClass extends Model
     public function scopeCompletedOrPast($query)
     {
         $now = now();
-        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
         $endExpr = $isSqlite
             ? "datetime(scheduled_at, '+' || COALESCE(duration_minutes, 60) || ' minutes')"
-            : "DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)";
+            : 'DATE_ADD(scheduled_at, INTERVAL COALESCE(duration_minutes, 60) MINUTE)';
 
         return $query->where('status', '!=', 'cancelled')
             ->where(function ($q) use ($now, $endExpr) {
                 $q->where('status', 'completed')
-                  ->orWhere(function ($sub) use ($now, $endExpr) {
-                      $sub->where('status', '!=', 'live')
-                          ->whereRaw("{$endExpr} < ?", [$now]);
-                  });
+                    ->orWhere(function ($sub) use ($now, $endExpr) {
+                        $sub->where('status', '!=', 'live')
+                            ->whereRaw("{$endExpr} < ?", [$now]);
+                    });
             });
     }
 
     public function isOngoingOrUpcoming(): bool
     {
-        if ($this->status === LiveClassStatus::Cancelled) return false;
-        if ($this->status === LiveClassStatus::Live) return true;
-        if (!$this->scheduled_at) return true;
+        if ($this->status === LiveClassStatus::Cancelled) {
+            return false;
+        }
+        if ($this->status === LiveClassStatus::Live) {
+            return true;
+        }
+        if (! $this->scheduled_at) {
+            return true;
+        }
         $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+
         return $end->gte(now());
     }
 
     public function isPastOrCompleted(): bool
     {
-        if ($this->status === LiveClassStatus::Completed) return true;
-        if ($this->status === LiveClassStatus::Live) return false;
-        if (!$this->scheduled_at) return false;
+        if ($this->status === LiveClassStatus::Completed) {
+            return true;
+        }
+        if ($this->status === LiveClassStatus::Live) {
+            return false;
+        }
+        if (! $this->scheduled_at) {
+            return false;
+        }
         $end = $this->scheduled_at->copy()->addMinutes($this->duration_minutes ?: 60);
+
         return $end->lt(now());
     }
 }

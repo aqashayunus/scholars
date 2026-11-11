@@ -20,8 +20,8 @@ class ClaimSubmissionTest extends TestCase
         $user = User::factory()->create(['role' => 'teacher']);
 
         return Teacher::create(array_merge([
-            'user_id'          => $user->id,
-            'qualification'    => 'B.Ed',
+            'user_id' => $user->id,
+            'qualification' => 'B.Ed',
             'experience_years' => 5,
         ], $overrides));
     }
@@ -31,10 +31,10 @@ class ClaimSubmissionTest extends TestCase
         $teacher = $this->makeTeacher();
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.claims.store'), [
-            'claim_type'       => 'manual',
-            'subject_name'     => 'Mathematics',
-            'class_title'      => 'Algebra',
-            'class_date'       => now()->toDateString(),
+            'claim_type' => 'manual',
+            'subject_name' => 'Mathematics',
+            'class_title' => 'Algebra',
+            'class_date' => now()->toDateString(),
             'duration_minutes' => 60,
         ]);
 
@@ -45,26 +45,26 @@ class ClaimSubmissionTest extends TestCase
     public function test_teacher_with_bank_details_can_submit_a_manual_claim_with_default_rate(): void
     {
         $teacher = $this->makeTeacher([
-            'bank_name'           => 'Maybank',
+            'bank_name' => 'Maybank',
             'bank_account_number' => '1234567890',
         ]);
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.claims.store'), [
-            'claim_type'       => 'manual',
-            'subject_name'     => 'Mathematics',
-            'class_title'      => 'Algebra Revision',
-            'class_date'       => now()->toDateString(),
+            'claim_type' => 'manual',
+            'subject_name' => 'Mathematics',
+            'class_title' => 'Algebra Revision',
+            'class_date' => now()->toDateString(),
             'duration_minutes' => 60,
         ]);
 
         $response->assertRedirect(route('teacher.claims'));
         $this->assertDatabaseHas('teacher_class_claims', [
-            'teacher_id'          => $teacher->id,
-            'subject_name'        => 'Mathematics',
-            'rate_per_class'      => 50.00,
-            'amount'              => 50.00,
-            'status'              => 'pending',
-            'bank_name'           => 'Maybank',
+            'teacher_id' => $teacher->id,
+            'subject_name' => 'Mathematics',
+            'rate_per_class' => 50.00,
+            'amount' => 50.00,
+            'status' => 'pending',
+            'bank_name' => 'Maybank',
             'bank_account_number' => '1234567890',
         ]);
     }
@@ -72,25 +72,25 @@ class ClaimSubmissionTest extends TestCase
     public function test_teacher_can_submit_a_claim_with_custom_rate_and_proof_attachment(): void
     {
         $teacher = $this->makeTeacher([
-            'bank_name'           => 'CIMB Bank',
+            'bank_name' => 'CIMB Bank',
             'bank_account_number' => '9988776655',
         ]);
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.claims.store'), [
-            'claim_type'       => 'manual',
-            'subject_name'     => 'Science',
-            'class_title'      => 'Photosynthesis',
-            'class_date'       => now()->toDateString(),
+            'claim_type' => 'manual',
+            'subject_name' => 'Science',
+            'class_title' => 'Photosynthesis',
+            'class_date' => now()->toDateString(),
             'duration_minutes' => 90,
-            'rate_per_class'   => 75.50,
+            'rate_per_class' => 75.50,
             'proof_attachment' => UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertRedirect(route('teacher.claims'));
         $this->assertDatabaseHas('teacher_class_claims', [
-            'teacher_id'     => $teacher->id,
+            'teacher_id' => $teacher->id,
             'rate_per_class' => 75.50,
-            'amount'         => 75.50,
+            'amount' => 75.50,
         ]);
         $claim = TeacherClassClaim::first();
         $this->assertNotNull($claim->proof_attachment_path);
@@ -99,37 +99,37 @@ class ClaimSubmissionTest extends TestCase
     public function test_duplicate_claim_on_same_live_class_is_blocked(): void
     {
         $teacher = $this->makeTeacher([
-            'bank_name'           => 'Maybank',
+            'bank_name' => 'Maybank',
             'bank_account_number' => '1234567890',
         ]);
 
         $liveClass = LiveClass::create([
-            'course_id'        => Course::factory()->create()->id,
-            'title'            => 'Algebra Revision',
-            'scheduled_at'     => now()->subDay(),
+            'course_id' => Course::factory()->create()->id,
+            'title' => 'Algebra Revision',
+            'scheduled_at' => now()->subDay(),
             'duration_minutes' => 60,
-            'status'           => 'completed',
+            'status' => 'completed',
         ]);
 
         TeacherClassClaim::create([
-            'claim_number'     => TeacherClassClaim::generateClaimNumber(),
-            'teacher_id'       => $teacher->id,
-            'live_class_id'    => $liveClass->id,
-            'subject_name'     => 'Mathematics',
-            'class_title'      => 'Algebra',
-            'class_date'       => now(),
+            'claim_number' => TeacherClassClaim::generateClaimNumber(),
+            'teacher_id' => $teacher->id,
+            'live_class_id' => $liveClass->id,
+            'subject_name' => 'Mathematics',
+            'class_title' => 'Algebra',
+            'class_date' => now(),
             'duration_minutes' => 60,
-            'rate_per_class'   => 50,
-            'amount'           => 50,
-            'status'           => 'pending',
+            'rate_per_class' => 50,
+            'amount' => 50,
+            'status' => 'pending',
         ]);
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.claims.store'), [
-            'claim_type'       => 'live_class',
-            'live_class_id'    => $liveClass->id,
-            'subject_name'     => 'Mathematics',
-            'class_title'      => 'Algebra',
-            'class_date'       => now()->toDateString(),
+            'claim_type' => 'live_class',
+            'live_class_id' => $liveClass->id,
+            'subject_name' => 'Mathematics',
+            'class_title' => 'Algebra',
+            'class_date' => now()->toDateString(),
             'duration_minutes' => 60,
         ]);
 
@@ -142,7 +142,7 @@ class ClaimSubmissionTest extends TestCase
         $teacher = $this->makeTeacher();
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.claims.bank-details'), [
-            'bank_name'           => 'Public Bank',
+            'bank_name' => 'Public Bank',
             'bank_account_number' => '5566778899',
             'bank_account_holder' => 'Jane Doe',
         ]);

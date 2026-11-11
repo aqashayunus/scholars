@@ -30,11 +30,11 @@ class Subject extends Model
     ];
 
     protected $casts = [
-        'is_active'                    => 'boolean',
-        'order'                        => 'integer',
-        'monthly_fee'                  => 'decimal:2',
-        'diagnostic_assignment_id'     => 'integer',
-        'diagnostic_duration_minutes'  => 'integer',
+        'is_active' => 'boolean',
+        'order' => 'integer',
+        'monthly_fee' => 'decimal:2',
+        'diagnostic_assignment_id' => 'integer',
+        'diagnostic_duration_minutes' => 'integer',
     ];
 
     protected $appends = [
@@ -69,8 +69,8 @@ class Subject extends Model
     public function feeStructures()
     {
         return $this->belongsToMany(FeeStructure::class, 'fee_structure_subjects')
-                    ->withPivot(['is_required', 'sort_order'])
-                    ->withTimestamps();
+            ->withPivot(['is_required', 'sort_order'])
+            ->withTimestamps();
     }
 
     /**
@@ -102,7 +102,7 @@ class Subject extends Model
      */
     public function hasDiagnosticTest(): bool
     {
-        return !is_null($this->diagnostic_assignment_id);
+        return ! is_null($this->diagnostic_assignment_id);
     }
 
     /**
@@ -116,6 +116,7 @@ class Subject extends Model
         if ($this->diagnosticTest && $this->diagnosticTest->time_limit_minutes) {
             return $this->diagnosticTest->time_limit_minutes;
         }
+
         return 20;
     }
 
@@ -159,24 +160,24 @@ class Subject extends Model
     public function scopeLowerSecondary($query)
     {
         return $query->where('education_type', 'secondary')
-                     ->where(function ($q) {
-                         $q->where('stage', 'Lower Secondary')
-                           ->orWhere('form_year', 'like', '%Form 1%')
-                           ->orWhere('form_year', 'like', '%Form 2%')
-                           ->orWhere('form_year', 'like', '%Form 3%')
-                           ->orWhere('form_year', 'Form 1–3');
-                     });
+            ->where(function ($q) {
+                $q->where('stage', 'Lower Secondary')
+                    ->orWhere('form_year', 'like', '%Form 1%')
+                    ->orWhere('form_year', 'like', '%Form 2%')
+                    ->orWhere('form_year', 'like', '%Form 3%')
+                    ->orWhere('form_year', 'Form 1–3');
+            });
     }
 
     public function scopeUpperSecondary($query)
     {
         return $query->where('education_type', 'secondary')
-                     ->where(function ($q) {
-                         $q->where('stage', 'Upper Secondary')
-                           ->orWhere('form_year', 'like', '%Form 4%')
-                           ->orWhere('form_year', 'like', '%Form 5%')
-                           ->orWhere('form_year', 'Form 4–5');
-                     });
+            ->where(function ($q) {
+                $q->where('stage', 'Upper Secondary')
+                    ->orWhere('form_year', 'like', '%Form 4%')
+                    ->orWhere('form_year', 'like', '%Form 5%')
+                    ->orWhere('form_year', 'Form 4–5');
+            });
     }
 
     public function scopeCore($query)
@@ -188,19 +189,19 @@ class Subject extends Model
     {
         return $query->where(function ($q) {
             $q->where('category', 'Elective')
-              ->orWhere('category', 'like', '%Elective%');
+                ->orWhere('category', 'like', '%Elective%');
         });
     }
 
     public function scopeActiveOffered($query)
     {
         return $query->where('is_active', true)
-                     ->where('education_type', '!=', 'kindergarten')
-                     ->whereIn('form_year', [
-                         'Year 4', 'Year 5', 'Year 6',
-                         'Form 1', 'Form 2', 'Form 3',
-                         'Form 4', 'Form 5'
-                     ]);
+            ->where('education_type', '!=', 'kindergarten')
+            ->whereIn('form_year', [
+                'Year 4', 'Year 5', 'Year 6',
+                'Form 1', 'Form 2', 'Form 3',
+                'Form 4', 'Form 5',
+            ]);
     }
 
     public function scopeByFormYear($query, $formYear)
@@ -212,6 +213,7 @@ class Subject extends Model
     public function getDisplayNameAttribute(): string
     {
         $name = (string) ($this->name ?? '');
+
         return ($this->form_year && $name !== '') ? "{$name} - {$this->form_year}" : $name;
     }
 
@@ -219,18 +221,20 @@ class Subject extends Model
     {
         return $this->display_name;
     }
+
     public function getCurriculumBadgeAttribute(): string
     {
         if ($this->education_type === 'kindergarten') {
             return 'KSPK Prasekolah';
         }
         if ($this->education_type === 'primary') {
-            return 'KSSR ' . ($this->form_year ?? 'Primary');
+            return 'KSSR '.($this->form_year ?? 'Primary');
         }
         if ($this->stage === 'Lower Secondary' || in_array($this->form_year, ['Form 1', 'Form 2', 'Form 3', 'Form 1–3'])) {
-            return 'KSSM ' . ($this->form_year ?? 'Form 1–3');
+            return 'KSSM '.($this->form_year ?? 'Form 1–3');
         }
-        return 'KSSM SPM (' . ($this->category === 'Core' ? 'Teras' : 'Elektif') . ')';
+
+        return 'KSSM SPM ('.($this->category === 'Core' ? 'Teras' : 'Elektif').')';
     }
 
     public function getRouteKeyName()

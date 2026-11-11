@@ -19,14 +19,14 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'invoice_id'     => ['required', 'integer', 'exists:invoices,id'],
+            'invoice_id' => ['required', 'integer', 'exists:invoices,id'],
             'payment_method' => ['required', 'in:bank_transfer,online,fpx'],
-            'reference_no'   => ['nullable', 'string', 'max:100'],
+            'reference_no' => ['nullable', 'string', 'max:100'],
         ]);
 
         $invoice = Invoice::findOrFail($request->invoice_id);
 
-        if (!$invoice->requiresPayment()) {
+        if (! $invoice->requiresPayment()) {
             return back()->with('error', 'This invoice is already paid or cancelled.');
         }
 
@@ -39,10 +39,12 @@ class PaymentController extends Controller
         if (in_array($paymentMethod, ['online', 'fpx'])) {
             try {
                 $result = $this->paymentService->initiateBillplzPayment([$invoice->id], Auth::user());
+
                 return redirect()->away($result['bill_url']);
             } catch (\Throwable $e) {
-                Log::error('[PaymentController] Billplz checkout error: ' . $e->getMessage());
-                return back()->with('error', 'Failed to connect to online banking: ' . $e->getMessage());
+                Log::error('[PaymentController] Billplz checkout error: '.$e->getMessage());
+
+                return back()->with('error', 'Failed to connect to online banking: '.$e->getMessage());
             }
         }
 
@@ -61,7 +63,8 @@ class PaymentController extends Controller
                 ->with('success', 'Payment initiated. Please upload your bank transfer proof below.');
 
         } catch (\Exception $e) {
-            Log::error('[PaymentController] store failed: ' . $e->getMessage());
+            Log::error('[PaymentController] store failed: '.$e->getMessage());
+
             return back()->with('error', 'Failed to initiate payment. Please try again.');
         }
     }
@@ -71,10 +74,10 @@ class PaymentController extends Controller
     public function storeMulti(Request $request)
     {
         $request->validate([
-            'invoice_ids'    => ['required', 'array', 'min:1'],
-            'invoice_ids.*'  => ['integer', 'exists:invoices,id'],
+            'invoice_ids' => ['required', 'array', 'min:1'],
+            'invoice_ids.*' => ['integer', 'exists:invoices,id'],
             'payment_method' => ['nullable', 'in:bank_transfer,online,fpx'],
-            'reference_no'   => ['nullable', 'string', 'max:100'],
+            'reference_no' => ['nullable', 'string', 'max:100'],
         ]);
 
         $user = Auth::user();
@@ -85,7 +88,7 @@ class PaymentController extends Controller
             $invoices = Invoice::whereIn('id', $request->invoice_ids)->get();
 
             foreach ($invoices as $invoice) {
-                if (!in_array($invoice->student_id, $childIds)) {
+                if (! in_array($invoice->student_id, $childIds)) {
                     abort(403, 'You do not have access to one or more selected invoices.');
                 }
             }
@@ -97,10 +100,12 @@ class PaymentController extends Controller
         if (in_array($paymentMethod, ['online', 'fpx'])) {
             try {
                 $result = $this->paymentService->initiateBillplzPayment($request->invoice_ids, $user);
+
                 return redirect()->away($result['bill_url']);
             } catch (\Throwable $e) {
-                Log::error('[PaymentController] storeMulti Billplz error: ' . $e->getMessage());
-                return back()->with('error', 'Failed to initiate online banking: ' . $e->getMessage());
+                Log::error('[PaymentController] storeMulti Billplz error: '.$e->getMessage());
+
+                return back()->with('error', 'Failed to initiate online banking: '.$e->getMessage());
             }
         }
 
@@ -112,11 +117,12 @@ class PaymentController extends Controller
             );
 
             return redirect()->route('parent.fees')
-                ->with('success', "Payment of RM " . number_format($payment->amount, 2) . " initiated. Please upload your bank transfer proof.");
+                ->with('success', 'Payment of RM '.number_format($payment->amount, 2).' initiated. Please upload your bank transfer proof.');
 
         } catch (\Exception $e) {
-            Log::error('[PaymentController] storeMulti failed: ' . $e->getMessage());
-            return back()->with('error', 'Failed to initiate payment. ' . $e->getMessage());
+            Log::error('[PaymentController] storeMulti failed: '.$e->getMessage());
+
+            return back()->with('error', 'Failed to initiate payment. '.$e->getMessage());
         }
     }
 
@@ -130,9 +136,11 @@ class PaymentController extends Controller
 
         try {
             $this->paymentService->handleGatewayWebhook($request->all());
+
             return response()->json(['status' => 'ok'], 200);
         } catch (\Exception $e) {
-            Log::error('[PaymentController] Gateway webhook error: ' . $e->getMessage());
+            Log::error('[PaymentController] Gateway webhook error: '.$e->getMessage());
+
             return response()->json(['status' => 'error', 'message' => 'Internal error'], 500);
         }
     }
@@ -145,17 +153,19 @@ class PaymentController extends Controller
 
         if ($user->role === 'student') {
             $student = $user->student;
-            if (!$student || $student->id !== $invoice->student_id) {
+            if (! $student || $student->id !== $invoice->student_id) {
                 abort(403);
             }
+
             return;
         }
 
         if ($user->role === 'parent') {
             $childIds = $user->authorizedChildren()->pluck('students.id')->toArray();
-            if (!in_array($invoice->student_id, $childIds)) {
+            if (! in_array($invoice->student_id, $childIds)) {
                 abort(403);
             }
+
             return;
         }
 

@@ -30,11 +30,11 @@ class QuizPerformanceService
 
         StudentQuiz::updateOrCreate([
             'student_id' => $student->id,
-            'quiz_id'    => $quiz->id,
+            'quiz_id' => $quiz->id,
         ], [
-            'score'           => $score,
+            'score' => $score,
             'total_questions' => $totalQuestions,
-            'completed_at'    => now(),
+            'completed_at' => now(),
         ]);
     }
 
@@ -51,15 +51,15 @@ class QuizPerformanceService
 
         if ($recentQuizzes->isNotEmpty()) {
             $performanceLabels = $recentQuizzes->map(fn ($q) => $q->completed_at ? $q->completed_at->format('M') : 'Quiz')->toArray();
-            $performanceData   = $recentQuizzes->map(fn ($q) => $q->total_questions > 0 ? (int) round(($q->score / $q->total_questions) * 100) : 0)->toArray();
+            $performanceData = $recentQuizzes->map(fn ($q) => $q->total_questions > 0 ? (int) round(($q->score / $q->total_questions) * 100) : 0)->toArray();
         } else {
             $performanceLabels = [now()->format('M')];
-            $performanceData   = [0];
+            $performanceData = [0];
         }
 
         return [
             'performanceLabels' => $performanceLabels,
-            'performanceData'   => $performanceData,
+            'performanceData' => $performanceData,
         ];
     }
 }

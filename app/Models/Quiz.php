@@ -18,11 +18,23 @@ class Quiz extends Model
         'passing_marks',
         'due_date',
     ];
+
     protected $casts = [
         'due_date' => 'date',
     ];
 
-    public function course()  { return $this->belongsTo(Course::class); }
-    public function results() { return $this->hasMany(StudentQuiz::class); }
-    public function questions() { return $this->hasMany(Question::class); }
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function results()
+    {
+        return $this->hasMany(StudentQuiz::class);
+    }
+
+    public function questions()
+    {
+        return $this->hasMany(Question::class);
+    }
 }

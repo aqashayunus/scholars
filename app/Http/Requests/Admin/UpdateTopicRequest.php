@@ -14,10 +14,10 @@ class UpdateTopicRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'subject_id'     => 'required|exists:subjects,id',
+            'subject_id' => 'required|exists:subjects,id',
             'chapter_number' => 'required|integer|min:1',
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
         ];
     }
 }

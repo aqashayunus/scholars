@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class EmailTemplate extends Model
 {
@@ -27,7 +28,7 @@ class EmailTemplate extends Model
     {
         static::creating(function ($template) {
             if (empty($template->key)) {
-                $template->key = \Illuminate\Support\Str::slug($template->name, '_') . '_' . uniqid();
+                $template->key = Str::slug($template->name, '_').'_'.uniqid();
             }
             if (empty($template->status)) {
                 $template->status = self::STATUS_ACTIVE;
@@ -50,30 +51,39 @@ class EmailTemplate extends Model
         $this->attributes['body'] = $val;
     }
 
-    public const CATEGORY_GREETINGS   = 'greetings';
-    public const CATEGORY_PAYMENT     = 'payment';
-    public const CATEGORY_RESTRICTION = 'restriction';
-    public const CATEGORY_CLASS       = 'class';
-    public const CATEGORY_ACADEMIC    = 'academic';
-    public const CATEGORY_RENEWAL     = 'renewal';
-    public const CATEGORY_SUPPORT     = 'support';
-    public const CATEGORY_GENERAL     = 'general';
+    public const CATEGORY_GREETINGS = 'greetings';
 
-    public const STATUS_ACTIVE   = 'active';
+    public const CATEGORY_PAYMENT = 'payment';
+
+    public const CATEGORY_RESTRICTION = 'restriction';
+
+    public const CATEGORY_CLASS = 'class';
+
+    public const CATEGORY_ACADEMIC = 'academic';
+
+    public const CATEGORY_RENEWAL = 'renewal';
+
+    public const CATEGORY_SUPPORT = 'support';
+
+    public const CATEGORY_GENERAL = 'general';
+
+    public const STATUS_ACTIVE = 'active';
+
     public const STATUS_INACTIVE = 'inactive';
+
     public const STATUS_ARCHIVED = 'archived';
 
     public static function categories(): array
     {
         return [
-            self::CATEGORY_GREETINGS   => 'Greetings & Onboarding',
-            self::CATEGORY_PAYMENT     => 'Invoices & Payments',
+            self::CATEGORY_GREETINGS => 'Greetings & Onboarding',
+            self::CATEGORY_PAYMENT => 'Invoices & Payments',
             self::CATEGORY_RESTRICTION => 'Access & Restrictions',
-            self::CATEGORY_CLASS       => 'Classes & Timetables',
-            self::CATEGORY_ACADEMIC    => 'Academic & Reports',
-            self::CATEGORY_RENEWAL     => 'Renewals & Engagement',
-            self::CATEGORY_SUPPORT     => 'Support & Account',
-            self::CATEGORY_GENERAL     => 'General Announcements',
+            self::CATEGORY_CLASS => 'Classes & Timetables',
+            self::CATEGORY_ACADEMIC => 'Academic & Reports',
+            self::CATEGORY_RENEWAL => 'Renewals & Engagement',
+            self::CATEGORY_SUPPORT => 'Support & Account',
+            self::CATEGORY_GENERAL => 'General Announcements',
         ];
     }
 
@@ -131,13 +141,13 @@ class EmailTemplate extends Model
 
         EmailTemplateVersion::create([
             'email_template_id' => $this->id,
-            'version_number'    => $latest + 1,
-            'subject'           => $this->subject,
-            'body'              => $this->body,
-            'cta_label'         => $this->cta_label,
-            'cta_url'           => $this->cta_url,
-            'changed_by'        => $userId ?? auth()->id(),
-            'created_at'        => now(),
+            'version_number' => $latest + 1,
+            'subject' => $this->subject,
+            'body' => $this->body,
+            'cta_label' => $this->cta_label,
+            'cta_url' => $this->cta_url,
+            'changed_by' => $userId ?? auth()->id(),
+            'created_at' => now(),
         ]);
     }
 }

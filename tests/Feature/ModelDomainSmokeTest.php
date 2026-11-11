@@ -34,16 +34,16 @@ class ModelDomainSmokeTest extends TestCase
         $course = Course::factory()->create();
         $quiz = Quiz::create([
             'course_id' => $course->id,
-            'title'     => 'Chapter 1 Quiz',
+            'title' => 'Chapter 1 Quiz',
         ]);
 
         $question = Question::create([
-            'quiz_id'        => $quiz->id,
-            'question_text'  => 'What is 2 + 2?',
-            'option_a'       => '3',
-            'option_b'       => '4',
-            'option_c'       => '5',
-            'option_d'       => '6',
+            'quiz_id' => $quiz->id,
+            'question_text' => 'What is 2 + 2?',
+            'option_a' => '3',
+            'option_b' => '4',
+            'option_c' => '5',
+            'option_d' => '6',
             'correct_option' => 'b',
         ]);
 
@@ -52,11 +52,11 @@ class ModelDomainSmokeTest extends TestCase
 
         $student = Student::factory()->create();
         $attempt = StudentQuiz::create([
-            'student_id'      => $student->id,
-            'quiz_id'         => $quiz->id,
-            'score'           => 8,
+            'student_id' => $student->id,
+            'quiz_id' => $quiz->id,
+            'score' => 8,
             'total_questions' => 10,
-            'completed_at'    => now(),
+            'completed_at' => now(),
         ]);
 
         $this->assertSame(80, $attempt->percent);
@@ -68,15 +68,15 @@ class ModelDomainSmokeTest extends TestCase
         $course = Course::factory()->create();
         $assignment = Assignment::create([
             'course_id' => $course->id,
-            'title'     => 'Homework 1',
+            'title' => 'Homework 1',
         ]);
 
         $student = Student::factory()->create();
         $studentAssignment = StudentAssignment::create([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
-            'status'        => 'submitted',
-            'score'         => 90,
+            'status' => 'submitted',
+            'score' => 90,
         ]);
 
         $this->assertSame(StudentAssignmentStatus::Submitted, $studentAssignment->status);
@@ -89,19 +89,19 @@ class ModelDomainSmokeTest extends TestCase
         $course = Course::factory()->create();
         $teacher = Teacher::factory()->create();
         $liveClass = LiveClass::create([
-            'course_id'        => $course->id,
-            'teacher_id'       => $teacher->id,
-            'title'            => 'Live Algebra Session',
-            'scheduled_at'     => now()->addDay(),
+            'course_id' => $course->id,
+            'teacher_id' => $teacher->id,
+            'title' => 'Live Algebra Session',
+            'scheduled_at' => now()->addDay(),
             'duration_minutes' => 60,
         ]);
 
         $student = Student::factory()->create();
         $attendance = StudentAttendance::create([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'live_class_id' => $liveClass->id,
-            'status'        => 'attended',
-            'joined_at'     => now(),
+            'status' => 'attended',
+            'joined_at' => now(),
         ]);
 
         $this->assertSame('attended', $attendance->status);
@@ -114,11 +114,11 @@ class ModelDomainSmokeTest extends TestCase
         $course = Course::factory()->create();
 
         $certificate = Certificate::create([
-            'student_id'  => $student->id,
-            'course_id'   => $course->id,
-            'title'       => 'Certificate of Completion',
-            'cert_number' => 'CERT-TEST-' . $student->id,
-            'issued_at'   => now(),
+            'student_id' => $student->id,
+            'course_id' => $course->id,
+            'title' => 'Certificate of Completion',
+            'cert_number' => 'CERT-TEST-'.$student->id,
+            'issued_at' => now(),
         ]);
 
         $this->assertSame($student->id, $certificate->student_id);
@@ -128,10 +128,10 @@ class ModelDomainSmokeTest extends TestCase
     public function test_teacher_application_lifecycle_pending_to_approved(): void
     {
         $application = TeacherApplication::create([
-            'full_name'          => 'Cikgu Test',
-            'email'              => 'cikgu.test@example.com',
-            'phone'              => '0123456789',
-            'qualification'      => 'B.Ed Mathematics',
+            'full_name' => 'Cikgu Test',
+            'email' => 'cikgu.test@example.com',
+            'phone' => '0123456789',
+            'qualification' => 'B.Ed Mathematics',
             'preferred_subjects' => 'Mathematics',
         ]);
 

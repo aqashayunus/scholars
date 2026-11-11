@@ -23,7 +23,7 @@ class UpdateStudentPasswordRequest extends FormRequest
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()],
         ];
 
-        if (!$isParentManaged) {
+        if (! $isParentManaged) {
             $rules['current_password'] = ['required', 'current_password'];
         }
 
@@ -34,8 +34,8 @@ class UpdateStudentPasswordRequest extends FormRequest
     {
         return [
             'current_password.current_password' => 'The current password you entered is incorrect.',
-            'password.confirmed'                 => 'New passwords do not match.',
-            'password.min'                        => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'New passwords do not match.',
+            'password.min' => 'Password must be at least 8 characters.',
         ];
     }
 }

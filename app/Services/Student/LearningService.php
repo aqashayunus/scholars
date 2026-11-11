@@ -30,7 +30,7 @@ class LearningService
         foreach ($enrollments as $enrollment) {
             $course = $enrollment->course;
             $subject = $course->subject;
-            if (!$subject) {
+            if (! $subject) {
                 continue;
             }
 
@@ -98,31 +98,31 @@ class LearningService
             $notesCount = $courseMaterialsCount > 0 ? $courseMaterialsCount : 0;
 
             $subjectsData[] = [
-                'id'             => $subject->slug,
-                'name'           => $subject->name,
-                'code'           => $subject->code ?? 'KPM-' . $subject->id,
+                'id' => $subject->slug,
+                'name' => $subject->name,
+                'code' => $subject->code ?? 'KPM-'.$subject->id,
                 'education_type' => $subject->education_type ?? 'secondary',
-                'stage'          => $subject->stage ?? 'Upper Secondary',
-                'form_year'      => $subject->form_year ?? 'Form 4–5',
-                'category'       => $subject->category ?? 'Core',
+                'stage' => $subject->stage ?? 'Upper Secondary',
+                'form_year' => $subject->form_year ?? 'Form 4–5',
+                'category' => $subject->category ?? 'Core',
                 'stream_package' => $subject->stream_package,
-                'teacher'        => $teacherName,
-                'level'          => $course->level ?? $subject->level ?? 'SPM',
-                'progress'       => $overallSubjectProgress,
-                'notesCount'     => $notesCount,
-                'practiceCount'  => $practiceCount,
-                'videoCount'     => $videoCount,
-                'topics'         => $topicsData,
+                'teacher' => $teacherName,
+                'level' => $course->level ?? $subject->level ?? 'SPM',
+                'progress' => $overallSubjectProgress,
+                'notesCount' => $notesCount,
+                'practiceCount' => $practiceCount,
+                'videoCount' => $videoCount,
+                'topics' => $topicsData,
             ];
         }
 
         // All quizzes and learning materials for student's enrolled courses
         $allQuizzes = Quiz::whereIn('course_id', $courseIds)->with(['course.subject', 'questions'])->get();
         $allMaterials = LearningMaterial::whereIn('course_id', $courseIds)
-                                        ->where('status', 'Published')
-                                        ->with('course.subject', 'teacher.user')
-                                        ->latest()
-                                        ->get();
+            ->where('status', 'Published')
+            ->with('course.subject', 'teacher.user')
+            ->latest()
+            ->get();
 
         return compact('enrollments', 'recordings', 'subjectsData', 'allQuizzes', 'allMaterials');
     }

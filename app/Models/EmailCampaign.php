@@ -32,21 +32,27 @@ class EmailCampaign extends Model
 
     protected $casts = [
         'audience_filters' => 'array',
-        'scheduled_at'     => 'datetime',
-        'started_at'       => 'datetime',
-        'completed_at'     => 'datetime',
+        'scheduled_at' => 'datetime',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
         'total_recipients' => 'integer',
-        'sent_count'       => 'integer',
-        'failed_count'     => 'integer',
+        'sent_count' => 'integer',
+        'failed_count' => 'integer',
     ];
 
-    public const STATUS_DRAFT      = 'draft';
-    public const STATUS_SCHEDULED  = 'scheduled';
-    public const STATUS_QUEUED     = 'queued';
+    public const STATUS_DRAFT = 'draft';
+
+    public const STATUS_SCHEDULED = 'scheduled';
+
+    public const STATUS_QUEUED = 'queued';
+
     public const STATUS_PROCESSING = 'processing';
-    public const STATUS_COMPLETED  = 'completed';
-    public const STATUS_CANCELLED  = 'cancelled';
-    public const STATUS_FAILED     = 'failed';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_FAILED = 'failed';
 
     public function template()
     {
@@ -75,6 +81,7 @@ class EmailCampaign extends Model
         }
 
         $processed = $this->sent_count + $this->failed_count;
+
         return (int) min(100, round(($processed / $this->total_recipients) * 100));
     }
 

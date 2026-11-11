@@ -20,9 +20,9 @@ class ParentAccountManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.parents.link'), [
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Mother',
-            'is_primary'     => '1',
+            'student_id' => $student->id,
+            'relationship' => 'Mother',
+            'is_primary' => '1',
         ]);
 
         $response->assertRedirect();
@@ -30,10 +30,10 @@ class ParentAccountManagementTest extends TestCase
 
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Mother',
-            'is_primary'     => 1,
-            'status'         => 'active',
+            'student_id' => $student->id,
+            'relationship' => 'Mother',
+            'is_primary' => 1,
+            'status' => 'active',
         ]);
 
         $this->assertEquals($parent->id, $student->refresh()->parent_user_id);
@@ -48,30 +48,30 @@ class ParentAccountManagementTest extends TestCase
 
         DB::table('parent_student')->insert([
             'parent_user_id' => $firstParent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Father',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Father',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->actingAs($admin)->post(route('admin.parents.link'), [
             'parent_user_id' => $secondParent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Mother',
-            'is_primary'     => '1',
+            'student_id' => $student->id,
+            'relationship' => 'Mother',
+            'is_primary' => '1',
         ]);
 
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $firstParent->id,
-            'student_id'     => $student->id,
-            'is_primary'     => 0,
+            'student_id' => $student->id,
+            'is_primary' => 0,
         ]);
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $secondParent->id,
-            'student_id'     => $student->id,
-            'is_primary'     => 1,
+            'student_id' => $student->id,
+            'is_primary' => 1,
         ]);
         $this->assertEquals($secondParent->id, $student->refresh()->parent_user_id);
     }
@@ -84,13 +84,13 @@ class ParentAccountManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.parents.link'), [
             'parent_user_id' => $teacher->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
 
         $response->assertSessionHas('error');
         $this->assertDatabaseMissing('parent_student', [
             'parent_user_id' => $teacher->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
     }
 
@@ -109,13 +109,13 @@ class ParentAccountManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.parents.unlink'), [
             'parent_user_id' => $primaryParent->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
 
         $response->assertRedirect();
         $this->assertDatabaseMissing('parent_student', [
             'parent_user_id' => $primaryParent->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
         $this->assertEquals($secondaryParent->id, $student->refresh()->parent_user_id);
     }
@@ -128,18 +128,18 @@ class ParentAccountManagementTest extends TestCase
 
         DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Guardian',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Guardian',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
         $student->update(['parent_user_id' => $parent->id]);
 
         $this->actingAs($admin)->post(route('admin.parents.unlink'), [
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
 
         $this->assertNull($student->refresh()->parent_user_id);
@@ -153,7 +153,7 @@ class ParentAccountManagementTest extends TestCase
 
         $response = $this->actingAs($teacher)->post(route('admin.parents.link'), [
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
+            'student_id' => $student->id,
         ]);
 
         $response->assertStatus(403);
@@ -167,12 +167,12 @@ class ParentAccountManagementTest extends TestCase
 
         DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Guardian',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Guardian',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->actingAs($admin)->get(route('admin.dashboard'));

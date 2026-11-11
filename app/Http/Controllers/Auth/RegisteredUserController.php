@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Mail\WelcomeMail;
+use App\Models\Student;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,8 +60,8 @@ class RegisteredUserController extends Controller
 
         // Create matching Student profile if registering as student
         if ($user->role === 'student') {
-            \App\Models\Student::firstOrCreate([
-                'user_id' => $user->id
+            Student::firstOrCreate([
+                'user_id' => $user->id,
             ], [
                 'level' => 'SPM',
                 'total_points' => 0,

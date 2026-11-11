@@ -25,8 +25,8 @@ class FeeStructureSubject extends Model
     ];
 
     protected $casts = [
-        'is_required'  => 'boolean',
-        'sort_order'   => 'integer',
+        'is_required' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function feeStructure()

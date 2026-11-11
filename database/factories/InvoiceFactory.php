@@ -18,17 +18,17 @@ class InvoiceFactory extends Factory
         $total = fake()->randomFloat(2, 100, 500);
 
         return [
-            'student_id'      => Student::factory(),
-            'invoice_number'  => 'INV-TEST-' . fake()->unique()->numberBetween(100000, 999999),
-            'title'           => 'Tuition Fee',
-            'billing_period'  => now()->format('F Y'),
-            'subtotal'        => $total,
+            'student_id' => Student::factory(),
+            'invoice_number' => 'INV-TEST-'.fake()->unique()->numberBetween(100000, 999999),
+            'title' => 'Tuition Fee',
+            'billing_period' => now()->format('F Y'),
+            'subtotal' => $total,
             'discount_amount' => 0,
-            'total_amount'    => $total,
-            'amount_paid'     => 0,
-            'issued_date'     => now()->toDateString(),
-            'due_date'        => now()->addDays(7)->toDateString(),
-            'status'          => 'issued',
+            'total_amount' => $total,
+            'amount_paid' => 0,
+            'issued_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'status' => 'issued',
         ];
     }
 }

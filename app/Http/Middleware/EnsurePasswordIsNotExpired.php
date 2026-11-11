@@ -21,11 +21,11 @@ class EnsurePasswordIsNotExpired
             || $request->routeIs('logout')
             || $request->routeIs('verification.*');
 
-        if ($user && $user->must_change_password && !$exempt) {
+        if ($user && $user->must_change_password && ! $exempt) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message'                => 'You must set a new password before continuing.',
-                    'must_change_password'   => true,
+                    'message' => 'You must set a new password before continuing.',
+                    'must_change_password' => true,
                 ], 403);
             }
 

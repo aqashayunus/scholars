@@ -16,11 +16,11 @@ class StudentFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id'      => User::factory()->state(['role' => 'student']),
-            'level'        => fake()->randomElement(['SPM', 'IGCSE', 'STPM', 'Foundation']),
-            'status'       => 'active',
+            'user_id' => User::factory()->state(['role' => 'student']),
+            'level' => fake()->randomElement(['SPM', 'IGCSE', 'STPM', 'Foundation']),
+            'status' => 'active',
             'total_points' => 0,
-            'streak_days'  => 1,
+            'streak_days' => 1,
         ];
     }
 }

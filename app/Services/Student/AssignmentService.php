@@ -6,6 +6,7 @@ use App\Enums\StudentAssignmentStatus;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\UserNotification;
+use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 
 class AssignmentService
@@ -26,23 +27,23 @@ class AssignmentService
         $enrollmentsMap = $student->enrollments()->pluck('enrolled_at', 'course_id')->toArray();
 
         $assignments = StudentAssignment::where('student_id', $student->id)
-                                        ->whereHas('assignment')
-                                        ->with('assignment.course.subject')
-                                        ->get()
-                                        ->sortByDesc(function ($sa) {
-                                            return $sa->assignment?->updated_at
-                                                ?? $sa->assignment?->created_at
-                                                ?? $sa->updated_at
-                                                ?? $sa->created_at;
-                                        })
-                                        ->values();
+            ->whereHas('assignment')
+            ->with('assignment.course.subject')
+            ->get()
+            ->sortByDesc(function ($sa) {
+                return $sa->assignment?->updated_at
+                    ?? $sa->assignment?->created_at
+                    ?? $sa->updated_at
+                    ?? $sa->created_at;
+            })
+            ->values();
 
         // Check if each assignment was assigned before the student enrolled
         $assignments->each(function ($sa) use ($enrollmentsMap) {
             $courseId = $sa->assignment?->course_id;
             $enrolledAtStr = $enrollmentsMap[$courseId] ?? null;
-            $enrolledAt = $enrolledAtStr ? \Carbon\Carbon::parse($enrolledAtStr) : ($sa->created_at ?? now());
-            $dueDate = $sa->assignment?->due_date ? \Carbon\Carbon::parse($sa->assignment->due_date) : null;
+            $enrolledAt = $enrolledAtStr ? Carbon::parse($enrolledAtStr) : ($sa->created_at ?? now());
+            $dueDate = $sa->assignment?->due_date ? Carbon::parse($sa->assignment->due_date) : null;
 
             // True if assignment was due before the student enrolled in the course
             $sa->is_catch_up = $dueDate && $dueDate->lt($enrolledAt->startOfDay());
@@ -59,7 +60,7 @@ class AssignmentService
         // Overdue ONLY applies to tasks due AFTER the student enrolled
         $overdueCount = $assignments->filter(function ($sa) {
             return $sa->status === StudentAssignmentStatus::Pending
-                && !$sa->is_catch_up
+                && ! $sa->is_catch_up
                 && $sa->assignment
                 && $sa->assignment->due_date
                 && $sa->assignment->due_date->isPast();
@@ -72,7 +73,7 @@ class AssignmentService
 
         $dueThisWeekCount = $assignments->filter(function ($sa) {
             return $sa->status === StudentAssignmentStatus::Pending
-                && !$sa->is_catch_up
+                && ! $sa->is_catch_up
                 && $sa->assignment
                 && $sa->assignment->due_date
                 && $sa->assignment->due_date->between(now()->startOfWeek(), now()->endOfWeek());
@@ -81,7 +82,7 @@ class AssignmentService
         $completionRate = $totalTasks > 0 ? round(($completedCount / $totalTasks) * 100) : 0;
 
         $upcomingDeadlines = $assignments->filter(function ($sa) {
-            return $sa->status === StudentAssignmentStatus::Pending && !$sa->is_catch_up && $sa->assignment && $sa->assignment->due_date;
+            return $sa->status === StudentAssignmentStatus::Pending && ! $sa->is_catch_up && $sa->assignment && $sa->assignment->due_date;
         })->sortBy(fn ($sa) => $sa->assignment->due_date)->take(5);
 
         $enrolledSubjects = $assignments->map(fn ($sa) => $sa->assignment?->course?->subject?->name ?? ($sa->assignment?->type === 'Diagnostic Test' ? 'Diagnostic Test' : 'General'))->filter()->unique()->values();
@@ -101,8 +102,8 @@ class AssignmentService
     public function submitTask(Student $student, int $id, ?string $submissionNotes, ?UploadedFile $file): void
     {
         $studentAssignment = StudentAssignment::where('student_id', $student->id)
-                                             ->where('id', $id)
-                                             ->firstOrFail();
+            ->where('id', $id)
+            ->firstOrFail();
 
         $filePath = $studentAssignment->file_path;
         $fileName = $studentAssignment->file_name;
@@ -114,10 +115,10 @@ class AssignmentService
 
         $studentAssignment->update([
             'submission_notes' => $submissionNotes,
-            'file_path'        => $filePath,
-            'file_name'        => $fileName,
-            'status'           => 'submitted',
-            'submitted_at'     => now(),
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+            'status' => 'submitted',
+            'submitted_at' => now(),
         ]);
 
         // 1. Notify Course Teacher
@@ -129,8 +130,8 @@ class AssignmentService
         if ($teacherUserId) {
             UserNotification::create([
                 'user_id' => $teacherUserId,
-                'type'    => 'submission',
-                'title'   => 'New Student Submission',
+                'type' => 'submission',
+                'title' => 'New Student Submission',
                 'message' => "{$studentName} submitted the assignment '{$assignmentTitle}' for review.",
             ]);
         }
@@ -138,8 +139,8 @@ class AssignmentService
         // 2. Notify Student
         UserNotification::create([
             'user_id' => auth()->id(),
-            'type'    => 'task',
-            'title'   => 'Assignment Submitted',
+            'type' => 'task',
+            'title' => 'Assignment Submitted',
             'message' => "You successfully submitted '{$assignmentTitle}'. Your teacher will review and grade your work.",
         ]);
     }

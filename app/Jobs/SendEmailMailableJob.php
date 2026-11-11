@@ -6,7 +6,6 @@ use App\Mail\OfficialBrandedMail;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailLog;
 use App\Models\EmailSuppression;
-use App\Models\Setting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,15 +19,23 @@ class SendEmailMailableJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 30; // 30 seconds backoff between retries
 
     public string $recipientEmail;
+
     public string $subject;
+
     public string $htmlContent;
+
     public string $plainTextContent;
+
     public ?int $emailLogId;
+
     public ?int $campaignRecipientId;
+
     public ?string $replyToEmail;
+
     public ?string $senderName;
 
     /**
@@ -44,14 +51,14 @@ class SendEmailMailableJob implements ShouldQueue
         ?string $replyToEmail = null,
         ?string $senderName = null
     ) {
-        $this->recipientEmail       = strtolower(trim($recipientEmail));
-        $this->subject              = $subject;
-        $this->htmlContent          = $htmlContent;
-        $this->plainTextContent     = $plainTextContent;
-        $this->emailLogId           = $emailLogId;
-        $this->campaignRecipientId  = $campaignRecipientId;
-        $this->replyToEmail         = $replyToEmail;
-        $this->senderName           = $senderName;
+        $this->recipientEmail = strtolower(trim($recipientEmail));
+        $this->subject = $subject;
+        $this->htmlContent = $htmlContent;
+        $this->plainTextContent = $plainTextContent;
+        $this->emailLogId = $emailLogId;
+        $this->campaignRecipientId = $campaignRecipientId;
+        $this->replyToEmail = $replyToEmail;
+        $this->senderName = $senderName;
 
         $this->onQueue('emails');
     }
@@ -64,6 +71,7 @@ class SendEmailMailableJob implements ShouldQueue
         // 1. Check suppression list before sending
         if (EmailSuppression::isSuppressed($this->recipientEmail)) {
             $this->recordFailure('Email address is on the institutional suppression list.');
+
             return;
         }
 
@@ -84,8 +92,8 @@ class SendEmailMailableJob implements ShouldQueue
             // 3. Update EmailLog on success
             if ($log) {
                 $log->update([
-                    'status'       => EmailLog::STATUS_SENT,
-                    'sent_at'      => now(),
+                    'status' => EmailLog::STATUS_SENT,
+                    'sent_at' => now(),
                     'delivered_at' => now(), // confirmed passed to transport
                 ]);
             }
@@ -95,7 +103,7 @@ class SendEmailMailableJob implements ShouldQueue
                 $recipient = EmailCampaignRecipient::find($this->campaignRecipientId);
                 if ($recipient) {
                     $recipient->update([
-                        'status'  => EmailCampaignRecipient::STATUS_SENT,
+                        'status' => EmailCampaignRecipient::STATUS_SENT,
                         'sent_at' => now(),
                     ]);
                     $recipient->campaign?->increment('sent_count');
@@ -104,12 +112,12 @@ class SendEmailMailableJob implements ShouldQueue
 
         } catch (\Throwable $e) {
             $sanitizedError = $this->sanitizeErrorMessage($e->getMessage());
-            Log::error("[SendEmailMailableJob] Sending to {$this->recipientEmail} failed: " . $sanitizedError);
+            Log::error("[SendEmailMailableJob] Sending to {$this->recipientEmail} failed: ".$sanitizedError);
 
             if ($log) {
                 $log->increment('attempts');
                 $log->update([
-                    'status'        => EmailLog::STATUS_FAILED,
+                    'status' => EmailLog::STATUS_FAILED,
                     'error_message' => $sanitizedError,
                 ]);
             }
@@ -118,7 +126,7 @@ class SendEmailMailableJob implements ShouldQueue
                 $recipient = EmailCampaignRecipient::find($this->campaignRecipientId);
                 if ($recipient) {
                     $recipient->update([
-                        'status'        => EmailCampaignRecipient::STATUS_FAILED,
+                        'status' => EmailCampaignRecipient::STATUS_FAILED,
                         'error_message' => $sanitizedError,
                     ]);
                     $recipient->campaign?->increment('failed_count');
@@ -139,7 +147,7 @@ class SendEmailMailableJob implements ShouldQueue
     {
         if ($this->emailLogId) {
             EmailLog::where('id', $this->emailLogId)->update([
-                'status'        => EmailLog::STATUS_FAILED,
+                'status' => EmailLog::STATUS_FAILED,
                 'error_message' => $reason,
             ]);
         }
@@ -148,7 +156,7 @@ class SendEmailMailableJob implements ShouldQueue
             $recipient = EmailCampaignRecipient::find($this->campaignRecipientId);
             if ($recipient) {
                 $recipient->update([
-                    'status'        => EmailCampaignRecipient::STATUS_FAILED,
+                    'status' => EmailCampaignRecipient::STATUS_FAILED,
                     'error_message' => $reason,
                 ]);
                 $recipient->campaign?->increment('failed_count');
@@ -164,6 +172,7 @@ class SendEmailMailableJob implements ShouldQueue
         // Strip common sensitive substrings
         $sanitized = preg_replace('/password=[^\s;&]+/i', 'password=***', $message);
         $sanitized = preg_replace('/Bearer\s+[a-zA-Z0-9_\-\.]+/i', 'Bearer ***', $sanitized);
+
         return substr($sanitized, 0, 500);
     }
 }

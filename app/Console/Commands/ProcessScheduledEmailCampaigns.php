@@ -38,7 +38,8 @@ class ProcessScheduledEmailCampaigns extends Command
             Log::info("[ProcessScheduledEmailCampaigns] Dispatched scheduled campaign #{$campaign->id} ({$campaign->name}).");
         }
 
-        $this->info("Done.");
+        $this->info('Done.');
+
         return Command::SUCCESS;
     }
 }

@@ -31,12 +31,12 @@ class DashboardMetricsTest extends TestCase
         Enrollment::create(['student_id' => $student->id, 'course_id' => $course->id, 'status' => 'active']);
 
         Payment::create([
-            'user_id'     => $student->user_id,
-            'student_id'  => $student->id,
-            'course_id'   => $course->id,
+            'user_id' => $student->user_id,
+            'student_id' => $student->id,
+            'course_id' => $course->id,
             'description' => 'Monthly course fee',
-            'amount'      => 150.00,
-            'status'      => PaymentStatus::Successful,
+            'amount' => 150.00,
+            'status' => PaymentStatus::Successful,
         ]);
 
         $response = $this->actingAs($admin)->get(route('admin.dashboard'));
@@ -46,6 +46,7 @@ class DashboardMetricsTest extends TestCase
         $response->assertViewHas('revenueData', function ($data) {
             $labels = ['Course Fees', 'Enrolled Tuition', 'Assessments', 'Materials', 'Mastery Subscriptions'];
             $byLabel = array_combine($labels, $data);
+
             return $byLabel['Course Fees'] === 150.0;
         });
     }
@@ -56,14 +57,14 @@ class DashboardMetricsTest extends TestCase
         $student = Student::factory()->create();
         $diagnostic = Assignment::create([
             'course_id' => Course::factory()->create()->id,
-            'title'     => 'Baseline Diagnostic',
-            'type'      => 'Diagnostic Test',
+            'title' => 'Baseline Diagnostic',
+            'type' => 'Diagnostic Test',
         ]);
         StudentAssignment::create([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $diagnostic->id,
-            'status'        => 'graded',
-            'score'         => 90,
+            'status' => 'graded',
+            'score' => 90,
         ]);
 
         $response = $this->actingAs($admin)->get(route('admin.dashboard', ['diagnostic_id' => $diagnostic->id]));

@@ -17,7 +17,7 @@ class AdminUserManagementTest extends TestCase
         parent::setUp();
 
         $this->adminUser = User::factory()->create([
-            'role'      => 'admin',
+            'role' => 'admin',
             'is_active' => true,
         ]);
     }
@@ -27,30 +27,30 @@ class AdminUserManagementTest extends TestCase
         $response = $this->actingAs($this->adminUser)
             ->get(route('admin.users.index'));
 
-        $response->assertRedirect(route('admin.dashboard') . '#users');
+        $response->assertRedirect(route('admin.dashboard').'#users');
     }
 
     public function test_get_admin_user_by_id_does_not_throw_method_not_allowed()
     {
         $targetUser = User::factory()->create([
-            'name'  => 'John Target',
+            'name' => 'John Target',
             'email' => 'target@example.com',
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         // Standard web browser request (GET /admin/users/{id})
         $response = $this->actingAs($this->adminUser)
-            ->get('/admin/users/' . $targetUser->id);
+            ->get('/admin/users/'.$targetUser->id);
 
-        $response->assertRedirect(route('admin.dashboard') . '#users');
+        $response->assertRedirect(route('admin.dashboard').'#users');
 
         // AJAX / JSON request (GET /admin/users/{id})
         $jsonResponse = $this->actingAs($this->adminUser)
-            ->getJson('/admin/users/' . $targetUser->id);
+            ->getJson('/admin/users/'.$targetUser->id);
 
         $jsonResponse->assertOk()
             ->assertJson([
-                'id'    => $targetUser->id,
+                'id' => $targetUser->id,
                 'email' => 'target@example.com',
             ]);
     }
@@ -58,16 +58,16 @@ class AdminUserManagementTest extends TestCase
     public function test_admin_can_update_user_via_put_or_post()
     {
         $targetUser = User::factory()->create([
-            'name'  => 'Original Name',
+            'name' => 'Original Name',
             'email' => 'original@example.com',
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->postJson('/admin/users/' . $targetUser->id, [
-                'name'  => 'Updated Name',
+            ->postJson('/admin/users/'.$targetUser->id, [
+                'name' => 'Updated Name',
                 'email' => 'updated@example.com',
-                'role'  => 'teacher',
+                'role' => 'teacher',
             ]);
 
         $response->assertOk()
@@ -76,23 +76,23 @@ class AdminUserManagementTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', [
-            'id'    => $targetUser->id,
-            'name'  => 'UPDATED NAME',
+            'id' => $targetUser->id,
+            'name' => 'UPDATED NAME',
             'email' => 'updated@example.com',
-            'role'  => 'teacher',
+            'role' => 'teacher',
         ]);
     }
 
     public function test_admin_can_delete_user_via_delete_method()
     {
         $targetUser = User::factory()->create([
-            'name'  => 'To Be Deleted',
+            'name' => 'To Be Deleted',
             'email' => 'tobedeleted@example.com',
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->deleteJson('/admin/users/' . $targetUser->id);
+            ->deleteJson('/admin/users/'.$targetUser->id);
 
         $response->assertOk()
             ->assertJson([
@@ -105,13 +105,13 @@ class AdminUserManagementTest extends TestCase
     public function test_admin_can_delete_user_via_post_with_method_delete_spoofing()
     {
         $targetUser = User::factory()->create([
-            'name'  => 'To Be Deleted Via Post',
+            'name' => 'To Be Deleted Via Post',
             'email' => 'tobedeletedpost@example.com',
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->postJson('/admin/users/' . $targetUser->id, [
+            ->postJson('/admin/users/'.$targetUser->id, [
                 '_method' => 'DELETE',
             ]);
 
@@ -126,13 +126,13 @@ class AdminUserManagementTest extends TestCase
     public function test_admin_can_delete_user_via_delete_post_route()
     {
         $targetUser = User::factory()->create([
-            'name'  => 'To Be Deleted Post Route',
+            'name' => 'To Be Deleted Post Route',
             'email' => 'tobedeletedpostroute@example.com',
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         $response = $this->actingAs($this->adminUser)
-            ->postJson('/admin/users/' . $targetUser->id . '/delete');
+            ->postJson('/admin/users/'.$targetUser->id.'/delete');
 
         $response->assertOk()
             ->assertJson([

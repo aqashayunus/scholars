@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Email Templates
-        if (!Schema::hasTable('email_templates')) {
+        if (! Schema::hasTable('email_templates')) {
             Schema::create('email_templates', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -31,7 +31,7 @@ return new class extends Migration
         }
 
         // 2. Email Template Versions
-        if (!Schema::hasTable('email_template_versions')) {
+        if (! Schema::hasTable('email_template_versions')) {
             Schema::create('email_template_versions', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('email_template_id')->constrained('email_templates')->cascadeOnDelete();
@@ -46,7 +46,7 @@ return new class extends Migration
         }
 
         // 3. Email Campaigns (Blasts)
-        if (!Schema::hasTable('email_campaigns')) {
+        if (! Schema::hasTable('email_campaigns')) {
             Schema::create('email_campaigns', function (Blueprint $table) {
                 $table->id();
                 $table->string('name');
@@ -72,7 +72,7 @@ return new class extends Migration
         }
 
         // 4. Email Campaign Recipients
-        if (!Schema::hasTable('email_campaign_recipients')) {
+        if (! Schema::hasTable('email_campaign_recipients')) {
             Schema::create('email_campaign_recipients', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('email_campaign_id')->constrained('email_campaigns')->cascadeOnDelete();
@@ -89,7 +89,7 @@ return new class extends Migration
         }
 
         // 5. Email Automations
-        if (!Schema::hasTable('email_automations')) {
+        if (! Schema::hasTable('email_automations')) {
             Schema::create('email_automations', function (Blueprint $table) {
                 $table->id();
                 $table->string('key')->unique();
@@ -109,7 +109,7 @@ return new class extends Migration
         }
 
         // 6. Email Automation Executions
-        if (!Schema::hasTable('email_automation_executions')) {
+        if (! Schema::hasTable('email_automation_executions')) {
             Schema::create('email_automation_executions', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('email_automation_id')->constrained('email_automations')->cascadeOnDelete();
@@ -124,7 +124,7 @@ return new class extends Migration
         }
 
         // 7. Email Logs
-        if (!Schema::hasTable('email_logs')) {
+        if (! Schema::hasTable('email_logs')) {
             Schema::create('email_logs', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('email_campaign_id')->nullable()->constrained('email_campaigns')->nullOnDelete();
@@ -151,7 +151,7 @@ return new class extends Migration
         }
 
         // 8. Email Suppressions
-        if (!Schema::hasTable('email_suppressions')) {
+        if (! Schema::hasTable('email_suppressions')) {
             Schema::create('email_suppressions', function (Blueprint $table) {
                 $table->id();
                 $table->string('email')->unique();

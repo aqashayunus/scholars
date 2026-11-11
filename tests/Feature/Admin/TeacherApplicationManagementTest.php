@@ -29,10 +29,10 @@ class TeacherApplicationManagementTest extends TestCase
         Mail::fake();
 
         $application = TeacherApplication::create([
-            'full_name'          => 'Cikgu Aminah',
-            'email'              => 'aminah@example.com',
-            'phone'              => '0123456789',
-            'qualification'      => 'B.Ed Mathematics',
+            'full_name' => 'Cikgu Aminah',
+            'email' => 'aminah@example.com',
+            'phone' => '0123456789',
+            'qualification' => 'B.Ed Mathematics',
             'preferred_subjects' => 'Mathematics',
         ]);
 
@@ -49,17 +49,17 @@ class TeacherApplicationManagementTest extends TestCase
         $this->assertTrue((bool) $user->must_change_password);
 
         $this->assertDatabaseHas('teachers', [
-            'user_id'             => $user->id,
-            'application_status'  => 'active',
-            'qualification'       => 'B.Ed Mathematics',
+            'user_id' => $user->id,
+            'application_status' => 'active',
+            'qualification' => 'B.Ed Mathematics',
         ]);
 
         Mail::assertSent(WelcomeMail::class);
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $user->id,
-            'type'    => 'application',
-            'title'   => 'TEACHER APPLICATION APPROVED',
+            'type' => 'application',
+            'title' => 'TEACHER APPLICATION APPROVED',
         ]);
     }
 
@@ -69,10 +69,10 @@ class TeacherApplicationManagementTest extends TestCase
 
         $existingUser = User::factory()->create(['email' => 'existing@example.com', 'role' => 'student']);
         $application = TeacherApplication::create([
-            'full_name'          => 'Existing Person',
-            'email'              => 'existing@example.com',
-            'phone'              => '0123456780',
-            'qualification'      => 'B.Ed',
+            'full_name' => 'Existing Person',
+            'email' => 'existing@example.com',
+            'phone' => '0123456780',
+            'qualification' => 'B.Ed',
             'preferred_subjects' => 'Science',
         ]);
 
@@ -86,10 +86,10 @@ class TeacherApplicationManagementTest extends TestCase
     public function test_admin_can_reject_application(): void
     {
         $application = TeacherApplication::create([
-            'full_name'          => 'Rejected Applicant',
-            'email'              => 'rejected@example.com',
-            'phone'              => '0123456781',
-            'qualification'      => 'B.Ed',
+            'full_name' => 'Rejected Applicant',
+            'email' => 'rejected@example.com',
+            'phone' => '0123456781',
+            'qualification' => 'B.Ed',
             'preferred_subjects' => 'Science',
         ]);
 
@@ -116,8 +116,8 @@ class TeacherApplicationManagementTest extends TestCase
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $teacher->user_id,
-            'type'    => 'subject',
-            'title'   => 'TEACHING SUBJECTS UPDATED',
+            'type' => 'subject',
+            'title' => 'TEACHING SUBJECTS UPDATED',
         ]);
     }
 
@@ -127,11 +127,11 @@ class TeacherApplicationManagementTest extends TestCase
         $subject = Subject::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.teachers.classes.store', $teacher->id), [
-            'title'      => 'New Class',
+            'title' => 'New Class',
             'subject_id' => $subject->id,
-            'level'      => 'SPM',
-            'status'     => 'published',
-            'price'      => 100,
+            'level' => 'SPM',
+            'status' => 'published',
+            'price' => 100,
         ]);
 
         $response->assertRedirect();
@@ -140,8 +140,8 @@ class TeacherApplicationManagementTest extends TestCase
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $teacher->user_id,
-            'type'    => 'course',
-            'title'   => 'NEW CLASS ASSIGNED',
+            'type' => 'course',
+            'title' => 'NEW CLASS ASSIGNED',
         ]);
     }
 }

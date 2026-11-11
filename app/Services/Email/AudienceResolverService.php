@@ -9,7 +9,6 @@ use App\Models\Enrollment;
 use App\Models\Invoice;
 use App\Models\LiveClass;
 use App\Models\Student;
-use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -24,54 +23,54 @@ class AudienceResolverService
     {
         return [
             'all_parents' => [
-                'label'       => 'All Parents',
+                'label' => 'All Parents',
                 'description' => 'Every registered parent account',
-                'category'    => 'General Audiences',
+                'category' => 'General Audiences',
             ],
             'all_students' => [
-                'label'       => 'All Students',
+                'label' => 'All Students',
                 'description' => 'Every registered student account',
-                'category'    => 'General Audiences',
+                'category' => 'General Audiences',
             ],
             'all_teachers' => [
-                'label'       => 'All Teachers & Mentors',
+                'label' => 'All Teachers & Mentors',
                 'description' => 'All active educators and teachers',
-                'category'    => 'General Audiences',
+                'category' => 'General Audiences',
             ],
             'parents_with_outstanding_invoices' => [
-                'label'       => 'Parents with Outstanding Invoices',
+                'label' => 'Parents with Outstanding Invoices',
                 'description' => 'Parents linked to students who have unpaid invoices',
-                'category'    => 'Financial Audiences',
+                'category' => 'Financial Audiences',
             ],
             'parents_with_overdue_invoices' => [
-                'label'       => 'Parents with Overdue Invoices',
+                'label' => 'Parents with Overdue Invoices',
                 'description' => 'Parents of students with overdue accounts',
-                'category'    => 'Financial Audiences',
+                'category' => 'Financial Audiences',
             ],
             'students_active' => [
-                'label'       => 'Active Enrolled Students',
+                'label' => 'Active Enrolled Students',
                 'description' => 'Students actively enrolled without restrictions',
-                'category'    => 'Academic Audiences',
+                'category' => 'Academic Audiences',
             ],
             'students_restricted' => [
-                'label'       => 'Restricted Students',
+                'label' => 'Restricted Students',
                 'description' => 'Students whose access is restricted due to overdue payments',
-                'category'    => 'Academic Audiences',
+                'category' => 'Academic Audiences',
             ],
             'students_by_programme' => [
-                'label'       => 'Students by Programme',
+                'label' => 'Students by Programme',
                 'description' => 'Students enrolled in a specific level / programme',
-                'category'    => 'Segmented Audiences',
+                'category' => 'Segmented Audiences',
             ],
             'students_by_subject' => [
-                'label'       => 'Students by Subject',
+                'label' => 'Students by Subject',
                 'description' => 'Students currently enrolled in a specific subject',
-                'category'    => 'Segmented Audiences',
+                'category' => 'Segmented Audiences',
             ],
             'students_by_class' => [
-                'label'       => 'Students by Live Class',
+                'label' => 'Students by Live Class',
                 'description' => 'Students participating in a specific live class schedule',
-                'category'    => 'Segmented Audiences',
+                'category' => 'Segmented Audiences',
             ],
         ];
     }
@@ -96,7 +95,7 @@ class AudienceResolverService
      */
     public static function resolve(string $audienceType, array $filters = []): Collection
     {
-        $suppressed = EmailSuppression::pluck('email')->map(fn($e) => strtolower(trim($e)))->toArray();
+        $suppressed = EmailSuppression::pluck('email')->map(fn ($e) => strtolower(trim($e)))->toArray();
         $recipients = collect();
 
         switch ($audienceType) {
@@ -109,10 +108,10 @@ class AudienceResolverService
 
                 foreach ($users as $u) {
                     $recipients->push([
-                        'email'              => strtolower(trim($u->email)),
-                        'name'               => $u->name,
-                        'user_id'            => $u->id,
-                        'recipient_type'     => 'parent',
+                        'email' => strtolower(trim($u->email)),
+                        'name' => $u->name,
+                        'user_id' => $u->id,
+                        'recipient_type' => 'parent',
                         'related_student_id' => null,
                     ]);
                 }
@@ -128,10 +127,10 @@ class AudienceResolverService
                 foreach ($students as $s) {
                     if ($s->user && $s->user->email) {
                         $recipients->push([
-                            'email'              => strtolower(trim($s->user->email)),
-                            'name'               => $s->user->name,
-                            'user_id'            => $s->user->id,
-                            'recipient_type'     => 'student',
+                            'email' => strtolower(trim($s->user->email)),
+                            'name' => $s->user->name,
+                            'user_id' => $s->user->id,
+                            'recipient_type' => 'student',
                             'related_student_id' => $s->id,
                         ]);
                     }
@@ -140,9 +139,9 @@ class AudienceResolverService
 
             case 'all_teachers':
                 $teachers = Teacher::with('user')
-                    ->where(function($q) {
+                    ->where(function ($q) {
                         $q->where('application_status', 'active')
-                          ->orWhere('status', 'active');
+                            ->orWhere('status', 'active');
                     })
                     ->whereHas('user', function ($q) {
                         $q->where('is_active', true)->whereNotNull('email');
@@ -154,10 +153,10 @@ class AudienceResolverService
                     if ($t->user && $t->user->email) {
                         $foundUserIds[] = $t->user->id;
                         $recipients->push([
-                            'email'              => strtolower(trim($t->user->email)),
-                            'name'               => $t->user->name,
-                            'user_id'            => $t->user->id,
-                            'recipient_type'     => 'teacher',
+                            'email' => strtolower(trim($t->user->email)),
+                            'name' => $t->user->name,
+                            'user_id' => $t->user->id,
+                            'recipient_type' => 'teacher',
                             'related_student_id' => null,
                         ]);
                     }
@@ -172,10 +171,10 @@ class AudienceResolverService
 
                 foreach ($directTeachers as $dt) {
                     $recipients->push([
-                        'email'              => strtolower(trim($dt->email)),
-                        'name'               => $dt->name,
-                        'user_id'            => $dt->id,
-                        'recipient_type'     => 'teacher',
+                        'email' => strtolower(trim($dt->email)),
+                        'name' => $dt->name,
+                        'user_id' => $dt->id,
+                        'recipient_type' => 'teacher',
                         'related_student_id' => null,
                     ]);
                 }
@@ -199,10 +198,10 @@ class AudienceResolverService
 
                 foreach ($parents as $p) {
                     $recipients->push([
-                        'email'              => strtolower(trim($p->email)),
-                        'name'               => $p->name,
-                        'user_id'            => $p->id,
-                        'recipient_type'     => 'parent',
+                        'email' => strtolower(trim($p->email)),
+                        'name' => $p->name,
+                        'user_id' => $p->id,
+                        'recipient_type' => 'parent',
                         'related_student_id' => null,
                     ]);
                 }
@@ -231,10 +230,10 @@ class AudienceResolverService
 
                 foreach ($parents as $p) {
                     $recipients->push([
-                        'email'              => strtolower(trim($p->email)),
-                        'name'               => $p->name,
-                        'user_id'            => $p->id,
-                        'recipient_type'     => 'parent',
+                        'email' => strtolower(trim($p->email)),
+                        'name' => $p->name,
+                        'user_id' => $p->id,
+                        'recipient_type' => 'parent',
                         'related_student_id' => null,
                     ]);
                 }
@@ -260,10 +259,10 @@ class AudienceResolverService
                 foreach ($activeStudents as $s) {
                     if ($s->user && $s->user->email) {
                         $recipients->push([
-                            'email'              => strtolower(trim($s->user->email)),
-                            'name'               => $s->user->name,
-                            'user_id'            => $s->user->id,
-                            'recipient_type'     => 'student',
+                            'email' => strtolower(trim($s->user->email)),
+                            'name' => $s->user->name,
+                            'user_id' => $s->user->id,
+                            'recipient_type' => 'student',
                             'related_student_id' => $s->id,
                         ]);
                     }
@@ -290,10 +289,10 @@ class AudienceResolverService
                 foreach ($restrictedStudents as $s) {
                     if ($s->user && $s->user->email) {
                         $recipients->push([
-                            'email'              => strtolower(trim($s->user->email)),
-                            'name'               => $s->user->name,
-                            'user_id'            => $s->user->id,
-                            'recipient_type'     => 'student',
+                            'email' => strtolower(trim($s->user->email)),
+                            'name' => $s->user->name,
+                            'user_id' => $s->user->id,
+                            'recipient_type' => 'student',
                             'related_student_id' => $s->id,
                         ]);
                     }
@@ -310,17 +309,17 @@ class AudienceResolverService
                 if ($programme) {
                     $query->where(function ($q) use ($programme) {
                         $q->where('programme', 'like', "%{$programme}%")
-                          ->orWhere('level', 'like', "%{$programme}%");
+                            ->orWhere('level', 'like', "%{$programme}%");
                     });
                 }
 
                 foreach ($query->get() as $s) {
                     if ($s->user && $s->user->email) {
                         $recipients->push([
-                            'email'              => strtolower(trim($s->user->email)),
-                            'name'               => $s->user->name,
-                            'user_id'            => $s->user->id,
-                            'recipient_type'     => 'student',
+                            'email' => strtolower(trim($s->user->email)),
+                            'name' => $s->user->name,
+                            'user_id' => $s->user->id,
+                            'recipient_type' => 'student',
                             'related_student_id' => $s->id,
                         ]);
                     }
@@ -343,10 +342,10 @@ class AudienceResolverService
                 foreach ($query->get() as $s) {
                     if ($s->user && $s->user->email) {
                         $recipients->push([
-                            'email'              => strtolower(trim($s->user->email)),
-                            'name'               => $s->user->name,
-                            'user_id'            => $s->user->id,
-                            'recipient_type'     => 'student',
+                            'email' => strtolower(trim($s->user->email)),
+                            'name' => $s->user->name,
+                            'user_id' => $s->user->id,
+                            'recipient_type' => 'student',
                             'related_student_id' => $s->id,
                         ]);
                     }
@@ -364,10 +363,10 @@ class AudienceResolverService
                         foreach ($students as $s) {
                             if ($s->user && $s->user->email) {
                                 $recipients->push([
-                                    'email'              => strtolower(trim($s->user->email)),
-                                    'name'               => $s->user->name,
-                                    'user_id'            => $s->user->id,
-                                    'recipient_type'     => 'student',
+                                    'email' => strtolower(trim($s->user->email)),
+                                    'name' => $s->user->name,
+                                    'user_id' => $s->user->id,
+                                    'recipient_type' => 'student',
                                     'related_student_id' => $s->id,
                                 ]);
                             }
@@ -378,14 +377,14 @@ class AudienceResolverService
 
             default:
                 // Handle fallback or explicit custom list
-                if (!empty($filters['custom_emails']) && is_array($filters['custom_emails'])) {
+                if (! empty($filters['custom_emails']) && is_array($filters['custom_emails'])) {
                     foreach ($filters['custom_emails'] as $em) {
                         if (filter_var($em, FILTER_VALIDATE_EMAIL)) {
                             $recipients->push([
-                                'email'              => strtolower(trim($em)),
-                                'name'               => explode('@', $em)[0],
-                                'user_id'            => null,
-                                'recipient_type'     => 'custom',
+                                'email' => strtolower(trim($em)),
+                                'name' => explode('@', $em)[0],
+                                'user_id' => null,
+                                'recipient_type' => 'custom',
                                 'related_student_id' => null,
                             ]);
                         }
@@ -396,8 +395,8 @@ class AudienceResolverService
 
         // Deduplicate by email and remove suppressed addresses
         return $recipients
-            ->filter(fn($r) => !empty($r['email']) && filter_var($r['email'], FILTER_VALIDATE_EMAIL))
-            ->reject(fn($r) => in_array($r['email'], $suppressed, true))
+            ->filter(fn ($r) => ! empty($r['email']) && filter_var($r['email'], FILTER_VALIDATE_EMAIL))
+            ->reject(fn ($r) => in_array($r['email'], $suppressed, true))
             ->unique('email')
             ->values();
     }

@@ -17,8 +17,11 @@ class DiagnosticFlexibleGradingTest extends TestCase
     use RefreshDatabase;
 
     protected User $adminUser;
+
     protected User $studentUser;
+
     protected Student $student;
+
     protected DiagnosticGradingEngine $engine;
 
     protected function setUp(): void
@@ -26,27 +29,27 @@ class DiagnosticFlexibleGradingTest extends TestCase
         parent::setUp();
 
         $this->adminUser = User::factory()->create([
-            'role'      => 'admin',
+            'role' => 'admin',
             'is_active' => true,
         ]);
 
         $this->studentUser = User::factory()->create([
-            'role'      => 'student',
+            'role' => 'student',
             'is_active' => true,
         ]);
 
         $this->student = Student::firstOrCreate(
             ['user_id' => $this->studentUser->id],
             [
-                'parent_id'  => null,
-                'level'      => 'Form 4',
+                'parent_id' => null,
+                'level' => 'Form 4',
                 'birth_date' => '2008-01-01',
-                'school'     => 'SMK Olympian',
-                'gender'     => 'Male',
+                'school' => 'SMK Olympian',
+                'gender' => 'Male',
             ]
         );
 
-        $this->engine = new DiagnosticGradingEngine();
+        $this->engine = new DiagnosticGradingEngine;
     }
 
     /**
@@ -77,7 +80,7 @@ class DiagnosticFlexibleGradingTest extends TestCase
     public function test_alternative_answers_rule()
     {
         $rule = '[Solid, pepejal]';
-        
+
         $res1 = $this->engine->gradeQuestion($rule, 'solid', 1.0);
         $this->assertTrue($res1['is_correct']);
         $this->assertEquals(1.0, $res1['score']);
@@ -241,18 +244,18 @@ class DiagnosticFlexibleGradingTest extends TestCase
     {
         $response = $this->actingAs($this->adminUser)
             ->postJson(route('admin.diagnostic.test-rule'), [
-                'rule'           => '+ [chlorophyll] @1 + [sunlight] @1',
+                'rule' => '+ [chlorophyll] @1 + [sunlight] @1',
                 'student_answer' => 'Plants absorb sunlight and chlorophyll helps.',
-                'max_marks'      => 2,
-                'question_type'  => 'fill_in_blank',
+                'max_marks' => 2,
+                'question_type' => 'fill_in_blank',
             ]);
 
         $response->assertStatus(200)
             ->assertJson([
-                'success'    => true,
+                'success' => true,
                 'is_correct' => true,
-                'score'      => 2.0,
-                'max_marks'  => 2.0,
+                'score' => 2.0,
+                'max_marks' => 2.0,
             ]);
     }
 
@@ -262,32 +265,32 @@ class DiagnosticFlexibleGradingTest extends TestCase
     public function test_student_submission_with_flexible_grading()
     {
         $assignment = Assignment::create([
-            'title'              => 'Advanced Diagnostic Test',
-            'type'               => 'Diagnostic Test',
+            'title' => 'Advanced Diagnostic Test',
+            'type' => 'Diagnostic Test',
             'time_limit_minutes' => 30,
-            'total_questions'    => 3,
-            'is_global'          => false,
-            'questions_data'     => [
+            'total_questions' => 3,
+            'is_global' => false,
+            'questions_data' => [
                 [
-                    'number'         => 1,
-                    'type'           => 'mcq',
-                    'title'          => 'Question 1',
+                    'number' => 1,
+                    'type' => 'mcq',
+                    'title' => 'Question 1',
                     'correct_answer' => 'B',
-                    'marks'          => 1.0,
+                    'marks' => 1.0,
                 ],
                 [
-                    'number'         => 2,
-                    'type'           => 'fill_in_blank',
-                    'title'          => 'Question 2',
+                    'number' => 2,
+                    'type' => 'fill_in_blank',
+                    'title' => 'Question 2',
                     'correct_answer' => '[Solid, pepejal]',
-                    'marks'          => 2.0,
+                    'marks' => 2.0,
                 ],
                 [
-                    'number'         => 3,
-                    'type'           => 'fill_in_blank',
-                    'title'          => 'Question 3',
+                    'number' => 3,
+                    'type' => 'fill_in_blank',
+                    'title' => 'Question 3',
                     'correct_answer' => '[9.8] ±0.1',
-                    'marks'          => 2.0,
+                    'marks' => 2.0,
                 ],
             ],
         ]);
@@ -304,11 +307,11 @@ class DiagnosticFlexibleGradingTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'success'        => true,
-                'score'          => 100, // 5 / 5 = 100%
-                'total_score'    => 5.0,
+                'success' => true,
+                'score' => 100, // 5 / 5 = 100%
+                'total_score' => 5.0,
                 'total_possible' => 5.0,
-                'correct_count'  => 3,
+                'correct_count' => 3,
             ]);
 
         $studentAssignment = StudentAssignment::where('student_id', $this->student->id)
@@ -332,25 +335,25 @@ class DiagnosticFlexibleGradingTest extends TestCase
     public function test_submission_with_manual_question_persists_pending_review_status()
     {
         $assignment = Assignment::create([
-            'title'              => 'Diagnostic With Manual Question',
-            'type'               => 'Diagnostic Test',
+            'title' => 'Diagnostic With Manual Question',
+            'type' => 'Diagnostic Test',
             'time_limit_minutes' => 30,
-            'total_questions'    => 2,
-            'is_global'          => false,
-            'questions_data'     => [
+            'total_questions' => 2,
+            'is_global' => false,
+            'questions_data' => [
                 [
-                    'number'         => 1,
-                    'type'           => 'mcq',
-                    'title'          => 'Question 1',
+                    'number' => 1,
+                    'type' => 'mcq',
+                    'title' => 'Question 1',
                     'correct_answer' => 'A',
-                    'marks'          => 1.0,
+                    'marks' => 1.0,
                 ],
                 [
-                    'number'         => 2,
-                    'type'           => 'fill_in_blank',
-                    'title'          => 'Question 2 (essay)',
+                    'number' => 2,
+                    'type' => 'fill_in_blank',
+                    'title' => 'Question 2 (essay)',
                     'correct_answer' => '[MANUAL]',
-                    'marks'          => 5.0,
+                    'marks' => 5.0,
                 ],
             ],
         ]);
@@ -366,7 +369,7 @@ class DiagnosticFlexibleGradingTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'success'    => true,
+                'success' => true,
                 'has_manual' => true,
             ]);
 

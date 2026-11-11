@@ -19,8 +19,8 @@ class FeeStructurePriceTierFactory extends Factory
             'fee_structure_id' => FeeStructure::factory(),
             'minimum_subjects' => 1,
             'maximum_subjects' => 1,
-            'price'            => fake()->randomFloat(2, 50, 300),
-            'sort_order'       => 0,
+            'price' => fake()->randomFloat(2, 50, 300),
+            'sort_order' => 0,
         ];
     }
 }

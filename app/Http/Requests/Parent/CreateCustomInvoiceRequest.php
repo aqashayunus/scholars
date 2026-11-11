@@ -15,8 +15,8 @@ class CreateCustomInvoiceRequest extends FormRequest
     {
         return [
             'description' => 'required|string|max:255',
-            'amount'      => 'required|numeric|min:1|max:10000',
-            'course_id'   => 'nullable|exists:courses,id',
+            'amount' => 'required|numeric|min:1|max:10000',
+            'course_id' => 'nullable|exists:courses,id',
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Assignment extends Model
 {
@@ -36,18 +37,19 @@ class Assignment extends Model
         'questions_data',
         'is_interactive_pdf',
     ];
+
     protected $casts = [
-        'due_date'             => 'date',
-        'exam_date'            => 'date',
-        'is_global'            => 'boolean',
-        'created_by_admin'     => 'boolean',
-        'is_interactive_pdf'   => 'boolean',
-        'answer_key'           => 'array',
-        'total_questions'      => 'integer',
-        'time_limit_minutes'   => 'integer',
+        'due_date' => 'date',
+        'exam_date' => 'date',
+        'is_global' => 'boolean',
+        'created_by_admin' => 'boolean',
+        'is_interactive_pdf' => 'boolean',
+        'answer_key' => 'array',
+        'total_questions' => 'integer',
+        'time_limit_minutes' => 'integer',
         'section_b_answer_key' => 'array',
-        'section_b_questions'  => 'integer',
-        'questions_data'       => 'array',
+        'section_b_questions' => 'integer',
+        'questions_data' => 'array',
     ];
 
     public function isDiagnostic(): bool
@@ -69,12 +71,14 @@ class Assignment extends Model
             $parts = array_map('trim', explode(',', $this->answer_key));
             $map = [];
             foreach ($parts as $idx => $opt) {
-                if (!empty($opt)) {
-                    $map[(string)($idx + 1)] = strtoupper($opt);
+                if (! empty($opt)) {
+                    $map[(string) ($idx + 1)] = strtoupper($opt);
                 }
             }
+
             return $map;
         }
+
         return [];
     }
 
@@ -97,11 +101,13 @@ class Assignment extends Model
             $map = [];
             foreach ($parts as $idx => $ans) {
                 if ($ans !== '') {
-                    $map[(string)($idx + 1)] = $ans;
+                    $map[(string) ($idx + 1)] = $ans;
                 }
             }
+
             return $map;
         }
+
         return [];
     }
 
@@ -110,7 +116,7 @@ class Assignment extends Model
      */
     public function hasSectionB(): bool
     {
-        return ($this->section_b_questions ?? 0) > 0 && !empty($this->getSectionBAnswerKeyMap());
+        return ($this->section_b_questions ?? 0) > 0 && ! empty($this->getSectionBAnswerKeyMap());
     }
 
     /**
@@ -119,26 +125,26 @@ class Assignment extends Model
      */
     public function getQuestionsList(): array
     {
-        if (!empty($this->questions_data) && is_array($this->questions_data)) {
+        if (! empty($this->questions_data) && is_array($this->questions_data)) {
             $list = [];
             foreach ($this->questions_data as $idx => $q) {
                 $qNum = (int) ($q['number'] ?? ($idx + 1));
                 $type = isset($q['type']) && in_array($q['type'], ['mcq', 'fill_in_blank']) ? $q['type'] : 'mcq';
-                $ans  = trim((string) ($q['correct_answer'] ?? ''));
+                $ans = trim((string) ($q['correct_answer'] ?? ''));
                 $list[] = [
-                    'number'         => $qNum,
-                    'type'           => $type,
-                    'title'          => !empty($q['title']) ? $q['title'] : "Soalan {$qNum}",
+                    'number' => $qNum,
+                    'type' => $type,
+                    'title' => ! empty($q['title']) ? $q['title'] : "Soalan {$qNum}",
                     'correct_answer' => $type === 'mcq' ? strtoupper($ans) : $ans,
-                    'marks'          => (float) ($q['marks'] ?? 1.0),
-                    'image'          => $q['image'] ?? null,
-                    'page_number'    => $q['page_number'] ?? ($q['page'] ?? 1),
-                    'prompt'         => $q['prompt'] ?? null,
+                    'marks' => (float) ($q['marks'] ?? 1.0),
+                    'image' => $q['image'] ?? null,
+                    'page_number' => $q['page_number'] ?? ($q['page'] ?? 1),
+                    'prompt' => $q['prompt'] ?? null,
                     'options_labels' => $q['options_labels'] ?? ($q['options'] ?? []),
-                    'passage'        => $q['passage'] ?? null,
+                    'passage' => $q['passage'] ?? null,
                 ];
             }
-            if (!empty($list)) {
+            if (! empty($list)) {
                 return $list;
             }
         }
@@ -153,11 +159,11 @@ class Assignment extends Model
 
         for ($i = 1; $i <= $totalA; $i++) {
             $list[] = [
-                'number'         => $i,
-                'type'           => 'mcq',
-                'title'          => "Soalan {$i}",
-                'correct_answer' => $answerKeyMap[(string)$i] ?? '',
-                'marks'          => 1.0,
+                'number' => $i,
+                'type' => 'mcq',
+                'title' => "Soalan {$i}",
+                'correct_answer' => $answerKeyMap[(string) $i] ?? '',
+                'marks' => 1.0,
             ];
         }
 
@@ -165,11 +171,11 @@ class Assignment extends Model
         $totalB = (int) ($this->section_b_questions ?: count($sectionBMap));
         for ($j = 1; $j <= $totalB; $j++) {
             $list[] = [
-                'number'         => $totalA + $j,
-                'type'           => 'fill_in_blank',
-                'title'          => "Soalan B{$j}",
-                'correct_answer' => $sectionBMap[(string)$j] ?? '',
-                'marks'          => 1.0,
+                'number' => $totalA + $j,
+                'type' => 'fill_in_blank',
+                'title' => "Soalan B{$j}",
+                'correct_answer' => $sectionBMap[(string) $j] ?? '',
+                'marks' => 1.0,
             ];
         }
 
@@ -183,37 +189,56 @@ class Assignment extends Model
 
     public function getMcqQuestionsCount(): int
     {
-        return count(array_filter($this->getQuestionsList(), fn($q) => ($q['type'] ?? '') === 'mcq'));
+        return count(array_filter($this->getQuestionsList(), fn ($q) => ($q['type'] ?? '') === 'mcq'));
     }
 
     public function getFillInBlankQuestionsCount(): int
     {
-        return count(array_filter($this->getQuestionsList(), fn($q) => ($q['type'] ?? '') === 'fill_in_blank'));
+        return count(array_filter($this->getQuestionsList(), fn ($q) => ($q['type'] ?? '') === 'fill_in_blank'));
     }
 
     public function getTotalPossibleMarks(): float
     {
-        return (float) array_sum(array_map(fn($q) => (float) ($q['marks'] ?? 1.0), $this->getQuestionsList()));
+        return (float) array_sum(array_map(fn ($q) => (float) ($q['marks'] ?? 1.0), $this->getQuestionsList()));
     }
 
-    public function course()   { return $this->belongsTo(Course::class); }
-    public function subject()  { return $this->belongsTo(Subject::class); }
-    public function results()  { return $this->hasMany(StudentAssignment::class); }
-    public function studentAssignments()        { return $this->hasMany(StudentAssignment::class); }
-    public function interactiveSubmissions()    { return $this->hasMany(StudentAssignmentSubmission::class); }
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function subject()
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
+    public function results()
+    {
+        return $this->hasMany(StudentAssignment::class);
+    }
+
+    public function studentAssignments()
+    {
+        return $this->hasMany(StudentAssignment::class);
+    }
+
+    public function interactiveSubmissions()
+    {
+        return $this->hasMany(StudentAssignmentSubmission::class);
+    }
 
     protected static function booted()
     {
         static::deleting(function ($assignment) {
             $assignment->studentAssignments()->delete();
-            if ($assignment->file_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($assignment->file_path)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($assignment->file_path);
+            if ($assignment->file_path && Storage::disk('public')->exists($assignment->file_path)) {
+                Storage::disk('public')->delete($assignment->file_path);
             }
         });
     }
 
     public function getFileUrlAttribute(): ?string
     {
-        return $this->file_path ? asset('storage/' . $this->file_path) : null;
+        return $this->file_path ? asset('storage/'.$this->file_path) : null;
     }
 }

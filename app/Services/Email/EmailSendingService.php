@@ -4,13 +4,11 @@ namespace App\Services\Email;
 
 use App\Jobs\ProcessCampaignBatchJob;
 use App\Jobs\SendEmailMailableJob;
+use App\Mail\OfficialBrandedMail;
 use App\Models\EmailCampaign;
-use App\Models\EmailCampaignRecipient;
 use App\Models\EmailLog;
 use App\Models\EmailSuppression;
 use App\Models\EmailTemplate;
-use App\Models\Setting;
-use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -42,20 +40,20 @@ class EmailSendingService
 
         // 3. Create initial EmailLog record
         $emailLog = EmailLog::create([
-            'email_template_id'   => $templateId ?: ($templateOrBody instanceof EmailTemplate ? $templateOrBody->id : null),
+            'email_template_id' => $templateId ?: ($templateOrBody instanceof EmailTemplate ? $templateOrBody->id : null),
             'email_automation_id' => $automationId,
-            'recipient_user_id'   => $userId,
-            'recipient_email'     => $toEmail,
-            'recipient_name'      => $context['recipient_name'] ?? ($context['user']?->name ?? ($context['student']?->user?->name ?? null)),
-            'recipient_type'      => $context['recipient_type'] ?? 'custom',
-            'related_student_id'  => $studentId,
-            'related_invoice_id'  => $invoiceId,
-            'subject'             => $rendered['subject'],
-            'category'            => $category,
-            'body_preview'        => substr(strip_tags($rendered['plain_text']), 0, 250),
-            'status'              => $isSuppressed ? EmailLog::STATUS_FAILED : EmailLog::STATUS_QUEUED,
-            'error_message'       => $isSuppressed ? 'Email address is on suppression list.' : null,
-            'queued_at'           => now(),
+            'recipient_user_id' => $userId,
+            'recipient_email' => $toEmail,
+            'recipient_name' => $context['recipient_name'] ?? ($context['user']?->name ?? ($context['student']?->user?->name ?? null)),
+            'recipient_type' => $context['recipient_type'] ?? 'custom',
+            'related_student_id' => $studentId,
+            'related_invoice_id' => $invoiceId,
+            'subject' => $rendered['subject'],
+            'category' => $category,
+            'body_preview' => substr(strip_tags($rendered['plain_text']), 0, 250),
+            'status' => $isSuppressed ? EmailLog::STATUS_FAILED : EmailLog::STATUS_QUEUED,
+            'error_message' => $isSuppressed ? 'Email address is on suppression list.' : null,
+            'queued_at' => now(),
         ]);
 
         if ($isSuppressed) {
@@ -65,7 +63,7 @@ class EmailSendingService
         if ($sync) {
             // Direct synchronous send (e.g. for test email)
             try {
-                $mailable = new \App\Mail\OfficialBrandedMail(
+                $mailable = new OfficialBrandedMail(
                     $rendered['subject'],
                     $rendered['html'],
                     $rendered['plain_text']
@@ -73,14 +71,14 @@ class EmailSendingService
                 Mail::to($toEmail)->send($mailable);
 
                 $emailLog->update([
-                    'status'       => EmailLog::STATUS_SENT,
-                    'sent_at'      => now(),
+                    'status' => EmailLog::STATUS_SENT,
+                    'sent_at' => now(),
                     'delivered_at' => now(),
                 ]);
             } catch (\Throwable $e) {
-                Log::error("[EmailSendingService] Sync send failed to {$toEmail}: " . $e->getMessage());
+                Log::error("[EmailSendingService] Sync send failed to {$toEmail}: ".$e->getMessage());
                 $emailLog->update([
-                    'status'        => EmailLog::STATUS_FAILED,
+                    'status' => EmailLog::STATUS_FAILED,
                     'error_message' => substr($e->getMessage(), 0, 500),
                 ]);
             }
@@ -96,9 +94,9 @@ class EmailSendingService
                         $emailLog->id
                     );
                 } catch (\Throwable $e) {
-                    Log::error("[EmailSendingService] Sync dispatch failed to {$toEmail}: " . $e->getMessage());
+                    Log::error("[EmailSendingService] Sync dispatch failed to {$toEmail}: ".$e->getMessage());
                     $emailLog->update([
-                        'status'        => EmailLog::STATUS_FAILED,
+                        'status' => EmailLog::STATUS_FAILED,
                         'error_message' => substr($e->getMessage(), 0, 500),
                     ]);
                 }
@@ -128,7 +126,7 @@ class EmailSendingService
         }
 
         $campaign->update([
-            'status'     => EmailCampaign::STATUS_QUEUED,
+            'status' => EmailCampaign::STATUS_QUEUED,
             'started_at' => now(),
         ]);
 
@@ -147,22 +145,23 @@ class EmailSendingService
 
         if (EmailSuppression::isSuppressed($log->recipient_email)) {
             $log->update(['error_message' => 'Cannot retry: recipient email is currently suppressed.']);
+
             return false;
         }
 
         $log->update([
-            'status'        => EmailLog::STATUS_QUEUED,
+            'status' => EmailLog::STATUS_QUEUED,
             'error_message' => null,
-            'queued_at'     => now(),
+            'queued_at' => now(),
         ]);
 
         // Re-render from template if available, or use logged subject
         $html = view('emails.official-template', [
-            'subject'   => $log->subject,
-            'htmlBody'  => '<p>' . nl2br(e($log->body_preview)) . '</p>',
+            'subject' => $log->subject,
+            'htmlBody' => '<p>'.nl2br(e($log->body_preview)).'</p>',
             'bannerUrl' => null,
-            'ctaLabel'  => null,
-            'ctaUrl'    => null,
+            'ctaLabel' => null,
+            'ctaUrl' => null,
         ])->render();
 
         SendEmailMailableJob::dispatch(

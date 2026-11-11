@@ -14,11 +14,11 @@ class TeacherRescheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'scheduled_date'   => 'required|date|after_or_equal:today',
-            'scheduled_time'   => 'required|string',
+            'scheduled_date' => 'required|date|after_or_equal:today',
+            'scheduled_time' => 'required|string',
             'duration_minutes' => 'nullable|integer|min:15|max:300',
-            'reason'           => 'required|string|min:5|max:1000',
-            'meeting_url'      => 'nullable|url|max:1000',
+            'reason' => 'required|string|min:5|max:1000',
+            'meeting_url' => 'nullable|url|max:1000',
         ];
     }
 }

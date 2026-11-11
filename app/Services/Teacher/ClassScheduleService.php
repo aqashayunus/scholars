@@ -19,7 +19,7 @@ class ClassScheduleService
     public function toggleDuty(): Teacher
     {
         $teacher = $this->getTeacher();
-        $teacher->is_online = !$teacher->is_online;
+        $teacher->is_online = ! $teacher->is_online;
         $teacher->save();
 
         return $teacher;
@@ -31,7 +31,7 @@ class ClassScheduleService
         $courseIds = $teacher->courses->pluck('id')->toArray();
 
         $validated = $request->validate([
-            'course_id' => 'required|in:' . implode(',', $courseIds),
+            'course_id' => 'required|in:'.implode(',', $courseIds),
             'title' => 'required|string|max:255',
             'scheduled_at' => 'required|date|after:now',
             'duration_minutes' => 'nullable|integer|min:1|max:480',
@@ -50,10 +50,10 @@ class ClassScheduleService
         $courseIds = $teacher->courses->pluck('id')->toArray();
 
         $liveClass = LiveClass::where('id', $id)
-                              ->where(function($q) use ($courseIds, $teacher) {
-                                  $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-                              })
-                              ->firstOrFail();
+            ->where(function ($q) use ($courseIds, $teacher) {
+                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+            })
+            ->firstOrFail();
 
         $validated = $request->validate([
             'reason' => 'required|string|min:5|max:1000',
@@ -74,10 +74,10 @@ class ClassScheduleService
         $courseIds = $teacher->courses->pluck('id')->toArray();
 
         $liveClass = LiveClass::where('id', $id)
-                              ->where(function($q) use ($courseIds, $teacher) {
-                                  $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-                              })
-                              ->firstOrFail();
+            ->where(function ($q) use ($courseIds, $teacher) {
+                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+            })
+            ->firstOrFail();
 
         $validated = $request->validate([
             'reason' => 'required|string|min:5|max:1000',
@@ -106,12 +106,12 @@ class ClassScheduleService
         $targetId = $request->input('live_class_id', $id);
 
         $liveClass = LiveClass::where(function ($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-            })
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
             ->where(function ($q) use ($targetId, $id) {
                 $q->where('id', $targetId)
-                  ->orWhere('id', $id)
-                  ->orWhere('course_id', $id);
+                    ->orWhere('id', $id)
+                    ->orWhere('course_id', $id);
             })
             ->orderByRaw('CASE WHEN id = ? THEN 0 ELSE 1 END', [$targetId])
             ->latest('scheduled_at')
@@ -123,7 +123,7 @@ class ClassScheduleService
 
         $liveClass->update([
             'meeting_url' => $validated['meeting_url'],
-            'status'      => 'live',
+            'status' => 'live',
         ]);
 
         return $liveClass;
@@ -141,10 +141,10 @@ class ClassScheduleService
         }
 
         $validated = $request->validate([
-            'records'              => 'required|array',
+            'records' => 'required|array',
             'records.*.student_id' => 'required|integer|exists:students,id',
-            'records.*.status'     => 'required|string',
-            'records.*.remarks'    => 'nullable|string|max:500',
+            'records.*.status' => 'required|string',
+            'records.*.remarks' => 'nullable|string|max:500',
         ]);
 
         return $attendanceService->saveTeacherAttendance($teacher, $liveClass, $validated['records'], auth()->user());
@@ -163,7 +163,7 @@ class ClassScheduleService
         }
 
         $validated = $request->validate([
-            'action'  => 'required|string|in:approved,rejected',
+            'action' => 'required|string|in:approved,rejected',
             'remarks' => 'nullable|string|max:500',
         ]);
 

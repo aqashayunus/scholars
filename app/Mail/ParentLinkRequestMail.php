@@ -17,11 +17,17 @@ class ParentLinkRequestMail extends Mailable
     use Queueable, SerializesModels;
 
     public User $guardian;
+
     public User $requester;
+
     public Student $student;
+
     public string $platformName;
+
     public string $supportEmail;
+
     public string $approveUrl;
+
     public string $denyUrl;
 
     public function __construct(User $guardian, User $requester, Student $student, int $pivotId)
@@ -48,7 +54,7 @@ class ParentLinkRequestMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Action required: someone requested guardian access to ' . $this->student->user?->name,
+            subject: 'Action required: someone requested guardian access to '.$this->student->user?->name,
         );
     }
 

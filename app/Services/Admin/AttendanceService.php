@@ -16,9 +16,9 @@ class AttendanceService
     public function updateAttendanceSettings(Request $request): void
     {
         $validated = $request->validate([
-            'late_threshold_minutes'    => 'required|integer|min:1|max:120',
+            'late_threshold_minutes' => 'required|integer|min:1|max:120',
             'early_join_window_minutes' => 'required|integer|min:0|max:120',
-            'excused_in_denominator'    => 'nullable',
+            'excused_in_denominator' => 'nullable',
         ]);
 
         Setting::set('attendance.late_threshold_minutes', $validated['late_threshold_minutes'], 'attendance', 'Late threshold in minutes');
@@ -32,9 +32,9 @@ class AttendanceService
     public function exportAttendanceCsv(Request $request): StreamedResponse
     {
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
-        $endDate   = $request->input('end_date', now()->endOfMonth()->toDateString());
-        $status    = $request->input('status');
-        $courseId  = $request->input('course_id');
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+        $status = $request->input('status');
+        $courseId = $request->input('course_id');
         $teacherId = $request->input('teacher_id');
 
         $query = StudentAttendance::with([
@@ -80,8 +80,8 @@ class AttendanceService
 
             foreach ($records as $r) {
                 fputcsv($handle, [
-                    '#' . $r->id,
-                    $r->student?->user?->name ?? 'Student #' . $r->student_id,
+                    '#'.$r->id,
+                    $r->student?->user?->name ?? 'Student #'.$r->student_id,
                     $r->student?->user?->email ?? '',
                     $r->liveClass?->course?->subject?->name ?? 'General',
                     $r->liveClass?->course?->title ?? '',
@@ -96,7 +96,7 @@ class AttendanceService
             }
 
             fclose($handle);
-        }, 'attendance-export-' . now()->format('Y-m-d') . '.csv', [
+        }, 'attendance-export-'.now()->format('Y-m-d').'.csv', [
             'Content-Type' => 'text/csv',
         ]);
     }

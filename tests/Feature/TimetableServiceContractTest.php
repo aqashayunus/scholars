@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicEvent;
-use App\Models\ClassRequest;
 use App\Models\Course;
 use App\Models\LiveClass;
 use App\Models\Teacher;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -25,13 +25,13 @@ class TimetableServiceContractTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeLiveClass(Teacher $teacher, Course $course, \Carbon\Carbon $scheduledAt): LiveClass
+    private function makeLiveClass(Teacher $teacher, Course $course, Carbon $scheduledAt): LiveClass
     {
         return LiveClass::create([
-            'course_id'        => $course->id,
-            'teacher_id'       => $teacher->id,
-            'title'            => 'Test Session',
-            'scheduled_at'     => $scheduledAt,
+            'course_id' => $course->id,
+            'teacher_id' => $teacher->id,
+            'title' => 'Test Session',
+            'scheduled_at' => $scheduledAt,
             'duration_minutes' => 60,
         ]);
     }
@@ -45,17 +45,17 @@ class TimetableServiceContractTest extends TestCase
         $class = $this->makeLiveClass($teacher, $course, now()->addDay());
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.classes.reschedule-direct', $class->id), [
-            'scheduled_date'   => now()->addDays(3)->toDateString(),
-            'scheduled_time'   => '14:00',
-            'reason'           => 'Venue conflict resolved by moving the session.',
+            'scheduled_date' => now()->addDays(3)->toDateString(),
+            'scheduled_time' => '14:00',
+            'reason' => 'Venue conflict resolved by moving the session.',
         ]);
 
         $response->assertRedirect();
         $this->assertTrue((bool) $class->fresh()->is_rescheduled);
         $this->assertDatabaseHas('class_requests', [
             'live_class_id' => $class->id,
-            'type'          => 'reschedule',
-            'status'        => 'approved',
+            'type' => 'reschedule',
+            'status' => 'approved',
         ]);
     }
 
@@ -70,7 +70,7 @@ class TimetableServiceContractTest extends TestCase
         $response = $this->actingAs($otherTeacher->user)->post(route('teacher.classes.reschedule-direct', $class->id), [
             'scheduled_date' => now()->addDays(3)->toDateString(),
             'scheduled_time' => '14:00',
-            'reason'         => 'Trying to move someone elses class.',
+            'reason' => 'Trying to move someone elses class.',
         ]);
 
         $response->assertNotFound();
@@ -83,18 +83,18 @@ class TimetableServiceContractTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.classes.quick-create'), [
-            'course_id'        => $course->id,
-            'title'            => 'Extra Revision Session',
-            'scheduled_date'   => now()->addDays(2)->toDateString(),
-            'scheduled_time'   => '10:00',
+            'course_id' => $course->id,
+            'title' => 'Extra Revision Session',
+            'scheduled_date' => now()->addDays(2)->toDateString(),
+            'scheduled_time' => '10:00',
             'duration_minutes' => 45,
         ]);
 
         $response->assertRedirect();
         $this->assertDatabaseHas('live_classes', [
-            'course_id'  => $course->id,
+            'course_id' => $course->id,
             'teacher_id' => $teacher->id,
-            'title'      => 'Extra Revision Session',
+            'title' => 'Extra Revision Session',
         ]);
     }
 
@@ -107,10 +107,10 @@ class TimetableServiceContractTest extends TestCase
         $otherCourse = Course::factory()->create(['teacher_id' => $otherTeacher->id]);
 
         $response = $this->actingAs($teacher->user)->post(route('teacher.classes.quick-create'), [
-            'course_id'        => $otherCourse->id,
-            'title'            => 'Should be rejected',
-            'scheduled_date'   => now()->addDays(2)->toDateString(),
-            'scheduled_time'   => '10:00',
+            'course_id' => $otherCourse->id,
+            'title' => 'Should be rejected',
+            'scheduled_date' => now()->addDays(2)->toDateString(),
+            'scheduled_time' => '10:00',
             'duration_minutes' => 45,
         ]);
 
@@ -130,7 +130,7 @@ class TimetableServiceContractTest extends TestCase
         $response = $this->actingAs($admin)->post(route('admin.classes.reschedule-direct', $class->id), [
             'scheduled_date' => now()->addDays(5)->toDateString(),
             'scheduled_time' => '09:00',
-            'reason'         => 'Admin-initiated reschedule.',
+            'reason' => 'Admin-initiated reschedule.',
         ]);
 
         $response->assertRedirect();
@@ -145,10 +145,10 @@ class TimetableServiceContractTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
 
         $response = $this->actingAs($admin)->post(route('admin.classes.quick-create'), [
-            'course_id'        => $course->id,
-            'title'            => 'Admin Scheduled Session',
-            'scheduled_date'   => now()->addDays(2)->toDateString(),
-            'scheduled_time'   => '11:00',
+            'course_id' => $course->id,
+            'title' => 'Admin Scheduled Session',
+            'scheduled_date' => now()->addDays(2)->toDateString(),
+            'scheduled_time' => '11:00',
             'duration_minutes' => 60,
         ]);
 
@@ -163,7 +163,7 @@ class TimetableServiceContractTest extends TestCase
         $admin = User::factory()->create(['name' => 'Admin3', 'email' => 'admin-tt3@test.com', 'role' => 'admin', 'password' => Hash::make('password')]);
 
         $response = $this->actingAs($admin)->post(route('admin.academic-events.store'), [
-            'title'      => 'Mid-Term Break',
+            'title' => 'Mid-Term Break',
             'event_type' => 'school_break',
             'start_date' => now()->addWeek()->toDateString(),
         ]);
@@ -178,7 +178,7 @@ class TimetableServiceContractTest extends TestCase
         $event = AcademicEvent::factory()->create(['title' => 'Old Title', 'event_type' => 'school_break']);
 
         $response = $this->actingAs($admin)->put(route('admin.academic-events.update', $event->id), [
-            'title'      => 'Renamed Break',
+            'title' => 'Renamed Break',
             'event_type' => 'school_break',
             'start_date' => $event->start_date->toDateString(),
         ]);

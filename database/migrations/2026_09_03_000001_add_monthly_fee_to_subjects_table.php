@@ -13,7 +13,7 @@ return new class extends Migration
             // Nullable so existing subjects are not broken.
             // Authoritative pricing: snapshotted into invoice_items.amount at invoice generation.
             $table->decimal('monthly_fee', 10, 2)->nullable()->after('is_active')
-                  ->comment('Admin-configurable monthly fee for this subject. Snapshotted into invoice_items at invoice generation.');
+                ->comment('Admin-configurable monthly fee for this subject. Snapshotted into invoice_items at invoice generation.');
         });
     }
 

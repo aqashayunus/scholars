@@ -9,9 +9,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ChatController extends Controller
 {
-    public function __construct(private MessagingService $messaging)
-    {
-    }
+    public function __construct(private MessagingService $messaging) {}
 
     public function getGlobalUnreadCount(): JsonResponse
     {

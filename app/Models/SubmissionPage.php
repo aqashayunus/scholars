@@ -20,7 +20,7 @@ class SubmissionPage extends Model
     ];
 
     protected $casts = [
-        'page_number'  => 'integer',
+        'page_number' => 'integer',
         'stroke_count' => 'integer',
         'page_version' => 'integer',
     ];
@@ -39,6 +39,7 @@ class SubmissionPage extends Model
             return [];
         }
         $decoded = json_decode($this->annotation_json, true);
+
         return is_array($decoded) ? $decoded : [];
     }
 }

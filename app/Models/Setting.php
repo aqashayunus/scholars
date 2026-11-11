@@ -20,6 +20,7 @@ class Setting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         $all = static::allCached();
+
         return $all[$key] ?? $default;
     }
 
@@ -46,6 +47,7 @@ class Setting extends Model
         foreach ($rows as $row) {
             $result[$row->key] = $all[$row->key] ?? null;
         }
+
         return $result;
     }
 

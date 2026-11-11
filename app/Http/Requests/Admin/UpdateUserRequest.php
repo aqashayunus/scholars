@@ -14,10 +14,10 @@ class UpdateUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|max:255|unique:users,email,' . $this->route('id'),
-            'role'     => 'required|in:admin,teacher,student,parent',
-            'phone'    => 'nullable|string|max:30',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,'.$this->route('id'),
+            'role' => 'required|in:admin,teacher,student,parent',
+            'phone' => 'nullable|string|max:30',
             'password' => 'nullable|string|min:6',
         ];
     }

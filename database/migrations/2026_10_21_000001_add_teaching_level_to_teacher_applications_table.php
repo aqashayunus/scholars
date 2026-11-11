@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('teacher_applications') && !Schema::hasColumn('teacher_applications', 'teaching_level')) {
+        if (Schema::hasTable('teacher_applications') && ! Schema::hasColumn('teacher_applications', 'teaching_level')) {
             Schema::table('teacher_applications', function (Blueprint $table) {
                 $table->string('teaching_level')->nullable()->after('preferred_subjects');
             });

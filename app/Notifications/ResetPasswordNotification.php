@@ -18,7 +18,7 @@ class ResetPasswordNotification extends BaseResetPassword
      * Build the mail representation of the notification.
      *
      * @param  mixed  $notifiable
-     * @return \Illuminate\Notifications\Messages\MailMessage
+     * @return MailMessage
      */
     public function toMail($notifiable)
     {
@@ -30,14 +30,14 @@ class ResetPasswordNotification extends BaseResetPassword
         $expireMinutes = (int) config('auth.passwords.users.expire', 60);
 
         $context = [
-            'user'            => $notifiable,
-            'recipient_name'  => $notifiable->name ?? 'Olympian Scholar',
+            'user' => $notifiable,
+            'recipient_name' => $notifiable->name ?? 'Olympian Scholar',
             'recipient_email' => $notifiable->email,
-            'reset_url'       => $resetUrl,
-            'cta_url'         => $resetUrl,
-            'action_url'      => $resetUrl,
-            'expire_minutes'  => (string) $expireMinutes,
-            'portal_url'      => url('/login'),
+            'reset_url' => $resetUrl,
+            'cta_url' => $resetUrl,
+            'action_url' => $resetUrl,
+            'expire_minutes' => (string) $expireMinutes,
+            'portal_url' => url('/login'),
         ];
 
         // 1. Dynamic template if active in database
@@ -85,29 +85,29 @@ class ResetPasswordNotification extends BaseResetPassword
         // Record audit log
         $log = EmailLog::create([
             'recipient_email' => $notifiable->email,
-            'recipient_name'  => $notifiable->name ?? 'Olympian Scholar',
-            'recipient_type'  => $notifiable->role ?? 'user',
-            'user_id'         => $notifiable->id,
-            'category'        => 'authentication',
-            'subject'         => $rendered['subject'],
-            'status'          => EmailLog::STATUS_QUEUED,
-            'attempts'        => 1,
+            'recipient_name' => $notifiable->name ?? 'Olympian Scholar',
+            'recipient_type' => $notifiable->role ?? 'user',
+            'user_id' => $notifiable->id,
+            'category' => 'authentication',
+            'subject' => $rendered['subject'],
+            'status' => EmailLog::STATUS_QUEUED,
+            'attempts' => 1,
         ]);
 
         try {
             Mail::to($notifiable->email)->send($mailable);
             $log->update([
-                'status'       => EmailLog::STATUS_SENT,
-                'sent_at'      => now(),
+                'status' => EmailLog::STATUS_SENT,
+                'sent_at' => now(),
                 'delivered_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            Log::error("[ResetPasswordNotification] Delivery failed to {$notifiable->email}: " . $e->getMessage());
+            Log::error("[ResetPasswordNotification] Delivery failed to {$notifiable->email}: ".$e->getMessage());
             $log->update([
-                'status'        => EmailLog::STATUS_FAILED,
+                'status' => EmailLog::STATUS_FAILED,
                 'error_message' => substr($e->getMessage(), 0, 500),
             ]);
-            session()->flash('mail_warning', 'Notice: Could not deliver email to mail server (' . $e->getMessage() . '). Please check SMTP configuration.');
+            session()->flash('mail_warning', 'Notice: Could not deliver email to mail server ('.$e->getMessage().'). Please check SMTP configuration.');
         }
 
         return (new MailMessage)

@@ -46,9 +46,10 @@ class MigrateLegacyFeeStructurePackages extends Command
                     $fee->package_type ?? 'individual',
                     $fee->subjects->pluck('name')->implode(', '),
                     '<comment>Skipped</comment>',
-                    'Already has explicit subject mappings (' . $fee->subjects->count() . ' subjects)',
+                    'Already has explicit subject mappings ('.$fee->subjects->count().' subjects)',
                 ];
                 $skippedCount++;
+
                 continue;
             }
 
@@ -60,9 +61,10 @@ class MigrateLegacyFeeStructurePackages extends Command
                     $fee->package_type ?? 'individual',
                     '-',
                     '<comment>Skipped</comment>',
-                    'Student-specific fee structure (targeted to student #' . $fee->student_id . ')',
+                    'Student-specific fee structure (targeted to student #'.$fee->student_id.')',
                 ];
                 $skippedCount++;
+
                 continue;
             }
 
@@ -77,9 +79,10 @@ class MigrateLegacyFeeStructurePackages extends Command
                     $fee->package_type ?? 'individual',
                     '-',
                     '<error>Needs Review</error>',
-                    'Ambiguous subject scope (' . ($fee->education_level ?: 'No level') . '). Requires manual admin review.',
+                    'Ambiguous subject scope ('.($fee->education_level ?: 'No level').'). Requires manual admin review.',
                 ];
                 $needsReviewCount++;
+
                 continue;
             }
 
@@ -96,7 +99,7 @@ class MigrateLegacyFeeStructurePackages extends Command
                 foreach ($safeSubjectIds as $idx => $sId) {
                     $attachData[$sId] = [
                         'is_required' => true,
-                        'sort_order'  => $idx,
+                        'sort_order' => $idx,
                     ];
                 }
                 $fee->subjects()->sync($attachData);
@@ -107,16 +110,16 @@ class MigrateLegacyFeeStructurePackages extends Command
                     FeeStructure::TYPE_FIXED_BUNDLE,
                     $subjectNames,
                     '<info>Migrated</info>',
-                    'Successfully mapped to ' . count($safeSubjectIds) . ' core subjects as Fixed Bundle',
+                    'Successfully mapped to '.count($safeSubjectIds).' core subjects as Fixed Bundle',
                 ];
             } else {
                 $rows[] = [
                     $fee->id,
                     $fee->name,
-                    'individual -> ' . FeeStructure::TYPE_FIXED_BUNDLE,
+                    'individual -> '.FeeStructure::TYPE_FIXED_BUNDLE,
                     $subjectNames,
                     '<info>Can Migrate</info>',
-                    'Ready to map ' . count($safeSubjectIds) . ' subjects (run with --force to apply)',
+                    'Ready to map '.count($safeSubjectIds).' subjects (run with --force to apply)',
                 ];
             }
 
@@ -129,13 +132,13 @@ class MigrateLegacyFeeStructurePackages extends Command
         );
 
         $this->newLine();
-        $this->line("Summary:");
+        $this->line('Summary:');
         $this->line("  <info>Migrated / Can Migrate:</info> {$migratedCount}");
         $this->line("  <comment>Skipped:</comment>              {$skippedCount}");
         $this->line("  <error>Needs Review:</error>         {$needsReviewCount}");
         $this->newLine();
 
-        if (!$force && $migratedCount > 0) {
+        if (! $force && $migratedCount > 0) {
             $this->warn('DRY RUN: No database changes were written. Run with --force to apply migrations.');
         } elseif ($force) {
             $this->info('Migration completed successfully.');
@@ -148,12 +151,11 @@ class MigrateLegacyFeeStructurePackages extends Command
      * Determine if a legacy fee structure can be safely mapped to subjects without guessing.
      * Returns array of subject IDs if safe and unambiguous, or null if ambiguous.
      *
-     * @param  FeeStructure $fee
      * @return int[]|null
      */
     private function resolveSafeSubjectMapping(FeeStructure $fee): ?array
     {
-        $nameLower  = strtolower($fee->name);
+        $nameLower = strtolower($fee->name);
         $levelLower = strtolower($fee->education_level ?? '');
 
         // Case 1: SPM Core Monthly Tuition with Form 4–5 education level
@@ -162,9 +164,9 @@ class MigrateLegacyFeeStructurePackages extends Command
                 ->where('category', 'Core')
                 ->where(function ($q) {
                     $q->where('form_year', 'like', '%Form 4%')
-                      ->orWhere('form_year', 'like', '%Form 5%')
-                      ->orWhere('form_year', 'Form 4–5')
-                      ->orWhere('stage', 'Upper Secondary');
+                        ->orWhere('form_year', 'like', '%Form 5%')
+                        ->orWhere('form_year', 'Form 4–5')
+                        ->orWhere('stage', 'Upper Secondary');
                 })
                 ->get();
 
@@ -181,10 +183,10 @@ class MigrateLegacyFeeStructurePackages extends Command
                     ->where('category', 'Core')
                     ->where(function ($q) {
                         $q->where('form_year', 'like', '%Form 1%')
-                          ->orWhere('form_year', 'like', '%Form 2%')
-                          ->orWhere('form_year', 'like', '%Form 3%')
-                          ->orWhere('form_year', 'Form 1–3')
-                          ->orWhere('stage', 'Lower Secondary');
+                            ->orWhere('form_year', 'like', '%Form 2%')
+                            ->orWhere('form_year', 'like', '%Form 3%')
+                            ->orWhere('form_year', 'Form 1–3')
+                            ->orWhere('stage', 'Lower Secondary');
                     })
                     ->get();
 

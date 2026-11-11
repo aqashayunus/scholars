@@ -19,17 +19,17 @@ class StudentAssignmentSubmissionFactory extends Factory
     {
         return [
             'student_assignment_id' => StudentAssignment::factory(),
-            'assignment_id'         => Assignment::factory(),
-            'student_id'            => Student::factory(),
-            'status'                => 'draft',
-            'current_page'          => 1,
-            'zoom_level'            => 1.0,
-            'total_pages'           => 1,
-            'version'               => 1,
-            'final_pdf_path'        => null,
-            'started_at'            => now(),
-            'last_saved_at'         => now(),
-            'submitted_at'          => null,
+            'assignment_id' => Assignment::factory(),
+            'student_id' => Student::factory(),
+            'status' => 'draft',
+            'current_page' => 1,
+            'zoom_level' => 1.0,
+            'total_pages' => 1,
+            'version' => 1,
+            'final_pdf_path' => null,
+            'started_at' => now(),
+            'last_saved_at' => now(),
+            'submitted_at' => null,
         ];
     }
 }

@@ -19,13 +19,13 @@ class EnsureStudentAccessNotRestricted
     {
         $user = $request->user();
 
-        if (!$user || $user->role !== 'student') {
+        if (! $user || $user->role !== 'student') {
             return $next($request);
         }
 
         $student = $user->student;
 
-        if (!$student) {
+        if (! $student) {
             return $next($request);
         }
 
@@ -49,8 +49,8 @@ class EnsureStudentAccessNotRestricted
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'status'      => 'restricted',
-                    'message'     => "This student's access is temporarily restricted due to an outstanding payment. Please settle the outstanding balance to restore access.",
+                    'status' => 'restricted',
+                    'message' => "This student's access is temporarily restricted due to an outstanding payment. Please settle the outstanding balance to restore access.",
                     'restriction' => $details,
                 ], 403);
             }

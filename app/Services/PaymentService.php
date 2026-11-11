@@ -6,14 +6,13 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PaymentStatus;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
-use App\Models\InvoiceReminder;
 use App\Models\Payment;
 use App\Models\PaymentInvoice;
 use App\Models\User;
 use App\Services\Billplz\BillplzService;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class PaymentService
 {
@@ -31,9 +30,8 @@ class PaymentService
      * Status = pending until Admin manually verifies and approves.
      *
      * @param  int[]  $invoiceIds  Invoice IDs to pay (can be multiple for multi-child checkout)
-     * @param  User   $payer       The user initiating payment (student or parent)
-     * @param  array  $data        Optional extra fields: proof_file_path, reference_no, description
-     * @return Payment
+     * @param  User  $payer  The user initiating payment (student or parent)
+     * @param  array  $data  Optional extra fields: proof_file_path, reference_no, description
      */
     public function initiateManualTransfer(array $invoiceIds, User $payer, array $data = []): Payment
     {
@@ -61,32 +59,32 @@ class PaymentService
             $primaryStudentId = $invoices->first()->student_id;
 
             $payment = Payment::create([
-                'user_id'        => $payer->id,
-                'student_id'     => $primaryStudentId,
-                'payer_id'       => $payer->id,
-                'payer_type'     => $payerType,
-                'description'    => $data['description'] ?? 'Manual Bank Transfer – ' . $invoices->pluck('invoice_number')->implode(', '),
-                'amount'         => $totalAmount,
+                'user_id' => $payer->id,
+                'student_id' => $primaryStudentId,
+                'payer_id' => $payer->id,
+                'payer_type' => $payerType,
+                'description' => $data['description'] ?? 'Manual Bank Transfer – '.$invoices->pluck('invoice_number')->implode(', '),
+                'amount' => $totalAmount,
                 'payment_method' => 'bank_transfer',
-                'proof_file_path'=> $data['proof_file_path'] ?? null,
-                'reference_no'   => $data['reference_no'] ?? null,
-                'status'         => PaymentStatus::Pending,
+                'proof_file_path' => $data['proof_file_path'] ?? null,
+                'reference_no' => $data['reference_no'] ?? null,
+                'status' => PaymentStatus::Pending,
             ]);
 
             // Create payment_invoices allocations
             foreach ($invoices as $invoice) {
                 PaymentInvoice::create([
-                    'payment_id'     => $payment->id,
-                    'invoice_id'     => $invoice->id,
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoice->id,
                     'amount_applied' => $invoice->outstanding_amount,
                 ]);
             }
 
             // Audit log
             $this->log('payment_initiated', 'Payment', $payment->id, $payer->id, [
-                'amount'         => $totalAmount,
+                'amount' => $totalAmount,
                 'payment_method' => 'bank_transfer',
-                'invoices'       => $invoices->pluck('invoice_number')->all(),
+                'invoices' => $invoices->pluck('invoice_number')->all(),
             ]);
 
             return $payment->fresh(['invoices']);
@@ -109,11 +107,11 @@ class PaymentService
             $receiptNumber = Payment::generateReceiptNumber();
 
             $payment->update([
-                'status'               => PaymentStatus::Successful,
-                'receipt_number'       => $receiptNumber,
-                'verified_by'          => $admin->id,
-                'payment_proof_notes'  => $notes,
-                'paid_at'              => now(),
+                'status' => PaymentStatus::Successful,
+                'receipt_number' => $receiptNumber,
+                'verified_by' => $admin->id,
+                'payment_proof_notes' => $notes,
+                'paid_at' => now(),
             ]);
 
             // Recalculate each linked invoice
@@ -125,12 +123,12 @@ class PaymentService
 
             $this->log('payment_approved', 'Payment', $payment->id, $admin->id, [
                 'receipt_number' => $receiptNumber,
-                'approved_by'    => $admin->email,
+                'approved_by' => $admin->email,
             ]);
         });
 
         // In-app alert for student & parents
-        \App\Services\BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), true, $notes);
+        BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), true, $notes);
     }
 
     // ── Admin: Reject Manual Payment ──────────────────────────────────────────
@@ -145,18 +143,18 @@ class PaymentService
         }
 
         $payment->update([
-            'status'              => PaymentStatus::Failed,
-            'verified_by'         => $admin->id,
+            'status' => PaymentStatus::Failed,
+            'verified_by' => $admin->id,
             'payment_proof_notes' => "Rejected: {$reason}",
         ]);
 
         $this->log('payment_rejected', 'Payment', $payment->id, $admin->id, [
-            'reason'      => $reason,
+            'reason' => $reason,
             'rejected_by' => $admin->email,
         ]);
 
         // In-app alert for student & parents
-        \App\Services\BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), false, $reason);
+        BillingNotificationService::notifyPaymentVerified($payment->fresh(['invoice.student.user']), false, $reason);
     }
 
     // ── Upload Payment Proof ──────────────────────────────────────────────────
@@ -165,7 +163,7 @@ class PaymentService
      * Handle proof-of-payment file upload from parent/student.
      * Stores securely and updates the Payment record.
      */
-    public function uploadProof(Payment $payment, \Illuminate\Http\UploadedFile $file): string
+    public function uploadProof(Payment $payment, UploadedFile $file): string
     {
         $path = $file->store('payment-proofs', 'public');
 
@@ -177,7 +175,7 @@ class PaymentService
 
         $inv = $payment->invoice ?? $payment->invoices()->first();
         if ($inv && $payment->user) {
-            \App\Services\BillingNotificationService::notifyBankTransferSubmitted($inv, $payment, $payment->user);
+            BillingNotificationService::notifyBankTransferSubmitted($inv, $payment, $payment->user);
         }
 
         return $path;
@@ -188,9 +186,7 @@ class PaymentService
     /**
      * Initiate a Billplz FPX online payment for one or more invoices.
      *
-     * @param  int[] $invoiceIds
-     * @param  User  $payer
-     * @param  array $extra
+     * @param  int[]  $invoiceIds
      * @return array ['payment' => Payment, 'bill_url' => string]
      */
     public function initiateBillplzPayment(array $invoiceIds, User $payer, array $extra = []): array
@@ -209,29 +205,29 @@ class PaymentService
             throw new \RuntimeException('The total payable amount must be greater than zero.');
         }
 
-        return DB::transaction(function () use ($invoices, $payer, $totalAmount, $extra) {
+        return DB::transaction(function () use ($invoices, $payer, $totalAmount) {
             $payerType = $payer->role === 'parent' ? 'parent' : 'student';
             $primaryStudentId = $invoices->first()->student_id;
-            $refNo = 'TXN-BPZ-' . strtoupper(substr(md5(uniqid()), 0, 8));
+            $refNo = 'TXN-BPZ-'.strtoupper(substr(md5(uniqid()), 0, 8));
 
             $payment = Payment::create([
-                'user_id'        => $payer->id,
-                'invoice_id'     => $invoices->count() === 1 ? $invoices->first()->id : null,
-                'student_id'     => $primaryStudentId,
-                'payer_id'       => $payer->id,
-                'payer_type'     => $payerType,
-                'description'    => 'FPX Online Payment – ' . $invoices->pluck('invoice_number')->implode(', '),
-                'amount'         => $totalAmount,
+                'user_id' => $payer->id,
+                'invoice_id' => $invoices->count() === 1 ? $invoices->first()->id : null,
+                'student_id' => $primaryStudentId,
+                'payer_id' => $payer->id,
+                'payer_type' => $payerType,
+                'description' => 'FPX Online Payment – '.$invoices->pluck('invoice_number')->implode(', '),
+                'amount' => $totalAmount,
                 'payment_method' => 'fpx',
-                'reference_no'   => $refNo,
-                'status'         => PaymentStatus::Pending,
+                'reference_no' => $refNo,
+                'status' => PaymentStatus::Pending,
             ]);
 
             // Create allocations
             foreach ($invoices as $invoice) {
                 PaymentInvoice::create([
-                    'payment_id'     => $payment->id,
-                    'invoice_id'     => $invoice->id,
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoice->id,
                     'amount_applied' => $invoice->outstanding_amount,
                 ]);
             }
@@ -241,31 +237,31 @@ class PaymentService
             $redirectUrl = route('billing.billplz.return');
 
             $bill = $this->billplzService->createBill([
-                'email'        => $payer->email,
-                'mobile'       => $payer->phone ?? $payer->mobile ?? null,
-                'name'         => $payer->name,
-                'amount'       => $totalAmount,
+                'email' => $payer->email,
+                'mobile' => $payer->phone ?? $payer->mobile ?? null,
+                'name' => $payer->name,
+                'amount' => $totalAmount,
                 'callback_url' => $callbackUrl,
                 'redirect_url' => $redirectUrl,
-                'description'  => 'Olympian Scholars Fees: ' . $invoices->pluck('invoice_number')->implode(', '),
-                'reference_1'  => (string) $invoices->first()->id,
-                'reference_2'  => $payment->reference_no,
+                'description' => 'Olympian Scholars Fees: '.$invoices->pluck('invoice_number')->implode(', '),
+                'reference_1' => (string) $invoices->first()->id,
+                'reference_2' => $payment->reference_no,
             ]);
 
             $payment->update([
-                'billplz_bill_id'        => $bill['id'] ?? null,
+                'billplz_bill_id' => $bill['id'] ?? null,
                 'gateway_transaction_id' => $bill['id'] ?? null,
-                'billplz_url'            => $bill['url'] ?? null,
+                'billplz_url' => $bill['url'] ?? null,
             ]);
 
             $this->log('billplz_payment_initiated', 'Payment', $payment->id, $payer->id, [
-                'amount'          => $totalAmount,
+                'amount' => $totalAmount,
                 'billplz_bill_id' => $bill['id'] ?? null,
-                'invoices'        => $invoices->pluck('invoice_number')->all(),
+                'invoices' => $invoices->pluck('invoice_number')->all(),
             ]);
 
             return [
-                'payment'  => $payment->fresh(['invoices']),
+                'payment' => $payment->fresh(['invoices']),
                 'bill_url' => $bill['url'],
             ];
         });
@@ -281,13 +277,14 @@ class PaymentService
             ->orWhere('gateway_transaction_id', $billplzBillId)
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             throw new \RuntimeException("Payment not found for Billplz Bill ID: {$billplzBillId}");
         }
 
         // Idempotency: if already successful, skip recalculation
         if ($payment->status === PaymentStatus::Successful) {
             Log::info("[PaymentService] Payment #{$payment->id} already marked successful.");
+
             return $payment;
         }
 
@@ -295,10 +292,10 @@ class PaymentService
             $receiptNumber = $payment->receipt_number ?: Payment::generateReceiptNumber();
 
             $payment->update([
-                'status'          => PaymentStatus::Successful,
-                'receipt_number'  => $receiptNumber,
+                'status' => PaymentStatus::Successful,
+                'receipt_number' => $receiptNumber,
                 'gateway_payload' => $gatewayData,
-                'paid_at'         => now(),
+                'paid_at' => now(),
             ]);
 
             // Recalculate each linked invoice
@@ -314,9 +311,9 @@ class PaymentService
             }
 
             $this->log('billplz_payment_successful', 'Payment', $payment->id, $payment->user_id, [
-                'receipt_number'  => $receiptNumber,
+                'receipt_number' => $receiptNumber,
                 'billplz_bill_id' => $payment->billplz_bill_id,
-                'amount'          => $payment->amount,
+                'amount' => $payment->amount,
             ]);
         });
 
@@ -325,10 +322,10 @@ class PaymentService
             $freshPayment = $payment->fresh(['invoices.student.user']);
             $firstInvoice = $freshPayment->invoices->first();
             if ($firstInvoice) {
-                \App\Services\BillingNotificationService::notifyPaymentVerified($freshPayment, true, 'Paid via Billplz FPX Online Banking');
+                BillingNotificationService::notifyPaymentVerified($freshPayment, true, 'Paid via Billplz FPX Online Banking');
             }
         } catch (\Throwable $e) {
-            Log::warning('[PaymentService] Failed sending payment notification: ' . $e->getMessage());
+            Log::warning('[PaymentService] Failed sending payment notification: '.$e->getMessage());
         }
 
         return $payment;
@@ -343,7 +340,7 @@ class PaymentService
             ->orWhere('gateway_transaction_id', $billplzBillId)
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             throw new \RuntimeException("Payment not found for Billplz Bill ID: {$billplzBillId}");
         }
 
@@ -352,13 +349,13 @@ class PaymentService
         }
 
         $payment->update([
-            'status'              => PaymentStatus::Failed,
-            'gateway_payload'     => $gatewayData,
+            'status' => PaymentStatus::Failed,
+            'gateway_payload' => $gatewayData,
             'payment_proof_notes' => $reason ? "Gateway Failure: {$reason}" : 'Payment cancelled or failed at bank.',
         ]);
 
         $this->log('billplz_payment_failed', 'Payment', $payment->id, $payment->user_id, [
-            'reason'          => $reason,
+            'reason' => $reason,
             'billplz_bill_id' => $billplzBillId,
         ]);
 
@@ -380,7 +377,7 @@ class PaymentService
         }
 
         // Verify cryptographic signature if X-Signature key is configured
-        if (!$this->billplzService->verifySignature($payload)) {
+        if (! $this->billplzService->verifySignature($payload)) {
             Log::error('[PaymentService] Invalid Billplz webhook X-Signature.', $payload);
             throw new \InvalidArgumentException('Invalid webhook signature.');
         }
@@ -400,15 +397,15 @@ class PaymentService
     {
         try {
             FinancialAuditLog::create([
-                'user_id'     => $userId ?? 0,
-                'action'      => $action,
+                'user_id' => $userId ?? 0,
+                'action' => $action,
                 'target_type' => $targetType,
-                'target_id'   => $targetId,
-                'ip_address'  => request()->ip(),
-                'details'     => json_encode($details),
+                'target_id' => $targetId,
+                'ip_address' => request()->ip(),
+                'details' => json_encode($details),
             ]);
         } catch (\Exception $e) {
-            Log::error("[PaymentService] Audit log failed: " . $e->getMessage());
+            Log::error('[PaymentService] Audit log failed: '.$e->getMessage());
         }
     }
 }

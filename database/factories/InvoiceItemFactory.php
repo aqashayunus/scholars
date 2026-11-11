@@ -19,14 +19,14 @@ class InvoiceItemFactory extends Factory
         $quantity = 1;
 
         return [
-            'invoice_id'        => Invoice::factory(),
-            'subject_id'        => null,
-            'description'       => fake()->sentence(3),
-            'unit_price'        => $unitPrice,
-            'quantity'          => $quantity,
-            'amount'            => $unitPrice * $quantity,
-            'item_type'         => 'tuition',
-            'package_name'      => null,
+            'invoice_id' => Invoice::factory(),
+            'subject_id' => null,
+            'description' => fake()->sentence(3),
+            'unit_price' => $unitPrice,
+            'quantity' => $quantity,
+            'amount' => $unitPrice * $quantity,
+            'item_type' => 'tuition',
+            'package_name' => null,
             'billing_frequency' => 'monthly',
         ];
     }

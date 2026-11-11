@@ -17,15 +17,15 @@ class ConversationParticipantFactory extends Factory
     public function definition(): array
     {
         return [
-            'conversation_id'       => Conversation::factory(),
-            'user_id'               => User::factory(),
-            'role'                  => 'member',
-            'last_read_message_id'  => null,
-            'last_read_at'          => null,
-            'muted_at'              => null,
-            'archived_at'           => null,
-            'joined_at'             => now(),
-            'left_at'               => null,
+            'conversation_id' => Conversation::factory(),
+            'user_id' => User::factory(),
+            'role' => 'member',
+            'last_read_message_id' => null,
+            'last_read_at' => null,
+            'muted_at' => null,
+            'archived_at' => null,
+            'joined_at' => now(),
+            'left_at' => null,
         ];
     }
 }

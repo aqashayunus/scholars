@@ -8,12 +8,17 @@ use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\Setting;
 use App\Models\Student;
+use App\Models\StudentAssignment;
 use App\Models\Subject;
+use App\Models\Teacher;
 use App\Models\User;
+use App\Services\Email\EmailAutomationService;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class StudentRegistrationController extends Controller
@@ -38,7 +43,7 @@ class StudentRegistrationController extends Controller
         $bundleElectiveDiscountPct = (float) Setting::get('billing.bundle_elective_discount_pct', 25);
         $invoiceDueDays = (int) Setting::get('billing.invoice_due_days', 7);
 
-        $selectedSubject   = $request->query('subject', '');
+        $selectedSubject = $request->query('subject', '');
         $selectedProgramme = $request->query('programme', 'secondary');
 
         $malaysianStates = [
@@ -65,50 +70,50 @@ class StudentRegistrationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name'             => ['required', 'string', 'min:2', 'max:255'],
-            'ic_number'        => ['required', 'string', 'regex:/^[0-9]{6}-[0-9]{2}-[0-9]{4}$/'],
-            'email'            => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone'            => ['required', 'string', 'min:8', 'max:50', 'regex:/^[0-9\s\-\+\(\)]+$/'],
-            'password'         => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/'],
-            'nationality'      => ['required', 'string', 'max:50'],
-            'state'            => ['required', 'string', 'max:50'],
-            'programme'        => ['required', 'string', 'max:50'],
-            'level'            => ['nullable', 'string', 'max:100'],
-            'levels'           => ['nullable', 'array'],
-            'levels.*'         => ['string', 'max:50'],
-            'school_name'      => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'min:2', 'max:255'],
+            'ic_number' => ['required', 'string', 'regex:/^[0-9]{6}-[0-9]{2}-[0-9]{4}$/'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['required', 'string', 'min:8', 'max:50', 'regex:/^[0-9\s\-\+\(\)]+$/'],
+            'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$/'],
+            'nationality' => ['required', 'string', 'max:50'],
+            'state' => ['required', 'string', 'max:50'],
+            'programme' => ['required', 'string', 'max:50'],
+            'level' => ['nullable', 'string', 'max:100'],
+            'levels' => ['nullable', 'array'],
+            'levels.*' => ['string', 'max:50'],
+            'school_name' => ['nullable', 'string', 'max:255'],
             'fee_structure_id' => ['nullable', 'integer', 'exists:fee_structures,id'],
-            'subjects'         => ['nullable', 'array'],
-            'subjects.*'       => ['string', 'max:255'],
+            'subjects' => ['nullable', 'array'],
+            'subjects.*' => ['string', 'max:255'],
         ], [
-            'name.required'           => 'Please enter your full name.',
-            'name.min'                => 'Full name must be at least 2 characters.',
-            'ic_number.required'      => 'Please enter your MyKad / IC number.',
-            'ic_number.regex'         => 'IC number must be in the format XXXXXX-XX-XXXX (e.g. 990101-10-1234).',
-            'email.required'          => 'Please enter a valid email address.',
-            'email.email'             => 'Please provide a valid email format (e.g. name@example.com).',
-            'email.unique'            => 'This email address is already registered. Please log in or use another email address.',
-            'phone.required'          => 'Please provide your phone number.',
-            'phone.min'               => 'Please enter a valid phone number with at least 8 digits.',
-            'phone.regex'             => 'The phone number contains invalid characters. Use digits, +, or -.',
-            'nationality.required'    => 'Please select your nationality.',
-            'state.required'          => 'Please select your state.',
-            'password.required'       => 'Please create a password.',
-            'password.min'            => 'Password must be at least 8 characters.',
-            'password.confirmed'      => 'Passwords do not match. Please re-enter.',
-            'password.regex'          => 'Password must contain at least one uppercase letter, one number, and one special character.',
-            'programme.required'      => 'Please select an education level.',
+            'name.required' => 'Please enter your full name.',
+            'name.min' => 'Full name must be at least 2 characters.',
+            'ic_number.required' => 'Please enter your MyKad / IC number.',
+            'ic_number.regex' => 'IC number must be in the format XXXXXX-XX-XXXX (e.g. 990101-10-1234).',
+            'email.required' => 'Please enter a valid email address.',
+            'email.email' => 'Please provide a valid email format (e.g. name@example.com).',
+            'email.unique' => 'This email address is already registered. Please log in or use another email address.',
+            'phone.required' => 'Please provide your phone number.',
+            'phone.min' => 'Please enter a valid phone number with at least 8 digits.',
+            'phone.regex' => 'The phone number contains invalid characters. Use digits, +, or -.',
+            'nationality.required' => 'Please select your nationality.',
+            'state.required' => 'Please select your state.',
+            'password.required' => 'Please create a password.',
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.confirmed' => 'Passwords do not match. Please re-enter.',
+            'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character.',
+            'programme.required' => 'Please select an education level.',
         ]);
 
         // Normalise multiple levels or single level
         $inputLevels = $request->input('levels');
-        if (!empty($inputLevels) && is_array($inputLevels)) {
+        if (! empty($inputLevels) && is_array($inputLevels)) {
             $validated['levels'] = array_values(array_filter($inputLevels));
-            $validated['level']  = implode(', ', $validated['levels']);
-        } elseif (!empty($validated['level'])) {
+            $validated['level'] = implode(', ', $validated['levels']);
+        } elseif (! empty($validated['level'])) {
             $validated['levels'] = array_values(array_filter(array_map('trim', explode(',', $validated['level']))));
         } else {
-            $validated['level']  = 'Form 5';
+            $validated['level'] = 'Form 5';
             $validated['levels'] = ['Form 5'];
         }
 
@@ -120,20 +125,20 @@ class StudentRegistrationController extends Controller
             ]);
         }
 
-        $selectedSubjectNames = !empty($validated['subjects']) ? $validated['subjects'] : [];
-        $feeStructureId       = !empty($validated['fee_structure_id']) ? (int) $validated['fee_structure_id'] : null;
+        $selectedSubjectNames = ! empty($validated['subjects']) ? $validated['subjects'] : [];
+        $feeStructureId = ! empty($validated['fee_structure_id']) ? (int) $validated['fee_structure_id'] : null;
 
         // Derive DOB and gender from IC
-        $dob    = Student::dobFromIc($validated['ic_number']);
+        $dob = Student::dobFromIc($validated['ic_number']);
         $gender = Student::genderFromIc($validated['ic_number']);
 
         try {
             $student = DB::transaction(function () use ($validated, $selectedSubjectNames, $feeStructureId, $icHash, $dob, $gender) {
                 // 1. Create User account
                 $user = new User([
-                    'name'     => $validated['name'],
-                    'email'    => $validated['email'],
-                    'phone'    => $validated['phone'],
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
                     'password' => Hash::make($validated['password']),
                 ]);
                 $user->role = 'student';
@@ -141,20 +146,20 @@ class StudentRegistrationController extends Controller
 
                 // 2. Create Student profile
                 $student = Student::create([
-                    'user_id'        => $user->id,
+                    'user_id' => $user->id,
                     'ic_number_hash' => $icHash,
-                    'gender'         => $gender,
-                    'nationality'    => $validated['nationality'],
-                    'state'          => $validated['state'],
-                    'date_of_birth'  => $dob,
-                    'level'          => $validated['level'] ?? 'Form 5',
-                    'school_name'    => $validated['school_name'] ?? null,
-                    'total_points'   => 0,
-                    'streak_days'    => 1,
+                    'gender' => $gender,
+                    'nationality' => $validated['nationality'],
+                    'state' => $validated['state'],
+                    'date_of_birth' => $dob,
+                    'level' => $validated['level'] ?? 'Form 5',
+                    'school_name' => $validated['school_name'] ?? null,
+                    'total_points' => 0,
+                    'streak_days' => 1,
                 ]);
 
                 // 3. Enroll student in selected subjects
-                if (!empty($selectedSubjectNames)) {
+                if (! empty($selectedSubjectNames)) {
                     self::enrollInSubjects($student, $selectedSubjectNames, $validated['level'] ?? null, $feeStructureId);
                 }
 
@@ -166,19 +171,19 @@ class StudentRegistrationController extends Controller
 
             // Trigger automated email communication (sent synchronously for immediate greeting delivery)
             try {
-                \App\Services\Email\EmailAutomationService::trigger(
+                EmailAutomationService::trigger(
                     'registration_received',
                     [
-                        'user'         => $student->user,
-                        'student'      => $student,
-                        'parent_name'  => $student->user->name,
+                        'user' => $student->user,
+                        'student' => $student,
+                        'parent_name' => $student->user->name,
                         'student_name' => $student->user->name,
                     ],
                     "student_reg_{$student->id}",
                     true
                 );
             } catch (\Throwable $emailErr) {
-                \Illuminate\Support\Facades\Log::warning('[StudentRegistration] Email trigger failed: ' . $emailErr->getMessage());
+                Log::warning('[StudentRegistration] Email trigger failed: '.$emailErr->getMessage());
             }
 
             // Flash masked IC for success page
@@ -186,8 +191,11 @@ class StudentRegistrationController extends Controller
 
             return redirect()->route('register.student.success', ['id' => $student->id]);
         } catch (\Exception $e) {
-            if (app()->environment('testing')) { throw $e; }
+            if (app()->environment('testing')) {
+                throw $e;
+            }
             report($e);
+
             return redirect()->back()
                 ->withInput()
                 ->withErrors(['general' => 'Registration failed due to a technical issue. Please try again.']);
@@ -202,12 +210,13 @@ class StudentRegistrationController extends Controller
         $id = $request->query('id');
         $student = Student::find($id)?->load('user');
 
-        if (!$student || !auth()->check() || auth()->id() !== $student->user_id) {
+        if (! $student || ! auth()->check() || auth()->id() !== $student->user_id) {
             return redirect()->route('student.dashboard');
         }
 
         $maskedIc = session('reg_ic_masked');
-        $invoice  = $student->invoices()->with(['items', 'feeStructure'])->latest('id')->first();
+        $invoice = $student->invoices()->with(['items', 'feeStructure'])->latest('id')->first();
+
         return view('auth.register-success-student', compact('student', 'maskedIc', 'invoice'));
     }
 
@@ -216,7 +225,7 @@ class StudentRegistrationController extends Controller
      */
     public static function enrollInSubjects(Student $student, array $subjectNames, ?string $level = null, ?int $feeStructureId = null): void
     {
-        $defaultTeacher = \App\Models\Teacher::first();
+        $defaultTeacher = Teacher::first();
 
         // Determine education type and stage from level or student
         $effectiveLevel = $level ?: ($student->level ?? null);
@@ -245,7 +254,9 @@ class StudentRegistrationController extends Controller
 
         foreach ($subjectNames as $subjectName) {
             $subjectName = trim($subjectName);
-            if (empty($subjectName)) continue;
+            if (empty($subjectName)) {
+                continue;
+            }
 
             $concatHyphen = DB::connection()->getDriverName() === 'sqlite'
                 ? "name || ' - ' || form_year"
@@ -256,16 +267,16 @@ class StudentRegistrationController extends Controller
 
             // Match by name, slug, or formatted "Name - Form Year" / "Name (Form Year)"
             $baseQuery = Subject::where('is_active', true)
-                ->where(function($q) use ($subjectName, $concatHyphen, $concatExpr) {
+                ->where(function ($q) use ($subjectName, $concatHyphen, $concatExpr) {
                     $q->where('name', $subjectName)
-                      ->orWhere('slug', Str::slug($subjectName))
-                      ->orWhere(DB::raw($concatHyphen), $subjectName)
-                      ->orWhere(DB::raw($concatExpr), $subjectName);
+                        ->orWhere('slug', Str::slug($subjectName))
+                        ->orWhere(DB::raw($concatHyphen), $subjectName)
+                        ->orWhere(DB::raw($concatExpr), $subjectName);
                 });
 
             // Priority 1: Match on form_year in the student's selected levels (e.g. Form 4, Form 5)
             $subject = null;
-            if (!empty($levels)) {
+            if (! empty($levels)) {
                 $exactQuery = (clone $baseQuery)->whereIn('form_year', $levels);
                 if ($educationType) {
                     $exactQuery->where('education_type', $educationType);
@@ -274,9 +285,9 @@ class StudentRegistrationController extends Controller
             }
 
             // Priority 2: Shared band or stage (e.g. Form 4–5 or Upper Secondary) if no exact form_year matched
-            if (!$subject && $effectiveLevel) {
+            if (! $subject && $effectiveLevel) {
                 $stageQuery = clone $baseQuery;
-                $stageQuery->where(function($q) use ($isLowerSecondary, $isUpperSecondary) {
+                $stageQuery->where(function ($q) use ($isLowerSecondary, $isUpperSecondary) {
                     if ($isLowerSecondary) {
                         $q->where('form_year', 'Form 1–3')->orWhere('stage', 'Lower Secondary');
                     } elseif ($isUpperSecondary) {
@@ -290,40 +301,40 @@ class StudentRegistrationController extends Controller
             }
 
             // Priority 3: Fallback by education_type if specified
-            if (!$subject && $educationType) {
+            if (! $subject && $educationType) {
                 $subject = (clone $baseQuery)->where('education_type', $educationType)->first();
             }
 
             // Priority 4: Fallback across all active subjects
-            if (!$subject) {
+            if (! $subject) {
                 $subject = (clone $baseQuery)->first();
             }
 
-            if (!$subject) {
-                $defaultLevel = !empty($levels) ? $levels[0] : ($effectiveLevel ?: 'Form 5');
+            if (! $subject) {
+                $defaultLevel = ! empty($levels) ? $levels[0] : ($effectiveLevel ?: 'Form 5');
                 $subject = Subject::create([
-                    'name'           => $subjectName,
-                    'slug'           => Str::slug($subjectName . ' ' . $defaultLevel) ?: 'subj-' . Str::random(5),
+                    'name' => $subjectName,
+                    'slug' => Str::slug($subjectName.' '.$defaultLevel) ?: 'subj-'.Str::random(5),
                     'education_type' => $educationType ?: 'secondary',
-                    'stage'          => $isLowerSecondary ? 'Lower Secondary' : 'Upper Secondary',
-                    'form_year'      => $defaultLevel,
-                    'category'       => 'Core',
-                    'is_active'      => true,
+                    'stage' => $isLowerSecondary ? 'Lower Secondary' : 'Upper Secondary',
+                    'form_year' => $defaultLevel,
+                    'category' => 'Core',
+                    'is_active' => true,
                 ]);
             }
 
             $course = null;
             if ($subject && $subject->form_year) {
                 $course = Course::where('subject_id', $subject->id)
-                    ->where(function($q) use ($subject) {
+                    ->where(function ($q) use ($subject) {
                         $q->where('level', $subject->form_year)
-                          ->orWhere('title', 'like', "%{$subject->form_year}%");
+                            ->orWhere('title', 'like', "%{$subject->form_year}%");
                     })
                     ->first();
             }
-            if (!$course && !empty($levels)) {
+            if (! $course && ! empty($levels)) {
                 $course = Course::where('subject_id', $subject->id)
-                    ->where(function($q) use ($levels) {
+                    ->where(function ($q) use ($levels) {
                         foreach ($levels as $idx => $lvl) {
                             if ($idx === 0) {
                                 $q->where('level', $lvl)->orWhere('title', 'like', "%{$lvl}%");
@@ -334,27 +345,27 @@ class StudentRegistrationController extends Controller
                     })
                     ->first();
             }
-            if (!$course) {
+            if (! $course) {
                 $course = Course::where('subject_id', $subject->id)->latest('id')->first();
             }
-            if (!$course) {
+            if (! $course) {
                 $course = Course::create([
-                    'subject_id'    => $subject->id,
+                    'subject_id' => $subject->id,
                     // teacher_id is nullable — previously fell back to a
                     // hardcoded 1 when no teacher existed yet, which crashed
                     // with a FK violation in any environment where teacher
                     // id 1 doesn't exist (fresh DB, or that teacher deleted).
-                    'teacher_id'    => $defaultTeacher?->id,
-                    'title'         => $subject->display_name ?: $subject->name,
-                    'description'   => 'Comprehensive learning course for ' . ($subject->display_name ?: $subject->name),
-                    'level'         => $subject->form_year ?: ($levels[0] ?? ($effectiveLevel ?: 'SPM')),
-                    'status'        => 'published',
+                    'teacher_id' => $defaultTeacher?->id,
+                    'title' => $subject->display_name ?: $subject->name,
+                    'description' => 'Comprehensive learning course for '.($subject->display_name ?: $subject->name),
+                    'level' => $subject->form_year ?: ($levels[0] ?? ($effectiveLevel ?: 'SPM')),
+                    'status' => 'published',
                     'total_lessons' => 12,
                 ]);
             }
 
             $enrollment = Enrollment::firstOrNew(['student_id' => $student->id, 'course_id' => $course->id]);
-            if (!$enrollment->exists) {
+            if (! $enrollment->exists) {
                 $enrollment->status = 'active';
                 $enrollment->enrolled_at = now();
                 $enrollment->progress_pct = 0;
@@ -364,7 +375,7 @@ class StudentRegistrationController extends Controller
 
             // Auto-assign the subject's diagnostic test if one is configured
             if ($subject->diagnostic_assignment_id) {
-                \App\Models\StudentAssignment::firstOrCreate(
+                StudentAssignment::firstOrCreate(
                     ['student_id' => $student->id, 'assignment_id' => $subject->diagnostic_assignment_id],
                     ['status' => 'pending']
                 );
@@ -376,10 +387,9 @@ class StudentRegistrationController extends Controller
 
         // Automatically generate tuition fee invoice for the enrolled subjects
         try {
-            app(\App\Services\InvoiceService::class)->generateForStudent($student, $feeStructureId);
+            app(InvoiceService::class)->generateForStudent($student, $feeStructureId);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::info("Auto-invoice note for student #{$student->id}: " . $e->getMessage());
+            Log::info("Auto-invoice note for student #{$student->id}: ".$e->getMessage());
         }
     }
 }
-

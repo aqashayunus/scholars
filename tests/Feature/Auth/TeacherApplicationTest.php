@@ -27,13 +27,13 @@ class TeacherApplicationTest extends TestCase
     public function test_teacher_application_fails_without_required_resume(): void
     {
         $response = $this->from(route('register.teacher'))->post(route('register.teacher.submit'), [
-            'full_name'          => 'Cikgu Sarah',
-            'email'              => 'sarah_teacher@example.com',
-            'phone'              => '+60 12-345 6789',
-            'qualification'      => 'Bachelor of Science (Mathematics)',
-            'experience_years'   => 4,
+            'full_name' => 'Cikgu Sarah',
+            'email' => 'sarah_teacher@example.com',
+            'phone' => '+60 12-345 6789',
+            'qualification' => 'Bachelor of Science (Mathematics)',
+            'experience_years' => 4,
             'preferred_subjects' => 'Additional Mathematics, Modern Mathematics',
-            'teaching_level'     => ['Upper Secondary (Form 4–5)'],
+            'teaching_level' => ['Upper Secondary (Form 4–5)'],
         ]);
 
         $response->assertRedirect(route('register.teacher'));
@@ -50,14 +50,14 @@ class TeacherApplicationTest extends TestCase
         $resume = UploadedFile::fake()->create('sarah_cv.pdf', 500, 'application/pdf');
 
         $response = $this->post(route('register.teacher.submit'), [
-            'full_name'          => 'Cikgu Sarah',
-            'email'              => 'sarah_teacher@example.com',
-            'phone'              => '+60 12-345 6789',
-            'qualification'      => 'Bachelor of Science (Mathematics)',
-            'experience_years'   => 4,
+            'full_name' => 'Cikgu Sarah',
+            'email' => 'sarah_teacher@example.com',
+            'phone' => '+60 12-345 6789',
+            'qualification' => 'Bachelor of Science (Mathematics)',
+            'experience_years' => 4,
             'preferred_subjects' => 'Additional Mathematics, Modern Mathematics',
-            'teaching_level'     => ['Upper Secondary (Form 4–5)'],
-            'resume'             => $resume,
+            'teaching_level' => ['Upper Secondary (Form 4–5)'],
+            'resume' => $resume,
         ]);
 
         $response->assertRedirect(route('register.teacher.success'));
@@ -72,23 +72,23 @@ class TeacherApplicationTest extends TestCase
     {
         Storage::fake('public');
 
-        $resume      = UploadedFile::fake()->create('farhan_cv.docx', 800, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        $resume = UploadedFile::fake()->create('farhan_cv.docx', 800, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         $certificate = UploadedFile::fake()->image('farhan_degree.jpg');
-        $transcript  = UploadedFile::fake()->create('farhan_transcript.pdf', 1200, 'application/pdf');
-        $additional  = UploadedFile::fake()->create('teaching_license.pdf', 300, 'application/pdf');
+        $transcript = UploadedFile::fake()->create('farhan_transcript.pdf', 1200, 'application/pdf');
+        $additional = UploadedFile::fake()->create('teaching_license.pdf', 300, 'application/pdf');
 
         $response = $this->post(route('register.teacher.submit'), [
-            'full_name'           => 'Ustaz Farhan',
-            'email'               => 'farhan@example.com',
-            'phone'               => '+60 17-987 6543',
-            'institution'         => 'SMK Damansara Utama',
-            'qualification'       => 'Master in Education (Physics)',
-            'experience_years'    => 6,
-            'preferred_subjects'  => 'Physics, Science',
-            'teaching_level'      => ['Lower Secondary (Form 1–3)', 'Upper Secondary (Form 4–5)'],
-            'resume'              => $resume,
-            'certificate'         => $certificate,
-            'transcript'          => $transcript,
+            'full_name' => 'Ustaz Farhan',
+            'email' => 'farhan@example.com',
+            'phone' => '+60 17-987 6543',
+            'institution' => 'SMK Damansara Utama',
+            'qualification' => 'Master in Education (Physics)',
+            'experience_years' => 6,
+            'preferred_subjects' => 'Physics, Science',
+            'teaching_level' => ['Lower Secondary (Form 1–3)', 'Upper Secondary (Form 4–5)'],
+            'resume' => $resume,
+            'certificate' => $certificate,
+            'transcript' => $transcript,
             'additional_document' => $additional,
         ]);
 

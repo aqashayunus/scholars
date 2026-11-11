@@ -32,29 +32,29 @@ class SettingsController extends Controller
 
         // Load all settings from DB (not session)
         $platformSettings = [
-            'platform_name'       => Setting::get('platform_name', 'OlympiaScholar'),
-            'platform_tagline'    => Setting::get('platform_tagline', 'Excel Beyond Limits'),
-            'support_email'       => Setting::get('support_email', 'support@olympiascholar.com'),
-            'support_phone'       => Setting::get('support_phone', '+60 12-345 6789'),
-            'teacher_cut_pct'     => Setting::get('teacher_cut_pct', 65),
-            'currency_code'       => Setting::get('currency_code', 'MYR'),
-            'currency_symbol'     => Setting::get('currency_symbol', 'RM'),
-            'invoice_due_days'    => (int) Setting::get('billing.invoice_due_days', 7),
+            'platform_name' => Setting::get('platform_name', 'OlympiaScholar'),
+            'platform_tagline' => Setting::get('platform_tagline', 'Excel Beyond Limits'),
+            'support_email' => Setting::get('support_email', 'support@olympiascholar.com'),
+            'support_phone' => Setting::get('support_phone', '+60 12-345 6789'),
+            'teacher_cut_pct' => Setting::get('teacher_cut_pct', 65),
+            'currency_code' => Setting::get('currency_code', 'MYR'),
+            'currency_symbol' => Setting::get('currency_symbol', 'RM'),
+            'invoice_due_days' => (int) Setting::get('billing.invoice_due_days', 7),
             'allow_registrations' => Setting::get('allow_registrations', 1),
-            'allow_gig_claims'    => Setting::get('allow_gig_claims', 1),
-            'maintenance_mode'    => Setting::get('maintenance_mode', 0),
+            'allow_gig_claims' => Setting::get('allow_gig_claims', 1),
+            'maintenance_mode' => Setting::get('maintenance_mode', 0),
         ];
 
         $pricingPlans = [
-            'monthly_price'  => Setting::get('plan_monthly_price', 'RM 99'),
-            'monthly_per'    => Setting::get('plan_monthly_per', '/month'),
-            'monthly_desc'   => Setting::get('plan_monthly_desc', 'Access to 1 subject'),
-            'subject_price'  => Setting::get('plan_subject_price', 'From RM 150'),
-            'subject_per'    => Setting::get('plan_subject_per', '/subject'),
-            'subject_desc'   => Setting::get('plan_subject_desc', '2-4 subjects bundled'),
-            'premium_price'  => Setting::get('plan_premium_price', 'From RM 199'),
-            'premium_per'    => Setting::get('plan_premium_per', '/month'),
-            'premium_desc'   => Setting::get('plan_premium_desc', 'Unlimited subjects'),
+            'monthly_price' => Setting::get('plan_monthly_price', 'RM 99'),
+            'monthly_per' => Setting::get('plan_monthly_per', '/month'),
+            'monthly_desc' => Setting::get('plan_monthly_desc', 'Access to 1 subject'),
+            'subject_price' => Setting::get('plan_subject_price', 'From RM 150'),
+            'subject_per' => Setting::get('plan_subject_per', '/subject'),
+            'subject_desc' => Setting::get('plan_subject_desc', '2-4 subjects bundled'),
+            'premium_price' => Setting::get('plan_premium_price', 'From RM 199'),
+            'premium_per' => Setting::get('plan_premium_per', '/month'),
+            'premium_desc' => Setting::get('plan_premium_desc', 'Unlimited subjects'),
         ];
 
         $securitySettings = [
@@ -62,20 +62,20 @@ class SettingsController extends Controller
         ];
 
         $diagnostics = [
-            'php_version'       => PHP_VERSION,
-            'laravel_version'   => app()->version(),
-            'db_connection'     => config('database.default'),
-            'db_host'           => config('database.connections.mysql.host', '127.0.0.1'),
-            'db_name'           => config('database.connections.mysql.database', 'olympiascholar'),
-            'cache_driver'      => config('cache.default', 'file'),
-            'app_env'           => config('app.env', 'local'),
-            'app_debug'         => config('app.debug') ? 'Enabled' : 'Disabled',
-            'timezone'          => config('app.timezone', 'UTC'),
-            'total_users'       => User::count(),
-            'total_payments'    => Payment::count(),
-            'total_courses'     => Course::count(),
+            'php_version' => PHP_VERSION,
+            'laravel_version' => app()->version(),
+            'db_connection' => config('database.default'),
+            'db_host' => config('database.connections.mysql.host', '127.0.0.1'),
+            'db_name' => config('database.connections.mysql.database', 'olympiascholar'),
+            'cache_driver' => config('cache.default', 'file'),
+            'app_env' => config('app.env', 'local'),
+            'app_debug' => config('app.debug') ? 'Enabled' : 'Disabled',
+            'timezone' => config('app.timezone', 'UTC'),
+            'total_users' => User::count(),
+            'total_payments' => Payment::count(),
+            'total_courses' => Course::count(),
             'total_enrollments' => Enrollment::count(),
-            'total_settings'    => Setting::count(),
+            'total_settings' => Setting::count(),
         ];
 
         return view('admin.settings', compact(
@@ -89,11 +89,11 @@ class SettingsController extends Controller
 
         $validated = $request->validated();
 
-        $admin->name  = $validated['name'];
+        $admin->name = $validated['name'];
         $admin->email = $validated['email'];
         $admin->phone = $validated['phone'] ?? null;
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $admin->password = Hash::make($validated['password']);
         }
         $admin->save();
@@ -103,19 +103,19 @@ class SettingsController extends Controller
 
     public function updatePlatformSettings(UpdatePlatformSettingsRequest $request)
     {
-        Setting::set('platform_name',       $request->platform_name,               'general',   'Platform Name');
-        Setting::set('platform_tagline',    $request->platform_tagline ?? '',       'general',   'Platform Tagline');
-        Setting::set('support_email',       $request->support_email,               'general',   'Support Email');
-        Setting::set('support_phone',       $request->support_phone ?? '',          'general',   'Support Phone');
-        Setting::set('teacher_cut_pct',     $request->teacher_cut_pct,             'financial', 'Teacher Revenue Cut (%)');
-        Setting::set('currency_code',       $request->currency_code,               'financial', 'Currency Code');
-        Setting::set('currency_symbol',     $request->currency_symbol,             'financial', 'Currency Symbol');
+        Setting::set('platform_name', $request->platform_name, 'general', 'Platform Name');
+        Setting::set('platform_tagline', $request->platform_tagline ?? '', 'general', 'Platform Tagline');
+        Setting::set('support_email', $request->support_email, 'general', 'Support Email');
+        Setting::set('support_phone', $request->support_phone ?? '', 'general', 'Support Phone');
+        Setting::set('teacher_cut_pct', $request->teacher_cut_pct, 'financial', 'Teacher Revenue Cut (%)');
+        Setting::set('currency_code', $request->currency_code, 'financial', 'Currency Code');
+        Setting::set('currency_symbol', $request->currency_symbol, 'financial', 'Currency Symbol');
         if ($request->filled('invoice_due_days')) {
-            Setting::set('billing.invoice_due_days', (string)$request->invoice_due_days, 'billing', 'Invoice Due Days (after issue date)');
+            Setting::set('billing.invoice_due_days', (string) $request->invoice_due_days, 'billing', 'Invoice Due Days (after issue date)');
         }
         Setting::set('allow_registrations', $request->has('allow_registrations') ? '1' : '0', 'features', 'Allow Public Registrations');
-        Setting::set('allow_gig_claims',    $request->has('allow_gig_claims')    ? '1' : '0', 'features', 'Allow Teacher Gig Claiming');
-        Setting::set('maintenance_mode',    $request->has('maintenance_mode')    ? '1' : '0', 'features', 'Maintenance Mode');
+        Setting::set('allow_gig_claims', $request->has('allow_gig_claims') ? '1' : '0', 'features', 'Allow Teacher Gig Claiming');
+        Setting::set('maintenance_mode', $request->has('maintenance_mode') ? '1' : '0', 'features', 'Maintenance Mode');
 
         Setting::clearCache();
 
@@ -125,11 +125,11 @@ class SettingsController extends Controller
     public function updatePricingPlans(UpdatePricingPlansRequest $request)
     {
         Setting::set('plan_monthly_price', $request->monthly_price, 'pricing', 'Monthly Plan — Display Price');
-        Setting::set('plan_monthly_per',   $request->monthly_per,   'pricing', 'Monthly Plan — Billing Period');
+        Setting::set('plan_monthly_per', $request->monthly_per, 'pricing', 'Monthly Plan — Billing Period');
         Setting::set('plan_subject_price', $request->subject_price, 'pricing', 'Subject Package — Display Price');
-        Setting::set('plan_subject_per',   $request->subject_per,   'pricing', 'Subject Package — Billing Period');
+        Setting::set('plan_subject_per', $request->subject_per, 'pricing', 'Subject Package — Billing Period');
         Setting::set('plan_premium_price', $request->premium_price, 'pricing', 'Premium Plan — Display Price');
-        Setting::set('plan_premium_per',   $request->premium_per,   'pricing', 'Premium Plan — Billing Period');
+        Setting::set('plan_premium_per', $request->premium_per, 'pricing', 'Premium Plan — Billing Period');
 
         Setting::clearCache();
 

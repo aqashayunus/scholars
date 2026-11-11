@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordIsNotExpired;
+use App\Http\Middleware\EnsureStudentAccessNotRestricted;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\TeacherActiveMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,14 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'billing/billplz/webhook',
             'billing/gateway/webhook',
         ]);
-        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureUserIsActive::class);
-        $middleware->appendToGroup('web', \App\Http\Middleware\EnsurePasswordIsNotExpired::class);
+        $middleware->appendToGroup('web', EnsureUserIsActive::class);
+        $middleware->appendToGroup('web', EnsurePasswordIsNotExpired::class);
 
         $middleware->alias([
-            'role'                   => \App\Http\Middleware\RoleMiddleware::class,
-            'teacher.active'         => \App\Http\Middleware\TeacherActiveMiddleware::class,
-            'student.not_restricted' => \App\Http\Middleware\EnsureStudentAccessNotRestricted::class,
-            'user.active'            => \App\Http\Middleware\EnsureUserIsActive::class,
+            'role' => RoleMiddleware::class,
+            'teacher.active' => TeacherActiveMiddleware::class,
+            'student.not_restricted' => EnsureStudentAccessNotRestricted::class,
+            'user.active' => EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

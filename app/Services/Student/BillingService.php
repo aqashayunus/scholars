@@ -26,11 +26,11 @@ class BillingService
             ->get();
 
         $outstandingInvoices = $invoices->filter(fn ($inv) => in_array($inv->status, InvoiceStatus::unpaidStatuses(), true))->values();
-        $paidInvoices        = $invoices->filter(fn ($inv) => $inv->status === InvoiceStatus::Paid)->values();
-        $overdueInvoices     = $invoices->filter(fn ($inv) => $inv->status === InvoiceStatus::Overdue)->values();
+        $paidInvoices = $invoices->filter(fn ($inv) => $inv->status === InvoiceStatus::Paid)->values();
+        $overdueInvoices = $invoices->filter(fn ($inv) => $inv->status === InvoiceStatus::Overdue)->values();
 
         $totalOutstandingAmount = $outstandingInvoices->sum('total_amount');
-        $totalPaidAmount        = $paidInvoices->sum('total_amount');
+        $totalPaidAmount = $paidInvoices->sum('total_amount');
 
         $payments = Payment::where('student_id', $student->id)
             ->with(['invoice', 'payer'])
@@ -39,10 +39,10 @@ class BillingService
 
         // Public Company Bank details for manual bank transfer
         $bankDetails = [
-            'bank_name'      => Setting::get('company_bank_name', 'Maybank Islamic Berhad'),
-            'account_name'   => Setting::get('company_bank_account_name', 'Olympia Scholars Academy Sdn Bhd'),
+            'bank_name' => Setting::get('company_bank_name', 'Maybank Islamic Berhad'),
+            'account_name' => Setting::get('company_bank_account_name', 'Olympia Scholars Academy Sdn Bhd'),
             'account_number' => Setting::get('company_bank_account_number', '5642 8901 2345'),
-            'instructions'   => Setting::get('company_bank_instructions', 'Please include your Student Name & Invoice No in the transfer reference.'),
+            'instructions' => Setting::get('company_bank_instructions', 'Please include your Student Name & Invoice No in the transfer reference.'),
         ];
 
         return compact(
@@ -71,21 +71,21 @@ class BillingService
 
         if ($paymentMethod === 'bank_transfer') {
             $proofPath = $proofFile->store('payment_proofs', 'public');
-            $refNo = 'TXN-TRF-' . strtoupper(substr(md5(uniqid()), 0, 8));
+            $refNo = 'TXN-TRF-'.strtoupper(substr(md5(uniqid()), 0, 8));
 
             Payment::create([
-                'user_id'         => auth()->id(),
-                'invoice_id'      => $invoice->id,
-                'student_id'      => $student->id,
-                'payer_id'        => auth()->id(),
-                'payer_type'      => 'student',
-                'description'     => $invoice->title . ' (Bank Transfer Slip Uploaded)',
-                'amount'          => $invoice->total_amount,
-                'payment_method'  => 'bank_transfer',
+                'user_id' => auth()->id(),
+                'invoice_id' => $invoice->id,
+                'student_id' => $student->id,
+                'payer_id' => auth()->id(),
+                'payer_type' => 'student',
+                'description' => $invoice->title.' (Bank Transfer Slip Uploaded)',
+                'amount' => $invoice->total_amount,
+                'payment_method' => 'bank_transfer',
                 'proof_file_path' => $proofPath,
-                'reference_no'    => $refNo,
-                'status'          => PaymentStatus::Pending,
-                'paid_at'         => now(),
+                'reference_no' => $refNo,
+                'status' => PaymentStatus::Pending,
+                'paid_at' => now(),
             ]);
 
             // 'pending_verification' was never a valid Invoice status (enum:
@@ -99,22 +99,22 @@ class BillingService
             return ['status' => 'pending_verification', 'message' => 'Payment proof submitted successfully! Your payment is pending verification.'];
         }
 
-        $refNo = 'TXN-FPX-' . strtoupper(substr(md5(uniqid()), 0, 8));
-        $receiptNo = 'RCP-' . date('Y') . '-' . str_pad($invoice->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
+        $refNo = 'TXN-FPX-'.strtoupper(substr(md5(uniqid()), 0, 8));
+        $receiptNo = 'RCP-'.date('Y').'-'.str_pad($invoice->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
 
         Payment::create([
-            'user_id'        => auth()->id(),
-            'invoice_id'     => $invoice->id,
-            'student_id'     => $student->id,
-            'payer_id'       => auth()->id(),
-            'payer_type'     => 'student',
-            'description'    => $invoice->title,
-            'amount'         => $invoice->total_amount,
+            'user_id' => auth()->id(),
+            'invoice_id' => $invoice->id,
+            'student_id' => $student->id,
+            'payer_id' => auth()->id(),
+            'payer_type' => 'student',
+            'description' => $invoice->title,
+            'amount' => $invoice->total_amount,
             'payment_method' => $paymentMethod,
-            'reference_no'   => $refNo,
+            'reference_no' => $refNo,
             'receipt_number' => $receiptNo,
-            'status'         => PaymentStatus::Successful,
-            'paid_at'        => now(),
+            'status' => PaymentStatus::Successful,
+            'paid_at' => now(),
         ]);
 
         $invoice->status = InvoiceStatus::Paid;
@@ -122,9 +122,9 @@ class BillingService
 
         UserNotification::create([
             'user_id' => auth()->id(),
-            'type'    => 'payment',
-            'title'   => 'PAYMENT SUCCESSFUL',
-            'message' => 'Payment of RM ' . number_format($invoice->total_amount, 2) . " for '{$invoice->title}' has been processed. Receipt No: {$receiptNo}.",
+            'type' => 'payment',
+            'title' => 'PAYMENT SUCCESSFUL',
+            'message' => 'Payment of RM '.number_format($invoice->total_amount, 2)." for '{$invoice->title}' has been processed. Receipt No: {$receiptNo}.",
             'read_at' => null,
         ]);
 

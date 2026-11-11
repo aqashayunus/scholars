@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\InvoiceStatus;
+use App\Jobs\SendInvoiceReminderJob;
 use App\Models\Invoice;
 use App\Models\InvoiceReminder;
 use App\Models\Setting;
@@ -37,20 +38,22 @@ class ReminderService
             $invoice = $reminder->invoice;
 
             // Guard: skip if invoice is paid or cancelled
-            if (!$invoice || in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
+            if (! $invoice || in_array($invoice->status, [InvoiceStatus::Paid, InvoiceStatus::Cancelled])) {
                 $reminder->update(['status' => 'skipped']);
+
                 continue;
             }
 
             // Guard: skip if admin has disabled this reminder type
             $settingKey = $this->settingKeyForType($reminder->reminder_type);
-            if ($settingKey && !Setting::get($settingKey, '1')) {
+            if ($settingKey && ! Setting::get($settingKey, '1')) {
                 $reminder->update(['status' => 'skipped']);
+
                 continue;
             }
 
             // Dispatch to queue — the job itself will re-check invoice status before sending
-            \App\Jobs\SendInvoiceReminderJob::dispatch($reminder)->onQueue('emails');
+            SendInvoiceReminderJob::dispatch($reminder)->onQueue('emails');
 
             $dispatched++;
         }
@@ -69,7 +72,7 @@ class ReminderService
         $count = InvoiceReminder::where('invoice_id', $invoice->id)
             ->where('status', 'pending')
             ->update([
-                'status'  => 'skipped',
+                'status' => 'skipped',
                 'sent_at' => now(),
             ]);
 
@@ -86,14 +89,14 @@ class ReminderService
     private function settingKeyForType(string $type): ?string
     {
         return match ($type) {
-            'invoice_issued'  => 'billing.reminder_invoice_issued',
-            'due_7_days'      => 'billing.reminder_due_7_days',
-            'due_3_days'      => 'billing.reminder_due_3_days',
-            'due_today'       => 'billing.reminder_due_today',
-            'overdue_1_day'   => 'billing.reminder_overdue_1_day',
-            'overdue_3_days'  => 'billing.reminder_overdue_3_days',
-            'overdue_7_days'  => 'billing.reminder_overdue_7_days',
-            default           => null,
+            'invoice_issued' => 'billing.reminder_invoice_issued',
+            'due_7_days' => 'billing.reminder_due_7_days',
+            'due_3_days' => 'billing.reminder_due_3_days',
+            'due_today' => 'billing.reminder_due_today',
+            'overdue_1_day' => 'billing.reminder_overdue_1_day',
+            'overdue_3_days' => 'billing.reminder_overdue_3_days',
+            'overdue_7_days' => 'billing.reminder_overdue_7_days',
+            default => null,
         };
     }
 }

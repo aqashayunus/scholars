@@ -16,13 +16,13 @@ class ConversationFactory extends Factory
     public function definition(): array
     {
         return [
-            'type'            => 'direct',
-            'context_type'    => null,
-            'context_id'      => null,
-            'title'           => null,
+            'type' => 'direct',
+            'context_type' => null,
+            'context_id' => null,
+            'title' => null,
             'last_message_id' => null,
-            'status'          => 'active',
-            'created_by'      => User::factory(),
+            'status' => 'active',
+            'created_by' => User::factory(),
         ];
     }
 }

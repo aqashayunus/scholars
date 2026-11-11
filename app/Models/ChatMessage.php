@@ -58,8 +58,9 @@ class ChatMessage extends Model
     public function getInitialsAttribute(): string
     {
         $words = explode(' ', $this->sender?->name ?? '');
+
         return strtoupper(
-            substr($words[0], 0, 1) . (isset($words[1]) ? substr($words[1], 0, 1) : '')
+            substr($words[0], 0, 1).(isset($words[1]) ? substr($words[1], 0, 1) : '')
         );
     }
 }

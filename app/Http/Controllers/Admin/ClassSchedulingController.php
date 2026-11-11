@@ -22,7 +22,7 @@ class ClassSchedulingController extends Controller
     {
         $liveClass = $scheduling->createLiveClass($request->validated());
 
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
+        return redirect()->to(route('admin.dashboard').'#courses-live')
             ->with('success', "Live Class '{$liveClass->title}' scheduled successfully.");
     }
 
@@ -31,7 +31,7 @@ class ClassSchedulingController extends Controller
         $liveClass = LiveClass::findOrFail($id);
         $liveClass = $scheduling->updateLiveClass($liveClass, $request->validated());
 
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
+        return redirect()->to(route('admin.dashboard').'#courses-live')
             ->with('success', "Live Class '{$liveClass->title}' updated successfully.");
     }
 
@@ -39,7 +39,7 @@ class ClassSchedulingController extends Controller
     {
         $title = $scheduling->deleteLiveClass($id);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-live')
+        return redirect()->to(route('admin.dashboard').'#courses-live')
             ->with('success', "Live Class '{$title}' removed.");
     }
 
@@ -47,7 +47,7 @@ class ClassSchedulingController extends Controller
     {
         $recordedClass = $scheduling->createRecordedClass($request->validated(), $request);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
+        return redirect()->to(route('admin.dashboard').'#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' added to vault.");
     }
 
@@ -56,7 +56,7 @@ class ClassSchedulingController extends Controller
         $recordedClass = RecordedClass::findOrFail($id);
         $recordedClass = $scheduling->updateRecordedClass($recordedClass, $request->validated(), $request);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
+        return redirect()->to(route('admin.dashboard').'#courses-recorded')
             ->with('success', "Recorded Class '{$recordedClass->title}' updated successfully.");
     }
 
@@ -64,7 +64,7 @@ class ClassSchedulingController extends Controller
     {
         $title = $scheduling->deleteRecordedClass($id);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-recorded')
+        return redirect()->to(route('admin.dashboard').'#courses-recorded')
             ->with('success', "Recorded Class '{$title}' deleted.");
     }
 }

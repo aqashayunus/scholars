@@ -2,22 +2,26 @@
 
 namespace App\Mail;
 
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Setting;
 
 class WelcomeMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public User $user;
+
     public ?string $tempPassword;
+
     public string $platformName;
+
     public string $supportEmail;
+
     public string $supportPhone;
 
     /**
@@ -38,7 +42,7 @@ class WelcomeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Welcome to ' . $this->platformName . ' — Get Started Today!',
+            subject: 'Welcome to '.$this->platformName.' — Get Started Today!',
         );
     }
 

@@ -15,7 +15,9 @@ use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -31,9 +33,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  */
 class MessagingService
 {
-    public function __construct(private AuditLogService $auditLog)
-    {
-    }
+    public function __construct(private AuditLogService $auditLog) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. GLOBAL UNREAD COUNT (for FAB badge — polled every 15s when closed)
@@ -45,12 +45,12 @@ class MessagingService
 
         $count = ConversationParticipant::where('user_id', $me)
             ->whereNull('archived_at')
-            ->whereHas('conversation', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('conversation', fn ($q) => $q->whereNull('deleted_at'))
             ->get()
             ->filter(function ($p) use ($me) {
                 return ChatMessage::where('conversation_id', $p->conversation_id)
                     ->where('sender_id', '!=', $me)
-                    ->where('id', '>', (int)($p->last_read_message_id ?? 0))
+                    ->where('id', '>', (int) ($p->last_read_message_id ?? 0))
                     ->exists();
             })
             ->count();
@@ -64,7 +64,7 @@ class MessagingService
 
     public function getContacts(): JsonResponse
     {
-        $me   = auth()->user();
+        $me = auth()->user();
         $myId = $me->id;
 
         try {
@@ -78,14 +78,16 @@ class MessagingService
 
             $contacts = $participantRows->map(function ($p) use ($myId) {
                 $conv = $p->conversation;
-                if (!$conv || $conv->deleted_at !== null) return null;
+                if (! $conv || $conv->deleted_at !== null) {
+                    return null;
+                }
 
-                $other   = $conv->otherParticipant($myId);
+                $other = $conv->otherParticipant($myId);
                 $lastMsg = $conv->lastMessage;
 
                 $unread = ChatMessage::where('conversation_id', $conv->id)
                     ->where('sender_id', '!=', $myId)
-                    ->where('id', '>', (int)($p->last_read_message_id ?? 0))
+                    ->where('id', '>', (int) ($p->last_read_message_id ?? 0))
                     ->count();
 
                 // Educational context preview if available
@@ -96,31 +98,32 @@ class MessagingService
                 }
 
                 return [
-                    'conversation_id'  => $conv->id,
-                    'contact_id'       => $other?->id,
-                    'contact_name'     => $other?->name ?? $conv->title ?? 'Support Desk',
-                    'contact_role'     => $other?->role ?? 'support',
+                    'conversation_id' => $conv->id,
+                    'contact_id' => $other?->id,
+                    'contact_name' => $other?->name ?? $conv->title ?? 'Support Desk',
+                    'contact_role' => $other?->role ?? 'support',
                     'contact_initials' => $this->initials($other?->name ?? ($conv->title ?? 'S')),
-                    'conversation_type'=> $conv->type,
-                    'context_label'    => $contextLabel,
-                    'last_message'     => $lastMsg
+                    'conversation_type' => $conv->type,
+                    'context_label' => $contextLabel,
+                    'last_message' => $lastMsg
                         ? ($lastMsg->type === 'attachment'
-                            ? '[Attachment: ' . ($lastMsg->attachments->first()?->original_name ?? 'File') . ']'
+                            ? '[Attachment: '.($lastMsg->attachments->first()?->original_name ?? 'File').']'
                             : Str::limit($lastMsg->body ?? '', 50))
                         : 'No messages yet',
-                    'last_time'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
-                    'last_date'        => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
-                    'unread'           => $unread,
-                    'status'           => $conv->status,
-                    'is_muted'         => $p->muted_at !== null,
+                    'last_time' => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+                    'last_date' => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
+                    'unread' => $unread,
+                    'status' => $conv->status,
+                    'is_muted' => $p->muted_at !== null,
                 ];
             })->filter()->sortByDesc(function ($c) {
-                return ($c['last_date'] ?? '2000-01-01') . ' ' . ($c['last_time'] ?? '00:00 AM');
+                return ($c['last_date'] ?? '2000-01-01').' '.($c['last_time'] ?? '00:00 AM');
             })->values();
 
             return response()->json($contacts);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[MessagingService] getContacts error: ' . $e->getMessage());
+            Log::error('[MessagingService] getContacts error: '.$e->getMessage());
+
             return response()->json([]);
         }
     }
@@ -135,14 +138,14 @@ class MessagingService
         $directory = collect();
 
         // Always include School Admin support for non-admin users
-        if (!$me->isAdmin()) {
+        if (! $me->isAdmin()) {
             $admins = User::where('role', 'admin')->where('is_active', true)->get()->map(function ($admin) {
                 return [
-                    'contact_id'       => $admin->id,
-                    'contact_name'     => $admin->name,
-                    'contact_role'     => 'admin',
+                    'contact_id' => $admin->id,
+                    'contact_name' => $admin->name,
+                    'contact_role' => 'admin',
                     'contact_initials' => $this->initials($admin->name),
-                    'context_label'    => 'School Administration & Support',
+                    'context_label' => 'School Administration & Support',
                 ];
             });
             $directory = $directory->concat($admins);
@@ -158,26 +161,28 @@ class MessagingService
                     ->get()
                     ->map(function ($e) {
                         $teacherUser = $e->course?->teacher?->user;
-                        if (!$teacherUser) return null;
+                        if (! $teacherUser) {
+                            return null;
+                        }
 
                         return [
-                            'contact_id'       => $teacherUser->id,
-                            'contact_name'     => $teacherUser->name,
-                            'contact_role'     => 'teacher',
+                            'contact_id' => $teacherUser->id,
+                            'contact_name' => $teacherUser->name,
+                            'contact_role' => 'teacher',
                             'contact_initials' => $this->initials($teacherUser->name),
-                            'context_label'    => 'Teacher • ' . ($e->course?->title ?? 'Course'),
-                            'course_id'        => $e->course_id,
+                            'context_label' => 'Teacher • '.($e->course?->title ?? 'Course'),
+                            'course_id' => $e->course_id,
                         ];
                     })->filter();
 
                 $directory = $directory->concat($teachers);
 
-                $parents = $this->activeGuardiansOf($student)->map(fn($parent) => [
-                    'contact_id'       => $parent->id,
-                    'contact_name'     => $parent->name,
-                    'contact_role'     => 'parent',
+                $parents = $this->activeGuardiansOf($student)->map(fn ($parent) => [
+                    'contact_id' => $parent->id,
+                    'contact_name' => $parent->name,
+                    'contact_role' => 'parent',
                     'contact_initials' => $this->initials($parent->name),
-                    'context_label'    => 'Parent / Guardian',
+                    'context_label' => 'Parent / Guardian',
                 ]);
                 $directory = $directory->concat($parents);
             }
@@ -187,7 +192,7 @@ class MessagingService
         if ($me->isTeacher()) {
             $teacher = $me->teacherProfile;
             if ($teacher) {
-                $enrollments = Enrollment::whereHas('course', fn($q) => $q->where('teacher_id', $teacher->id))
+                $enrollments = Enrollment::whereHas('course', fn ($q) => $q->where('teacher_id', $teacher->id))
                     ->with(['student.user', 'student.parents', 'course'])
                     ->get();
 
@@ -195,12 +200,12 @@ class MessagingService
                     $studentUser = $e->student?->user;
                     if ($studentUser) {
                         $directory->push([
-                            'contact_id'       => $studentUser->id,
-                            'contact_name'     => $studentUser->name,
-                            'contact_role'     => 'student',
+                            'contact_id' => $studentUser->id,
+                            'contact_name' => $studentUser->name,
+                            'contact_role' => 'student',
                             'contact_initials' => $this->initials($studentUser->name),
-                            'context_label'    => 'Student • ' . ($e->course?->title ?? 'Class'),
-                            'course_id'        => $e->course_id,
+                            'context_label' => 'Student • '.($e->course?->title ?? 'Class'),
+                            'course_id' => $e->course_id,
                         ]);
                     }
 
@@ -208,12 +213,12 @@ class MessagingService
                     if ($e->student && $e->student->parents) {
                         foreach ($e->student->parents as $parent) {
                             $directory->push([
-                                'contact_id'       => $parent->id,
-                                'contact_name'     => $parent->name,
-                                'contact_role'     => 'parent',
+                                'contact_id' => $parent->id,
+                                'contact_name' => $parent->name,
+                                'contact_role' => 'parent',
                                 'contact_initials' => $this->initials($parent->name),
-                                'context_label'    => 'Parent of ' . ($studentUser?->name ?? 'Student'),
-                                'course_id'        => $e->course_id,
+                                'context_label' => 'Parent of '.($studentUser?->name ?? 'Student'),
+                                'course_id' => $e->course_id,
                             ]);
                         }
                     }
@@ -227,11 +232,11 @@ class MessagingService
             foreach ($children as $child) {
                 if ($child->user) {
                     $directory->push([
-                        'contact_id'       => $child->user->id,
-                        'contact_name'     => $child->user->name,
-                        'contact_role'     => 'student',
+                        'contact_id' => $child->user->id,
+                        'contact_name' => $child->user->name,
+                        'contact_role' => 'student',
                         'contact_initials' => $this->initials($child->user->name),
-                        'context_label'    => 'Your Child',
+                        'context_label' => 'Your Child',
                     ]);
                 }
 
@@ -239,12 +244,12 @@ class MessagingService
                     $teacherUser = $e->course?->teacher?->user;
                     if ($teacherUser) {
                         $directory->push([
-                            'contact_id'       => $teacherUser->id,
-                            'contact_name'     => $teacherUser->name,
-                            'contact_role'     => 'teacher',
+                            'contact_id' => $teacherUser->id,
+                            'contact_name' => $teacherUser->name,
+                            'contact_role' => 'teacher',
                             'contact_initials' => $this->initials($teacherUser->name),
-                            'context_label'    => 'Teacher of ' . ($child->user?->name ?? 'Child') . ' (' . ($e->course?->title ?? '') . ')',
-                            'course_id'        => $e->course_id,
+                            'context_label' => 'Teacher of '.($child->user?->name ?? 'Child').' ('.($e->course?->title ?? '').')',
+                            'course_id' => $e->course_id,
                         ]);
                     }
                 }
@@ -254,11 +259,11 @@ class MessagingService
         // Admin: Full school directory
         if ($me->isAdmin()) {
             $search = $request->query('search');
-            $role   = $request->query('role');
+            $role = $request->query('role');
 
             $query = User::where('id', '!=', $me->id)->where('is_active', true);
             if ($search) {
-                $query->where(fn($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
+                $query->where(fn ($q) => $q->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"));
             }
             if ($role) {
                 $query->where('role', $role);
@@ -266,11 +271,11 @@ class MessagingService
 
             $users = $query->limit(40)->get()->map(function ($u) {
                 return [
-                    'contact_id'       => $u->id,
-                    'contact_name'     => $u->name,
-                    'contact_role'     => $u->role,
+                    'contact_id' => $u->id,
+                    'contact_name' => $u->name,
+                    'contact_role' => $u->role,
                     'contact_initials' => $this->initials($u->name),
-                    'context_label'    => ucfirst($u->role) . ' • ' . $u->email,
+                    'context_label' => ucfirst($u->role).' • '.$u->email,
                 ];
             });
 
@@ -291,7 +296,7 @@ class MessagingService
     {
         $request->validate(['contact_id' => 'required|exists:users,id']);
 
-        $me        = auth()->user();
+        $me = auth()->user();
         $contactId = (int) $request->contact_id;
 
         if ($me->id === $contactId) {
@@ -307,8 +312,8 @@ class MessagingService
         try {
             // Find existing direct 1-to-1 conversation (including soft-deleted)
             $existing = Conversation::withTrashed()
-                ->whereHas('participants', fn($q) => $q->where('user_id', $me->id))
-                ->whereHas('participants', fn($q) => $q->where('user_id', $contactId))
+                ->whereHas('participants', fn ($q) => $q->where('user_id', $me->id))
+                ->whereHas('participants', fn ($q) => $q->where('user_id', $contactId))
                 ->whereNotIn('type', ['system'])
                 ->first();
 
@@ -316,25 +321,26 @@ class MessagingService
                 if ($existing->trashed()) {
                     $existing->restore();
                 }
+
                 return response()->json(['conversation_id' => $existing->id]);
             }
 
             $contact = User::findOrFail($contactId);
-            $type    = $this->resolveConversationType($me, $contact);
+            $type = $this->resolveConversationType($me, $contact);
 
             $conv = DB::transaction(function () use ($me, $contact, $type) {
                 try {
                     $conv = Conversation::create([
-                        'type'       => $type,
-                        'status'     => 'open',
+                        'type' => $type,
+                        'status' => 'open',
                         'created_by' => $me->id,
                     ]);
                 } catch (\Throwable $e) {
                     // Fallback to 'direct' if legacy database ENUM lacks specific types (e.g. student_admin)
                     if (str_contains($e->getMessage(), 'Data truncated for column') || str_contains($e->getMessage(), '1265')) {
                         $conv = Conversation::create([
-                            'type'       => 'direct',
-                            'status'     => 'open',
+                            'type' => 'direct',
+                            'status' => 'open',
                             'created_by' => $me->id,
                         ]);
                     } else {
@@ -352,8 +358,8 @@ class MessagingService
 
             return response()->json(['conversation_id' => $conv->id], 201);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[MessagingService] findOrCreateConversation error: ' . $e->getMessage(), [
-                'user_id'    => $me->id,
+            Log::error('[MessagingService] findOrCreateConversation error: '.$e->getMessage(), [
+                'user_id' => $me->id,
                 'contact_id' => $contactId,
             ]);
 
@@ -372,7 +378,7 @@ class MessagingService
 
     public function getMessages(Request $request, int $conversationId): JsonResponse
     {
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
 
         abort_unless($conv->hasParticipant($me), 403, 'Unauthorized.');
@@ -425,20 +431,20 @@ class MessagingService
         $otherParticipant = ConversationParticipant::where('conversation_id', $conversationId)
             ->where('user_id', '!=', $me)
             ->first();
-        $otherLastReadId = (int)($otherParticipant?->last_read_message_id ?? 0);
+        $otherLastReadId = (int) ($otherParticipant?->last_read_message_id ?? 0);
 
         $directMaxRead = ChatMessageRead::whereIn('message_id', function ($q) use ($conversationId, $me) {
             $q->select('id')->from('chat_messages')->where('conversation_id', $conversationId)->where('sender_id', $me);
         })->where('user_id', '!=', $me)->max('message_id');
 
-        $otherLastReadId = max($otherLastReadId, (int)($directMaxRead ?? 0));
+        $otherLastReadId = max($otherLastReadId, (int) ($directMaxRead ?? 0));
 
-        $formatted = $messages->map(fn($m) => $this->formatMessage($m, $me));
+        $formatted = $messages->map(fn ($m) => $this->formatMessage($m, $me));
 
         return response()->json([
-            'messages'           => $formatted,
-            'next_cursor'        => $messages->isNotEmpty() ? $messages->max('id') : $sinceId,
-            'has_more'           => $sinceId === 0 && ChatMessage::where('conversation_id', $conversationId)->count() > $perPage,
+            'messages' => $formatted,
+            'next_cursor' => $messages->isNotEmpty() ? $messages->max('id') : $sinceId,
+            'has_more' => $sinceId === 0 && ChatMessage::where('conversation_id', $conversationId)->count() > $perPage,
             'other_last_read_id' => $otherLastReadId,
         ]);
     }
@@ -449,12 +455,12 @@ class MessagingService
 
     public function getOlderMessages(Request $request, int $conversationId): JsonResponse
     {
-        $me       = auth()->id();
-        $conv     = Conversation::findOrFail($conversationId);
+        $me = auth()->id();
+        $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403, 'Unauthorized.');
 
         $beforeId = (int) $request->query('before_id', PHP_INT_MAX);
-        $perPage  = 20;
+        $perPage = 20;
 
         $messages = ChatMessage::where('conversation_id', $conversationId)
             ->with(['sender', 'attachments', 'reads'])
@@ -466,7 +472,7 @@ class MessagingService
             ->values();
 
         return response()->json([
-            'messages' => $messages->map(fn($m) => $this->formatMessage($m, $me)),
+            'messages' => $messages->map(fn ($m) => $this->formatMessage($m, $me)),
             'has_more' => ChatMessage::where('conversation_id', $conversationId)->where('id', '<', $messages->first()?->id ?? 0)->exists(),
         ]);
     }
@@ -478,29 +484,29 @@ class MessagingService
     public function sendMessage(Request $request, int $conversationId): JsonResponse
     {
         // Rate limiting: max 60 messages/minute per user
-        $key = 'chat_send:' . auth()->id();
+        $key = 'chat_send:'.auth()->id();
         if (RateLimiter::tooManyAttempts($key, 60)) {
             return response()->json(['error' => 'Too many messages sent. Please slow down.'], 429);
         }
         RateLimiter::hit($key, 60);
 
         $request->validate([
-            'body'        => 'required|string|max:5000',
+            'body' => 'required|string|max:5000',
             'reply_to_id' => 'nullable|exists:chat_messages,id',
         ]);
 
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403, 'Unauthorized.');
 
         $message = DB::transaction(function () use ($request, $me, $conv) {
             $msg = ChatMessage::create([
                 'conversation_id' => $conv->id,
-                'sender_id'       => $me,
-                'body'            => trim($request->body),
-                'type'            => 'text',
-                'reply_to_id'     => $request->reply_to_id,
-                'status'          => 'sent',
+                'sender_id' => $me,
+                'body' => trim($request->body),
+                'type' => 'text',
+                'reply_to_id' => $request->reply_to_id,
+                'status' => 'sent',
             ]);
 
             // Update conversation pointer and participant read tracker
@@ -522,7 +528,7 @@ class MessagingService
     public function uploadAttachment(Request $request, int $conversationId): JsonResponse
     {
         // Rate limiting: 10 uploads/min
-        $key = 'chat_upload:' . auth()->id();
+        $key = 'chat_upload:'.auth()->id();
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return response()->json(['error' => 'Upload rate limit reached. Please wait a moment.'], 429);
         }
@@ -532,15 +538,15 @@ class MessagingService
             'file' => 'required|file|max:10240|mimes:jpeg,jpg,png,webp,pdf,doc,docx,xlsx',
         ]);
 
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403, 'Unauthorized.');
 
-        $file         = $request->file('file');
+        $file = $request->file('file');
         $originalName = $file->getClientOriginalName();
-        $mimeType     = $file->getMimeType();
-        $sizeBytes    = $file->getSize();
-        $checksum     = hash_file('sha256', $file->getRealPath());
+        $mimeType = $file->getMimeType();
+        $sizeBytes = $file->getSize();
+        $checksum = hash_file('sha256', $file->getRealPath());
 
         // Store privately inside storage/app/chat_attachments/{conversationId}/
         $storedPath = $file->store("chat_attachments/{$conversationId}", 'local');
@@ -548,20 +554,20 @@ class MessagingService
         $message = DB::transaction(function () use ($conv, $me, $storedPath, $originalName, $mimeType, $sizeBytes, $checksum) {
             $msg = ChatMessage::create([
                 'conversation_id' => $conv->id,
-                'sender_id'       => $me,
-                'body'            => $originalName,
-                'type'            => 'attachment',
-                'status'          => 'sent',
+                'sender_id' => $me,
+                'body' => $originalName,
+                'type' => 'attachment',
+                'status' => 'sent',
             ]);
 
             ChatMessageAttachment::create([
-                'message_id'    => $msg->id,
-                'disk'          => 'local',
-                'path'          => $storedPath,
+                'message_id' => $msg->id,
+                'disk' => 'local',
+                'path' => $storedPath,
                 'original_name' => $originalName,
-                'mime_type'     => $mimeType,
-                'size_bytes'    => $sizeBytes,
-                'checksum'      => $checksum,
+                'mime_type' => $mimeType,
+                'size_bytes' => $sizeBytes,
+                'checksum' => $checksum,
             ]);
 
             $conv->update(['last_message_id' => $msg->id]);
@@ -578,28 +584,28 @@ class MessagingService
     public function downloadAttachment(int $attachmentId): BinaryFileResponse|JsonResponse
     {
         $attachment = ChatMessageAttachment::with('message.conversation')->findOrFail($attachmentId);
-        $conv       = $attachment->message?->conversation;
-        $me         = auth()->user();
+        $conv = $attachment->message?->conversation;
+        $me = auth()->user();
 
-        if (!$conv) {
+        if (! $conv) {
             return response()->json(['error' => 'File not found.'], 404);
         }
 
         // Authorization check: participant, parent of student participant, or admin
         $isParticipant = $conv->hasParticipant($me->id);
-        $isAdmin       = $me->isAdmin();
-        $isMonParent   = false;
+        $isAdmin = $me->isAdmin();
+        $isMonParent = false;
 
         if ($me->isParent()) {
             $childUserIds = $me->studentChildren()->with('user')->get()->pluck('user.id')->filter()->all();
-            $isMonParent  = $conv->participants()->whereIn('user_id', $childUserIds)->exists();
+            $isMonParent = $conv->participants()->whereIn('user_id', $childUserIds)->exists();
         }
 
-        if (!$isParticipant && !$isAdmin && !$isMonParent) {
+        if (! $isParticipant && ! $isAdmin && ! $isMonParent) {
             return response()->json(['error' => 'Access denied to this attachment.'], 403);
         }
 
-        if (!Storage::disk($attachment->disk)->exists($attachment->path)) {
+        if (! Storage::disk($attachment->disk)->exists($attachment->path)) {
             return response()->json(['error' => 'Attachment file does not exist on disk.'], 404);
         }
 
@@ -615,7 +621,7 @@ class MessagingService
 
     public function setTyping(Request $request, int $conversationId): JsonResponse
     {
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403);
 
@@ -630,7 +636,7 @@ class MessagingService
 
     public function getTyping(int $conversationId): JsonResponse
     {
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403);
 
@@ -684,7 +690,7 @@ class MessagingService
 
     public function clearChat(int $conversationId): JsonResponse
     {
-        $me   = auth()->id();
+        $me = auth()->id();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me), 403, 'Unauthorized.');
 
@@ -698,11 +704,11 @@ class MessagingService
         ConversationParticipant::where('conversation_id', $conversationId)
             ->update([
                 'last_read_message_id' => null,
-                'last_read_at'         => now(),
+                'last_read_at' => now(),
             ]);
 
         return response()->json([
-            'ok'      => true,
+            'ok' => true,
             'message' => 'Chat cleared successfully.',
         ]);
     }
@@ -735,7 +741,7 @@ class MessagingService
         }
 
         return response()->json([
-            'ok'      => true,
+            'ok' => true,
             'message' => 'All conversations and chat blocks have been cleared.',
         ]);
     }
@@ -746,7 +752,7 @@ class MessagingService
 
     public function deleteConversation(int $conversationId): JsonResponse
     {
-        $me   = auth()->user();
+        $me = auth()->user();
         $conv = Conversation::findOrFail($conversationId);
         abort_unless($conv->hasParticipant($me->id) || $me->isAdmin(), 403, 'Unauthorized.');
 
@@ -755,7 +761,7 @@ class MessagingService
         $conv->delete();
 
         return response()->json([
-            'ok'      => true,
+            'ok' => true,
             'message' => 'Conversation deleted successfully.',
         ]);
     }
@@ -772,12 +778,12 @@ class MessagingService
         $children = $me->studentChildren()
             ->with('user')
             ->get()
-            ->map(fn($s) => [
+            ->map(fn ($s) => [
                 'student_id' => $s->id,
-                'user_id'    => $s->user?->id,
-                'name'       => $s->user?->name ?? 'Unknown',
-                'initials'   => $this->initials($s->user?->name ?? '?'),
-                'level'      => $s->level,
+                'user_id' => $s->user?->id,
+                'name' => $s->user?->name ?? 'Unknown',
+                'initials' => $this->initials($s->user?->name ?? '?'),
+                'level' => $s->level,
                 'relationship' => $s->pivot->relationship,
             ]);
 
@@ -803,21 +809,23 @@ class MessagingService
             ->get();
 
         $list = $participantRows->map(function ($p) use ($childUserId) {
-            $conv  = $p->conversation;
-            if (!$conv || $conv->deleted_at !== null) return null;
+            $conv = $p->conversation;
+            if (! $conv || $conv->deleted_at !== null) {
+                return null;
+            }
 
             $other = $conv->otherParticipant($childUserId);
             $lastMsg = $conv->lastMessage;
 
             return [
                 'conversation_id' => $conv->id,
-                'contact_name'    => $other?->name ?? $conv->title ?? 'Support',
-                'contact_role'    => $other?->role ?? 'support',
-                'contact_initials'=> $this->initials($other?->name ?? '?'),
-                'last_message'    => $lastMsg
+                'contact_name' => $other?->name ?? $conv->title ?? 'Support',
+                'contact_role' => $other?->role ?? 'support',
+                'contact_initials' => $this->initials($other?->name ?? '?'),
+                'last_message' => $lastMsg
                     ? ($lastMsg->type === 'attachment' ? '[Attachment]' : Str::limit($lastMsg->body ?? '', 50))
                     : 'No messages yet',
-                'last_time'       => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+                'last_time' => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
             ];
         })->filter()->values();
 
@@ -858,14 +866,14 @@ class MessagingService
                 ->orderBy('id', 'asc')
                 ->get();
 
-        $formatted = $messages->map(fn($m) => $this->formatMessage($m, $childUserId));
+        $formatted = $messages->map(fn ($m) => $this->formatMessage($m, $childUserId));
 
         return response()->json([
-            'messages'    => $formatted,
+            'messages' => $formatted,
             'next_cursor' => $messages->isNotEmpty() ? $messages->max('id') : $sinceId,
-            'has_more'    => $sinceId === 0 && $conv->messages()->count() > $perPage,
-            'monitoring'  => [
-                'child_name'     => $student->user?->name,
+            'has_more' => $sinceId === 0 && $conv->messages()->count() > $perPage,
+            'monitoring' => [
+                'child_name' => $student->user?->name,
                 'child_initials' => $this->initials($student->user?->name ?? '?'),
             ],
         ]);
@@ -881,15 +889,15 @@ class MessagingService
 
         $search = $request->query('search');
         $status = $request->query('status');
-        $role   = $request->query('role'); // student, teacher, parent, support
+        $role = $request->query('role'); // student, teacher, parent, support
 
         $query = Conversation::with(['participants.user', 'lastMessage.sender'])
             ->whereNull('deleted_at');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereHas('participants.user', fn($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
-                  ->orWhere('title', 'like', "%{$search}%");
+                $q->whereHas('participants.user', fn ($sq) => $sq->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))
+                    ->orWhere('title', 'like', "%{$search}%");
             });
         }
 
@@ -901,7 +909,7 @@ class MessagingService
             if ($role === 'support') {
                 $query->where('type', 'support');
             } else {
-                $query->whereHas('participants.user', fn($q) => $q->where('role', $role));
+                $query->whereHas('participants.user', fn ($q) => $q->where('role', $role));
             }
         }
 
@@ -909,10 +917,10 @@ class MessagingService
             $convs = $query->latest('updated_at')->limit(60)->get();
 
             $list = $convs->map(function ($conv) {
-                $parts = $conv->participants->map(fn($p) => [
-                    'id'       => $p->user?->id,
-                    'name'     => $p->user?->name ?? 'Unknown',
-                    'role'     => $p->user?->role ?? 'user',
+                $parts = $conv->participants->map(fn ($p) => [
+                    'id' => $p->user?->id,
+                    'name' => $p->user?->name ?? 'Unknown',
+                    'role' => $p->user?->role ?? 'user',
                     'initials' => $this->initials($p->user?->name ?? '?'),
                 ]);
 
@@ -923,27 +931,28 @@ class MessagingService
                             ?? $conv->participants->first()?->user;
 
                 return [
-                    'conversation_id'   => $conv->id,
-                    'contact_id'        => $primaryUser?->id,
-                    'contact_name'      => $primaryUser?->name ?? ($conv->title ?? 'Conversation #' . $conv->id),
-                    'contact_role'      => $primaryUser?->role ?? 'direct',
-                    'contact_initials'  => $this->initials($primaryUser?->name ?? 'A'),
-                    'type'              => $conv->type,
-                    'status'            => $conv->status,
-                    'title'             => $conv->title,
-                    'participants'      => $parts,
-                    'last_message'      => $lastMsg
+                    'conversation_id' => $conv->id,
+                    'contact_id' => $primaryUser?->id,
+                    'contact_name' => $primaryUser?->name ?? ($conv->title ?? 'Conversation #'.$conv->id),
+                    'contact_role' => $primaryUser?->role ?? 'direct',
+                    'contact_initials' => $this->initials($primaryUser?->name ?? 'A'),
+                    'type' => $conv->type,
+                    'status' => $conv->status,
+                    'title' => $conv->title,
+                    'participants' => $parts,
+                    'last_message' => $lastMsg
                         ? ($lastMsg->type === 'attachment' ? '[Attachment]' : Str::limit($lastMsg->body ?? '', 55))
                         : 'No messages yet',
-                    'last_time'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
-                    'last_date'         => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
-                    'unread'            => 0,
+                    'last_time' => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+                    'last_date' => $lastMsg?->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
+                    'unread' => 0,
                 ];
             });
 
             return response()->json($list);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('[MessagingService] adminGetContacts error: ' . $e->getMessage());
+            Log::error('[MessagingService] adminGetContacts error: '.$e->getMessage());
+
             return response()->json([]);
         }
     }
@@ -970,38 +979,38 @@ class MessagingService
         $user = User::with(['studentProfile.enrollments.course', 'teacherProfile.courses', 'studentChildren.user'])->findOrFail($userId);
 
         $context = [
-            'id'       => $user->id,
-            'name'     => $user->name,
-            'email'    => $user->email,
-            'phone'    => $user->phone ?? 'Not provided',
-            'role'     => $user->role,
-            'active'   => $user->is_active,
-            'joined'   => $user->created_at->format('d M Y'),
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone ?? 'Not provided',
+            'role' => $user->role,
+            'active' => $user->is_active,
+            'joined' => $user->created_at->format('d M Y'),
         ];
 
         if ($user->isStudent()) {
             $student = $user->studentProfile;
             $context['student_details'] = [
-                'level'       => $student?->level ?? 'N/A',
-                'school'      => $student?->school_name ?? 'N/A',
-                'courses'     => $student?->enrollments->map(fn($e) => [
-                    'title'    => $e->course?->title ?? 'Class',
-                    'progress' => ($e->progress_pct ?? 0) . '%',
-                    'status'   => $e->status,
+                'level' => $student?->level ?? 'N/A',
+                'school' => $student?->school_name ?? 'N/A',
+                'courses' => $student?->enrollments->map(fn ($e) => [
+                    'title' => $e->course?->title ?? 'Class',
+                    'progress' => ($e->progress_pct ?? 0).'%',
+                    'status' => $e->status,
                 ]) ?? [],
             ];
         } elseif ($user->isTeacher()) {
             $teacher = $user->teacherProfile;
             $context['teacher_details'] = [
-                'qualification'   => $teacher?->qualification ?? 'N/A',
-                'specialization'  => $teacher?->specialization ?? 'General',
-                'experience'      => ($teacher?->experience_years ?? 0) . ' years',
-                'courses_count'   => $teacher?->courses->count() ?? 0,
+                'qualification' => $teacher?->qualification ?? 'N/A',
+                'specialization' => $teacher?->specialization ?? 'General',
+                'experience' => ($teacher?->experience_years ?? 0).' years',
+                'courses_count' => $teacher?->courses->count() ?? 0,
             ];
         } elseif ($user->isParent()) {
             $context['parent_details'] = [
-                'children' => $user->studentChildren->map(fn($c) => [
-                    'name'  => $c->user?->name ?? 'Child',
+                'children' => $user->studentChildren->map(fn ($c) => [
+                    'name' => $c->user?->name ?? 'Child',
                     'level' => $c->level,
                 ]),
             ];
@@ -1016,9 +1025,9 @@ class MessagingService
 
     private function formatMessage(ChatMessage $m, int $currentUserId): array
     {
-        $reads  = $m->reads ?? collect();
-        $isRead = $reads->where('user_id', '!=', (int)$m->sender_id)->isNotEmpty();
-        $isMine = (int)$m->sender_id === $currentUserId;
+        $reads = $m->reads ?? collect();
+        $isRead = $reads->where('user_id', '!=', (int) $m->sender_id)->isNotEmpty();
+        $isMine = (int) $m->sender_id === $currentUserId;
 
         // Blue tick system logic:
         // - 'read': Double blue ticks
@@ -1027,47 +1036,50 @@ class MessagingService
         $tickStatus = null;
         if ($isMine) {
             $tickStatus = match (true) {
-                $isRead                    => 'read',
+                $isRead => 'read',
                 $m->status === 'delivered' => 'delivered',
-                default                    => 'sent',
+                default => 'sent',
             };
         }
 
         return [
-            'id'              => $m->id,
-            'body'            => $m->body,
-            'type'            => $m->type,
-            'mine'            => $isMine,
-            'sender_id'       => (int)$m->sender_id,
-            'sender_name'     => $m->sender?->name,
-            'sender_role'     => $m->sender?->role,
+            'id' => $m->id,
+            'body' => $m->body,
+            'type' => $m->type,
+            'mine' => $isMine,
+            'sender_id' => (int) $m->sender_id,
+            'sender_name' => $m->sender?->name,
+            'sender_role' => $m->sender?->role,
             'sender_initials' => $this->initials($m->sender?->name ?? '?'),
-            'tick_status'     => $tickStatus,
-            'reply_to'        => $m->replyTo ? [
-                'id'   => $m->replyTo->id,
+            'tick_status' => $tickStatus,
+            'reply_to' => $m->replyTo ? [
+                'id' => $m->replyTo->id,
                 'body' => Str::limit($m->replyTo->body ?? '', 80),
             ] : null,
-            'attachments'     => ($m->attachments ?? collect())->map(fn($a) => [
-                'id'            => $a->id,
+            'attachments' => ($m->attachments ?? collect())->map(fn ($a) => [
+                'id' => $a->id,
                 'original_name' => $a->original_name,
-                'mime_type'     => $a->mime_type,
-                'is_image'      => $a->isImage(),
-                'human_size'    => $a->humanSize(),
-                'url'           => route('chat.attachment.download', $a->id),
+                'mime_type' => $a->mime_type,
+                'is_image' => $a->isImage(),
+                'human_size' => $a->humanSize(),
+                'url' => route('chat.attachment.download', $a->id),
             ])->values(),
-            'time'            => $m->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
-            'date'            => $m->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
-            'deleted'         => $m->deleted_at !== null,
+            'time' => $m->created_at?->timezone('Asia/Kuala_Lumpur')->format('g:i A'),
+            'date' => $m->created_at?->timezone('Asia/Kuala_Lumpur')->toDateString(),
+            'deleted' => $m->deleted_at !== null,
         ];
     }
 
     private function initials(?string $name): string
     {
-        if (!$name) return '?';
+        if (! $name) {
+            return '?';
+        }
         $words = explode(' ', trim($name));
         $first = strtoupper(substr($words[0] ?? '', 0, 1));
         $second = isset($words[1]) ? strtoupper(substr($words[1], 0, 1)) : '';
-        return $first . $second;
+
+        return $first.$second;
     }
 
     private function resolveConversationType(User $me, User $contact): string
@@ -1075,55 +1087,71 @@ class MessagingService
         return match (true) {
             $me->isStudent() && $contact->isTeacher() => 'student_teacher',
             $me->isTeacher() && $contact->isStudent() => 'student_teacher',
-            $me->isParent()  && $contact->isTeacher() => 'parent_teacher',
-            $me->isTeacher() && $contact->isParent()  => 'parent_teacher',
-            $me->isParent()  && $contact->isAdmin()   => 'parent_admin',
-            $me->isAdmin()   && $contact->isParent()  => 'parent_admin',
-            $me->isStudent() && $contact->isAdmin()   => 'student_admin',
-            $me->isAdmin()   && $contact->isStudent() => 'student_admin',
-            $me->isTeacher() && $contact->isAdmin()   => 'teacher_admin',
-            $me->isAdmin()   && $contact->isTeacher() => 'teacher_admin',
-            default                                   => 'direct',
+            $me->isParent() && $contact->isTeacher() => 'parent_teacher',
+            $me->isTeacher() && $contact->isParent() => 'parent_teacher',
+            $me->isParent() && $contact->isAdmin() => 'parent_admin',
+            $me->isAdmin() && $contact->isParent() => 'parent_admin',
+            $me->isStudent() && $contact->isAdmin() => 'student_admin',
+            $me->isAdmin() && $contact->isStudent() => 'student_admin',
+            $me->isTeacher() && $contact->isAdmin() => 'teacher_admin',
+            $me->isAdmin() && $contact->isTeacher() => 'teacher_admin',
+            default => 'direct',
         };
     }
 
     private function authorizeContact(User $me, int $contactId): ?string
     {
         $contact = User::find($contactId);
-        if (!$contact) return 'Contact not found.';
+        if (! $contact) {
+            return 'Contact not found.';
+        }
 
         // Admin has full clearance to start conversation with any user
         if ($me->isAdmin()) {
             return null;
         }
 
-        if (!$contact->is_active) return 'This account is currently inactive.';
+        if (! $contact->is_active) {
+            return 'This account is currently inactive.';
+        }
 
         if ($me->isStudent()) {
-            if ($contact->isAdmin()) return null;
+            if ($contact->isAdmin()) {
+                return null;
+            }
             if ($contact->isTeacher()) {
                 $enrolled = $me->studentProfile?->enrollments()
-                    ->whereHas('course.teacher', fn($q) => $q->where('user_id', $contactId))
+                    ->whereHas('course.teacher', fn ($q) => $q->where('user_id', $contactId))
                     ->exists();
-                if (!$enrolled) return 'You can only message teachers of your enrolled courses.';
+                if (! $enrolled) {
+                    return 'You can only message teachers of your enrolled courses.';
+                }
+
                 return null;
             }
             if ($contact->isParent()) {
-                if (!$this->isActiveGuardianOf($contact->id, $me->studentProfile?->id)) {
+                if (! $this->isActiveGuardianOf($contact->id, $me->studentProfile?->id)) {
                     return 'You can only message your own parent/guardian.';
                 }
+
                 return null;
             }
+
             return 'Students can only message enrolled teachers, admin, or their own parent/guardian.';
         }
 
         if ($me->isTeacher()) {
-            if ($contact->isAdmin()) return null;
+            if ($contact->isAdmin()) {
+                return null;
+            }
             if ($contact->isStudent()) {
                 $teaches = $contact->studentProfile?->enrollments()
-                    ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                    ->whereHas('course.teacher', fn ($q) => $q->where('user_id', $me->id))
                     ->exists();
-                if (!$teaches) return 'You can only message students enrolled in your courses.';
+                if (! $teaches) {
+                    return 'You can only message students enrolled in your courses.';
+                }
+
                 return null;
             }
             if ($contact->isParent()) {
@@ -1135,29 +1163,39 @@ class MessagingService
                 $teachesTheirChild = $contact->studentChildren()
                     ->wherePivot('status', 'active')
                     ->get()
-                    ->contains(fn($student) => $student->enrollments()
-                        ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                    ->contains(fn ($student) => $student->enrollments()
+                        ->whereHas('course.teacher', fn ($q) => $q->where('user_id', $me->id))
                         ->exists())
                     || $contact->children()
                         ->get()
-                        ->contains(fn($student) => $student->enrollments()
-                            ->whereHas('course.teacher', fn($q) => $q->where('user_id', $me->id))
+                        ->contains(fn ($student) => $student->enrollments()
+                            ->whereHas('course.teacher', fn ($q) => $q->where('user_id', $me->id))
                             ->exists());
-                if (!$teachesTheirChild) return 'You can only message parents of students enrolled in your courses.';
+                if (! $teachesTheirChild) {
+                    return 'You can only message parents of students enrolled in your courses.';
+                }
+
                 return null;
             }
+
             return 'Teachers can only message enrolled students, their parents, or admin.';
         }
 
         if ($me->isParent()) {
-            if ($contact->isAdmin()) return null;
-            if ($contact->isTeacher()) return null;
-            if ($contact->isStudent()) {
-                if (!$this->isActiveGuardianOf($me->id, $contact->studentProfile?->id)) {
-                    return 'You can only message your own children.';
-                }
+            if ($contact->isAdmin()) {
                 return null;
             }
+            if ($contact->isTeacher()) {
+                return null;
+            }
+            if ($contact->isStudent()) {
+                if (! $this->isActiveGuardianOf($me->id, $contact->studentProfile?->id)) {
+                    return 'You can only message your own children.';
+                }
+
+                return null;
+            }
+
             return 'Parents can only message teachers, admin, or their own children.';
         }
 
@@ -1177,12 +1215,18 @@ class MessagingService
      */
     private function isActiveGuardianOf(int $parentUserId, ?int $studentId): bool
     {
-        if (!$studentId) return false;
+        if (! $studentId) {
+            return false;
+        }
 
         $student = Student::find($studentId);
-        if (!$student) return false;
+        if (! $student) {
+            return false;
+        }
 
-        if ($student->parent_user_id === $parentUserId) return true;
+        if ($student->parent_user_id === $parentUserId) {
+            return true;
+        }
 
         return DB::table('parent_student')
             ->where('parent_user_id', $parentUserId)
@@ -1195,10 +1239,10 @@ class MessagingService
      * All ACTIVE children of a parent (legacy column + active pivot,
      * deduplicated), for surfacing in the chat directory.
      */
-    private function activeChildrenOf(User $parent): \Illuminate\Support\Collection
+    private function activeChildrenOf(User $parent): Collection
     {
         $legacy = $parent->children()->get();
-        $pivot  = $parent->studentChildren()->wherePivot('status', 'active')->get();
+        $pivot = $parent->studentChildren()->wherePivot('status', 'active')->get();
 
         return $legacy->concat($pivot)->unique('id')->values();
     }
@@ -1207,10 +1251,10 @@ class MessagingService
      * All ACTIVE guardians of a student (legacy column + active pivot,
      * deduplicated), for surfacing in the chat directory.
      */
-    private function activeGuardiansOf(Student $student): \Illuminate\Support\Collection
+    private function activeGuardiansOf(Student $student): Collection
     {
         $legacy = $student->parent_user_id ? User::where('id', $student->parent_user_id)->get() : collect();
-        $pivot  = $student->parents()->wherePivot('status', 'active')->get();
+        $pivot = $student->parents()->wherePivot('status', 'active')->get();
 
         return $legacy->concat($pivot)->unique('id')->values();
     }

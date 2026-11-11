@@ -15,22 +15,22 @@ class FeeStructureFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'                   => fake()->words(3, true) . ' Package',
-            'description'            => fake()->optional()->sentence(),
-            'amount'                 => fake()->randomFloat(2, 100, 600),
-            'education_level'        => 'All',
-            'frequency'              => 'monthly',
-            'is_active'              => true,
-            'student_id'             => null,
-            'package_type'           => 'individual',
-            'minimum_subjects'       => null,
-            'maximum_subjects'       => null,
-            'effective_from'         => null,
-            'effective_until'        => null,
-            'status'                 => 'active',
-            'version'                => 1,
+            'name' => fake()->words(3, true).' Package',
+            'description' => fake()->optional()->sentence(),
+            'amount' => fake()->randomFloat(2, 100, 600),
+            'education_level' => 'All',
+            'frequency' => 'monthly',
+            'is_active' => true,
+            'student_id' => null,
+            'package_type' => 'individual',
+            'minimum_subjects' => null,
+            'maximum_subjects' => null,
+            'effective_from' => null,
+            'effective_until' => null,
+            'status' => 'active',
+            'version' => 1,
             'parent_fee_structure_id' => null,
-            'is_stackable_discount'  => false,
+            'is_stackable_discount' => false,
         ];
     }
 }

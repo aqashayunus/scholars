@@ -10,13 +10,13 @@ return new class extends Migration
     {
         if (Schema::hasTable('teacher_applications')) {
             Schema::table('teacher_applications', function (Blueprint $table) {
-                if (!Schema::hasColumn('teacher_applications', 'certificate_path')) {
+                if (! Schema::hasColumn('teacher_applications', 'certificate_path')) {
                     $table->string('certificate_path')->nullable()->after('resume_path');
                 }
-                if (!Schema::hasColumn('teacher_applications', 'transcript_path')) {
+                if (! Schema::hasColumn('teacher_applications', 'transcript_path')) {
                     $table->string('transcript_path')->nullable()->after('certificate_path');
                 }
-                if (!Schema::hasColumn('teacher_applications', 'additional_document_path')) {
+                if (! Schema::hasColumn('teacher_applications', 'additional_document_path')) {
                     $table->string('additional_document_path')->nullable()->after('transcript_path');
                 }
             });
@@ -37,7 +37,7 @@ return new class extends Migration
                 if (Schema::hasColumn('teacher_applications', 'additional_document_path')) {
                     $columns[] = 'additional_document_path';
                 }
-                if (!empty($columns)) {
+                if (! empty($columns)) {
                     $table->dropColumn($columns);
                 }
             });

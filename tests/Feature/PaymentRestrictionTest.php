@@ -3,15 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\InvoiceStatus;
-use App\Models\Enrollment;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
 use App\Models\Payment;
-use App\Models\PaymentInvoice;
 use App\Models\Student;
 use App\Models\User;
 use App\Services\StudentAccessRestrictionService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,7 +18,9 @@ class PaymentRestrictionTest extends TestCase
     use RefreshDatabase;
 
     private User $parent;
+
     private Student $childPaid;
+
     private Student $childOverdue;
 
     protected function setUp(): void
@@ -31,90 +29,90 @@ class PaymentRestrictionTest extends TestCase
 
         // 1. Create Parent User
         $this->parent = User::factory()->create([
-            'name'     => 'Parent Abu',
-            'email'    => 'abu@parent.test',
-            'role'     => 'parent',
+            'name' => 'Parent Abu',
+            'email' => 'abu@parent.test',
+            'role' => 'parent',
             'password' => Hash::make('password'),
         ]);
 
         // 2. Create Child A (Paid)
         $childAUser = User::factory()->create([
-            'name'     => 'Child Ahmad',
-            'email'    => 'ahmad@student.test',
-            'role'     => 'student',
+            'name' => 'Child Ahmad',
+            'email' => 'ahmad@student.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
 
         $this->childPaid = Student::factory()->create([
-            'user_id'        => $childAUser->id,
+            'user_id' => $childAUser->id,
             'parent_user_id' => $this->parent->id,
-            'level'          => 'SPM',
-            'status'         => 'active',
+            'level' => 'SPM',
+            'status' => 'active',
         ]);
 
         // Link via pivot
         DB::table('parent_student')->insert([
             'parent_user_id' => $this->parent->id,
-            'student_id'     => $this->childPaid->id,
-            'relationship'   => 'Father',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $this->childPaid->id,
+            'relationship' => 'Father',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Invoice for Child A: Paid
         Invoice::factory()->create([
-            'student_id'      => $this->childPaid->id,
-            'invoice_number'  => 'INV-PAID-001',
-            'title'           => 'Tuition Fee - Child A',
-            'billing_period'  => 'September 2026',
-            'subtotal'        => 150.00,
-            'total_amount'    => 150.00,
-            'amount_paid'     => 150.00,
-            'issued_date'     => now()->subDays(10)->toDateString(),
-            'due_date'        => now()->subDays(3)->toDateString(),
-            'status'          => InvoiceStatus::Paid,
+            'student_id' => $this->childPaid->id,
+            'invoice_number' => 'INV-PAID-001',
+            'title' => 'Tuition Fee - Child A',
+            'billing_period' => 'September 2026',
+            'subtotal' => 150.00,
+            'total_amount' => 150.00,
+            'amount_paid' => 150.00,
+            'issued_date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(3)->toDateString(),
+            'status' => InvoiceStatus::Paid,
         ]);
 
         // 3. Create Child B (Overdue)
         $childBUser = User::factory()->create([
-            'name'     => 'Child Ali',
-            'email'    => 'ali@student.test',
-            'role'     => 'student',
+            'name' => 'Child Ali',
+            'email' => 'ali@student.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
 
         $this->childOverdue = Student::factory()->create([
-            'user_id'        => $childBUser->id,
+            'user_id' => $childBUser->id,
             'parent_user_id' => $this->parent->id,
-            'level'          => 'PT3',
-            'status'         => 'active',
+            'level' => 'PT3',
+            'status' => 'active',
         ]);
 
         // Link via pivot
         DB::table('parent_student')->insert([
             'parent_user_id' => $this->parent->id,
-            'student_id'     => $this->childOverdue->id,
-            'relationship'   => 'Father',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $this->childOverdue->id,
+            'relationship' => 'Father',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Invoice for Child B: Overdue (past due date)
         Invoice::factory()->create([
-            'student_id'      => $this->childOverdue->id,
-            'invoice_number'  => 'INV-OVERDUE-001',
-            'title'           => 'Tuition Fee - Child B',
-            'billing_period'  => 'September 2026',
-            'subtotal'        => 200.00,
-            'total_amount'    => 200.00,
-            'amount_paid'     => 0.00,
-            'issued_date'     => now()->subDays(15)->toDateString(),
-            'due_date'        => now()->subDays(5)->toDateString(),
-            'status'          => InvoiceStatus::Overdue,
+            'student_id' => $this->childOverdue->id,
+            'invoice_number' => 'INV-OVERDUE-001',
+            'title' => 'Tuition Fee - Child B',
+            'billing_period' => 'September 2026',
+            'subtotal' => 200.00,
+            'total_amount' => 200.00,
+            'amount_paid' => 0.00,
+            'issued_date' => now()->subDays(15)->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(),
+            'status' => InvoiceStatus::Overdue,
         ]);
     }
 
@@ -189,7 +187,7 @@ class PaymentRestrictionTest extends TestCase
     {
         // Mark Child A invoice as overdue too
         Invoice::where('student_id', $this->childPaid->id)->update([
-            'status'      => InvoiceStatus::Overdue,
+            'status' => InvoiceStatus::Overdue,
             'amount_paid' => 0.00,
         ]);
 
@@ -305,9 +303,9 @@ class PaymentRestrictionTest extends TestCase
     public function test_parent_cannot_access_unauthorized_child(): void
     {
         $otherParent = User::factory()->create([
-            'name'     => 'Other Parent',
-            'email'    => 'other@parent.test',
-            'role'     => 'parent',
+            'name' => 'Other Parent',
+            'email' => 'other@parent.test',
+            'role' => 'parent',
             'password' => Hash::make('password'),
         ]);
 

@@ -35,7 +35,7 @@ return new class extends Migration
                 'category',
                 'stream_package',
                 'code',
-                'order'
+                'order',
             ]);
         });
     }

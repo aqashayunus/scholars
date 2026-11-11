@@ -19,6 +19,7 @@ class PayChildInvoiceTest extends TestCase
     use RefreshDatabase;
 
     private User $parent;
+
     private Student $student;
 
     protected function setUp(): void
@@ -26,23 +27,23 @@ class PayChildInvoiceTest extends TestCase
         parent::setUp();
 
         $this->parent = User::factory()->create(['name' => 'Parent', 'email' => 'parent@pci.test', 'role' => 'parent', 'password' => Hash::make('password')]);
-        $studentUser  = User::factory()->create(['name' => 'Child', 'email' => 'child@pci.test', 'role' => 'student', 'password' => Hash::make('password')]);
+        $studentUser = User::factory()->create(['name' => 'Child', 'email' => 'child@pci.test', 'role' => 'student', 'password' => Hash::make('password')]);
         $this->student = Student::factory()->create(['user_id' => $studentUser->id, 'parent_user_id' => $this->parent->id, 'level' => 'SPM']);
     }
 
     private function makeInvoice(InvoiceStatus $status = InvoiceStatus::Issued): Invoice
     {
         return Invoice::factory()->create([
-            'student_id'   => $this->student->id,
-            'invoice_number' => 'INV-PCI-' . uniqid(),
-            'title'        => 'Tuition Fee',
+            'student_id' => $this->student->id,
+            'invoice_number' => 'INV-PCI-'.uniqid(),
+            'title' => 'Tuition Fee',
             'billing_period' => 'October 2026',
-            'subtotal'     => 200.00,
+            'subtotal' => 200.00,
             'total_amount' => 200.00,
-            'amount_paid'  => 0.00,
-            'issued_date'  => now()->toDateString(),
-            'due_date'     => now()->addDays(10)->toDateString(),
-            'status'       => $status,
+            'amount_paid' => 0.00,
+            'issued_date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'status' => $status,
         ]);
     }
 
@@ -71,18 +72,18 @@ class PayChildInvoiceTest extends TestCase
         $response = $this->actingAs($this->parent)
             ->post(route('parent.fees.pay.legacy', $invoice->id), [
                 'payment_method' => 'bank_transfer',
-                'proof_file'     => UploadedFile::fake()->image('proof.jpg'),
+                'proof_file' => UploadedFile::fake()->image('proof.jpg'),
             ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('payments', [
-            'invoice_id'     => $invoice->id,
-            'student_id'     => $this->student->id,
-            'payer_type'     => 'parent',
+            'invoice_id' => $invoice->id,
+            'student_id' => $this->student->id,
+            'payer_type' => 'parent',
             'payment_method' => 'bank_transfer',
-            'status'         => PaymentStatus::Pending->value,
+            'status' => PaymentStatus::Pending->value,
         ]);
 
         // Invoice status is deliberately left untouched for bank_transfer —
@@ -124,19 +125,19 @@ class PayChildInvoiceTest extends TestCase
             'invoice_id' => $invoice->id,
             'student_id' => $this->student->id,
             'payer_type' => 'parent',
-            'status'     => PaymentStatus::Successful->value,
+            'status' => PaymentStatus::Successful->value,
         ]);
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $this->parent->id,
-            'type'    => 'payment',
-            'title'   => 'PAYMENT SUCCESSFUL',
+            'type' => 'payment',
+            'title' => 'PAYMENT SUCCESSFUL',
         ]);
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $this->student->user_id,
-            'type'    => 'payment',
-            'title'   => 'TUITION FEE PAID BY PARENT',
+            'type' => 'payment',
+            'title' => 'TUITION FEE PAID BY PARENT',
         ]);
     }
 

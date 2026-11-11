@@ -26,7 +26,7 @@ class EnsureUserIsActive
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message'          => 'Akaun anda telah dinyahaktifkan atau tidak aktif. Sila hubungi pihak pentadbir.',
+                    'message' => 'Akaun anda telah dinyahaktifkan atau tidak aktif. Sila hubungi pihak pentadbir.',
                     'account_inactive' => true,
                 ], 403);
             }

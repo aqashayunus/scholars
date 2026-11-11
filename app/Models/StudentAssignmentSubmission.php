@@ -28,11 +28,11 @@ class StudentAssignmentSubmission extends Model
 
     protected $casts = [
         'current_page' => 'integer',
-        'zoom_level'   => 'float',
-        'total_pages'  => 'integer',
-        'version'      => 'integer',
-        'started_at'   => 'datetime',
-        'last_saved_at'=> 'datetime',
+        'zoom_level' => 'float',
+        'total_pages' => 'integer',
+        'version' => 'integer',
+        'started_at' => 'datetime',
+        'last_saved_at' => 'datetime',
         'submitted_at' => 'datetime',
     ];
 

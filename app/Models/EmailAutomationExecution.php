@@ -21,8 +21,8 @@ class EmailAutomationExecution extends Model
 
     protected $casts = [
         'trigger_payload' => 'array',
-        'executed_at'     => 'datetime',
-        'created_at'      => 'datetime',
+        'executed_at' => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     public function automation()

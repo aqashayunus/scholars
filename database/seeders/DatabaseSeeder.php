@@ -3,18 +3,18 @@
 namespace Database\Seeders;
 
 use App\Models\Assignment;
-use App\Models\Attendance;
 use App\Models\BlogPost;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LiveClass;
 use App\Models\Payment;
 use App\Models\Quiz;
+use App\Models\RecordedClass;
 use App\Models\Student;
-use App\Models\StudentAssignment;
-use App\Models\StudentQuiz;
+use App\Models\StudentTopicMastery;
 use App\Models\Subject;
 use App\Models\Teacher;
+use App\Models\TeachingGig;
 use App\Models\Testimonial;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -29,10 +29,10 @@ class DatabaseSeeder extends Seeder
         // 1. ADMIN
         // ─────────────────────────────────────────────────
         $admin = User::create([
-            'name'     => 'Admin Olympian',
-            'email'    => 'admin@olympianscholars.my',
+            'name' => 'Admin Olympian',
+            'email' => 'admin@olympianscholars.my',
             'password' => Hash::make('password'),
-            'role'     => 'admin',
+            'role' => 'admin',
         ]);
 
         // ─────────────────────────────────────────────────
@@ -52,13 +52,13 @@ class DatabaseSeeder extends Seeder
         $subjectModels = [];
         foreach ($subjects as $s) {
             $subjectModels[] = Subject::create([
-                'name'        => $s['name'],
-                'slug'        => Str::slug($s['name']),
+                'name' => $s['name'],
+                'slug' => Str::slug($s['name']),
                 'description' => 'Master '.$s['name'].' with our expert-led, structured SPM/IGCSE curriculum designed for top results.',
-                'icon'        => $s['icon'],
-                'color'       => $s['color'],
-                'level'       => 'SPM',
-                'is_active'   => true,
+                'icon' => $s['icon'],
+                'color' => $s['color'],
+                'level' => 'SPM',
+                'is_active' => true,
             ]);
         }
 
@@ -76,21 +76,21 @@ class DatabaseSeeder extends Seeder
         $teacherModels = [];
         foreach ($teacherData as $idx => $td) {
             $user = User::create([
-                'name'     => $td['name'],
-                'email'    => $td['email'],
+                'name' => $td['name'],
+                'email' => $td['email'],
                 'password' => Hash::make('password'),
-                'role'     => 'teacher',
+                'role' => 'teacher',
             ]);
             $teacher = Teacher::create([
-                'user_id'          => $user->id,
-                'qualification'    => $td['qual'],
+                'user_id' => $user->id,
+                'qualification' => $td['qual'],
                 'experience_years' => $td['exp'],
-                'bio'              => 'A passionate educator with '.$td['exp'].' years of teaching experience, specialising in '.$td['spec'].'. Known for making complex topics easy to grasp and helping students achieve A+ results in public examinations.',
-                'teaching_style'   => $td['style'],
-                'rating'           => $td['rating'],
-                'total_students'   => $td['students'],
-                'specialization'   => $td['spec'],
-                'photo'            => 'teacher'.($idx+1).'.jpg',
+                'bio' => 'A passionate educator with '.$td['exp'].' years of teaching experience, specialising in '.$td['spec'].'. Known for making complex topics easy to grasp and helping students achieve A+ results in public examinations.',
+                'teaching_style' => $td['style'],
+                'rating' => $td['rating'],
+                'total_students' => $td['students'],
+                'specialization' => $td['spec'],
+                'photo' => 'teacher'.($idx + 1).'.jpg',
             ]);
             $teacherModels[] = $teacher;
         }
@@ -118,15 +118,15 @@ class DatabaseSeeder extends Seeder
         ];
         foreach ($courseAssignments as $ca) {
             $courses[] = Course::create([
-                'subject_id'    => $ca[1]->id,
-                'teacher_id'    => $ca[0]->id,
-                'title'         => $ca[2],
-                'description'   => 'A comprehensive SPM course covering all topics with exam strategies and past-year question practice.',
-                'level'         => 'SPM',
-                'price'         => $ca[3],
-                'status'        => 'published',
+                'subject_id' => $ca[1]->id,
+                'teacher_id' => $ca[0]->id,
+                'title' => $ca[2],
+                'description' => 'A comprehensive SPM course covering all topics with exam strategies and past-year question practice.',
+                'level' => 'SPM',
+                'price' => $ca[3],
+                'status' => 'published',
                 'total_lessons' => rand(24, 40),
-                'schedule'      => $ca[4],
+                'schedule' => $ca[4],
             ]);
         }
 
@@ -141,10 +141,10 @@ class DatabaseSeeder extends Seeder
         ];
         foreach ($parentData as $pd) {
             $parents[] = User::create([
-                'name'     => $pd['name'],
-                'email'    => $pd['email'],
+                'name' => $pd['name'],
+                'email' => $pd['email'],
                 'password' => Hash::make('password'),
-                'role'     => 'parent',
+                'role' => 'parent',
             ]);
         }
 
@@ -178,16 +178,16 @@ class DatabaseSeeder extends Seeder
         foreach ($studentNames as $idx => $sn) {
             $parentUserId = $idx < 10 ? $parents[intdiv($idx, 4)]->id : null;
             $user = User::create([
-                'name'     => $sn[0],
-                'email'    => $sn[1],
+                'name' => $sn[0],
+                'email' => $sn[1],
                 'password' => Hash::make('password'),
-                'role'     => 'student',
+                'role' => 'student',
             ]);
             $studentModels[] = Student::create([
-                'user_id'        => $user->id,
+                'user_id' => $user->id,
                 'parent_user_id' => $parentUserId,
-                'level'          => 'SPM',
-                'total_points'   => rand(500, 3000),
+                'level' => 'SPM',
+                'total_points' => rand(500, 3000),
             ]);
         }
 
@@ -200,11 +200,11 @@ class DatabaseSeeder extends Seeder
             foreach ($enrolled as $course) {
                 $progress = rand(10, 95);
                 Enrollment::create([
-                    'student_id'        => $student->id,
-                    'course_id'         => $course->id,
-                    'progress_pct'      => $progress,
-                    'completed_lessons' => (int)round($course->total_lessons * $progress / 100),
-                    'enrolled_at'       => now()->subDays(rand(10, 120)),
+                    'student_id' => $student->id,
+                    'course_id' => $course->id,
+                    'progress_pct' => $progress,
+                    'completed_lessons' => (int) round($course->total_lessons * $progress / 100),
+                    'enrolled_at' => now()->subDays(rand(10, 120)),
                 ]);
             }
         }
@@ -216,16 +216,16 @@ class DatabaseSeeder extends Seeder
         foreach ($courses as $course) {
             for ($i = 0; $i < 4; $i++) {
                 $assignment = Assignment::create([
-                    'course_id'   => $course->id,
-                    'title'       => $assignmentTitles[$i % 5].' '.($i + 1),
+                    'course_id' => $course->id,
+                    'title' => $assignmentTitles[$i % 5].' '.($i + 1),
                     'description' => 'Complete all questions and submit before the deadline.',
-                    'due_date'    => now()->addDays(rand(-7, 14)),
+                    'due_date' => now()->addDays(rand(-7, 14)),
                 ]);
             }
             for ($q = 0; $q < 3; $q++) {
                 Quiz::create([
-                    'course_id'       => $course->id,
-                    'title'           => 'Quiz '.($q + 1).' — Chapter '.($q + 1),
+                    'course_id' => $course->id,
+                    'title' => 'Quiz '.($q + 1).' — Chapter '.($q + 1),
                     'total_questions' => 20,
                 ]);
             }
@@ -236,12 +236,12 @@ class DatabaseSeeder extends Seeder
         // ─────────────────────────────────────────────────
         foreach ($courses as $course) {
             LiveClass::create([
-                'course_id'        => $course->id,
-                'title'            => $course->title.' — Live Session',
-                'scheduled_at'     => now()->addDays(rand(1, 7))->setTime(19, 0),
+                'course_id' => $course->id,
+                'title' => $course->title.' — Live Session',
+                'scheduled_at' => now()->addDays(rand(1, 7))->setTime(19, 0),
                 'duration_minutes' => 90,
-                'meeting_url'      => 'https://meet.google.com/abc-defg-hij',
-                'status'           => 'upcoming',
+                'meeting_url' => 'https://meet.google.com/abc-defg-hij',
+                'status' => 'upcoming',
             ]);
         }
 
@@ -251,12 +251,12 @@ class DatabaseSeeder extends Seeder
         foreach ($studentModels as $student) {
             $statuses = ['paid', 'paid', 'paid', 'pending', 'overdue'];
             Payment::create([
-                'user_id'        => $student->user_id,
-                'description'    => 'Monthly Tuition Fee — July 2026',
-                'amount'         => 99.00,
-                'status'         => $statuses[array_rand($statuses)],
+                'user_id' => $student->user_id,
+                'description' => 'Monthly Tuition Fee — July 2026',
+                'amount' => 99.00,
+                'status' => $statuses[array_rand($statuses)],
                 'payment_method' => 'Online Banking',
-                'paid_at'        => now()->subDays(rand(0, 30)),
+                'paid_at' => now()->subDays(rand(0, 30)),
             ]);
         }
 
@@ -297,7 +297,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($gigsData as $gd) {
-            \App\Models\TeachingGig::create($gd);
+            TeachingGig::create($gd);
         }
 
         // ─────────────────────────────────────────────────
@@ -305,32 +305,32 @@ class DatabaseSeeder extends Seeder
         // ─────────────────────────────────────────────────
         $posts = [
             [
-                'title'    => '10 Proven Study Techniques to Ace SPM Mathematics',
-                'slug'     => '10-proven-study-techniques-spm-mathematics',
+                'title' => '10 Proven Study Techniques to Ace SPM Mathematics',
+                'slug' => '10-proven-study-techniques-spm-mathematics',
                 'category' => 'Study Tips',
-                'excerpt'  => 'Discover evidence-backed strategies that top students use to conquer SPM Add Maths and score straight A+.',
+                'excerpt' => 'Discover evidence-backed strategies that top students use to conquer SPM Add Maths and score straight A+.',
             ],
             [
-                'title'    => 'How to Write a Perfect Karangan for SPM Bahasa Melayu',
-                'slug'     => 'perfect-karangan-spm-bahasa-melayu',
+                'title' => 'How to Write a Perfect Karangan for SPM Bahasa Melayu',
+                'slug' => 'perfect-karangan-spm-bahasa-melayu',
                 'category' => 'Writing',
-                'excerpt'  => 'From choosing the right format to polishing your vocabulary — a step-by-step guide for Band 6 essays.',
+                'excerpt' => 'From choosing the right format to polishing your vocabulary — a step-by-step guide for Band 6 essays.',
             ],
             [
-                'title'    => 'IGCSE vs SPM: Which Path is Right for Your Child?',
-                'slug'     => 'igcse-vs-spm-which-path',
+                'title' => 'IGCSE vs SPM: Which Path is Right for Your Child?',
+                'slug' => 'igcse-vs-spm-which-path',
                 'category' => 'Parents Guide',
-                'excerpt'  => 'We break down the key differences, costs, and future prospects of both major Malaysian exam systems.',
+                'excerpt' => 'We break down the key differences, costs, and future prospects of both major Malaysian exam systems.',
             ],
         ];
         foreach ($posts as $p) {
             BlogPost::create([
-                'user_id'      => $admin->id,
-                'title'        => $p['title'],
-                'slug'         => $p['slug'],
-                'excerpt'      => $p['excerpt'],
-                'body'         => '<p>'.$p['excerpt'].'</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>',
-                'category'     => $p['category'],
+                'user_id' => $admin->id,
+                'title' => $p['title'],
+                'slug' => $p['slug'],
+                'excerpt' => $p['excerpt'],
+                'body' => '<p>'.$p['excerpt'].'</p><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>',
+                'category' => $p['category'],
                 'published_at' => now()->subDays(rand(1, 30)),
             ]);
         }
@@ -390,13 +390,13 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($recordings as $rec) {
-            \App\Models\RecordedClass::create($rec);
+            RecordedClass::create($rec);
         }
 
         // ─────────────────────────────────────────────────
         // 14. STUDENT PERSONAL TOPIC MASTERY (NON-COMPETITIVE)
         // ─────────────────────────────────────────────────
-        $students = \App\Models\Student::all();
+        $students = Student::all();
         $topics = [
             ['topic' => 'Integration & Calculus', 'pct' => 88],
             ['topic' => 'Quadratics & Functions', 'pct' => 92],
@@ -406,7 +406,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($students as $stu) {
             foreach ($topics as $tp) {
-                \App\Models\StudentTopicMastery::create([
+                StudentTopicMastery::create([
                     'student_id' => $stu->id,
                     'subject_id' => 1,
                     'topic_name' => $tp['topic'],

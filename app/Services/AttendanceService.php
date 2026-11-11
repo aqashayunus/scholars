@@ -29,35 +29,35 @@ class AttendanceService
         if ($liveClass->status === LiveClassStatus::Cancelled) {
             return [
                 'success' => false,
-                'error'   => 'cancelled',
+                'error' => 'cancelled',
                 'message' => 'This class session has been cancelled.',
             ];
         }
 
         // 2. Schedule window checks
-        $scheduledAt  = $liveClass->scheduled_at ? Carbon::parse($liveClass->scheduled_at) : now();
+        $scheduledAt = $liveClass->scheduled_at ? Carbon::parse($liveClass->scheduled_at) : now();
         $durationMins = (int) ($liveClass->duration_minutes ?: 60);
         $classEndTime = $scheduledAt->copy()->addMinutes($durationMins);
-        $earlyWindow  = (int) Setting::get('attendance.early_join_window_minutes', 15);
-        $now          = now();
+        $earlyWindow = (int) Setting::get('attendance.early_join_window_minutes', 15);
+        $now = now();
 
         if ($now->lt($scheduledAt->copy()->subMinutes($earlyWindow))) {
             return [
                 'success' => false,
-                'error'   => 'early',
+                'error' => 'early',
                 'message' => "This class is not open yet. You can join {$earlyWindow} minutes before the scheduled start time.",
             ];
         }
 
         // 3. Process attendance record idempotently in a database transaction
-        return DB::transaction(function () use ($student, $liveClass, $scheduledAt, $classEndTime, $now, $request) {
+        return DB::transaction(function () use ($student, $liveClass, $scheduledAt, $now, $request) {
             $attendance = StudentAttendance::where('student_id', $student->id)
                 ->where('live_class_id', $liveClass->id)
                 ->lockForUpdate()
                 ->first();
 
             $lateThresholdMins = (int) Setting::get('attendance.late_threshold_minutes', 15);
-            $lateCutoff        = $scheduledAt->copy()->addMinutes($lateThresholdMins);
+            $lateCutoff = $scheduledAt->copy()->addMinutes($lateThresholdMins);
 
             if ($attendance) {
                 // If already verified by a teacher, NEVER overwrite the verified status
@@ -70,24 +70,24 @@ class AttendanceService
                         actorRole: 'student',
                         eventType: AttendanceEvent::TYPE_REJOIN_ATTEMPT,
                         metadata: [
-                            'ip'               => $request?->ip(),
-                            'verified_status'  => $attendance->status,
-                            'verified_at'      => $attendance->verified_at?->toIso8601String(),
-                            'verified_by'      => $attendance->verified_by,
+                            'ip' => $request?->ip(),
+                            'verified_status' => $attendance->status,
+                            'verified_at' => $attendance->verified_at?->toIso8601String(),
+                            'verified_by' => $attendance->verified_by,
                             'rejoin_timestamp' => $now->toIso8601String(),
                         ]
                     );
 
                     return [
-                        'success'     => true,
-                        'attendance'  => $attendance,
-                        'is_rejoin'   => true,
+                        'success' => true,
+                        'attendance' => $attendance,
+                        'is_rejoin' => true,
                         'meeting_url' => $liveClass->meeting_url,
                     ];
                 }
 
                 // If not verified yet, preserve first joined_at and log rejoin
-                if (!$attendance->joined_at) {
+                if (! $attendance->joined_at) {
                     $attendance->joined_at = $now;
                 }
 
@@ -107,17 +107,17 @@ class AttendanceService
                     actorRole: 'student',
                     eventType: AttendanceEvent::TYPE_REJOIN_ATTEMPT,
                     metadata: [
-                        'ip'               => $request?->ip(),
-                        'current_status'   => $attendance->status,
-                        'first_joined_at'  => $attendance->joined_at?->toIso8601String(),
+                        'ip' => $request?->ip(),
+                        'current_status' => $attendance->status,
+                        'first_joined_at' => $attendance->joined_at?->toIso8601String(),
                         'rejoin_timestamp' => $now->toIso8601String(),
                     ]
                 );
 
                 return [
-                    'success'     => true,
-                    'attendance'  => $attendance,
-                    'is_rejoin'   => true,
+                    'success' => true,
+                    'attendance' => $attendance,
+                    'is_rejoin' => true,
                     'meeting_url' => $liveClass->meeting_url,
                 ];
             }
@@ -128,10 +128,10 @@ class AttendanceService
                 : StudentAttendance::STATUS_LATE;
 
             $attendance = StudentAttendance::create([
-                'student_id'    => $student->id,
+                'student_id' => $student->id,
                 'live_class_id' => $liveClass->id,
-                'status'        => $initialStatus,
-                'joined_at'     => $now,
+                'status' => $initialStatus,
+                'joined_at' => $now,
             ]);
 
             $this->logEvent(
@@ -142,18 +142,18 @@ class AttendanceService
                 actorRole: 'student',
                 eventType: AttendanceEvent::TYPE_JOIN_ATTEMPT,
                 metadata: [
-                    'ip'                => $request?->ip(),
-                    'user_agent'        => substr($request?->userAgent() ?? '', 0, 255),
+                    'ip' => $request?->ip(),
+                    'user_agent' => substr($request?->userAgent() ?? '', 0, 255),
                     'calculated_status' => $initialStatus,
-                    'scheduled_at'      => $scheduledAt->toIso8601String(),
-                    'joined_at'         => $now->toIso8601String(),
+                    'scheduled_at' => $scheduledAt->toIso8601String(),
+                    'joined_at' => $now->toIso8601String(),
                 ]
             );
 
             return [
-                'success'     => true,
-                'attendance'  => $attendance,
-                'is_rejoin'   => false,
+                'success' => true,
+                'attendance' => $attendance,
+                'is_rejoin' => false,
                 'meeting_url' => $liveClass->meeting_url,
             ];
         });
@@ -173,7 +173,7 @@ class AttendanceService
     public function getStudentAttendanceStats(Student $student, ?Carbon $start = null, ?Carbon $end = null): array
     {
         $start = $start ?? now()->startOfMonth();
-        $end   = $end ?? now()->endOfMonth();
+        $end = $end ?? now()->endOfMonth();
 
         // 1. Fetch eligible live classes
         $eligibleClasses = ClassScheduleService::getStudentLiveClassesQuery($student)
@@ -182,11 +182,11 @@ class AttendanceService
             ->orderBy('scheduled_at', 'asc')
             ->get();
 
-        $totalClasses   = $eligibleClasses->count();
-        $pastClasses    = $eligibleClasses->where('scheduled_at', '<', now());
-        $pastClassIds   = $pastClasses->pluck('id');
-        $totalPast      = $pastClassIds->count();
-        $totalUpcoming  = $totalClasses - $totalPast;
+        $totalClasses = $eligibleClasses->count();
+        $pastClasses = $eligibleClasses->where('scheduled_at', '<', now());
+        $pastClassIds = $pastClasses->pluck('id');
+        $totalPast = $pastClassIds->count();
+        $totalUpcoming = $totalClasses - $totalPast;
 
         // 2. Fetch existing attendance records
         $attendanceRecords = StudentAttendance::where('student_id', $student->id)
@@ -195,17 +195,18 @@ class AttendanceService
             ->keyBy('live_class_id');
 
         $attendedCount = 0;
-        $lateCount     = 0;
-        $absentCount   = 0;
-        $excusedCount  = 0;
-        $pendingCount  = 0;
+        $lateCount = 0;
+        $absentCount = 0;
+        $excusedCount = 0;
+        $pendingCount = 0;
 
         foreach ($pastClassIds as $classId) {
             $rec = $attendanceRecords->get($classId);
 
-            if (!$rec) {
+            if (! $rec) {
                 // Past class with no attendance record is Pending Verification (not auto-absent)
                 $pendingCount++;
+
                 continue;
             }
 
@@ -242,26 +243,26 @@ class AttendanceService
         // Chart percentages
         $chartDenominator = max(1, $totalPast);
         $attendedPct = (int) round(($attendedCount / $chartDenominator) * 100);
-        $latePct     = (int) round(($lateCount / $chartDenominator) * 100);
-        $absentPct   = (int) round(($absentCount / $chartDenominator) * 100);
-        $pendingPct  = (int) round(($pendingCount / $chartDenominator) * 100);
+        $latePct = (int) round(($lateCount / $chartDenominator) * 100);
+        $absentPct = (int) round(($absentCount / $chartDenominator) * 100);
+        $pendingPct = (int) round(($pendingCount / $chartDenominator) * 100);
 
         return [
-            'total'         => $totalClasses,
-            'past'          => $totalPast,
-            'upcoming'      => $totalUpcoming,
-            'attended'      => $attendedCount,
-            'late'          => $lateCount,
+            'total' => $totalClasses,
+            'past' => $totalPast,
+            'upcoming' => $totalUpcoming,
+            'attended' => $attendedCount,
+            'late' => $lateCount,
             'present_total' => $presentTotal,
-            'absent'        => $absentCount,
-            'excused'       => $excusedCount,
-            'pending'       => $pendingCount,
-            'counted'       => $countedEligible,
-            'pct'           => $rate,
-            'attended_pct'  => $attendedPct,
-            'late_pct'      => $latePct,
-            'absent_pct'    => $absentPct,
-            'pending_pct'   => $pendingPct,
+            'absent' => $absentCount,
+            'excused' => $excusedCount,
+            'pending' => $pendingCount,
+            'counted' => $countedEligible,
+            'pct' => $rate,
+            'attended_pct' => $attendedPct,
+            'late_pct' => $latePct,
+            'absent_pct' => $absentPct,
+            'pending_pct' => $pendingPct,
         ];
     }
 
@@ -273,16 +274,16 @@ class AttendanceService
     {
         $actor = $actor ?? auth()->user();
 
-        return DB::transaction(function () use ($teacher, $liveClass, $records, $actor) {
+        return DB::transaction(function () use ($liveClass, $records, $actor) {
             $updated = 0;
-            $now     = now();
+            $now = now();
 
             foreach ($records as $item) {
                 $studentId = $item['student_id'] ?? null;
-                $status    = $item['status'] ?? null;
-                $remarks   = $item['remarks'] ?? null;
+                $status = $item['status'] ?? null;
+                $remarks = $item['remarks'] ?? null;
 
-                if (!$studentId || !$status) {
+                if (! $studentId || ! $status) {
                     continue;
                 }
 
@@ -301,7 +302,7 @@ class AttendanceService
                     $normalized = StudentAttendance::STATUS_ATTENDED;
                 }
 
-                if (!in_array($normalized, $validStatuses, true)) {
+                if (! in_array($normalized, $validStatuses, true)) {
                     continue;
                 }
 
@@ -313,7 +314,7 @@ class AttendanceService
                 $oldStatus = $attendance?->status;
 
                 if ($attendance) {
-                    $attendance->status      = $normalized;
+                    $attendance->status = $normalized;
                     $attendance->verified_at = $now;
                     $attendance->verified_by = $actor->id;
                     if ($remarks !== null) {
@@ -322,21 +323,21 @@ class AttendanceService
                     $attendance->save();
                 } else {
                     $attendance = StudentAttendance::create([
-                        'student_id'    => $studentId,
+                        'student_id' => $studentId,
                         'live_class_id' => $liveClass->id,
-                        'status'        => $normalized,
-                        'verified_at'   => $now,
-                        'verified_by'   => $actor->id,
-                        'remarks'       => $remarks,
+                        'status' => $normalized,
+                        'verified_at' => $now,
+                        'verified_by' => $actor->id,
+                        'remarks' => $remarks,
                     ]);
                 }
 
                 $eventType = match ($normalized) {
                     StudentAttendance::STATUS_ATTENDED => AttendanceEvent::TYPE_TEACHER_MARKED_PRESENT,
-                    StudentAttendance::STATUS_LATE     => AttendanceEvent::TYPE_TEACHER_MARKED_LATE,
-                    StudentAttendance::STATUS_ABSENT   => AttendanceEvent::TYPE_TEACHER_MARKED_ABSENT,
-                    StudentAttendance::STATUS_EXCUSED  => AttendanceEvent::TYPE_TEACHER_MARKED_EXCUSED,
-                    default                            => AttendanceEvent::TYPE_ATTENDANCE_VERIFIED,
+                    StudentAttendance::STATUS_LATE => AttendanceEvent::TYPE_TEACHER_MARKED_LATE,
+                    StudentAttendance::STATUS_ABSENT => AttendanceEvent::TYPE_TEACHER_MARKED_ABSENT,
+                    StudentAttendance::STATUS_EXCUSED => AttendanceEvent::TYPE_TEACHER_MARKED_EXCUSED,
+                    default => AttendanceEvent::TYPE_ATTENDANCE_VERIFIED,
                 };
 
                 $this->logEvent(
@@ -349,7 +350,7 @@ class AttendanceService
                     metadata: [
                         'old_status' => $oldStatus,
                         'new_status' => $normalized,
-                        'remarks'    => $remarks,
+                        'remarks' => $remarks,
                     ]
                 );
 
@@ -359,8 +360,8 @@ class AttendanceService
                     if ($student && $student->user_id) {
                         UserNotification::create([
                             'user_id' => $student->user_id,
-                            'type'    => 'attendance_absent',
-                            'title'   => 'Class Attendance Notice',
+                            'type' => 'attendance_absent',
+                            'title' => 'Class Attendance Notice',
                             'message' => "You were marked Absent for {$liveClass->title} on {$liveClass->scheduled_at->format('d M Y')}. If this is an error, you can submit a correction request.",
                         ]);
                     }
@@ -371,7 +372,7 @@ class AttendanceService
 
             return [
                 'success' => true,
-                'count'   => $updated,
+                'count' => $updated,
                 'message' => "Successfully updated attendance for {$updated} students.",
             ];
         });
@@ -388,12 +389,12 @@ class AttendanceService
                 ->first();
 
             $req = AttendanceCorrectionRequest::create([
-                'student_id'            => $student->id,
-                'live_class_id'         => $liveClass->id,
+                'student_id' => $student->id,
+                'live_class_id' => $liveClass->id,
                 'student_attendance_id' => $attendance?->id,
-                'requested_status'      => $requestedStatus,
-                'reason'                => $reason,
-                'status'                => AttendanceCorrectionRequest::STATUS_PENDING,
+                'requested_status' => $requestedStatus,
+                'reason' => $reason,
+                'status' => AttendanceCorrectionRequest::STATUS_PENDING,
             ]);
 
             $this->logEvent(
@@ -405,8 +406,8 @@ class AttendanceService
                 eventType: AttendanceEvent::TYPE_CORRECTION_REQUESTED,
                 metadata: [
                     'correction_request_id' => $req->id,
-                    'reason'                => $reason,
-                    'requested_status'      => $requestedStatus,
+                    'reason' => $reason,
+                    'requested_status' => $requestedStatus,
                 ]
             );
 
@@ -415,8 +416,8 @@ class AttendanceService
             if ($teacherUser) {
                 UserNotification::create([
                     'user_id' => $teacherUser->id,
-                    'type'    => 'attendance_correction_request',
-                    'title'   => 'Attendance Correction Request',
+                    'type' => 'attendance_correction_request',
+                    'title' => 'Attendance Correction Request',
                     'message' => "{$student->user->name} submitted an attendance correction request for {$liveClass->title}.",
                 ]);
             }
@@ -434,23 +435,23 @@ class AttendanceService
             $isApproved = ($action === 'approved');
 
             $correctionReq->update([
-                'status'           => $isApproved ? AttendanceCorrectionRequest::STATUS_APPROVED : AttendanceCorrectionRequest::STATUS_REJECTED,
-                'reviewer_id'      => $reviewer->id,
+                'status' => $isApproved ? AttendanceCorrectionRequest::STATUS_APPROVED : AttendanceCorrectionRequest::STATUS_REJECTED,
+                'reviewer_id' => $reviewer->id,
                 'reviewer_remarks' => $remarks,
-                'reviewed_at'      => now(),
+                'reviewed_at' => now(),
             ]);
 
             if ($isApproved) {
                 $attendance = StudentAttendance::updateOrCreate(
                     [
-                        'student_id'    => $correctionReq->student_id,
+                        'student_id' => $correctionReq->student_id,
                         'live_class_id' => $correctionReq->live_class_id,
                     ],
                     [
-                        'status'      => $correctionReq->requested_status,
+                        'status' => $correctionReq->requested_status,
                         'verified_at' => now(),
                         'verified_by' => $reviewer->id,
-                        'remarks'     => 'Correction approved: ' . ($remarks ?? 'Verified attendance'),
+                        'remarks' => 'Correction approved: '.($remarks ?? 'Verified attendance'),
                     ]
                 );
 
@@ -465,8 +466,8 @@ class AttendanceService
                     eventType: AttendanceEvent::TYPE_CORRECTION_APPROVED,
                     metadata: [
                         'correction_request_id' => $correctionReq->id,
-                        'new_status'            => $correctionReq->requested_status,
-                        'reviewer_remarks'      => $remarks,
+                        'new_status' => $correctionReq->requested_status,
+                        'reviewer_remarks' => $remarks,
                     ]
                 );
 
@@ -474,8 +475,8 @@ class AttendanceService
                 if ($correctionReq->student?->user_id) {
                     UserNotification::create([
                         'user_id' => $correctionReq->student->user_id,
-                        'type'    => 'attendance_correction_approved',
-                        'title'   => 'Attendance Correction Approved',
+                        'type' => 'attendance_correction_approved',
+                        'title' => 'Attendance Correction Approved',
                         'message' => "Your attendance correction request for {$correctionReq->liveClass->title} was approved.",
                     ]);
                 }
@@ -489,7 +490,7 @@ class AttendanceService
                     eventType: AttendanceEvent::TYPE_CORRECTION_REJECTED,
                     metadata: [
                         'correction_request_id' => $correctionReq->id,
-                        'reviewer_remarks'      => $remarks,
+                        'reviewer_remarks' => $remarks,
                     ]
                 );
 
@@ -497,8 +498,8 @@ class AttendanceService
                 if ($correctionReq->student?->user_id) {
                     UserNotification::create([
                         'user_id' => $correctionReq->student->user_id,
-                        'type'    => 'attendance_correction_rejected',
-                        'title'   => 'Attendance Correction Notice',
+                        'type' => 'attendance_correction_rejected',
+                        'title' => 'Attendance Correction Notice',
                         'message' => "Your attendance correction request for {$correctionReq->liveClass->title} was reviewed: {$remarks}",
                     ]);
                 }
@@ -522,13 +523,13 @@ class AttendanceService
     ): AttendanceEvent {
         return AttendanceEvent::create([
             'student_attendance_id' => $attendanceId,
-            'student_id'            => $studentId,
-            'live_class_id'         => $liveClassId,
-            'actor_id'              => $actorId,
-            'actor_role'            => $actorRole,
-            'event_type'            => $eventType,
-            'event_timestamp'       => now(),
-            'metadata'              => $metadata,
+            'student_id' => $studentId,
+            'live_class_id' => $liveClassId,
+            'actor_id' => $actorId,
+            'actor_role' => $actorRole,
+            'event_type' => $eventType,
+            'event_timestamp' => now(),
+            'metadata' => $metadata,
         ]);
     }
 }

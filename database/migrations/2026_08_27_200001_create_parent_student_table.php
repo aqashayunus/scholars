@@ -26,12 +26,12 @@ return new class extends Migration
         foreach ($students as $student) {
             DB::table('parent_student')->insertOrIgnore([
                 'parent_user_id' => $student->parent_user_id,
-                'student_id'     => $student->id,
-                'relationship'   => 'guardian',
-                'is_primary'     => true,
-                'status'         => 'active',
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'student_id' => $student->id,
+                'relationship' => 'guardian',
+                'is_primary' => true,
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
     }

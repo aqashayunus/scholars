@@ -38,7 +38,7 @@ class ClassScheduleService
                 ->unique()
                 ->toArray();
 
-            if (!empty($enrolledSubjectIds)) {
+            if (! empty($enrolledSubjectIds)) {
                 $subjectNames = DB::table('subjects')->whereIn('id', $enrolledSubjectIds)->pluck('name')->toArray();
                 $allMatchingSubjectIds = DB::table('subjects')->whereIn('name', $subjectNames)->pluck('id')->toArray();
 
@@ -55,8 +55,8 @@ class ClassScheduleService
     public function classesData(Student $student): array
     {
         $liveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
-                $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
-            })
+            $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
+        })
             ->with('course.subject', 'course.teacher.user')
             ->orderBy('scheduled_at')
             ->get();
@@ -66,19 +66,18 @@ class ClassScheduleService
         for ($i = 0; $i < 7; $i++) {
             $day = $now->copy()->addDays($i);
             $weekDays->push([
-                'date'    => $day,
-                'label'   => $day->format('D'),
-                'full'    => $day->format('l'),
+                'date' => $day,
+                'label' => $day->format('D'),
+                'full' => $day->format('l'),
                 'dateStr' => $day->format('d M'),
                 'isToday' => $day->isToday(),
-                'classes' => $liveClasses->filter(fn ($lc) =>
-                    $lc->scheduled_at->format('Y-m-d') === $day->format('Y-m-d')
+                'classes' => $liveClasses->filter(fn ($lc) => $lc->scheduled_at->format('Y-m-d') === $day->format('Y-m-d')
                 )->values(),
             ]);
         }
 
         $upcomingClasses = $liveClasses->filter(fn ($lc) => $lc->scheduled_at->gte($now))->values();
-        $pastClasses     = $liveClasses->filter(fn ($lc) => $lc->scheduled_at->lt($now))->sortByDesc('scheduled_at')->values();
+        $pastClasses = $liveClasses->filter(fn ($lc) => $lc->scheduled_at->lt($now))->sortByDesc('scheduled_at')->values();
 
         // Student's recorded attendances for live classes
         $attendanceMap = StudentAttendance::where('student_id', $student->id)
@@ -88,12 +87,12 @@ class ClassScheduleService
         $attendanceStats = $this->attendanceStats($student);
 
         return [
-            'weekDays'         => $weekDays,
-            'upcomingClasses'  => $upcomingClasses,
-            'pastClasses'      => $pastClasses,
-            'liveClasses'      => $liveClasses,
-            'attendanceStats'  => $attendanceStats,
-            'attendanceMap'    => $attendanceMap,
+            'weekDays' => $weekDays,
+            'upcomingClasses' => $upcomingClasses,
+            'pastClasses' => $pastClasses,
+            'liveClasses' => $liveClasses,
+            'attendanceStats' => $attendanceStats,
+            'attendanceMap' => $attendanceMap,
         ];
     }
 
@@ -104,14 +103,14 @@ class ClassScheduleService
     public function attendanceStats(Student $student): array
     {
         $startOfMonth = now()->startOfMonth();
-        $endOfMonth   = now()->endOfMonth();
+        $endOfMonth = now()->endOfMonth();
 
         // All live classes this month for student's enrolled courses
         $monthLiveClasses = LiveClass::whereHas('course', function ($q) use ($student) {
             $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
         })
-        ->whereBetween('scheduled_at', [$startOfMonth, $endOfMonth])
-        ->get();
+            ->whereBetween('scheduled_at', [$startOfMonth, $endOfMonth])
+            ->get();
 
         $totalClasses = $monthLiveClasses->count();
 
@@ -123,18 +122,18 @@ class ClassScheduleService
             ->get();
 
         $attended = $attendanceRecords->whereIn('status', ['attended', 'late'])->count();
-        $absent   = $attendanceRecords->where('status', 'absent')->count();
-        $late     = $attendanceRecords->where('status', 'late')->count();
+        $absent = $attendanceRecords->where('status', 'absent')->count();
+        $late = $attendanceRecords->where('status', 'late')->count();
 
         $totalPast = $pastClassIds->count();
         $rate = $totalPast > 0 ? (int) round(($attended / $totalPast) * 100) : 0;
 
         return [
-            'total'    => $totalClasses,
+            'total' => $totalClasses,
             'attended' => $attended,
-            'absent'   => $absent,
-            'late'     => $late,
-            'pct'      => $rate,
+            'absent' => $absent,
+            'late' => $late,
+            'pct' => $rate,
         ];
     }
 
@@ -154,7 +153,7 @@ class ClassScheduleService
         if ($restrictionService->isStudentRestricted($student)) {
             return [
                 'success' => false,
-                'error'   => 'payment_restricted',
+                'error' => 'payment_restricted',
                 'message' => 'Your academic access is temporarily on hold due to an overdue payment balance. Please settle your invoice to access live classes.',
                 'details' => $restrictionService->getRestrictionDetails($student),
             ];
@@ -164,17 +163,17 @@ class ClassScheduleService
             ->where('live_classes.id', $liveClass->id)
             ->exists();
 
-        if (!$isEnrolled) {
+        if (! $isEnrolled) {
             return [
                 'success' => false,
-                'error'   => 'not_enrolled',
+                'error' => 'not_enrolled',
                 'message' => 'You are not enrolled in this live class.',
             ];
         }
 
         $result = $attendanceService->recordStudentJoin($student, $liveClass, $request);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return $result;
         }
 
@@ -183,15 +182,15 @@ class ClassScheduleService
         if (empty($meetingUrl)) {
             return [
                 'success' => false,
-                'error'   => 'missing_url',
+                'error' => 'missing_url',
                 'message' => 'The instructor has not provided a live meeting link for this session yet.',
             ];
         }
 
         return [
-            'success'      => true,
+            'success' => true,
             'redirect_url' => $meetingUrl,
-            'is_rejoin'    => $result['is_rejoin'] ?? false,
+            'is_rejoin' => $result['is_rejoin'] ?? false,
         ];
     }
 
@@ -210,7 +209,7 @@ class ClassScheduleService
             ->where('live_classes.id', $liveClass->id)
             ->exists();
 
-        if (!$isEnrolled) {
+        if (! $isEnrolled) {
             return ['success' => false, 'message' => 'You are not enrolled in this class.'];
         }
 

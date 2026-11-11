@@ -3,7 +3,6 @@
 namespace App\Services\Parent;
 
 use App\Models\Student;
-use App\Models\StudentAttendance;
 use App\Services\AttendanceService;
 use App\Services\Student\ClassScheduleService;
 use Illuminate\Support\Collection;
@@ -26,19 +25,19 @@ class AcademicProgressService
     public function getChildProgress(Student $student): array
     {
         $colorMap = [
-            'Mathematics'          => 'blue',
-            'Science'              => 'emerald',
-            'English'              => 'purple',
-            'Bahasa Melayu'        => 'amber',
-            'Physics'              => 'indigo',
-            'Chemistry'            => 'teal',
-            'Biology'              => 'green',
-            'Sejarah'              => 'rose',
-            'Geography'            => 'orange',
-            'Prinsip Perakaunan'   => 'emerald',
-            'Sains Komputer'       => 'blue',
-            'Ekonomi'              => 'amber',
-            'Perniagaan'           => 'slate',
+            'Mathematics' => 'blue',
+            'Science' => 'emerald',
+            'English' => 'purple',
+            'Bahasa Melayu' => 'amber',
+            'Physics' => 'indigo',
+            'Chemistry' => 'teal',
+            'Biology' => 'green',
+            'Sejarah' => 'rose',
+            'Geography' => 'orange',
+            'Prinsip Perakaunan' => 'emerald',
+            'Sains Komputer' => 'blue',
+            'Ekonomi' => 'amber',
+            'Perniagaan' => 'slate',
         ];
 
         // One query for all of this student's quiz results across every
@@ -61,14 +60,15 @@ class AcademicProgressService
             $quizAvg = $quizzes->isNotEmpty() ? (int) round($quizzes->avg('score')) : null;
 
             $progress[] = [
-                'subject'           => $displayName,
-                'emoji'             => '',
-                'color'             => $color,
-                'pct'               => $pct,
-                'quiz_avg'          => $quizAvg,
+                'subject' => $displayName,
+                'emoji' => '',
+                'color' => $color,
+                'pct' => $pct,
+                'quiz_avg' => $quizAvg,
                 'completed_lessons' => (int) ($en->completed_lessons ?? 0),
             ];
         }
+
         return $progress;
     }
 
@@ -82,6 +82,7 @@ class AcademicProgressService
             if ($s['quiz_avg'] !== null) {
                 return $s['quiz_avg'] < 70;
             }
+
             return $s['pct'] > 0 && $s['pct'] < 70;
         });
     }

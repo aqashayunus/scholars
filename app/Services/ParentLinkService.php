@@ -41,15 +41,15 @@ class ParentLinkService
 
         $pivotId = DB::table('parent_student')->insertGetId([
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'relationship'   => $relationship,
-            'is_primary'     => $isFirstClaim,
-            'status'         => $status,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => $relationship,
+            'is_primary' => $isFirstClaim,
+            'status' => $status,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        if ($isFirstClaim && !$student->parent_user_id) {
+        if ($isFirstClaim && ! $student->parent_user_id) {
             // No existing guardian at all — first claim is safe to activate immediately,
             // matching the pre-fix behavior for the common legitimate case (school
             // pre-created the student account with no parent yet).
@@ -57,7 +57,7 @@ class ParentLinkService
             $student->save();
         }
 
-        if (!$isFirstClaim) {
+        if (! $isFirstClaim) {
             $this->notifyExistingGuardians($student, $parent, $pivotId, $existingGuardianIds);
         }
 
@@ -86,7 +86,7 @@ class ParentLinkService
         $guardians = User::whereIn('id', $guardianIds)->get();
 
         foreach ($guardians as $guardian) {
-            if (!$guardian->email) {
+            if (! $guardian->email) {
                 continue;
             }
 

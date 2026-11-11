@@ -17,12 +17,12 @@ class StudentTopicMasteryFactory extends Factory
     public function definition(): array
     {
         return [
-            'student_id'         => Student::factory(),
-            'subject_id'         => Subject::factory(),
-            'topic_name'         => fake()->word(),
+            'student_id' => Student::factory(),
+            'subject_id' => Subject::factory(),
+            'topic_name' => fake()->word(),
             'mastery_percentage' => fake()->numberBetween(0, 100),
-            'quizzes_attempted'  => fake()->numberBetween(0, 10),
-            'last_practiced_at'  => now(),
+            'quizzes_attempted' => fake()->numberBetween(0, 10),
+            'last_practiced_at' => now(),
         ];
     }
 }

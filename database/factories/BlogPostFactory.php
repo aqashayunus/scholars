@@ -19,13 +19,13 @@ class BlogPostFactory extends Factory
         $title = fake()->sentence(6);
 
         return [
-            'user_id'      => User::factory()->state(['role' => 'admin']),
-            'title'        => $title,
-            'slug'         => Str::slug($title) . '-' . fake()->unique()->numberBetween(1, 1000000),
-            'excerpt'      => fake()->sentence(15),
-            'body'         => fake()->paragraphs(4, true),
-            'thumbnail'    => null,
-            'category'     => fake()->randomElement(['Academic Tips', 'News', 'Exam Prep']),
+            'user_id' => User::factory()->state(['role' => 'admin']),
+            'title' => $title,
+            'slug' => Str::slug($title).'-'.fake()->unique()->numberBetween(1, 1000000),
+            'excerpt' => fake()->sentence(15),
+            'body' => fake()->paragraphs(4, true),
+            'thumbnail' => null,
+            'category' => fake()->randomElement(['Academic Tips', 'News', 'Exam Prep']),
             'published_at' => now(),
         ];
     }

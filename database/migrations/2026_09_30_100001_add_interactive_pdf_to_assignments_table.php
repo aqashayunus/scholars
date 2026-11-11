@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            if (!Schema::hasColumn('assignments', 'is_interactive_pdf')) {
+            if (! Schema::hasColumn('assignments', 'is_interactive_pdf')) {
                 $table->boolean('is_interactive_pdf')->default(false)->after('questions_data');
                 $table->index('is_interactive_pdf');
             }

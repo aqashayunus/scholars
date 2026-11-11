@@ -71,7 +71,7 @@ class TeacherDashboardController extends Controller
         $claim = $claims->storeClaim($request);
 
         return redirect()->route('teacher.claims')
-            ->with('success', "Class fee claim '{$claim->claim_number}' for RM " . number_format($claim->amount, 2) . " submitted successfully! Admin will review and authorize payment.");
+            ->with('success', "Class fee claim '{$claim->claim_number}' for RM ".number_format($claim->amount, 2).' submitted successfully! Admin will review and authorize payment.');
     }
 
     public function updateClaimBankDetails(Request $request, ClaimService $claims)
@@ -86,6 +86,7 @@ class TeacherDashboardController extends Controller
         $teacher = $schedule->toggleDuty();
 
         $statusLabel = $teacher->is_online ? 'ON DUTY (Online for Gigs & Scheduled Sessions)' : 'OFF DUTY';
+
         return redirect()->back()->with('success', "Duty status updated to {$statusLabel}.");
     }
 
@@ -112,7 +113,7 @@ class TeacherDashboardController extends Controller
     {
         $gigs->checkOut((int) $id);
 
-        return redirect()->back()->with('success', "Session completed! Completion timestamp recorded for Aster Edu.");
+        return redirect()->back()->with('success', 'Session completed! Completion timestamp recorded for Aster Edu.');
     }
 
     public function walletIndex(GigService $gigs)
@@ -147,7 +148,7 @@ class TeacherDashboardController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'success'     => true,
+                'success' => true,
                 'meeting_url' => $liveClass->meeting_url,
             ]);
         }
@@ -212,7 +213,7 @@ class TeacherDashboardController extends Controller
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Quiz deleted successfully.'
+                'message' => 'Quiz deleted successfully.',
             ]);
         }
 
@@ -260,7 +261,7 @@ class TeacherDashboardController extends Controller
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Task/Assignment deleted successfully.'
+                'message' => 'Task/Assignment deleted successfully.',
             ]);
         }
 
@@ -273,14 +274,14 @@ class TeacherDashboardController extends Controller
         $studentName = $sub->student?->user?->name ?? 'Student';
         $maxMarks = $sub->assignment?->total_marks ?? 100;
 
-        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$sub->score}/{$maxMarks})!" . ($sub->graded_file_path ? " Graded document uploaded." : ""));
+        return redirect()->back()->with('success', "Submission for {$studentName} graded successfully ({$sub->score}/{$maxMarks})!".($sub->graded_file_path ? ' Graded document uploaded.' : ''));
     }
 
     public function readAllNotifications()
     {
         UserNotification::where('user_id', auth()->id())
-                        ->whereNull('read_at')
-                        ->update(['read_at' => now()]);
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         return response()->json(['success' => true]);
     }

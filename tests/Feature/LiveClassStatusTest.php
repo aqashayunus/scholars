@@ -6,7 +6,9 @@ use App\Enums\LiveClassStatus;
 use App\Models\Course;
 use App\Models\LiveClass;
 use App\Models\Teacher;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -21,16 +23,16 @@ class LiveClassStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeLiveClass(\Carbon\Carbon $scheduledAt): LiveClass
+    private function makeLiveClass(Carbon $scheduledAt): LiveClass
     {
         $teacher = Teacher::factory()->create();
         $course = Course::factory()->create(['teacher_id' => $teacher->id]);
 
         return LiveClass::create([
-            'course_id'        => $course->id,
-            'teacher_id'       => $teacher->id,
-            'title'            => 'Test Class',
-            'scheduled_at'     => $scheduledAt,
+            'course_id' => $course->id,
+            'teacher_id' => $teacher->id,
+            'title' => 'Test Class',
+            'scheduled_at' => $scheduledAt,
             'duration_minutes' => 60,
         ]);
     }
@@ -61,7 +63,7 @@ class LiveClassStatusTest extends TestCase
     {
         $class = $this->makeLiveClass(now()->addDay());
 
-        $raw = \Illuminate\Support\Facades\DB::table('live_classes')->where('id', $class->id)->value('status');
+        $raw = DB::table('live_classes')->where('id', $class->id)->value('status');
 
         $this->assertSame('upcoming', $raw);
     }

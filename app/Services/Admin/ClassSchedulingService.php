@@ -8,6 +8,7 @@ use App\Models\RecordedClass;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class ClassSchedulingService
 {
@@ -61,9 +62,9 @@ class ClassSchedulingService
             }
         }
 
-        if (empty($validated['target_age']) && !empty($validated['education_level'])) {
+        if (empty($validated['target_age']) && ! empty($validated['education_level'])) {
             $validated['target_age'] = $validated['education_level'];
-        } elseif (empty($validated['education_level']) && !empty($validated['target_age'])) {
+        } elseif (empty($validated['education_level']) && ! empty($validated['target_age'])) {
             $validated['education_level'] = $validated['target_age'];
         }
 
@@ -87,7 +88,7 @@ class ClassSchedulingService
         try {
             $course = $liveClass->course;
             $teacher = $liveClass->teacher ?? $course?->teacher;
-            if (!$course) {
+            if (! $course) {
                 return;
             }
 
@@ -96,8 +97,8 @@ class ClassSchedulingService
             if ($teacher?->user_id) {
                 UserNotification::create([
                     'user_id' => $teacher->user_id,
-                    'type'    => 'live_class',
-                    'title'   => $teacherTitle,
+                    'type' => 'live_class',
+                    'title' => $teacherTitle,
                     'message' => $teacherMessage($course, $timeStr),
                     'read_at' => null,
                 ]);
@@ -107,8 +108,8 @@ class ClassSchedulingService
                 if ($enrollment->student?->user_id) {
                     UserNotification::create([
                         'user_id' => $enrollment->student->user_id,
-                        'type'    => 'live_class',
-                        'title'   => $studentTitle,
+                        'type' => 'live_class',
+                        'title' => $studentTitle,
                         'message' => $studentMessage($course, $timeStr),
                         'read_at' => null,
                     ]);
@@ -126,17 +127,17 @@ class ClassSchedulingService
 
         if ($request->hasFile('video_file')) {
             $path = $request->file('video_file')->store('recordings', 'public');
-            $videoUrl = asset('storage/' . $path);
+            $videoUrl = asset('storage/'.$path);
         }
 
         if (empty($videoUrl)) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'video_file' => 'Please provide either a video file (MP4, etc.) or a video playback URL.',
             ]);
         }
 
         // Auto-resolve subject_id from course if course is chosen
-        if (!empty($validated['course_id'])) {
+        if (! empty($validated['course_id'])) {
             $course = Course::find($validated['course_id']);
             if ($course && $course->subject_id) {
                 $validated['subject_id'] = $course->subject_id;
@@ -144,21 +145,21 @@ class ClassSchedulingService
         }
 
         if (empty($validated['subject_id'])) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'subject_id' => 'Please select a Subject for this recording.',
             ]);
         }
 
         $recordedClass = RecordedClass::create([
-            'course_id'        => $validated['course_id'] ?? null,
-            'subject_id'       => $validated['subject_id'] ?? null,
-            'title'            => $validated['title'],
-            'topic_name'       => $validated['topic_name'],
-            'video_url'        => $videoUrl,
-            'thumbnail'        => null,
+            'course_id' => $validated['course_id'] ?? null,
+            'subject_id' => $validated['subject_id'] ?? null,
+            'title' => $validated['title'],
+            'topic_name' => $validated['topic_name'],
+            'video_url' => $videoUrl,
+            'thumbnail' => null,
             'duration_minutes' => 45,
-            'views_count'      => 0,
-            'summary'          => $validated['summary'] ?? null,
+            'views_count' => 0,
+            'summary' => $validated['summary'] ?? null,
         ]);
 
         try {
@@ -167,8 +168,8 @@ class ClassSchedulingService
                     if ($enrollment->student?->user_id) {
                         UserNotification::create([
                             'user_id' => $enrollment->student->user_id,
-                            'type'    => 'course',
-                            'title'   => 'NEW RECORDED LESSON AVAILABLE',
+                            'type' => 'course',
+                            'title' => 'NEW RECORDED LESSON AVAILABLE',
                             'message' => "A new recorded lesson '{$recordedClass->title}' ({$recordedClass->topic_name}) is now available in your course library.",
                             'read_at' => null,
                         ]);
@@ -187,10 +188,10 @@ class ClassSchedulingService
 
         if ($request->hasFile('video_file')) {
             $path = $request->file('video_file')->store('recordings', 'public');
-            $videoUrl = asset('storage/' . $path);
+            $videoUrl = asset('storage/'.$path);
         }
 
-        if (!empty($validated['course_id'])) {
+        if (! empty($validated['course_id'])) {
             $course = Course::find($validated['course_id']);
             if ($course && $course->subject_id) {
                 $validated['subject_id'] = $course->subject_id;
@@ -198,12 +199,12 @@ class ClassSchedulingService
         }
 
         $recordedClass->update([
-            'course_id'   => $validated['course_id'] ?? null,
-            'subject_id'  => $validated['subject_id'] ?? $recordedClass->subject_id,
-            'title'       => $validated['title'],
-            'topic_name'  => $validated['topic_name'],
-            'video_url'   => $videoUrl,
-            'summary'     => $validated['summary'] ?? null,
+            'course_id' => $validated['course_id'] ?? null,
+            'subject_id' => $validated['subject_id'] ?? $recordedClass->subject_id,
+            'title' => $validated['title'],
+            'topic_name' => $validated['topic_name'],
+            'video_url' => $videoUrl,
+            'summary' => $validated['summary'] ?? null,
         ]);
 
         return $recordedClass;

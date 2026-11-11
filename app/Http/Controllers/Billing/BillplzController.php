@@ -24,7 +24,7 @@ class BillplzController extends Controller
      */
     public function checkout(Request $request, Invoice $invoice)
     {
-        if (!$invoice->requiresPayment()) {
+        if (! $invoice->requiresPayment()) {
             return back()->with('info', 'This invoice has already been fully paid or cancelled.');
         }
 
@@ -37,12 +37,12 @@ class BillplzController extends Controller
             // Redirect user to Billplz hosted FPX checkout page
             return redirect()->away($result['bill_url']);
         } catch (\Throwable $e) {
-            Log::error('[BillplzController] checkout failed: ' . $e->getMessage(), [
+            Log::error('[BillplzController] checkout failed: '.$e->getMessage(), [
                 'invoice_id' => $invoice->id,
-                'user_id'    => $user->id,
+                'user_id' => $user->id,
             ]);
 
-            return back()->with('error', 'Unable to connect to online banking gateway: ' . $e->getMessage());
+            return back()->with('error', 'Unable to connect to online banking gateway: '.$e->getMessage());
         }
     }
 
@@ -53,7 +53,7 @@ class BillplzController extends Controller
     public function checkoutMulti(Request $request)
     {
         $request->validate([
-            'invoice_ids'   => ['required', 'array', 'min:1'],
+            'invoice_ids' => ['required', 'array', 'min:1'],
             'invoice_ids.*' => ['integer', 'exists:invoices,id'],
         ]);
 
@@ -69,11 +69,11 @@ class BillplzController extends Controller
 
             return redirect()->away($result['bill_url']);
         } catch (\Throwable $e) {
-            Log::error('[BillplzController] checkoutMulti failed: ' . $e->getMessage(), [
+            Log::error('[BillplzController] checkoutMulti failed: '.$e->getMessage(), [
                 'user_id' => $user->id,
             ]);
 
-            return back()->with('error', 'Unable to initiate online payment: ' . $e->getMessage());
+            return back()->with('error', 'Unable to initiate online payment: '.$e->getMessage());
         }
     }
 
@@ -88,8 +88,8 @@ class BillplzController extends Controller
         // Extract Billplz response parameters
         // When Billplz redirects, parameters are nested inside billplz[...] or top level
         $billplzData = $request->input('billplz', $request->all());
-        $billId      = $billplzData['id'] ?? $request->input('billplz_id');
-        $isPaid      = isset($billplzData['paid']) && ($billplzData['paid'] === 'true' || $billplzData['paid'] === true);
+        $billId = $billplzData['id'] ?? $request->input('billplz_id');
+        $isPaid = isset($billplzData['paid']) && ($billplzData['paid'] === 'true' || $billplzData['paid'] === true);
 
         $user = Auth::user();
         $redirectRoute = ($user && ($user->isParent() || $user->role === 'parent'))
@@ -102,7 +102,7 @@ class BillplzController extends Controller
 
         // Verify signature if provided
         $isValidSig = $this->billplzService->verifySignature($request->all());
-        if (!$isValidSig) {
+        if (! $isValidSig) {
             Log::warning('[BillplzController] Return signature mismatch.', $request->all());
         }
 
@@ -110,9 +110,11 @@ class BillplzController extends Controller
             try {
                 $payment = $this->paymentService->completeGatewayPayment($billId, $request->all());
                 $receiptNo = $payment->receipt_number ? " (Receipt No: {$payment->receipt_number})" : '';
+
                 return redirect($redirectRoute)->with('success', "Payment successful! Your fees have been settled{$receiptNo}.");
             } catch (\Throwable $e) {
-                Log::error('[BillplzController] Return completion error: ' . $e->getMessage());
+                Log::error('[BillplzController] Return completion error: '.$e->getMessage());
+
                 return redirect($redirectRoute)->with('success', 'Payment processed by bank. Your invoice status will update momentarily.');
             }
         }
@@ -120,7 +122,8 @@ class BillplzController extends Controller
         // Payment was not completed or user cancelled at bank
         try {
             $this->paymentService->failGatewayPayment($billId, $request->all(), 'Payment cancelled or incomplete at FPX checkout');
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         return redirect($redirectRoute)->with('error', 'Online payment was not completed or was cancelled. Please try again or use bank transfer.');
     }
@@ -135,12 +138,15 @@ class BillplzController extends Controller
 
         try {
             $this->paymentService->handleGatewayWebhook($request->all());
+
             return response()->json(['status' => 'ok'], 200);
         } catch (\InvalidArgumentException $e) {
-            Log::warning('[BillplzController] Webhook bad request: ' . $e->getMessage());
+            Log::warning('[BillplzController] Webhook bad request: '.$e->getMessage());
+
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 400);
         } catch (\Throwable $e) {
-            Log::error('[BillplzController] Webhook processing exception: ' . $e->getMessage());
+            Log::error('[BillplzController] Webhook processing exception: '.$e->getMessage());
+
             return response()->json(['status' => 'error', 'message' => 'Internal processing error'], 500);
         }
     }
@@ -152,17 +158,19 @@ class BillplzController extends Controller
     {
         if ($user->role === 'student') {
             $student = $user->student;
-            if (!$student || $student->id !== $invoice->student_id) {
+            if (! $student || $student->id !== $invoice->student_id) {
                 abort(403, 'Unauthorized access to this invoice.');
             }
+
             return;
         }
 
         if ($user->role === 'parent') {
             $childIds = $user->authorizedChildren()->pluck('students.id')->toArray();
-            if (!in_array($invoice->student_id, $childIds)) {
+            if (! in_array($invoice->student_id, $childIds)) {
                 abort(403, 'Unauthorized access to child invoice.');
             }
+
             return;
         }
 

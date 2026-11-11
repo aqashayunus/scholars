@@ -26,33 +26,33 @@ class ParentLinkSecurityTest extends TestCase
     private function makeStudent(string $ic, ?int $parentUserId = null): Student
     {
         $studentUser = User::factory()->create([
-            'name'     => 'Child ' . $ic,
-            'email'    => 'child' . $ic . '@student.test',
-            'role'     => 'student',
+            'name' => 'Child '.$ic,
+            'email' => 'child'.$ic.'@student.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
 
         return Student::factory()->create([
-            'user_id'        => $studentUser->id,
+            'user_id' => $studentUser->id,
             'parent_user_id' => $parentUserId,
             'ic_number_hash' => Student::hashIc($ic),
-            'level'          => 'SPM',
+            'level' => 'SPM',
         ]);
     }
 
     private function makeParent(string $email): User
     {
         return User::factory()->create([
-            'name'     => 'Parent ' . $email,
-            'email'    => $email,
-            'role'     => 'parent',
+            'name' => 'Parent '.$email,
+            'email' => $email,
+            'role' => 'parent',
             'password' => Hash::make('password'),
         ]);
     }
 
     public function test_first_claim_on_an_unguarded_student_activates_immediately(): void
     {
-        $parent  = $this->makeParent('newparent@test.com');
+        $parent = $this->makeParent('newparent@test.com');
         $student = $this->makeStudent('010203040506'); // no existing guardian
 
         $response = $this->actingAs($parent)->post(route('parent.children.connect'), [
@@ -63,8 +63,8 @@ class ParentLinkSecurityTest extends TestCase
 
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $parent->id,
-            'student_id'     => $student->id,
-            'status'         => 'active',
+            'student_id' => $student->id,
+            'status' => 'active',
         ]);
         $this->assertSame($parent->id, $student->fresh()->parent_user_id);
     }
@@ -78,12 +78,12 @@ class ParentLinkSecurityTest extends TestCase
 
         DB::table('parent_student')->insert([
             'parent_user_id' => $existingGuardian->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Father',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Father',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $attacker = $this->makeParent('attacker@test.com');
@@ -98,8 +98,8 @@ class ParentLinkSecurityTest extends TestCase
         // The attacker's pivot row exists but is NOT active.
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $attacker->id,
-            'student_id'     => $student->id,
-            'status'         => 'pending',
+            'student_id' => $student->id,
+            'status' => 'pending',
         ]);
 
         // parent_user_id must remain the existing guardian's — not silently hijacked.
@@ -128,23 +128,23 @@ class ParentLinkSecurityTest extends TestCase
 
         $pivotId = DB::table('parent_student')->insertGetId([
             'parent_user_id' => $existingGuardian->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Father',
-            'is_primary'     => true,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Father',
+            'is_primary' => true,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $newParent = $this->makeParent('newguardian@test.com');
         $pendingPivotId = DB::table('parent_student')->insertGetId([
             'parent_user_id' => $newParent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Mother',
-            'is_primary'     => false,
-            'status'         => 'pending',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Mother',
+            'is_primary' => false,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $approveUrl = URL::temporarySignedRoute(
@@ -157,7 +157,7 @@ class ParentLinkSecurityTest extends TestCase
         $response->assertOk();
 
         $this->assertDatabaseHas('parent_student', [
-            'id'     => $pendingPivotId,
+            'id' => $pendingPivotId,
             'status' => 'active',
         ]);
 
@@ -175,12 +175,12 @@ class ParentLinkSecurityTest extends TestCase
         $newParent = $this->makeParent('deniedparent@test.com');
         $pendingPivotId = DB::table('parent_student')->insertGetId([
             'parent_user_id' => $newParent->id,
-            'student_id'     => $student->id,
-            'relationship'   => 'Mother',
-            'is_primary'     => false,
-            'status'         => 'pending',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'relationship' => 'Mother',
+            'is_primary' => false,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $denyUrl = URL::temporarySignedRoute(
@@ -193,7 +193,7 @@ class ParentLinkSecurityTest extends TestCase
         $response->assertOk();
 
         $this->assertDatabaseHas('parent_student', [
-            'id'     => $pendingPivotId,
+            'id' => $pendingPivotId,
             'status' => 'denied',
         ]);
 
@@ -210,18 +210,18 @@ class ParentLinkSecurityTest extends TestCase
         $newParent = $this->makeParent('unsigned@test.com');
         $pendingPivotId = DB::table('parent_student')->insertGetId([
             'parent_user_id' => $newParent->id,
-            'student_id'     => $student->id,
-            'status'         => 'pending',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // Hitting the route without a valid signature must not approve it.
-        $response = $this->get('/parent-link-requests/' . $pendingPivotId . '/approve');
+        $response = $this->get('/parent-link-requests/'.$pendingPivotId.'/approve');
         $response->assertForbidden();
 
         $this->assertDatabaseHas('parent_student', [
-            'id'     => $pendingPivotId,
+            'id' => $pendingPivotId,
             'status' => 'pending',
         ]);
     }
@@ -235,27 +235,27 @@ class ParentLinkSecurityTest extends TestCase
 
         DB::table('parent_student')->insert([
             'parent_user_id' => $existingGuardian->id,
-            'student_id'     => $student->id,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $student->id,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $response = $this->post(route('register.parent.submit'), [
-            'nationality_type'  => 'local',
-            'parent_name'       => 'Attacker Parent',
-            'email'             => 'attackerreg@test.com',
-            'phone'             => '0123456789',
-            'password'          => 'Password1!',
+            'nationality_type' => 'local',
+            'parent_name' => 'Attacker Parent',
+            'email' => 'attackerreg@test.com',
+            'phone' => '0123456789',
+            'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
-            'relationship'      => 'Guardian',
+            'relationship' => 'Guardian',
             'child_has_account' => 'yes',
-            'parent_ic_number'  => '999999-99-9999',
-            'child_ic_number'   => '060708-09-1011',
-            'address_line_1'    => 'Test Address',
-            'postcode'          => '12345',
-            'city'              => 'Test City',
-            'state'             => 'Selangor',
+            'parent_ic_number' => '999999-99-9999',
+            'child_ic_number' => '060708-09-1011',
+            'address_line_1' => 'Test Address',
+            'postcode' => '12345',
+            'city' => 'Test City',
+            'state' => 'Selangor',
         ]);
 
         $response->assertRedirect(route('register.parent.success'));
@@ -265,8 +265,8 @@ class ParentLinkSecurityTest extends TestCase
 
         $this->assertDatabaseHas('parent_student', [
             'parent_user_id' => $attackerParent->id,
-            'student_id'     => $student->id,
-            'status'         => 'pending',
+            'student_id' => $student->id,
+            'status' => 'pending',
         ]);
         $this->assertSame($existingGuardian->id, $student->fresh()->parent_user_id);
 

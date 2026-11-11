@@ -4,6 +4,7 @@ namespace App\Services\Admin;
 
 use App\Models\Student;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ParentAccountService
@@ -36,24 +37,24 @@ class ParentAccountService
         if ($existing) {
             DB::table('parent_student')->where('id', $existing->id)->update([
                 'relationship' => $relationship,
-                'is_primary'   => $isPrimary,
-                'status'       => 'active',
-                'updated_at'   => now(),
+                'is_primary' => $isPrimary,
+                'status' => 'active',
+                'updated_at' => now(),
             ]);
         } else {
             DB::table('parent_student')->insert([
                 'parent_user_id' => $validated['parent_user_id'],
-                'student_id'     => $validated['student_id'],
-                'relationship'   => $relationship,
-                'is_primary'     => $isPrimary,
-                'status'         => 'active',
-                'created_at'     => now(),
-                'updated_at'     => now(),
+                'student_id' => $validated['student_id'],
+                'relationship' => $relationship,
+                'is_primary' => $isPrimary,
+                'status' => 'active',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
 
         $student = Student::findOrFail($validated['student_id']);
-        if (!$student->parent_user_id || $isPrimary) {
+        if (! $student->parent_user_id || $isPrimary) {
             $student->update(['parent_user_id' => $validated['parent_user_id']]);
         }
 
@@ -75,7 +76,7 @@ class ParentAccountService
     }
 
     /**
-     * @return array{allParentsList: \Illuminate\Support\Collection, allParentStudentLinks: \Illuminate\Support\Collection}
+     * @return array{allParentsList: Collection, allParentStudentLinks: Collection}
      */
     public function parentsDirectoryData(): array
     {
@@ -104,7 +105,7 @@ class ParentAccountService
             ->get();
 
         return [
-            'allParentsList'        => $allParentsList,
+            'allParentsList' => $allParentsList,
             'allParentStudentLinks' => $allParentStudentLinks,
         ];
     }

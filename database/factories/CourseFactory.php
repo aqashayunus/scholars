@@ -17,13 +17,13 @@ class CourseFactory extends Factory
     public function definition(): array
     {
         return [
-            'subject_id'    => Subject::factory(),
-            'teacher_id'    => Teacher::factory(),
-            'title'         => fake()->sentence(3),
-            'description'   => fake()->paragraph(),
-            'level'         => 'SPM',
-            'price'         => 99.00,
-            'status'        => 'published',
+            'subject_id' => Subject::factory(),
+            'teacher_id' => Teacher::factory(),
+            'title' => fake()->sentence(3),
+            'description' => fake()->paragraph(),
+            'level' => 'SPM',
+            'price' => 99.00,
+            'status' => 'published',
             'total_lessons' => fake()->numberBetween(4, 24),
         ];
     }

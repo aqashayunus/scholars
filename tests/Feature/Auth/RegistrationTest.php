@@ -26,13 +26,13 @@ class RegistrationTest extends TestCase
     public function test_child_fields_no_longer_create_a_second_account(): void
     {
         $response = $this->post('/register', [
-            'name'                  => 'Parent Only',
-            'email'                 => 'parentonly@example.com',
-            'password'              => 'Password1!',
+            'name' => 'Parent Only',
+            'email' => 'parentonly@example.com',
+            'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
-            'role'                  => 'parent',
-            'child_name'            => 'Injected Child',
-            'child_email'           => 'injectedchild@example.com',
+            'role' => 'parent',
+            'child_name' => 'Injected Child',
+            'child_email' => 'injectedchild@example.com',
         ]);
 
         $this->assertAuthenticated();

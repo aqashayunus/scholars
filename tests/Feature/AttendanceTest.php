@@ -25,11 +25,17 @@ class AttendanceTest extends TestCase
     use RefreshDatabase;
 
     private User $teacherUser;
+
     private Teacher $teacher;
+
     private User $studentUser;
+
     private Student $student;
+
     private Subject $subject;
+
     private Course $course;
+
     private LiveClass $liveClass;
 
     protected function setUp(): void
@@ -43,65 +49,65 @@ class AttendanceTest extends TestCase
 
         // 1. Teacher
         $this->teacherUser = User::factory()->create([
-            'name'     => 'Cikgu Rahman',
-            'email'    => 'rahman@teacher.test',
-            'role'     => 'teacher',
+            'name' => 'Cikgu Rahman',
+            'email' => 'rahman@teacher.test',
+            'role' => 'teacher',
             'password' => Hash::make('password'),
         ]);
 
         $this->teacher = Teacher::factory()->create([
-            'user_id'            => $this->teacherUser->id,
+            'user_id' => $this->teacherUser->id,
             'application_status' => 'active',
-            'qualification'      => 'Master of Mathematics',
+            'qualification' => 'Master of Mathematics',
         ]);
 
         // 2. Student
         $this->studentUser = User::factory()->create([
-            'name'     => 'Nurul Huda',
-            'email'    => 'huda@student.test',
-            'role'     => 'student',
+            'name' => 'Nurul Huda',
+            'email' => 'huda@student.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
 
         $this->student = Student::factory()->create([
             'user_id' => $this->studentUser->id,
-            'level'   => 'SPM',
-            'status'  => 'active',
+            'level' => 'SPM',
+            'status' => 'active',
         ]);
 
         // 3. Subject & Course
         $this->subject = Subject::create([
-            'name'  => 'Matematik Tambahan',
-            'slug'  => 'matematik-tambahan',
+            'name' => 'Matematik Tambahan',
+            'slug' => 'matematik-tambahan',
             'level' => 'SPM',
         ]);
 
         $this->course = Course::create([
-            'title'       => 'SPM Add Math Masterclass',
-            'subject_id'  => $this->subject->id,
-            'teacher_id'  => $this->teacher->id,
-            'level'       => 'SPM',
-            'status'      => 'published',
-            'price'       => 99.00,
+            'title' => 'SPM Add Math Masterclass',
+            'subject_id' => $this->subject->id,
+            'teacher_id' => $this->teacher->id,
+            'level' => 'SPM',
+            'status' => 'published',
+            'price' => 99.00,
         ]);
 
         // 4. Enrollment
         Enrollment::create([
-            'student_id'   => $this->student->id,
-            'course_id'    => $this->course->id,
-            'enrolled_at'  => now()->subDays(5),
+            'student_id' => $this->student->id,
+            'course_id' => $this->course->id,
+            'enrolled_at' => now()->subDays(5),
             'progress_pct' => 50,
-            'status'       => 'active',
+            'status' => 'active',
         ]);
 
         // 5. Live Class (Scheduled for now)
         $this->liveClass = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Calculus & Integration Session 1',
-            'scheduled_at'     => now()->addMinutes(5),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Calculus & Integration Session 1',
+            'scheduled_at' => now()->addMinutes(5),
             'duration_minutes' => 60,
-            'meeting_url'      => 'https://meet.google.com/abc-defg-hij',
+            'meeting_url' => 'https://meet.google.com/abc-defg-hij',
         ]);
     }
 
@@ -130,9 +136,9 @@ class AttendanceTest extends TestCase
 
         // Improvement #5: check audit event
         $this->assertDatabaseHas('attendance_events', [
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
-            'event_type'    => AttendanceEvent::TYPE_JOIN_ATTEMPT,
+            'event_type' => AttendanceEvent::TYPE_JOIN_ATTEMPT,
         ]);
     }
 
@@ -171,9 +177,9 @@ class AttendanceTest extends TestCase
 
         // Check rejoin event was logged in audit trail
         $this->assertDatabaseHas('attendance_events', [
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
-            'event_type'    => AttendanceEvent::TYPE_REJOIN_ATTEMPT,
+            'event_type' => AttendanceEvent::TYPE_REJOIN_ATTEMPT,
         ]);
 
         Carbon::setTestNow();
@@ -209,12 +215,12 @@ class AttendanceTest extends TestCase
     {
         // Teacher manually verified student as 'excused'
         $attendance = StudentAttendance::create([
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
-            'status'        => StudentAttendance::STATUS_EXCUSED,
-            'verified_at'   => now()->subHour(),
-            'verified_by'   => $this->teacherUser->id,
-            'remarks'       => 'Medical certificate presented',
+            'status' => StudentAttendance::STATUS_EXCUSED,
+            'verified_at' => now()->subHour(),
+            'verified_by' => $this->teacherUser->id,
+            'remarks' => 'Medical certificate presented',
         ]);
 
         // Student tries to join
@@ -237,55 +243,55 @@ class AttendanceTest extends TestCase
 
         // Past verified attended class
         $class1 = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Class 1 - Held',
-            'scheduled_at'     => Carbon::parse('2026-10-02 10:00:00'),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Class 1 - Held',
+            'scheduled_at' => Carbon::parse('2026-10-02 10:00:00'),
             'duration_minutes' => 60,
-            'status'           => 'completed',
+            'status' => 'completed',
         ]);
         StudentAttendance::create([
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $class1->id,
-            'status'        => StudentAttendance::STATUS_ATTENDED,
-            'verified_at'   => now(),
-            'verified_by'   => $this->teacherUser->id,
+            'status' => StudentAttendance::STATUS_ATTENDED,
+            'verified_at' => now(),
+            'verified_by' => $this->teacherUser->id,
         ]);
 
         // Past class where student did not join and teacher hasn't verified yet (pending_verification)
         $class2 = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Class 2 - Unverified Past',
-            'scheduled_at'     => Carbon::parse('2026-10-05 10:00:00'),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Class 2 - Unverified Past',
+            'scheduled_at' => Carbon::parse('2026-10-05 10:00:00'),
             'duration_minutes' => 60,
-            'status'           => 'completed',
+            'status' => 'completed',
         ]);
         // Note: No attendance row OR pending_verification row
         StudentAttendance::create([
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $class2->id,
-            'status'        => StudentAttendance::STATUS_PENDING,
+            'status' => StudentAttendance::STATUS_PENDING,
         ]);
 
         // Past class cancelled
         $class3 = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Class 3 - Cancelled',
-            'scheduled_at'     => Carbon::parse('2026-10-08 10:00:00'),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Class 3 - Cancelled',
+            'scheduled_at' => Carbon::parse('2026-10-08 10:00:00'),
             'duration_minutes' => 60,
-            'status'           => 'cancelled',
+            'status' => 'cancelled',
         ]);
 
         // Future class (not yet held)
         $class4 = LiveClass::create([
-            'course_id'        => $this->course->id,
-            'teacher_id'       => $this->teacher->id,
-            'title'            => 'Class 4 - Future',
-            'scheduled_at'     => Carbon::parse('2026-10-25 10:00:00'),
+            'course_id' => $this->course->id,
+            'teacher_id' => $this->teacher->id,
+            'title' => 'Class 4 - Future',
+            'scheduled_at' => Carbon::parse('2026-10-25 10:00:00'),
             'duration_minutes' => 60,
-            'status'           => 'scheduled',
+            'status' => 'scheduled',
         ]);
 
         $service = app(AttendanceService::class);
@@ -311,8 +317,8 @@ class AttendanceTest extends TestCase
             'records' => [
                 [
                     'student_id' => $this->student->id,
-                    'status'     => 'attended',
-                    'remarks'    => 'Active participation during Q&A',
+                    'status' => 'attended',
+                    'remarks' => 'Active participation during Q&A',
                 ],
             ],
         ];
@@ -334,10 +340,10 @@ class AttendanceTest extends TestCase
 
         // Check teacher save event in audit table
         $this->assertDatabaseHas('attendance_events', [
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
-            'event_type'    => AttendanceEvent::TYPE_TEACHER_MARKED_PRESENT,
-            'actor_id'      => $this->teacherUser->id,
+            'event_type' => AttendanceEvent::TYPE_TEACHER_MARKED_PRESENT,
+            'actor_id' => $this->teacherUser->id,
         ]);
     }
 
@@ -348,18 +354,18 @@ class AttendanceTest extends TestCase
     {
         // Class held, student was marked absent
         $attendance = StudentAttendance::create([
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
-            'status'        => StudentAttendance::STATUS_ABSENT,
-            'verified_at'   => now(),
-            'verified_by'   => $this->teacherUser->id,
+            'status' => StudentAttendance::STATUS_ABSENT,
+            'verified_at' => now(),
+            'verified_by' => $this->teacherUser->id,
         ]);
 
         // 1. Student submits correction request
         $response = $this->actingAs($this->studentUser)
             ->postJson(route('student.attendance.correction.submit'), [
-                'live_class_id'    => $this->liveClass->id,
-                'reason'           => 'I joined using my phone audio link due to home router power outage.',
+                'live_class_id' => $this->liveClass->id,
+                'reason' => 'I joined using my phone audio link due to home router power outage.',
                 'requested_status' => 'attended',
             ]);
 
@@ -376,7 +382,7 @@ class AttendanceTest extends TestCase
         // 2. Teacher approves the correction request
         $reviewResponse = $this->actingAs($this->teacherUser)
             ->postJson(route('teacher.attendance.corrections.review', $correctionReq->id), [
-                'action'  => 'approved',
+                'action' => 'approved',
                 'remarks' => 'Verified phone participation logs.',
             ]);
 
@@ -394,16 +400,16 @@ class AttendanceTest extends TestCase
     {
         // Create overdue invoice for student
         Invoice::factory()->create([
-            'student_id'      => $this->student->id,
-            'invoice_number'  => 'INV-2026-OVERDUE-01',
-            'title'           => 'SPM Monthly Tuition Fee',
-            'billing_period'  => 'September 2026',
-            'subtotal'        => 150.00,
-            'total_amount'    => 150.00,
-            'amount_paid'     => 0.00,
-            'issued_date'     => now()->subDays(20)->toDateString(),
-            'due_date'        => now()->subDays(10)->toDateString(),
-            'status'          => 'overdue',
+            'student_id' => $this->student->id,
+            'invoice_number' => 'INV-2026-OVERDUE-01',
+            'title' => 'SPM Monthly Tuition Fee',
+            'billing_period' => 'September 2026',
+            'subtotal' => 150.00,
+            'total_amount' => 150.00,
+            'amount_paid' => 0.00,
+            'issued_date' => now()->subDays(20)->toDateString(),
+            'due_date' => now()->subDays(10)->toDateString(),
+            'status' => 'overdue',
         ]);
 
         $response = $this->actingAs($this->studentUser)
@@ -414,7 +420,7 @@ class AttendanceTest extends TestCase
 
         // No attendance record created
         $this->assertDatabaseMissing('student_attendances', [
-            'student_id'    => $this->student->id,
+            'student_id' => $this->student->id,
             'live_class_id' => $this->liveClass->id,
         ]);
     }

@@ -74,25 +74,25 @@ class DiagnosticRuleParser
     /**
      * Parse a rule string into a normalized AST structure.
      *
-     * @param  string $ruleString  Raw rule text configured by admin
-     * @param  float  $maxMarks    Maximum marks for this question
-     * @return array               Structured AST ready for grading
+     * @param  string  $ruleString  Raw rule text configured by admin
+     * @param  float  $maxMarks  Maximum marks for this question
+     * @return array Structured AST ready for grading
      */
     public static function parse(string $ruleString, float $maxMarks = 1.0): array
     {
-        $trimmed  = trim($ruleString);
+        $trimmed = trim($ruleString);
         $ruleType = self::detectRuleType($trimmed);
 
         return match ($ruleType) {
-            'manual'       => self::parseManual($trimmed, $maxMarks),
-            'exact'        => self::parseExact($trimmed, $maxMarks),
-            'fuzzy'        => self::parseFuzzy($trimmed, $maxMarks),
-            'numerical'    => self::parseNumerical($trimmed, $maxMarks),
-            'criteria'     => self::parseCriteria($trimmed, $maxMarks),
-            'multi_required'=> self::parseMultiRequired($trimmed, $maxMarks),
+            'manual' => self::parseManual($trimmed, $maxMarks),
+            'exact' => self::parseExact($trimmed, $maxMarks),
+            'fuzzy' => self::parseFuzzy($trimmed, $maxMarks),
+            'numerical' => self::parseNumerical($trimmed, $maxMarks),
+            'criteria' => self::parseCriteria($trimmed, $maxMarks),
+            'multi_required' => self::parseMultiRequired($trimmed, $maxMarks),
             'alternatives' => self::parseAlternatives($trimmed, $maxMarks),
-            'empty'        => self::parseEmpty($maxMarks),
-            default        => self::parseLegacy($trimmed, $maxMarks),
+            'empty' => self::parseEmpty($maxMarks),
+            default => self::parseLegacy($trimmed, $maxMarks),
         };
     }
 
@@ -101,22 +101,22 @@ class DiagnosticRuleParser
      */
     public static function validate(string $ruleString): array
     {
-        $trimmed  = trim($ruleString);
+        $trimmed = trim($ruleString);
         $ruleType = self::detectRuleType($trimmed);
-        $errors   = [];
+        $errors = [];
         $warnings = [];
 
         if ($trimmed === '') {
             return [
-                'valid'    => true,
-                'type'     => 'empty',
-                'errors'   => [],
+                'valid' => true,
+                'type' => 'empty',
+                'errors' => [],
                 'warnings' => ['Empty rule: will accept any non-empty student answer.'],
             ];
         }
 
         // Validate bracket pairs
-        $openCount  = substr_count($trimmed, '[');
+        $openCount = substr_count($trimmed, '[');
         $closeCount = substr_count($trimmed, ']');
         if ($openCount !== $closeCount) {
             $errors[] = "Mismatched brackets: found {$openCount} '[' and {$closeCount} ']'.";
@@ -147,9 +147,9 @@ class DiagnosticRuleParser
         }
 
         return [
-            'valid'    => empty($errors),
-            'type'     => $ruleType,
-            'errors'   => $errors,
+            'valid' => empty($errors),
+            'type' => $ruleType,
+            'errors' => $errors,
             'warnings' => $warnings,
         ];
     }
@@ -159,18 +159,18 @@ class DiagnosticRuleParser
     protected static function parseManual(string $rule, float $maxMarks): array
     {
         return [
-            'type'      => 'manual',
+            'type' => 'manual',
             'max_marks' => $maxMarks,
-            'raw'       => $rule,
+            'raw' => $rule,
         ];
     }
 
     protected static function parseEmpty(float $maxMarks): array
     {
         return [
-            'type'      => 'empty',
+            'type' => 'empty',
             'max_marks' => $maxMarks,
-            'raw'       => '',
+            'raw' => '',
         ];
     }
 
@@ -181,10 +181,10 @@ class DiagnosticRuleParser
         $answer = $m[1] ?? '';
 
         return [
-            'type'      => 'exact',
-            'answer'    => $answer,           // case-sensitive, verbatim
+            'type' => 'exact',
+            'answer' => $answer,           // case-sensitive, verbatim
             'max_marks' => $maxMarks,
-            'raw'       => $rule,
+            'raw' => $rule,
         ];
     }
 
@@ -195,12 +195,12 @@ class DiagnosticRuleParser
         $answer = $m[1] ?? '';
 
         return [
-            'type'          => 'fuzzy',
-            'answer'        => $answer,
-            'similarity'    => 0.80,    // default: require ≥80% Levenshtein similarity
-            'max_distance'  => 2,       // or max 2 character edits
-            'max_marks'     => $maxMarks,
-            'raw'           => $rule,
+            'type' => 'fuzzy',
+            'answer' => $answer,
+            'similarity' => 0.80,    // default: require ≥80% Levenshtein similarity
+            'max_distance' => 2,       // or max 2 character edits
+            'max_marks' => $maxMarks,
+            'raw' => $rule,
         ];
     }
 
@@ -208,17 +208,17 @@ class DiagnosticRuleParser
     {
         // [9.8] ±0.1 or [9.8] +-0.1
         preg_match('/^\[([\d\.,\s]+)\]\s*[±\+\-][=]?\s*([\d\.]+)/u', $rule, $m);
-        $target    = isset($m[1]) ? (float) str_replace(',', '.', trim($m[1])) : 0.0;
+        $target = isset($m[1]) ? (float) str_replace(',', '.', trim($m[1])) : 0.0;
         $tolerance = isset($m[2]) ? (float) $m[2] : 0.0;
 
         return [
-            'type'      => 'numerical',
-            'target'    => $target,
+            'type' => 'numerical',
+            'target' => $target,
             'tolerance' => $tolerance,
-            'min'       => $target - $tolerance,
-            'max'       => $target + $tolerance,
+            'min' => $target - $tolerance,
+            'max' => $target + $tolerance,
             'max_marks' => $maxMarks,
-            'raw'       => $rule,
+            'raw' => $rule,
         ];
     }
 
@@ -229,12 +229,12 @@ class DiagnosticRuleParser
         $criteria = [];
         foreach ($matches as $match) {
             $keywords = array_map(
-                fn($k) => self::normalizeText(trim($k)),
+                fn ($k) => self::normalizeText(trim($k)),
                 explode(',', $match[1])
             );
             $criteria[] = [
-                'keywords'  => array_filter($keywords, fn($k) => $k !== ''),
-                'marks'     => (float) $match[2],
+                'keywords' => array_filter($keywords, fn ($k) => $k !== ''),
+                'marks' => (float) $match[2],
             ];
         }
 
@@ -242,11 +242,11 @@ class DiagnosticRuleParser
         $totalCriteriaMarks = array_sum(array_column($criteria, 'marks'));
 
         return [
-            'type'                 => 'criteria',
-            'criteria'             => $criteria,
+            'type' => 'criteria',
+            'criteria' => $criteria,
             'total_criteria_marks' => $totalCriteriaMarks,
-            'max_marks'            => $maxMarks,
-            'raw'                  => $rule,
+            'max_marks' => $maxMarks,
+            'raw' => $rule,
         ];
     }
 
@@ -258,10 +258,10 @@ class DiagnosticRuleParser
         foreach ($matches[1] as $segment) {
             // Each segment may itself contain alternatives (comma separated)
             $alts = array_values(array_filter(
-                array_map(fn($a) => self::normalizeText(trim($a)), explode(',', $segment)),
-                fn($a) => $a !== ''
+                array_map(fn ($a) => self::normalizeText(trim($a)), explode(',', $segment)),
+                fn ($a) => $a !== ''
             ));
-            if (!empty($alts)) {
+            if (! empty($alts)) {
                 $parts[] = $alts;
             }
         }
@@ -269,11 +269,11 @@ class DiagnosticRuleParser
         $marksPerPart = count($parts) > 0 ? ($maxMarks / count($parts)) : $maxMarks;
 
         return [
-            'type'          => 'multi_required',
-            'parts'         => $parts,          // [[alt1, alt2], [alt1], ...]
-            'marks_per_part'=> $marksPerPart,
-            'max_marks'     => $maxMarks,
-            'raw'           => $rule,
+            'type' => 'multi_required',
+            'parts' => $parts,          // [[alt1, alt2], [alt1], ...]
+            'marks_per_part' => $marksPerPart,
+            'max_marks' => $maxMarks,
+            'raw' => $rule,
         ];
     }
 
@@ -282,16 +282,16 @@ class DiagnosticRuleParser
         // [A, B, C] — extract the inner content and split by comma
         preg_match('/^\[(.+)\]$/su', $rule, $m);
         $inner = $m[1] ?? $rule;
-        $alts  = array_values(array_filter(
-            array_map(fn($a) => self::normalizeText(trim($a)), explode(',', $inner)),
-            fn($a) => $a !== ''
+        $alts = array_values(array_filter(
+            array_map(fn ($a) => self::normalizeText(trim($a)), explode(',', $inner)),
+            fn ($a) => $a !== ''
         ));
 
         return [
-            'type'         => 'alternatives',
+            'type' => 'alternatives',
             'alternatives' => $alts,
-            'max_marks'    => $maxMarks,
-            'raw'          => $rule,
+            'max_marks' => $maxMarks,
+            'raw' => $rule,
         ];
     }
 
@@ -300,17 +300,17 @@ class DiagnosticRuleParser
         // Backward-compatible: plain comma/slash/pipe-separated alternatives
         $alts = array_values(array_filter(
             array_map(
-                fn($a) => self::normalizeText(trim(preg_replace('/[.\,!?]+$/u', '', $a))),
+                fn ($a) => self::normalizeText(trim(preg_replace('/[.\,!?]+$/u', '', $a))),
                 preg_split('/[,|\/]+/u', $rule)
             ),
-            fn($a) => $a !== ''
+            fn ($a) => $a !== ''
         ));
 
         return [
-            'type'         => 'legacy',
+            'type' => 'legacy',
             'alternatives' => $alts,
-            'max_marks'    => $maxMarks,
-            'raw'          => $rule,
+            'max_marks' => $maxMarks,
+            'raw' => $rule,
         ];
     }
 
@@ -367,8 +367,10 @@ class DiagnosticRuleParser
         if (preg_match('/[-]?[\d]+(?:[,\.][\d]+)?/', $text, $m)) {
             // Normalize comma-as-decimal (European notation)
             $val = str_replace(',', '.', $m[0]);
+
             return (float) $val;
         }
+
         return null;
     }
 }

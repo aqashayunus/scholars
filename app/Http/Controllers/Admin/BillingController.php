@@ -9,17 +9,20 @@ use App\Models\FeeStructure;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Models\InvoiceReminder;
 use App\Models\Payment;
+use App\Models\PaymentInvoice;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Services\BillingNotificationService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\ReminderService;
+use App\Services\StudentAccessRestrictionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class BillingController extends Controller
 {
@@ -33,14 +36,14 @@ class BillingController extends Controller
     public function index()
     {
         $stats = [
-            'total_invoices'    => Invoice::count(),
-            'issued_invoices'   => Invoice::where('status', InvoiceStatus::Issued)->count(),
-            'paid_invoices'     => Invoice::where('status', InvoiceStatus::Paid)->count(),
-            'overdue_invoices'  => Invoice::where('status', InvoiceStatus::Overdue)->count(),
-            'partial_invoices'  => Invoice::where('status', InvoiceStatus::PartiallyPaid)->count(),
-            'outstanding_amount'=> Invoice::whereIn('status', InvoiceStatus::unpaidStatuses())->get()->sum('outstanding_amount'),
-            'total_collected'   => Payment::where('status', PaymentStatus::Successful)->sum('amount'),
-            'pending_payments'  => Payment::where('status', PaymentStatus::Pending)->count(),
+            'total_invoices' => Invoice::count(),
+            'issued_invoices' => Invoice::where('status', InvoiceStatus::Issued)->count(),
+            'paid_invoices' => Invoice::where('status', InvoiceStatus::Paid)->count(),
+            'overdue_invoices' => Invoice::where('status', InvoiceStatus::Overdue)->count(),
+            'partial_invoices' => Invoice::where('status', InvoiceStatus::PartiallyPaid)->count(),
+            'outstanding_amount' => Invoice::whereIn('status', InvoiceStatus::unpaidStatuses())->get()->sum('outstanding_amount'),
+            'total_collected' => Payment::where('status', PaymentStatus::Successful)->sum('amount'),
+            'pending_payments' => Payment::where('status', PaymentStatus::Pending)->count(),
         ];
 
         $recentInvoices = Invoice::with(['student.user'])
@@ -69,8 +72,8 @@ class BillingController extends Controller
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('invoice_number', 'like', '%' . $request->search . '%')
-                  ->orWhereHas('student.user', fn ($sq) => $sq->where('name', 'like', '%' . $request->search . '%'));
+                $q->where('invoice_number', 'like', '%'.$request->search.'%')
+                    ->orWhereHas('student.user', fn ($sq) => $sq->where('name', 'like', '%'.$request->search.'%'));
             });
         }
 
@@ -88,7 +91,7 @@ class BillingController extends Controller
 
     public function invoiceCreate()
     {
-        $students = Student::whereHas('user', fn($q) => $q->where('role', 'student'))->with('user')->orderBy('id')->get();
+        $students = Student::whereHas('user', fn ($q) => $q->where('role', 'student'))->with('user')->orderBy('id')->get();
         $subjects = Subject::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.billing.invoices.create', compact('students', 'subjects'));
@@ -97,12 +100,12 @@ class BillingController extends Controller
     public function invoiceStore(Request $request)
     {
         $request->validate([
-            'student_id'     => ['required', 'exists:students,id'],
+            'student_id' => ['required', 'exists:students,id'],
             'billing_period' => ['required', 'string'],
-            'due_date'       => ['required', 'date'],
-            'items'          => ['required', 'array', 'min:1'],
+            'due_date' => ['required', 'date'],
+            'items' => ['required', 'array', 'min:1'],
             'items.*.description' => ['required', 'string'],
-            'items.*.amount'      => ['required', 'numeric', 'min:0'],
+            'items.*.amount' => ['required', 'numeric', 'min:0'],
         ]);
 
         $student = Student::findOrFail($request->student_id);
@@ -111,15 +114,15 @@ class BillingController extends Controller
             $subtotal = collect($request->items)->sum('amount');
 
             $invoice = new Invoice([
-                'student_id'     => $student->id,
+                'student_id' => $student->id,
                 'invoice_number' => $this->invoiceService->generateInvoiceNumber(),
-                'title'          => 'Tuition Fee – ' . $request->billing_period,
+                'title' => 'Tuition Fee – '.$request->billing_period,
                 'billing_period' => $request->billing_period,
-                'subtotal'       => $subtotal,
-                'discount_amount'=> 0,
-                'total_amount'   => $subtotal,
-                'issued_date'    => now()->toDateString(),
-                'due_date'       => $request->due_date,
+                'subtotal' => $subtotal,
+                'discount_amount' => 0,
+                'total_amount' => $subtotal,
+                'issued_date' => now()->toDateString(),
+                'due_date' => $request->due_date,
             ]);
             $invoice->amount_paid = 0;
             $invoice->status = InvoiceStatus::Issued;
@@ -127,11 +130,11 @@ class BillingController extends Controller
 
             foreach ($request->items as $item) {
                 InvoiceItem::create([
-                    'invoice_id'  => $invoice->id,
+                    'invoice_id' => $invoice->id,
                     'description' => $item['description'],
-                    'unit_price'  => $item['amount'],
-                    'quantity'    => 1,
-                    'amount'      => $item['amount'],
+                    'unit_price' => $item['amount'],
+                    'quantity' => 1,
+                    'amount' => $item['amount'],
                 ]);
             }
 
@@ -139,12 +142,12 @@ class BillingController extends Controller
             $this->invoiceService->scheduleReminders($invoice, $student);
 
             FinancialAuditLog::create([
-                'user_id'     => Auth::id(),
-                'action'      => 'invoice_created_by_admin',
+                'user_id' => Auth::id(),
+                'action' => 'invoice_created_by_admin',
                 'target_type' => 'Invoice',
-                'target_id'   => $invoice->id,
-                'ip_address'  => request()->ip(),
-                'details'     => json_encode(['invoice_number' => $invoice->invoice_number, 'amount' => $subtotal]),
+                'target_id' => $invoice->id,
+                'ip_address' => request()->ip(),
+                'details' => json_encode(['invoice_number' => $invoice->invoice_number, 'amount' => $subtotal]),
             ]);
 
             return redirect()->route('admin.billing.invoices.show', $invoice)
@@ -167,11 +170,11 @@ class BillingController extends Controller
         }
 
         $request->validate([
-            'student_id'      => ['required', 'exists:students,id'],
-            'title'           => ['required', 'string', 'max:255'],
-            'subtotal'        => ['required', 'numeric', 'min:0'],
+            'student_id' => ['required', 'exists:students,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'subtotal' => ['required', 'numeric', 'min:0'],
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'due_date'        => ['required', 'date'],
+            'due_date' => ['required', 'date'],
         ]);
 
         $student = Student::with('user')->findOrFail($request->student_id);
@@ -191,27 +194,27 @@ class BillingController extends Controller
         $title = $request->filled('title') ? $request->title : "{$feeType} {$monthYear} {$studentName}";
 
         $invoice = new Invoice([
-            'student_id'       => $student->id,
+            'student_id' => $student->id,
             'fee_structure_id' => $request->fee_structure_id ?: null,
-            'invoice_number'   => $this->invoiceService->generateInvoiceNumber(),
-            'title'            => $title,
-            'billing_period'   => $monthYear,
-            'subtotal'         => $subtotal,
-            'discount_amount'  => $discount,
-            'total_amount'     => $total,
-            'issued_date'      => now()->toDateString(),
-            'due_date'         => $request->due_date,
+            'invoice_number' => $this->invoiceService->generateInvoiceNumber(),
+            'title' => $title,
+            'billing_period' => $monthYear,
+            'subtotal' => $subtotal,
+            'discount_amount' => $discount,
+            'total_amount' => $total,
+            'issued_date' => now()->toDateString(),
+            'due_date' => $request->due_date,
         ]);
         $invoice->amount_paid = 0;
         $invoice->status = InvoiceStatus::Issued;
         $invoice->save();
 
         InvoiceItem::create([
-            'invoice_id'  => $invoice->id,
+            'invoice_id' => $invoice->id,
             'description' => $title,
-            'unit_price'  => $subtotal,
-            'quantity'    => 1,
-            'amount'      => $subtotal,
+            'unit_price' => $subtotal,
+            'quantity' => 1,
+            'amount' => $subtotal,
         ]);
 
         $this->invoiceService->scheduleReminders($invoice, $student);
@@ -232,15 +235,15 @@ class BillingController extends Controller
         $invoice->save();
 
         // Skip all pending reminders
-        app(\App\Services\ReminderService::class)->skipRemainingReminders($invoice);
+        app(ReminderService::class)->skipRemainingReminders($invoice);
 
         FinancialAuditLog::create([
-            'user_id'     => Auth::id(),
-            'action'      => 'invoice_cancelled',
+            'user_id' => Auth::id(),
+            'action' => 'invoice_cancelled',
             'target_type' => 'Invoice',
-            'target_id'   => $invoice->id,
-            'ip_address'  => request()->ip(),
-            'details'     => json_encode(['invoice_number' => $invoice->invoice_number]),
+            'target_id' => $invoice->id,
+            'ip_address' => request()->ip(),
+            'details' => json_encode(['invoice_number' => $invoice->invoice_number]),
         ]);
 
         return redirect()->route('admin.billing.invoices.show', $invoice)
@@ -278,6 +281,7 @@ class BillingController extends Controller
 
         try {
             $this->paymentService->approveManualPayment($payment, Auth::user(), $request->notes);
+
             return back()->with('success', 'Payment approved successfully. Receipt generated and invoice updated.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
@@ -292,6 +296,7 @@ class BillingController extends Controller
 
         try {
             $this->paymentService->rejectManualPayment($payment, Auth::user(), $request->reason);
+
             return back()->with('success', 'Payment rejected.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
@@ -307,9 +312,9 @@ class BillingController extends Controller
     public function updateInvoiceStatusQuick(Request $request, $id)
     {
         $request->validate([
-            'status'      => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled',
+            'status' => 'required|in:draft,issued,partially_paid,paid,overdue,cancelled',
             'amount_paid' => 'nullable|numeric|min:0',
-            'notes'       => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $invoice = Invoice::findOrFail($id);
@@ -317,7 +322,7 @@ class BillingController extends Controller
 
         if ($request->status === 'paid') {
             $invoice->amount_paid = $invoice->total_amount;
-            app(\App\Services\ReminderService::class)->skipRemainingReminders($invoice);
+            app(ReminderService::class)->skipRemainingReminders($invoice);
         } elseif ($request->status === 'partially_paid') {
             if ($request->filled('amount_paid') && (float) $request->amount_paid > 0) {
                 $invoice->amount_paid = min((float) $invoice->total_amount, (float) $request->amount_paid);
@@ -347,24 +352,24 @@ class BillingController extends Controller
                 $pendingPayment->amount = $amountToApply;
 
                 if ($request->status === 'paid') {
-                    if (!$pendingPayment->receipt_number) {
+                    if (! $pendingPayment->receipt_number) {
                         $pendingPayment->receipt_number = Payment::generateReceiptNumber();
                     }
-                    $pendingPayment->status      = PaymentStatus::Successful;
+                    $pendingPayment->status = PaymentStatus::Successful;
                     $pendingPayment->verified_by = Auth::id();
-                    $pendingPayment->paid_at     = now();
+                    $pendingPayment->paid_at = now();
                 }
 
                 $pendingPayment->save();
 
-                \App\Models\PaymentInvoice::where('payment_id', $pendingPayment->id)
+                PaymentInvoice::where('payment_id', $pendingPayment->id)
                     ->where('invoice_id', $invoice->id)
                     ->update(['amount_applied' => $amountToApply]);
             }
         }
 
         if ($invoice->student) {
-            app(\App\Services\StudentAccessRestrictionService::class)->syncStudentStatus($invoice->student);
+            app(StudentAccessRestrictionService::class)->syncStudentStatus($invoice->student);
         }
 
         return back()->with('success', "Invoice {$invoice->invoice_number} status updated to {$invoice->status_label}.");
@@ -375,10 +380,10 @@ class BillingController extends Controller
         $invoice = Invoice::with('student.user')->findOrFail($id);
 
         $request->validate([
-            'amount'         => ['required', 'numeric', 'min:0.01'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
             'payment_method' => ['required', 'string'],
-            'reference_no'   => ['nullable', 'string', 'max:100'],
-            'notes'          => ['nullable', 'string', 'max:500'],
+            'reference_no' => ['nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $amount = (float) $request->amount;
@@ -390,24 +395,24 @@ class BillingController extends Controller
             $payerId = $invoice->student->user_id ?? $admin->id;
 
             $payment = Payment::create([
-                'user_id'             => $payerId,
-                'reference_no'        => $request->reference_no ?: ('ADM-' . strtoupper(\Illuminate\Support\Str::random(8))),
-                'payer_id'            => $payerId,
-                'payer_type'          => 'student',
-                'student_id'          => $invoice->student_id,
-                'description'         => "Payment for Invoice #{$invoice->invoice_number}",
-                'amount'              => $amount,
-                'payment_method'      => $request->payment_method,
-                'status'              => PaymentStatus::Successful,
-                'receipt_number'      => $receiptNumber,
-                'verified_by'         => $admin->id,
-                'paid_at'             => now(),
+                'user_id' => $payerId,
+                'reference_no' => $request->reference_no ?: ('ADM-'.strtoupper(Str::random(8))),
+                'payer_id' => $payerId,
+                'payer_type' => 'student',
+                'student_id' => $invoice->student_id,
+                'description' => "Payment for Invoice #{$invoice->invoice_number}",
+                'amount' => $amount,
+                'payment_method' => $request->payment_method,
+                'status' => PaymentStatus::Successful,
+                'receipt_number' => $receiptNumber,
+                'verified_by' => $admin->id,
+                'paid_at' => now(),
                 'payment_proof_notes' => $request->notes,
             ]);
 
-            \App\Models\PaymentInvoice::create([
-                'payment_id'     => $payment->id,
-                'invoice_id'     => $invoice->id,
+            PaymentInvoice::create([
+                'payment_id' => $payment->id,
+                'invoice_id' => $invoice->id,
                 'amount_applied' => $amount,
             ]);
 
@@ -418,9 +423,9 @@ class BillingController extends Controller
         $typeLabel = $invoice->status === InvoiceStatus::Paid ? 'full' : 'partial';
         $isPartial = $invoice->status !== InvoiceStatus::Paid;
 
-        \App\Services\BillingNotificationService::notifyPaymentRecorded($invoice, $amount, $receiptNumber, $isPartial);
+        BillingNotificationService::notifyPaymentRecorded($invoice, $amount, $receiptNumber, $isPartial);
 
-        return back()->with('success', "Authorized {$typeLabel} payment of RM " . number_format($amount, 2) . " for Invoice {$invoice->invoice_number}. Current status: {$invoice->status_label}.");
+        return back()->with('success', "Authorized {$typeLabel} payment of RM ".number_format($amount, 2)." for Invoice {$invoice->invoice_number}. Current status: {$invoice->status_label}.");
     }
 
     public function verifyPaymentQuick(Request $request, $payment)
@@ -430,6 +435,7 @@ class BillingController extends Controller
         if ($request->input('action') === 'reject') {
             $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
             $this->paymentService->rejectManualPayment($p, Auth::user(), $request->input('reason', 'Payment could not be verified'));
+
             return back()->with('success', 'Payment rejected successfully.');
         }
 
@@ -437,6 +443,7 @@ class BillingController extends Controller
             $p->status = 'pending';
             $p->verified_by = null;
             $p->save();
+
             return back()->with('success', "Payment {$p->reference_no} has been reset to Pending Review.");
         }
 
@@ -451,12 +458,13 @@ class BillingController extends Controller
             $approvedAmt = (float) $request->approved_amount;
             $p->amount = $approvedAmt;
             $p->save();
-            \App\Models\PaymentInvoice::where('payment_id', $p->id)->update(['amount_applied' => $approvedAmt]);
+            PaymentInvoice::where('payment_id', $p->id)->update(['amount_applied' => $approvedAmt]);
         }
 
         $request->validate(['notes' => ['nullable', 'string', 'max:1000']]);
         $this->paymentService->approveManualPayment($p, Auth::user(), $request->input('notes'));
-        return back()->with('success', "Payment {$p->reference_no} of RM " . number_format($p->amount, 2) . " approved and verified successfully.");
+
+        return back()->with('success', "Payment {$p->reference_no} of RM ".number_format($p->amount, 2).' approved and verified successfully.');
     }
 
     // ── Reminder History ──────────────────────────────────────────────────────
@@ -490,19 +498,19 @@ class BillingController extends Controller
         $subject->update(['monthly_fee' => $request->monthly_fee]);
 
         FinancialAuditLog::create([
-            'user_id'     => Auth::id(),
-            'action'      => 'subject_fee_updated',
+            'user_id' => Auth::id(),
+            'action' => 'subject_fee_updated',
             'target_type' => 'Subject',
-            'target_id'   => $subject->id,
-            'ip_address'  => request()->ip(),
-            'details'     => json_encode([
-                'subject'  => $subject->name,
-                'old_fee'  => $oldFee,
-                'new_fee'  => $request->monthly_fee,
+            'target_id' => $subject->id,
+            'ip_address' => request()->ip(),
+            'details' => json_encode([
+                'subject' => $subject->name,
+                'old_fee' => $oldFee,
+                'new_fee' => $request->monthly_fee,
             ]),
         ]);
 
-        return back()->with('success', "Fee for {$subject->name} updated to RM " . number_format($request->monthly_fee, 2) . ". New invoices will use this rate.");
+        return back()->with('success', "Fee for {$subject->name} updated to RM ".number_format($request->monthly_fee, 2).'. New invoices will use this rate.');
     }
 
     // ── Email Reminder Settings ───────────────────────────────────────────────
@@ -547,12 +555,12 @@ class BillingController extends Controller
         }
 
         FinancialAuditLog::create([
-            'user_id'     => Auth::id(),
-            'action'      => 'billing_settings_updated',
+            'user_id' => Auth::id(),
+            'action' => 'billing_settings_updated',
             'target_type' => 'Setting',
-            'target_id'   => 0,
-            'ip_address'  => request()->ip(),
-            'details'     => json_encode(['updated_by' => Auth::user()->email]),
+            'target_id' => 0,
+            'ip_address' => request()->ip(),
+            'details' => json_encode(['updated_by' => Auth::user()->email]),
         ]);
 
         return back()->with('success', 'Email reminder settings saved successfully.');

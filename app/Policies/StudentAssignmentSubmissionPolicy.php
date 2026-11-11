@@ -25,7 +25,7 @@ class StudentAssignmentSubmissionPolicy
         // 3. Teacher can view if they teach the course of the assignment, or if it is global
         if ($user->isTeacher()) {
             $teacher = $user->teacherProfile;
-            if (!$teacher) {
+            if (! $teacher) {
                 return false;
             }
 
@@ -52,11 +52,11 @@ class StudentAssignmentSubmissionPolicy
     public function update(User $user, StudentAssignmentSubmission $submission): bool
     {
         // Only student owner can update their draft
-        if (!$user->isStudent()) {
+        if (! $user->isStudent()) {
             return false;
         }
 
-        if (!$user->studentProfile || $submission->student_id !== $user->studentProfile->id) {
+        if (! $user->studentProfile || $submission->student_id !== $user->studentProfile->id) {
             return false;
         }
 

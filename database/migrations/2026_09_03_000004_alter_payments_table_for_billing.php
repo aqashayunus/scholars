@@ -35,13 +35,13 @@ return new class extends Migration
         DB::table('payments')->where('status', 'overdue')->update(['status' => 'pending']);
 
         Schema::table('payments', function (Blueprint $table) {
-            if (!Schema::hasColumn('payments', 'gateway_transaction_id')) {
+            if (! Schema::hasColumn('payments', 'gateway_transaction_id')) {
                 $table->string('gateway_transaction_id')->nullable()->after('reference_no')
-                      ->comment('Transaction ID from online payment gateway (future use)');
+                    ->comment('Transaction ID from online payment gateway (future use)');
             }
-            if (!Schema::hasColumn('payments', 'payment_proof_notes')) {
+            if (! Schema::hasColumn('payments', 'payment_proof_notes')) {
                 $table->text('payment_proof_notes')->nullable()->after('proof_file_path')
-                      ->comment('Admin notes when reviewing manual bank transfer proof');
+                    ->comment('Admin notes when reviewing manual bank transfer proof');
             }
         });
     }

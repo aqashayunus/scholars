@@ -15,11 +15,11 @@ class UpdatePricingPlansRequest extends FormRequest
     {
         return [
             'monthly_price' => 'required|string|max:50',
-            'monthly_per'   => 'required|string|max:20',
+            'monthly_per' => 'required|string|max:20',
             'subject_price' => 'required|string|max:50',
-            'subject_per'   => 'required|string|max:20',
+            'subject_per' => 'required|string|max:20',
             'premium_price' => 'required|string|max:50',
-            'premium_per'   => 'required|string|max:20',
+            'premium_per' => 'required|string|max:20',
         ];
     }
 }

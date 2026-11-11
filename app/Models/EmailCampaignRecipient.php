@@ -23,8 +23,10 @@ class EmailCampaignRecipient extends Model
     ];
 
     public const STATUS_PENDING = 'pending';
-    public const STATUS_SENT    = 'sent';
-    public const STATUS_FAILED  = 'failed';
+
+    public const STATUS_SENT = 'sent';
+
+    public const STATUS_FAILED = 'failed';
 
     public function campaign()
     {

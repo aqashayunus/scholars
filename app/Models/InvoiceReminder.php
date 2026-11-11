@@ -19,7 +19,7 @@ class InvoiceReminder extends Model
 
     protected $casts = [
         'scheduled_at' => 'datetime',
-        'sent_at'      => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     /**
@@ -41,14 +41,14 @@ class InvoiceReminder extends Model
     public static function typeLabel(string $type): string
     {
         return match ($type) {
-            'invoice_issued'  => 'Invoice Issued',
-            'due_7_days'      => '7 Days Before Due',
-            'due_3_days'      => '3 Days Before Due',
-            'due_today'       => 'Due Today',
-            'overdue_1_day'   => '1 Day Overdue',
-            'overdue_3_days'  => '3 Days Overdue',
-            'overdue_7_days'  => '7 Days Overdue',
-            default           => ucwords(str_replace('_', ' ', $type)),
+            'invoice_issued' => 'Invoice Issued',
+            'due_7_days' => '7 Days Before Due',
+            'due_3_days' => '3 Days Before Due',
+            'due_today' => 'Due Today',
+            'overdue_1_day' => '1 Day Overdue',
+            'overdue_3_days' => '3 Days Overdue',
+            'overdue_7_days' => '7 Days Overdue',
+            default => ucwords(str_replace('_', ' ', $type)),
         };
     }
 
@@ -58,14 +58,14 @@ class InvoiceReminder extends Model
     public static function emailSubject(string $type, string $invoiceNumber): string
     {
         return match ($type) {
-            'invoice_issued'  => "Scholars – Invoice {$invoiceNumber} Issued",
-            'due_7_days'      => "Reminder: Your Scholars Payment Is Due in 7 Days",
-            'due_3_days'      => "Reminder: Your Scholars Payment Is Due in 3 Days",
-            'due_today'       => "Scholars – Payment Due Today",
-            'overdue_1_day'   => "Scholars – Payment Overdue: Action Required",
-            'overdue_3_days'  => "Scholars – Payment Reminder: Invoice Overdue (3 Days)",
-            'overdue_7_days'  => "Scholars – Payment Overdue: Immediate Attention Required",
-            default           => "Scholars – Invoice {$invoiceNumber} Notification",
+            'invoice_issued' => "Scholars – Invoice {$invoiceNumber} Issued",
+            'due_7_days' => 'Reminder: Your Scholars Payment Is Due in 7 Days',
+            'due_3_days' => 'Reminder: Your Scholars Payment Is Due in 3 Days',
+            'due_today' => 'Scholars – Payment Due Today',
+            'overdue_1_day' => 'Scholars – Payment Overdue: Action Required',
+            'overdue_3_days' => 'Scholars – Payment Reminder: Invoice Overdue (3 Days)',
+            'overdue_7_days' => 'Scholars – Payment Overdue: Immediate Attention Required',
+            default => "Scholars – Invoice {$invoiceNumber} Notification",
         };
     }
 

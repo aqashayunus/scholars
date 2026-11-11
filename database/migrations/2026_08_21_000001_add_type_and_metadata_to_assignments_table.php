@@ -12,37 +12,37 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assignments', function (Blueprint $table) {
-            if (!Schema::hasColumn('assignments', 'type')) {
+            if (! Schema::hasColumn('assignments', 'type')) {
                 $table->string('type')->default('Assignment')->after('title');
             }
-            if (!Schema::hasColumn('assignments', 'topic')) {
+            if (! Schema::hasColumn('assignments', 'topic')) {
                 $table->string('topic')->nullable()->after('type');
             }
-            if (!Schema::hasColumn('assignments', 'instructions')) {
+            if (! Schema::hasColumn('assignments', 'instructions')) {
                 $table->text('instructions')->nullable()->after('description');
             }
-            if (!Schema::hasColumn('assignments', 'total_marks')) {
+            if (! Schema::hasColumn('assignments', 'total_marks')) {
                 $table->integer('total_marks')->default(100)->after('due_date');
             }
-            if (!Schema::hasColumn('assignments', 'duration_minutes')) {
+            if (! Schema::hasColumn('assignments', 'duration_minutes')) {
                 $table->integer('duration_minutes')->nullable()->after('total_marks');
             }
-            if (!Schema::hasColumn('assignments', 'exam_date')) {
+            if (! Schema::hasColumn('assignments', 'exam_date')) {
                 $table->date('exam_date')->nullable()->after('duration_minutes');
             }
         });
 
         Schema::table('quizzes', function (Blueprint $table) {
-            if (!Schema::hasColumn('quizzes', 'description')) {
+            if (! Schema::hasColumn('quizzes', 'description')) {
                 $table->text('description')->nullable()->after('title');
             }
-            if (!Schema::hasColumn('quizzes', 'time_limit_minutes')) {
+            if (! Schema::hasColumn('quizzes', 'time_limit_minutes')) {
                 $table->integer('time_limit_minutes')->default(15)->after('total_questions');
             }
-            if (!Schema::hasColumn('quizzes', 'passing_marks')) {
+            if (! Schema::hasColumn('quizzes', 'passing_marks')) {
                 $table->integer('passing_marks')->default(60)->after('time_limit_minutes');
             }
-            if (!Schema::hasColumn('quizzes', 'due_date')) {
+            if (! Schema::hasColumn('quizzes', 'due_date')) {
                 $table->date('due_date')->nullable()->after('passing_marks');
             }
         });

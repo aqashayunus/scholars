@@ -14,9 +14,9 @@ class ProcessPaymentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'payment_ids'    => 'required',
+            'payment_ids' => 'required',
             'payment_method' => 'required|string|max:100',
-            'bank_name'      => 'nullable|string|max:100',
+            'bank_name' => 'nullable|string|max:100',
         ];
     }
 }

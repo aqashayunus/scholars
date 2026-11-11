@@ -1,5 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminContentController;
+use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\ClassSchedulingController as AdminClassSchedulingController;
+use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
+use App\Http\Controllers\Admin\EmailManagementController;
+use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\StudentRegistrationController;
@@ -7,19 +14,17 @@ use App\Http\Controllers\Auth\TeacherApplicationController;
 use App\Http\Controllers\Billing\BillplzController;
 use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Billing\PaymentController;
-use App\Http\Controllers\Admin\BillingController;
-use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
-use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
-use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
-use App\Http\Controllers\Admin\ClassSchedulingController as AdminClassSchedulingController;
-use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\DiagnosticTestController;
+use App\Http\Controllers\InteractiveAssignmentController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParentDashboardController;
 use App\Http\Controllers\ParentLinkRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RecordedClassController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TeacherDashboardController;
+use App\Http\Controllers\TimetableController;
 use Illuminate\Support\Facades\Route;
 
 // ──────────────────────────────────────────────────
@@ -95,33 +100,33 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
         Route::get('/classes', [StudentDashboardController::class, 'classes'])->name('classes');
         Route::match(['get', 'post'], '/classes/{liveClass}/join', [StudentDashboardController::class, 'joinClass'])->name('classes.join');
         Route::post('/attendance/correction-request', [StudentDashboardController::class, 'submitCorrectionRequest'])->name('attendance.correction.submit');
-        Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'studentIndex'])->name('timetable');
+        Route::get('/timetable', [TimetableController::class, 'studentIndex'])->name('timetable');
         Route::get('/tasks', [StudentDashboardController::class, 'tasks'])->name('tasks');
         Route::post('/tasks/{id}/submit', [StudentDashboardController::class, 'submitTask'])->name('tasks.submit');
-        Route::get('/assignments/{assignment}/interactive', [\App\Http\Controllers\InteractiveAssignmentController::class, 'show'])->name('assignments.interactive');
-        Route::get('/assignments/{assignment}/pdf-stream', [\App\Http\Controllers\InteractiveAssignmentController::class, 'streamSourcePdf'])->name('assignments.pdf-stream');
-        Route::get('/submissions/{submission}/init', [\App\Http\Controllers\InteractiveAssignmentController::class, 'loadState'])->name('submissions.init');
-        Route::put('/submissions/{submission}/pages/{pageNumber}', [\App\Http\Controllers\InteractiveAssignmentController::class, 'savePage'])->middleware('throttle:60,1')->name('submissions.pages.save');
-        Route::post('/submissions/{submission}/submit', [\App\Http\Controllers\InteractiveAssignmentController::class, 'submit'])->name('submissions.submit');
-        Route::get('/submissions/{submission}/download-final', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.download-final');
-        Route::get('/diagnostic/{id}', [\App\Http\Controllers\DiagnosticTestController::class, 'take'])->name('diagnostic.take');
-        Route::get('/diagnostic/{id}/pdf', [\App\Http\Controllers\DiagnosticTestController::class, 'streamPdf'])->name('diagnostic.pdf');
-        Route::post('/diagnostic/{id}/save-draft', [\App\Http\Controllers\DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
-        Route::post('/diagnostic/{id}/submit', [\App\Http\Controllers\DiagnosticTestController::class, 'submit'])->name('diagnostic.submit');
-        Route::post('/diagnostic/{id}/save-draft', [\App\Http\Controllers\DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
-        Route::get('/assignments/{assignment}/interactive', [\App\Http\Controllers\InteractiveAssignmentController::class, 'show'])->name('assignments.interactive');
-        Route::get('/assignments/{assignment}/pdf-stream', [\App\Http\Controllers\InteractiveAssignmentController::class, 'streamSourcePdf'])->name('assignments.pdf-stream');
-        Route::get('/submissions/{submission}/init', [\App\Http\Controllers\InteractiveAssignmentController::class, 'loadState'])->name('submissions.init');
-        Route::put('/submissions/{submission}/pages/{pageNumber}', [\App\Http\Controllers\InteractiveAssignmentController::class, 'savePage'])->middleware('throttle:60,1')->name('submissions.pages.save');
-        Route::post('/submissions/{submission}/submit', [\App\Http\Controllers\InteractiveAssignmentController::class, 'submit'])->name('submissions.submit');
-        Route::get('/submissions/{submission}/download-final', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.download-final');
+        Route::get('/assignments/{assignment}/interactive', [InteractiveAssignmentController::class, 'show'])->name('assignments.interactive');
+        Route::get('/assignments/{assignment}/pdf-stream', [InteractiveAssignmentController::class, 'streamSourcePdf'])->name('assignments.pdf-stream');
+        Route::get('/submissions/{submission}/init', [InteractiveAssignmentController::class, 'loadState'])->name('submissions.init');
+        Route::put('/submissions/{submission}/pages/{pageNumber}', [InteractiveAssignmentController::class, 'savePage'])->middleware('throttle:60,1')->name('submissions.pages.save');
+        Route::post('/submissions/{submission}/submit', [InteractiveAssignmentController::class, 'submit'])->name('submissions.submit');
+        Route::get('/submissions/{submission}/download-final', [InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.download-final');
+        Route::get('/diagnostic/{id}', [DiagnosticTestController::class, 'take'])->name('diagnostic.take');
+        Route::get('/diagnostic/{id}/pdf', [DiagnosticTestController::class, 'streamPdf'])->name('diagnostic.pdf');
+        Route::post('/diagnostic/{id}/save-draft', [DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
+        Route::post('/diagnostic/{id}/submit', [DiagnosticTestController::class, 'submit'])->name('diagnostic.submit');
+        Route::post('/diagnostic/{id}/save-draft', [DiagnosticTestController::class, 'saveDraft'])->name('diagnostic.save-draft');
+        Route::get('/assignments/{assignment}/interactive', [InteractiveAssignmentController::class, 'show'])->name('assignments.interactive');
+        Route::get('/assignments/{assignment}/pdf-stream', [InteractiveAssignmentController::class, 'streamSourcePdf'])->name('assignments.pdf-stream');
+        Route::get('/submissions/{submission}/init', [InteractiveAssignmentController::class, 'loadState'])->name('submissions.init');
+        Route::put('/submissions/{submission}/pages/{pageNumber}', [InteractiveAssignmentController::class, 'savePage'])->middleware('throttle:60,1')->name('submissions.pages.save');
+        Route::post('/submissions/{submission}/submit', [InteractiveAssignmentController::class, 'submit'])->name('submissions.submit');
+        Route::get('/submissions/{submission}/download-final', [InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.download-final');
         Route::get('/quiz', [StudentDashboardController::class, 'quiz'])->name('quiz');
         Route::get('/quiz/{id}', [StudentDashboardController::class, 'quizShow'])->name('quiz.show');
         Route::post('/quiz/{id}/submit', [StudentDashboardController::class, 'quizSubmit'])->name('quiz.submit');
         Route::get('/progress', [StudentDashboardController::class, 'progress'])->name('progress');
         Route::get('/achievements', [StudentDashboardController::class, 'achievements'])->name('achievements');
-        Route::get('/recordings', [\App\Http\Controllers\RecordedClassController::class, 'index'])->name('recordings');
-        Route::get('/recordings/{id}', [\App\Http\Controllers\RecordedClassController::class, 'show'])->name('recordings.show');
+        Route::get('/recordings', [RecordedClassController::class, 'index'])->name('recordings');
+        Route::get('/recordings/{id}', [RecordedClassController::class, 'show'])->name('recordings.show');
         Route::match(['get', 'post'], '/classes/{liveClass}/join', [StudentDashboardController::class, 'joinClass'])->name('classes.join');
         Route::post('/attendance/correction-request', [StudentDashboardController::class, 'submitCorrectionRequest'])->name('attendance.correction.submit');
     });
@@ -158,7 +163,7 @@ Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->g
     // Query-param style routes (?child_id=X)
     Route::get('/progress', [ParentDashboardController::class, 'progress'])->name('progress');
     Route::get('/classes', [ParentDashboardController::class, 'classes'])->name('classes');
-    Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'parentIndex'])->name('timetable');
+    Route::get('/timetable', [TimetableController::class, 'parentIndex'])->name('timetable');
     Route::get('/attendance', [ParentDashboardController::class, 'attendance'])->name('attendance');
 
     // RESTful child-specific academic endpoints (enforce parent authorization & child payment restriction)
@@ -196,17 +201,17 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::post('/claims', [TeacherDashboardController::class, 'storeClaim'])->name('claims.store');
     Route::post('/claims/bank-details', [TeacherDashboardController::class, 'updateClaimBankDetails'])->name('claims.bank-details');
     Route::get('/classes', [TeacherDashboardController::class, 'classes'])->name('classes');
-    Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'teacherIndex'])->name('timetable');
+    Route::get('/timetable', [TimetableController::class, 'teacherIndex'])->name('timetable');
     Route::post('/classes', [TeacherDashboardController::class, 'storeClass'])->name('classes.store');
-    Route::post('/classes/quick-create', [\App\Http\Controllers\TimetableController::class, 'quickCreateSession'])->name('classes.quick-create');
+    Route::post('/classes/quick-create', [TimetableController::class, 'quickCreateSession'])->name('classes.quick-create');
     Route::post('/classes/{id}/request-cancel', [TeacherDashboardController::class, 'requestCancel'])->name('classes.cancel');
     Route::post('/classes/{id}/request-reschedule', [TeacherDashboardController::class, 'requestReschedule'])->name('classes.reschedule');
-    Route::post('/classes/{id}/reschedule-direct', [\App\Http\Controllers\TimetableController::class, 'teacherReschedule'])->name('classes.reschedule-direct');
+    Route::post('/classes/{id}/reschedule-direct', [TimetableController::class, 'teacherReschedule'])->name('classes.reschedule-direct');
     Route::post('/classes/{id}/meeting-url', [TeacherDashboardController::class, 'updateMeetingUrl'])->name('classes.meeting-url');
     Route::post('/classes/{liveClass}/attendance', [TeacherDashboardController::class, 'saveAttendance'])->name('classes.attendance.save');
     Route::post('/attendance/corrections/{correctionRequest}/review', [TeacherDashboardController::class, 'reviewCorrection'])->name('attendance.corrections.review');
-    Route::get('/submissions/{submission}/review', [\App\Http\Controllers\InteractiveAssignmentController::class, 'teacherReview'])->name('submissions.review');
-    Route::get('/submissions/{submission}/final-pdf', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
+    Route::get('/submissions/{submission}/review', [InteractiveAssignmentController::class, 'teacherReview'])->name('submissions.review');
+    Route::get('/submissions/{submission}/final-pdf', [InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
     Route::post('/classes/{id}/tasks', [TeacherDashboardController::class, 'storeTask'])->name('classes.tasks.store');
     Route::get('/classes/{id}', [TeacherDashboardController::class, 'manageClass'])->name('classes.show');
     Route::get('/students', [TeacherDashboardController::class, 'students'])->name('students');
@@ -215,7 +220,7 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
     Route::put('/learning-materials/{id}', [TeacherDashboardController::class, 'updateMaterial'])->name('materials.update');
     Route::delete('/learning-materials/{id}', [TeacherDashboardController::class, 'destroyMaterial'])->name('materials.destroy');
     Route::get('/learning-materials/{id}/download', [TeacherDashboardController::class, 'downloadMaterial'])->name('materials.download');
-    
+
     Route::get('/tasks-and-assessments', [TeacherDashboardController::class, 'tasks'])->name('tasks');
     Route::post('/tasks-and-assessments', [TeacherDashboardController::class, 'storeGeneralTask'])->name('tasks.store');
     Route::put('/tasks-and-assessments/{id}', [TeacherDashboardController::class, 'updateTask'])->name('tasks.update');
@@ -331,11 +336,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::delete('/tasks/{id}', [AdminDashboardController::class, 'destroyTask'])->name('tasks.destroy');
     Route::post('/tasks/{assignmentId}/grade/{studentId}', [AdminDashboardController::class, 'gradeTask'])->name('tasks.grade');
     Route::get('/tasks/{id}/submissions', [AdminDashboardController::class, 'getTaskSubmissions'])->name('tasks.submissions');
-    Route::get('/submissions/{submission}/review', [\App\Http\Controllers\InteractiveAssignmentController::class, 'adminReview'])->name('submissions.review');
-    Route::get('/submissions/{submission}/final-pdf', [\App\Http\Controllers\InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
-    Route::get('/diagnostic/{id}/details', [\App\Http\Controllers\DiagnosticTestController::class, 'getAdminDetails'])->name('diagnostic.details');
-    Route::post('/diagnostic/{id}/grade', [\App\Http\Controllers\DiagnosticTestController::class, 'saveAdminGrade'])->name('diagnostic.grade');
-    Route::post('/diagnostic/test-rule', [\App\Http\Controllers\DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
+    Route::get('/submissions/{submission}/review', [InteractiveAssignmentController::class, 'adminReview'])->name('submissions.review');
+    Route::get('/submissions/{submission}/final-pdf', [InteractiveAssignmentController::class, 'downloadFinalPdf'])->name('submissions.final-pdf');
+    Route::get('/diagnostic/{id}/details', [DiagnosticTestController::class, 'getAdminDetails'])->name('diagnostic.details');
+    Route::post('/diagnostic/{id}/grade', [DiagnosticTestController::class, 'saveAdminGrade'])->name('diagnostic.grade');
+    Route::post('/diagnostic/test-rule', [DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
 
     // Parent Accounts Directory
     Route::post('/parents/link', [AdminDashboardController::class, 'linkParentStudent'])->name('parents.link');
@@ -345,7 +350,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/teacher-claims/{id}/approve', [AdminDashboardController::class, 'approveTeacherClaim'])->name('teacher-claims.approve');
     Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
     Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
-
 
     // Quiz CRUD
     Route::post('/quizzes', [AdminDashboardController::class, 'storeQuiz'])->name('quizzes.store');
@@ -365,7 +369,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/gigs', [AdminDashboardController::class, 'storeGig'])->name('gigs.store');
     Route::delete('/gigs/{id}', [AdminDashboardController::class, 'destroyGig'])->name('gigs.destroy');
 
-    Route::get('/users', fn() => redirect()->to(route('admin.dashboard') . '#users'))->name('users.index');
+    Route::get('/users', fn () => redirect()->to(route('admin.dashboard').'#users'))->name('users.index');
     Route::get('/users/{id}', [AdminDashboardController::class, 'showUser'])->name('users.show');
     Route::post('/users', [AdminDashboardController::class, 'storeUser'])->name('users.store');
     Route::match(['put', 'post'], '/users/{id}', [AdminDashboardController::class, 'updateUser'])->name('users.update');
@@ -378,7 +382,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/users/{id}/toggle-is-active', [AdminDashboardController::class, 'toggleUserIsActive'])->name('users.toggle-is-active');
     Route::post('/outreach/blast-email', [AdminDashboardController::class, 'blastEngagementEmail'])->name('outreach.blast-email');
     Route::get('/outreach/export-inactive-csv', [AdminDashboardController::class, 'exportInactiveUsersCsv'])->name('outreach.export-inactive-csv');
-
 
     // Official Certificates Management
     Route::post('/certificates', [AdminSettingsController::class, 'storeCertificate'])->name('certificates.store');
@@ -408,16 +411,16 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/settings/finance', [AdminFinanceController::class, 'updateFinanceSettings'])->name('settings.finance');
     Route::post('/settings/finance/reveal', [AdminFinanceController::class, 'revealGatewayCredentials'])->name('settings.finance.reveal');
     Route::post('/settings/billplz/test-connection', [AdminFinanceController::class, 'testBillplzConnection'])->name('settings.billplz.test');
-    Route::post('/invoices/{id}/status', [\App\Http\Controllers\Admin\BillingController::class, 'updateInvoiceStatusQuick'])->name('invoices.status');
+    Route::post('/invoices/{id}/status', [BillingController::class, 'updateInvoiceStatusQuick'])->name('invoices.status');
 
     // Quick invoice store
-    Route::post('/invoices', [\App\Http\Controllers\Admin\BillingController::class, 'invoiceStoreQuick'])->name('invoices.store');
+    Route::post('/invoices', [BillingController::class, 'invoiceStoreQuick'])->name('invoices.store');
 
     // Authorize / Record Payment (Supports Full & Partial Payments)
-    Route::post('/invoices/{id}/record-payment', [\App\Http\Controllers\Admin\BillingController::class, 'recordInvoicePaymentQuick'])->name('invoices.record-payment');
+    Route::post('/invoices/{id}/record-payment', [BillingController::class, 'recordInvoicePaymentQuick'])->name('invoices.record-payment');
 
     // Quick payment verify
-    Route::post('/payments/{payment}/verify', [\App\Http\Controllers\Admin\BillingController::class, 'verifyPaymentQuick'])->name('payments.verify');
+    Route::post('/payments/{payment}/verify', [BillingController::class, 'verifyPaymentQuick'])->name('payments.verify');
 
     // ── Billing Module ────────────────────────────────────────────────────────
     Route::prefix('billing')->name('billing.')->group(function () {
@@ -442,7 +445,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         // Payments
         Route::get('/payments', [BillingController::class, 'payments'])->name('payments');
         Route::get('/payments/{payment}', function () {
-            return redirect()->to(route('admin.dashboard') . '#financials');
+            return redirect()->to(route('admin.dashboard').'#financials');
         })->name('payment.show');
         Route::post('/payments/{payment}/verify', [BillingController::class, 'verifyPayment'])->name('payments.verify');
         Route::post('/payments/{payment}/reject', [BillingController::class, 'rejectPayment'])->name('payments.reject');
@@ -460,31 +463,31 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // ── Communication & Enterprise Email Management ──
     Route::prefix('email-management')->name('email.')->group(function () {
-        Route::post('/audience-preview', [\App\Http\Controllers\Admin\EmailManagementController::class, 'previewAudience'])->name('audience.preview');
-        Route::post('/template-preview', [\App\Http\Controllers\Admin\EmailManagementController::class, 'previewTemplate'])->name('template.preview');
-        Route::post('/templates', [\App\Http\Controllers\Admin\EmailManagementController::class, 'storeTemplate'])->name('templates.store');
-        Route::put('/templates/{template}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateTemplate'])->name('templates.update');
-        Route::post('/templates/{template}/duplicate', [\App\Http\Controllers\Admin\EmailManagementController::class, 'duplicateTemplate'])->name('templates.duplicate');
-        Route::post('/templates/{template}/toggle', [\App\Http\Controllers\Admin\EmailManagementController::class, 'toggleTemplate'])->name('templates.toggle');
-        Route::delete('/templates/{template}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'archiveTemplate'])->name('templates.destroy');
-        Route::post('/send-test', [\App\Http\Controllers\Admin\EmailManagementController::class, 'sendTestEmail'])->name('send-test');
-        Route::post('/campaigns', [\App\Http\Controllers\Admin\EmailManagementController::class, 'storeCampaign'])->name('campaigns.store');
-        Route::post('/campaigns/{campaign}/cancel', [\App\Http\Controllers\Admin\EmailManagementController::class, 'cancelCampaign'])->name('campaigns.cancel');
-        Route::post('/automations/{automation}/toggle', [\App\Http\Controllers\Admin\EmailManagementController::class, 'toggleAutomation'])->name('automations.toggle');
-        Route::put('/automations/{automation}', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateAutomation'])->name('automations.update');
-        Route::post('/automations/{automation}/test', [\App\Http\Controllers\Admin\EmailManagementController::class, 'testAutomation'])->name('automations.test');
-        Route::post('/logs/{log}/retry', [\App\Http\Controllers\Admin\EmailManagementController::class, 'retryLog'])->name('logs.retry');
-        Route::get('/logs/export-csv', [\App\Http\Controllers\Admin\EmailManagementController::class, 'exportLogsCsv'])->name('logs.export-csv');
-        Route::post('/settings', [\App\Http\Controllers\Admin\EmailManagementController::class, 'updateSettings'])->name('settings.update');
+        Route::post('/audience-preview', [EmailManagementController::class, 'previewAudience'])->name('audience.preview');
+        Route::post('/template-preview', [EmailManagementController::class, 'previewTemplate'])->name('template.preview');
+        Route::post('/templates', [EmailManagementController::class, 'storeTemplate'])->name('templates.store');
+        Route::put('/templates/{template}', [EmailManagementController::class, 'updateTemplate'])->name('templates.update');
+        Route::post('/templates/{template}/duplicate', [EmailManagementController::class, 'duplicateTemplate'])->name('templates.duplicate');
+        Route::post('/templates/{template}/toggle', [EmailManagementController::class, 'toggleTemplate'])->name('templates.toggle');
+        Route::delete('/templates/{template}', [EmailManagementController::class, 'archiveTemplate'])->name('templates.destroy');
+        Route::post('/send-test', [EmailManagementController::class, 'sendTestEmail'])->name('send-test');
+        Route::post('/campaigns', [EmailManagementController::class, 'storeCampaign'])->name('campaigns.store');
+        Route::post('/campaigns/{campaign}/cancel', [EmailManagementController::class, 'cancelCampaign'])->name('campaigns.cancel');
+        Route::post('/automations/{automation}/toggle', [EmailManagementController::class, 'toggleAutomation'])->name('automations.toggle');
+        Route::put('/automations/{automation}', [EmailManagementController::class, 'updateAutomation'])->name('automations.update');
+        Route::post('/automations/{automation}/test', [EmailManagementController::class, 'testAutomation'])->name('automations.test');
+        Route::post('/logs/{log}/retry', [EmailManagementController::class, 'retryLog'])->name('logs.retry');
+        Route::get('/logs/export-csv', [EmailManagementController::class, 'exportLogsCsv'])->name('logs.export-csv');
+        Route::post('/settings', [EmailManagementController::class, 'updateSettings'])->name('settings.update');
     });
 
     // ── Admin Master Timetable & Academic Calendar Management ──
-    Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'adminIndex'])->name('timetable');
-    Route::post('/classes/quick-create', [\App\Http\Controllers\TimetableController::class, 'adminQuickCreateSession'])->name('classes.quick-create');
-    Route::post('/classes/{id}/reschedule-direct', [\App\Http\Controllers\TimetableController::class, 'adminReschedule'])->name('classes.reschedule-direct');
-    Route::post('/academic-events', [\App\Http\Controllers\TimetableController::class, 'storeAcademicEvent'])->name('academic-events.store');
-    Route::put('/academic-events/{id}', [\App\Http\Controllers\TimetableController::class, 'updateAcademicEvent'])->name('academic-events.update');
-    Route::delete('/academic-events/{id}', [\App\Http\Controllers\TimetableController::class, 'destroyAcademicEvent'])->name('academic-events.destroy');
+    Route::get('/timetable', [TimetableController::class, 'adminIndex'])->name('timetable');
+    Route::post('/classes/quick-create', [TimetableController::class, 'adminQuickCreateSession'])->name('classes.quick-create');
+    Route::post('/classes/{id}/reschedule-direct', [TimetableController::class, 'adminReschedule'])->name('classes.reschedule-direct');
+    Route::post('/academic-events', [TimetableController::class, 'storeAcademicEvent'])->name('academic-events.store');
+    Route::put('/academic-events/{id}', [TimetableController::class, 'updateAcademicEvent'])->name('academic-events.update');
+    Route::delete('/academic-events/{id}', [TimetableController::class, 'destroyAcademicEvent'])->name('academic-events.destroy');
 });
 
 // ──────────────────────────────────────────────────
@@ -523,8 +526,8 @@ Route::prefix('billing/billplz')->name('billing.billplz.')->group(function () {
 // TIMETABLE & CALENDAR API (Authenticated)
 // ──────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
-    Route::get('/api/timetable/events', [\App\Http\Controllers\TimetableController::class, 'getEventsJson'])->name('timetable.events');
-    Route::get('/timetable/export-ics/{id}', [\App\Http\Controllers\TimetableController::class, 'exportIcs'])->name('timetable.export-ics');
+    Route::get('/api/timetable/events', [TimetableController::class, 'getEventsJson'])->name('timetable.events');
+    Route::get('/timetable/export-ics/{id}', [TimetableController::class, 'exportIcs'])->name('timetable.export-ics');
 });
 
 // ──────────────────────────────────────────────────
@@ -578,4 +581,3 @@ Route::middleware(['auth'])->prefix('chat')->name('chat.')->group(function () {
         Route::get('/user-context/{userId}', [ChatController::class, 'adminGetUserContext'])->name('user-context');
     });
 });
-

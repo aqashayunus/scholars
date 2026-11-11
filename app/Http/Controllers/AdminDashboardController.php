@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\BlastEngagementEmailRequest;
+use App\Http\Requests\Admin\ResetUserPasswordRequest;
+use App\Http\Requests\Admin\StoreGigRequest;
+use App\Http\Requests\Admin\StoreTeacherClassRequest;
+use App\Http\Requests\Admin\StoreUserRequest;
+use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
+use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\Assignment;
+use App\Models\Question;
+use App\Models\Quiz;
 use App\Models\Setting;
 use App\Models\Student;
-use App\Models\StudentTopicMastery;
 use App\Models\Teacher;
 use App\Models\TeacherApplication;
-use App\Models\TeachingGig;
 use App\Models\User;
-use App\Models\AcademicEvent;
-use App\Models\FinancialAuditLog;
-use App\Models\Quiz;
-use App\Models\Question;
-use App\Models\Assignment;
 use App\Services\Admin\AssignmentQuizService;
 use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
@@ -22,13 +25,6 @@ use App\Services\Admin\TeacherApplicationService;
 use App\Services\Admin\TeacherClaimService;
 use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
-use App\Http\Requests\Admin\BlastEngagementEmailRequest;
-use App\Http\Requests\Admin\ResetUserPasswordRequest;
-use App\Http\Requests\Admin\StoreGigRequest;
-use App\Http\Requests\Admin\StoreTeacherClassRequest;
-use App\Http\Requests\Admin\StoreUserRequest;
-use App\Http\Requests\Admin\UpdateTeacherSubjectsRequest;
-use App\Http\Requests\Admin\UpdateUserRequest;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -39,14 +35,13 @@ class AdminDashboardController extends Controller
         return view('admin.dashboard', $metrics->build($request->input('diagnostic_id')));
     }
 
-
     // ── USER CRUD ─────────────────────────────────────────────────────────────
 
     public function storeUser(StoreUserRequest $request, UserManagementService $users)
     {
         $user = $users->createUser($request->validated());
 
-        return redirect()->to(route('admin.dashboard') . '#users')
+        return redirect()->to(route('admin.dashboard').'#users')
             ->with('success', "User '{$user->name}' created successfully. Welcome email dispatched to {$user->email}.");
     }
 
@@ -55,13 +50,14 @@ class AdminDashboardController extends Controller
         $user = $users->findUserForJson((int) $id);
 
         if (request()->wantsJson() || request()->ajax()) {
-            if (!$user) {
+            if (! $user) {
                 return response()->json(['error' => 'User not found'], 404);
             }
+
             return response()->json($user);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#users');
+        return redirect()->to(route('admin.dashboard').'#users');
     }
 
     public function updateUser(UpdateUserRequest $request, $id, UserManagementService $users)
@@ -78,11 +74,11 @@ class AdminDashboardController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "User '{$user->name}' updated successfully.",
-                'user'    => $user,
+                'user' => $user,
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#users')
+        return redirect()->to(route('admin.dashboard').'#users')
             ->with('success', "User '{$user->name}' updated successfully.");
     }
 
@@ -92,7 +88,8 @@ class AdminDashboardController extends Controller
             if (request()->wantsJson() || request()->ajax()) {
                 return response()->json(['error' => 'Cannot delete your own active administrator account.'], 403);
             }
-            return redirect()->to(route('admin.dashboard') . '#users')
+
+            return redirect()->to(route('admin.dashboard').'#users')
                 ->with('error', 'Cannot delete your own active administrator account.');
         }
 
@@ -105,7 +102,7 @@ class AdminDashboardController extends Controller
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#users')
+        return redirect()->to(route('admin.dashboard').'#users')
             ->with('success', "User '{$userName}' deleted successfully.");
     }
 
@@ -121,7 +118,7 @@ class AdminDashboardController extends Controller
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#users')
+        return redirect()->to(route('admin.dashboard').'#users')
             ->with('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
     }
 
@@ -133,20 +130,20 @@ class AdminDashboardController extends Controller
         $redirectTab = $request->input('redirect_tab', '#courses-tasks');
 
         if ($request->filled('student_id')) {
-            return redirect()->to(route('admin.dashboard') . $redirectTab)
-                ->with('success', 'Personal task/notes document "' . $assignment->title . '" uploaded and assigned to student successfully.');
+            return redirect()->to(route('admin.dashboard').$redirectTab)
+                ->with('success', 'Personal task/notes document "'.$assignment->title.'" uploaded and assigned to student successfully.');
         }
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'success'       => true,
-                'message'       => 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.',
+                'success' => true,
+                'message' => 'Task / Diagnostic Test "'.$assignment->title.'" created and assigned to all eligible students successfully.',
                 'assignment_id' => $assignment->id,
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . $redirectTab)
-            ->with('success', 'Task / Diagnostic Test "' . $assignment->title . '" created and assigned to all eligible students successfully.');
+        return redirect()->to(route('admin.dashboard').$redirectTab)
+            ->with('success', 'Task / Diagnostic Test "'.$assignment->title.'" created and assigned to all eligible students successfully.');
     }
 
     public function updateTask(Request $request, $id, AssignmentQuizService $assignmentQuizzes)
@@ -156,22 +153,22 @@ class AdminDashboardController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'success'       => true,
-                'message'       => 'Task "' . $assignment->title . '" updated successfully.',
+                'success' => true,
+                'message' => 'Task "'.$assignment->title.'" updated successfully.',
                 'assignment_id' => $assignment->id,
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#courses-tasks')
-            ->with('success', 'Task "' . $assignment->title . '" updated successfully.');
+        return redirect()->to(route('admin.dashboard').'#courses-tasks')
+            ->with('success', 'Task "'.$assignment->title.'" updated successfully.');
     }
 
     public function destroyTask($id, AssignmentQuizService $assignmentQuizzes)
     {
         $title = $assignmentQuizzes->deleteTask($id);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-tasks')
-            ->with('success', 'Task "' . $title . '" deleted successfully.');
+        return redirect()->to(route('admin.dashboard').'#courses-tasks')
+            ->with('success', 'Task "'.$title.'" deleted successfully.');
     }
 
     /**
@@ -204,14 +201,14 @@ class AdminDashboardController extends Controller
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
-                'success'          => true,
-                'message'          => 'Student submission graded successfully.',
+                'success' => true,
+                'message' => 'Student submission graded successfully.',
                 'graded_file_name' => $sub->graded_file_name,
-                'graded_file_url'  => $sub->graded_file_url,
+                'graded_file_url' => $sub->graded_file_url,
             ]);
         }
 
-        return redirect()->to(route('admin.dashboard') . '#courses-tasks')
+        return redirect()->to(route('admin.dashboard').'#courses-tasks')
             ->with('success', 'Student submission graded successfully.');
     }
 
@@ -226,7 +223,7 @@ class AdminDashboardController extends Controller
     {
         $quiz = $assignmentQuizzes->createQuiz($request);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-quizzes')
+        return redirect()->to(route('admin.dashboard').'#courses-quizzes')
             ->with('success', "Quiz '{$quiz->title}' created successfully.");
     }
 
@@ -235,7 +232,7 @@ class AdminDashboardController extends Controller
         $quiz = Quiz::findOrFail($id);
         $quiz = $assignmentQuizzes->updateQuiz($quiz, $request);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-quizzes')
+        return redirect()->to(route('admin.dashboard').'#courses-quizzes')
             ->with('success', "Quiz '{$quiz->title}' updated successfully.");
     }
 
@@ -243,7 +240,7 @@ class AdminDashboardController extends Controller
     {
         $title = $assignmentQuizzes->deleteQuiz($id);
 
-        return redirect()->to(route('admin.dashboard') . '#courses-quizzes')
+        return redirect()->to(route('admin.dashboard').'#courses-quizzes')
             ->with('success', "Quiz '{$title}' deleted.");
     }
 
@@ -251,7 +248,7 @@ class AdminDashboardController extends Controller
     {
         $question = $assignmentQuizzes->createQuestion($quizId, $request);
 
-        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $question->quiz_id]) . '#courses')
+        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $question->quiz_id]).'#courses')
             ->with('success', "Question added to quiz '{$question->quiz->title}'.");
     }
 
@@ -260,16 +257,16 @@ class AdminDashboardController extends Controller
         $question = Question::findOrFail($id);
         $question = $assignmentQuizzes->updateQuestion($question, $request);
 
-        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $question->quiz_id]) . '#courses')
-            ->with('success', "Question updated successfully.");
+        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $question->quiz_id]).'#courses')
+            ->with('success', 'Question updated successfully.');
     }
 
     public function destroyQuestion($id, AssignmentQuizService $assignmentQuizzes)
     {
         $quizId = $assignmentQuizzes->deleteQuestion($id);
 
-        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $quizId]) . '#courses')
-            ->with('success', "Question deleted.");
+        return redirect()->to(route('admin.dashboard', ['manage_quiz' => $quizId]).'#courses')
+            ->with('success', 'Question deleted.');
     }
 
     // ── TEACHER APPLICATIONS ──────────────────────────────────────────────────
@@ -296,15 +293,15 @@ class AdminDashboardController extends Controller
     {
         $gig = $gigs->publish($request->validated());
 
-        return redirect()->to(route('admin.dashboard') . '#records')
-            ->with('success', "Teaching Gig '{$gig->title}' published with payout " . Setting::get('currency_symbol', 'RM') . ' ' . number_format($gig->payout_amount, 2) . ".");
+        return redirect()->to(route('admin.dashboard').'#records')
+            ->with('success', "Teaching Gig '{$gig->title}' published with payout ".Setting::get('currency_symbol', 'RM').' '.number_format($gig->payout_amount, 2).'.');
     }
 
     public function destroyGig($id, GigService $gigs)
     {
         $title = $gigs->remove($id);
 
-        return redirect()->to(route('admin.dashboard') . '#records')
+        return redirect()->to(route('admin.dashboard').'#records')
             ->with('success', "Teaching Gig '{$title}' removed.");
     }
 
@@ -314,9 +311,9 @@ class AdminDashboardController extends Controller
     {
         $teacher = Teacher::findOrFail($id);
         $teacherApplications->updateSubjects($teacher, $request->input('subject_ids', []));
-        $name = $teacher->user->name ?? 'Teacher #' . $id;
+        $name = $teacher->user->name ?? 'Teacher #'.$id;
 
-        return redirect()->to(route('admin.dashboard') . '#teachers')
+        return redirect()->to(route('admin.dashboard').'#teachers')
             ->with('success', "Subject assignments updated for {$name}.");
     }
 
@@ -324,9 +321,9 @@ class AdminDashboardController extends Controller
     {
         $teacher = Teacher::findOrFail($id);
         $course = $teacherApplications->createClass($teacher, $request->validated());
-        $name = $teacher->user->name ?? 'Teacher #' . $id;
+        $name = $teacher->user->name ?? 'Teacher #'.$id;
 
-        return redirect()->to(route('admin.dashboard') . '#teachers')
+        return redirect()->to(route('admin.dashboard').'#teachers')
             ->with('success', "Class '{$course->title}' created and assigned to {$name}.");
     }
 
@@ -334,7 +331,7 @@ class AdminDashboardController extends Controller
     {
         [$name, $label] = $users->toggleStudentStatus($id);
 
-        return redirect()->to(route('admin.dashboard') . '#student')
+        return redirect()->to(route('admin.dashboard').'#student')
             ->with('success', "Student '{$name}' status updated to {$label}.");
     }
 
@@ -342,7 +339,7 @@ class AdminDashboardController extends Controller
     {
         [$name, $label] = $users->toggleTeacherStatus($id);
 
-        return redirect()->to(route('admin.dashboard') . '#teachers')
+        return redirect()->to(route('admin.dashboard').'#teachers')
             ->with('success', "Teacher '{$name}' status updated to {$label} (Company record preserved).");
     }
 
@@ -352,9 +349,9 @@ class AdminDashboardController extends Controller
     {
         $validated = $request->validate([
             'parent_user_id' => 'required|exists:users,id',
-            'student_id'     => 'required|exists:students,id',
-            'relationship'   => 'nullable|string|max:50',
-            'is_primary'     => 'nullable|boolean',
+            'student_id' => 'required|exists:students,id',
+            'relationship' => 'nullable|string|max:50',
+            'is_primary' => 'nullable|boolean',
         ]);
 
         try {
@@ -366,7 +363,7 @@ class AdminDashboardController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        return redirect()->to(route('admin.dashboard') . '#parent-accounts')
+        return redirect()->to(route('admin.dashboard').'#parent-accounts')
             ->with('success', "Successfully linked parent '{$parent->name}' with student '{$student->user->name}'.");
     }
 
@@ -374,12 +371,12 @@ class AdminDashboardController extends Controller
     {
         $validated = $request->validate([
             'parent_user_id' => 'required|exists:users,id',
-            'student_id'     => 'required|exists:students,id',
+            'student_id' => 'required|exists:students,id',
         ]);
 
         $parentAccounts->unlinkParentStudent($validated);
 
-        return redirect()->to(route('admin.dashboard') . '#parent-accounts')
+        return redirect()->to(route('admin.dashboard').'#parent-accounts')
             ->with('success', 'Parent and child link removed successfully.');
     }
 
@@ -389,7 +386,7 @@ class AdminDashboardController extends Controller
     {
         $claim = $claims->approve($id);
 
-        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+        return redirect()->to(route('admin.dashboard').'#teacher-claims')
             ->with('success', "Class fee claim '{$claim->claim_number}' approved successfully.");
     }
 
@@ -397,21 +394,21 @@ class AdminDashboardController extends Controller
     {
         $claim = $claims->reject($id, $request->input('admin_notes'));
 
-        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+        return redirect()->to(route('admin.dashboard').'#teacher-claims')
             ->with('success', "Class fee claim '{$claim->claim_number}' marked as rejected.");
     }
 
     public function markPaidTeacherClaim(Request $request, $id, TeacherClaimService $claims)
     {
         $validated = $request->validate([
-            'payment_method'    => 'nullable|string|max:100',
+            'payment_method' => 'nullable|string|max:100',
             'payment_reference' => 'nullable|string|max:255',
-            'paid_at'           => 'nullable|date',
+            'paid_at' => 'nullable|date',
         ]);
 
         $claim = $claims->markPaid((int) $id, $validated);
 
-        return redirect()->to(route('admin.dashboard') . '#teacher-claims')
+        return redirect()->to(route('admin.dashboard').'#teacher-claims')
             ->with('success', "Class fee claim '{$claim->claim_number}' marked as paid.");
     }
 
@@ -431,7 +428,7 @@ class AdminDashboardController extends Controller
 
         [$name, $label] = $result;
 
-        return redirect()->to(route('admin.dashboard') . '#records')
+        return redirect()->to(route('admin.dashboard').'#records')
             ->with('success', "User '{$name}' has been {$label}.");
     }
 
@@ -443,9 +440,11 @@ class AdminDashboardController extends Controller
         [$sent, $failed] = $users->sendEngagementBlast($request->validated());
 
         $msg = "Engagement email sent to {$sent} recipient(s).";
-        if ($failed > 0) $msg .= " ({$failed} failed — check mail configuration.)";
+        if ($failed > 0) {
+            $msg .= " ({$failed} failed — check mail configuration.)";
+        }
 
-        return redirect()->to(route('admin.dashboard') . '#records')->with('success', $msg);
+        return redirect()->to(route('admin.dashboard').'#records')->with('success', $msg);
     }
 
     /**
@@ -456,4 +455,3 @@ class AdminDashboardController extends Controller
         return $users->exportInactiveUsersCsv();
     }
 }
-

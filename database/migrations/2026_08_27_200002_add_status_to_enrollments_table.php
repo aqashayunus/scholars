@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         // Only add if column doesn't exist (safe re-run)
-        if (!Schema::hasColumn('enrollments', 'status')) {
+        if (! Schema::hasColumn('enrollments', 'status')) {
             Schema::table('enrollments', function (Blueprint $table) {
                 $table->string('status', 20)->default('active')->after('course_id');
             });

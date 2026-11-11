@@ -2,8 +2,10 @@
 
 namespace App\Services\Admin;
 
+use App\Models\Assignment;
 use App\Models\Course;
-use App\Models\Setting;
+use App\Models\Enrollment;
+use App\Models\StudentAssignment;
 use App\Models\Subject;
 use App\Models\SubjectSubtopic;
 use App\Models\SubjectTopic;
@@ -42,7 +44,7 @@ class CurriculumService
         $monthlyFee = $validated['monthly_fee'];
         unset($validated['monthly_fee']);
 
-        if (!isset($validated['teacher_id']) || $validated['teacher_id'] === null) {
+        if (! isset($validated['teacher_id']) || $validated['teacher_id'] === null) {
             unset($validated['teacher_id']);
         }
 
@@ -56,8 +58,8 @@ class CurriculumService
                 if ($enrollment->student?->user_id) {
                     UserNotification::create([
                         'user_id' => $enrollment->student->user_id,
-                        'type'    => 'course',
-                        'title'   => 'COURSE DETAILS UPDATED',
+                        'type' => 'course',
+                        'title' => 'COURSE DETAILS UPDATED',
                         'message' => "Details for your enrolled course '{$course->title}' have been updated.",
                         'read_at' => null,
                     ]);
@@ -86,8 +88,8 @@ class CurriculumService
                 if ($teacher?->user_id) {
                     UserNotification::create([
                         'user_id' => $teacher->user_id,
-                        'type'    => 'course',
-                        'title'   => $title,
+                        'type' => 'course',
+                        'title' => $title,
                         'message' => $message,
                         'read_at' => null,
                     ]);
@@ -121,30 +123,30 @@ class CurriculumService
                     $formYear = $item['form_year'] ?? ($educationType === 'primary' ? 'Year 4' : 'Form 4');
                     $category = $item['category'] ?? 'Core';
 
-                    $slugBase = !empty($item['slug']) ? $item['slug'] : ($item['name'] . ' ' . $formYear);
+                    $slugBase = ! empty($item['slug']) ? $item['slug'] : ($item['name'].' '.$formYear);
                     $slug = Str::slug($slugBase);
                     $originalSlug = $slug;
                     $counter = 1;
                     while (isset($existingSlugs[$slug])) {
-                        $slug = $originalSlug . '-' . $counter++;
+                        $slug = $originalSlug.'-'.$counter++;
                     }
                     $existingSlugs[$slug] = true;
 
                     Subject::create([
-                        'name'           => $item['name'],
-                        'slug'           => $slug,
-                        'code'           => !empty($item['code']) ? $item['code'] : 'KPM-' . strtoupper(Str::random(6)),
+                        'name' => $item['name'],
+                        'slug' => $slug,
+                        'code' => ! empty($item['code']) ? $item['code'] : 'KPM-'.strtoupper(Str::random(6)),
                         'education_type' => $educationType,
-                        'stage'          => $stage,
-                        'form_year'      => $formYear,
-                        'category'       => $category,
+                        'stage' => $stage,
+                        'form_year' => $formYear,
+                        'category' => $category,
                         'stream_package' => $item['stream_package'] ?? null,
-                        'level'          => $item['level'] ?? ($educationType === 'primary' ? 'Primary' : 'SPM'),
-                        'color'          => $item['color'] ?? '#3b82f6',
-                        'icon'           => $item['icon'] ?? 'academic-cap',
-                        'description'    => $item['description'] ?? null,
-                        'order'          => !empty($item['order']) ? (int) $item['order'] : (++$maxOrder),
-                        'is_active'      => isset($item['is_active']) ? (bool) $item['is_active'] : true,
+                        'level' => $item['level'] ?? ($educationType === 'primary' ? 'Primary' : 'SPM'),
+                        'color' => $item['color'] ?? '#3b82f6',
+                        'icon' => $item['icon'] ?? 'academic-cap',
+                        'description' => $item['description'] ?? null,
+                        'order' => ! empty($item['order']) ? (int) $item['order'] : (++$maxOrder),
+                        'is_active' => isset($item['is_active']) ? (bool) $item['is_active'] : true,
                     ]);
                     $createdCount++;
                 }
@@ -154,36 +156,36 @@ class CurriculumService
         }
 
         $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'slug'           => 'nullable|string|max:255',
-            'code'           => 'nullable|string|max:50',
+            'name' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'code' => 'nullable|string|max:50',
             'education_type' => 'required|in:primary,secondary',
-            'stage'          => 'required|string|max:50',
-            'form_year'      => 'required|string|max:50',
-            'category'       => 'required|string|max:50',
+            'stage' => 'required|string|max:50',
+            'form_year' => 'required|string|max:50',
+            'category' => 'required|string|max:50',
             'stream_package' => 'nullable|string|max:50',
-            'description'    => 'nullable|string',
-            'level'          => 'required|string|max:50',
-            'color'          => 'required|string|max:20',
-            'icon'           => 'nullable|string|max:50',
-            'order'          => 'nullable|integer',
+            'description' => 'nullable|string',
+            'level' => 'required|string|max:50',
+            'color' => 'required|string|max:20',
+            'icon' => 'nullable|string|max:50',
+            'order' => 'nullable|integer',
         ]);
 
         if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['name'] . ' ' . $validated['form_year']);
+            $validated['slug'] = Str::slug($validated['name'].' '.$validated['form_year']);
         }
         $originalSlug = $validated['slug'];
         $counter = 1;
         while (Subject::where('slug', $validated['slug'])->exists()) {
-            $validated['slug'] = $originalSlug . '-' . $counter++;
+            $validated['slug'] = $originalSlug.'-'.$counter++;
         }
 
         if (empty($validated['code'])) {
-            $validated['code'] = 'KPM-' . strtoupper(Str::random(6));
+            $validated['code'] = 'KPM-'.strtoupper(Str::random(6));
         }
 
         $maxOrder = Subject::max('order') ?? 0;
-        $validated['order'] = !empty($validated['order']) ? (int) $validated['order'] : ($maxOrder + 1);
+        $validated['order'] = ! empty($validated['order']) ? (int) $validated['order'] : ($maxOrder + 1);
         $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
         $subject = Subject::create($validated);
@@ -194,19 +196,19 @@ class CurriculumService
     public function updateSubject(Subject $subject, Request $request): Subject
     {
         $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'slug'           => 'required|string|max:255|unique:subjects,slug,' . $subject->id,
-            'code'           => 'nullable|string|max:50',
+            'name' => 'required|string|max:255',
+            'slug' => 'required|string|max:255|unique:subjects,slug,'.$subject->id,
+            'code' => 'nullable|string|max:50',
             'education_type' => 'required|in:kindergarten,primary,secondary',
-            'stage'          => 'required|string|max:50',
-            'form_year'      => 'required|string|max:50',
-            'category'       => 'required|string|max:50',
+            'stage' => 'required|string|max:50',
+            'form_year' => 'required|string|max:50',
+            'category' => 'required|string|max:50',
             'stream_package' => 'nullable|string|max:50',
-            'description'    => 'nullable|string',
-            'level'          => 'required|string|max:50',
-            'color'          => 'required|string|max:20',
-            'icon'           => 'nullable|string|max:50',
-            'order'          => 'nullable|integer',
+            'description' => 'nullable|string',
+            'level' => 'required|string|max:50',
+            'color' => 'required|string|max:20',
+            'icon' => 'nullable|string|max:50',
+            'order' => 'nullable|integer',
         ]);
 
         $validated['is_active'] = $request->has('is_active') ? 1 : 0;
@@ -233,7 +235,7 @@ class CurriculumService
     public function storeTopic(Request $request): array
     {
         $subjectId = $request->input('subject_id');
-        if (!$subjectId || !Subject::where('id', $subjectId)->exists()) {
+        if (! $subjectId || ! Subject::where('id', $subjectId)->exists()) {
             return ['error' => 'Please select a valid subject.'];
         }
 
@@ -247,16 +249,16 @@ class CurriculumService
                         continue;
                     }
 
-                    $chNumber = !empty($item['chapter_number']) ? (int) $item['chapter_number'] : (++$maxChapter);
+                    $chNumber = ! empty($item['chapter_number']) ? (int) $item['chapter_number'] : (++$maxChapter);
                     if ($chNumber > $maxChapter) {
                         $maxChapter = $chNumber;
                     }
 
                     SubjectTopic::create([
-                        'subject_id'     => $subjectId,
+                        'subject_id' => $subjectId,
                         'chapter_number' => $chNumber,
-                        'title'          => $item['title'],
-                        'description'    => $item['description'] ?? null,
+                        'title' => $item['title'],
+                        'description' => $item['description'] ?? null,
                     ]);
                     $createdCount++;
                 }
@@ -266,10 +268,10 @@ class CurriculumService
         }
 
         $validated = $request->validate([
-            'subject_id'     => 'required|exists:subjects,id',
+            'subject_id' => 'required|exists:subjects,id',
             'chapter_number' => 'nullable|integer|min:1',
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
         ]);
 
         if (empty($validated['chapter_number'])) {
@@ -284,10 +286,10 @@ class CurriculumService
     public function updateTopic(SubjectTopic $topic, Request $request): SubjectTopic
     {
         $validated = $request->validate([
-            'subject_id'     => 'required|exists:subjects,id',
+            'subject_id' => 'required|exists:subjects,id',
             'chapter_number' => 'required|integer|min:1',
-            'title'          => 'required|string|max:255',
-            'description'    => 'nullable|string',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
         ]);
 
         $topic->update($validated);
@@ -320,15 +322,15 @@ class CurriculumService
                         continue;
                     }
 
-                    $order = !empty($item['order']) ? (int) $item['order'] : (++$maxOrder);
+                    $order = ! empty($item['order']) ? (int) $item['order'] : (++$maxOrder);
                     if ($order > $maxOrder) {
                         $maxOrder = $order;
                     }
 
                     $topic->subtopics()->create([
-                        'title'          => $item['title'],
+                        'title' => $item['title'],
                         'default_status' => $item['default_status'] ?? 'Not Started',
-                        'order'          => $order,
+                        'order' => $order,
                     ]);
                     $createdCount++;
                 }
@@ -338,9 +340,9 @@ class CurriculumService
         }
 
         $validated = $request->validate([
-            'title'          => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'default_status' => 'required|in:Mastered,In Progress,Needs Practice,Not Started',
-            'order'          => 'nullable|integer|min:1',
+            'order' => 'nullable|integer|min:1',
         ]);
 
         $maxOrder = $topic->subtopics()->max('order') ?: 0;
@@ -382,18 +384,18 @@ class CurriculumService
     {
         $subject = Subject::findOrFail($id);
         $request->validate([
-            'diagnostic_assignment_id'    => 'required|exists:assignments,id',
+            'diagnostic_assignment_id' => 'required|exists:assignments,id',
             'diagnostic_duration_minutes' => 'nullable|integer|min:1|max:600',
-            'retroactive'                 => 'nullable|boolean',
+            'retroactive' => 'nullable|boolean',
         ]);
 
-        $assignment = \App\Models\Assignment::findOrFail($request->diagnostic_assignment_id);
+        $assignment = Assignment::findOrFail($request->diagnostic_assignment_id);
 
         // Link the assignment back to this subject
         $assignment->update(['subject_id' => $subject->id]);
 
         $subject->update([
-            'diagnostic_assignment_id'    => $assignment->id,
+            'diagnostic_assignment_id' => $assignment->id,
             'diagnostic_duration_minutes' => $request->input('diagnostic_duration_minutes') ?: null,
         ]);
 
@@ -413,25 +415,25 @@ class CurriculumService
         $subject = Subject::findOrFail($id);
 
         $request->validate([
-            'title'                       => 'required|string|max:255',
-            'total_questions'             => 'nullable|integer|min:0|max:500',
-            'time_limit_minutes'          => 'nullable|integer|min:1|max:600',
+            'title' => 'required|string|max:255',
+            'total_questions' => 'nullable|integer|min:0|max:500',
+            'time_limit_minutes' => 'nullable|integer|min:1|max:600',
             'diagnostic_duration_minutes' => 'nullable|integer|min:1|max:600',
-            'total_marks'                 => 'nullable|integer|min:1',
-            'answer_key'                  => 'nullable',
-            'section_b_questions'         => 'nullable|integer|min:0',
-            'section_b_answer_key'        => 'nullable',
-            'questions_json'              => 'nullable|string',
-            'is_interactive_pdf'          => 'nullable',
-            'file'                        => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,png,jpg,jpeg|max:30720',
-            'retroactive'                 => 'nullable|boolean',
+            'total_marks' => 'nullable|integer|min:1',
+            'answer_key' => 'nullable',
+            'section_b_questions' => 'nullable|integer|min:0',
+            'section_b_answer_key' => 'nullable',
+            'questions_json' => 'nullable|string',
+            'is_interactive_pdf' => 'nullable',
+            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,png,jpg,jpeg|max:30720',
+            'retroactive' => 'nullable|boolean',
         ]);
 
         $filePath = null;
         $fileName = null;
         $fileSize = null;
         if ($request->hasFile('file') && $request->file('file')->isValid()) {
-            $file     = $request->file('file');
+            $file = $request->file('file');
             $filePath = $file->store('assignments', 'public');
             $fileName = $file->getClientOriginalName();
             $fileSize = $file->getSize();
@@ -451,26 +453,26 @@ class CurriculumService
         $totalQuestions = (int) ($request->input('total_questions') ?? 0);
         $sectionBCount = (int) ($request->input('section_b_questions') ?? 0);
 
-        if (!empty($questionsData)) {
+        if (! empty($questionsData)) {
             $answerKey = [];
             $sectionBKey = [];
             $mcqCount = 0;
             $sectionBCount = 0;
 
             foreach ($questionsData as $idx => $item) {
-                $qNum  = (int) ($item['number'] ?? ($idx + 1));
-                $type  = isset($item['type']) && in_array($item['type'], ['mcq', 'fill_in_blank']) ? $item['type'] : 'mcq';
-                $ans   = trim((string)($item['correct_answer'] ?? ''));
+                $qNum = (int) ($item['number'] ?? ($idx + 1));
+                $type = isset($item['type']) && in_array($item['type'], ['mcq', 'fill_in_blank']) ? $item['type'] : 'mcq';
+                $ans = trim((string) ($item['correct_answer'] ?? ''));
                 // Preserve marks field (default to 1.0 if not set)
                 $questionsData[$idx]['marks'] = (float) ($item['marks'] ?? 1.0);
 
                 if ($type === 'mcq') {
                     $mcqCount++;
                     $ans = strtoupper($ans);
-                    $answerKey[(string)$qNum] = $ans;
+                    $answerKey[(string) $qNum] = $ans;
                 } else {
                     $sectionBCount++;
-                    $sectionBKey[(string)$qNum] = $ans;
+                    $sectionBKey[(string) $qNum] = $ans;
                 }
             }
             $totalQuestions = count($questionsData);
@@ -482,10 +484,10 @@ class CurriculumService
                     $answerKey = $raw;
                 } else {
                     $parts = array_map('trim', explode(',', $raw));
-                    $map   = [];
+                    $map = [];
                     foreach ($parts as $idx => $opt) {
                         if ($opt !== '') {
-                            $map[(string)($idx + 1)] = strtoupper($opt);
+                            $map[(string) ($idx + 1)] = strtoupper($opt);
                         }
                     }
                     $answerKey = $map;
@@ -497,11 +499,11 @@ class CurriculumService
                 if (is_array($rawB)) {
                     $sectionBKey = $rawB;
                 } else {
-                    $parts  = array_map('trim', explode(',', $rawB));
-                    $mapB   = [];
+                    $parts = array_map('trim', explode(',', $rawB));
+                    $mapB = [];
                     foreach ($parts as $idx => $ans) {
                         if ($ans !== '') {
-                            $mapB[(string)($idx + 1)] = $ans;
+                            $mapB[(string) ($idx + 1)] = $ans;
                         }
                     }
                     $sectionBKey = $mapB;
@@ -514,7 +516,7 @@ class CurriculumService
             ?: 20;
 
         // Compute total marks: sum of per-question marks if questionsData exists, else fallback
-        if (!empty($questionsData)) {
+        if (! empty($questionsData)) {
             $totalMarks = (int) round(array_sum(array_column($questionsData, 'marks')) ?: $totalQuestions);
         } else {
             $totalMarks = (int) ($request->input('total_marks') ?: ($totalQuestions ?: 100));
@@ -526,22 +528,22 @@ class CurriculumService
             $totalQuestions, $sectionBCount, $totalMarks
         ) {
             $data = [
-                'title'                => $request->input('title'),
-                'type'                 => 'Diagnostic Test',
-                'subject_id'           => $subject->id,
-                'is_global'            => false,
-                'created_by_admin'     => true,
-                'target_level'         => $subject->form_year ?? 'All Levels',
-                'total_questions'      => $totalQuestions,
-                'time_limit_minutes'   => (int) $timeLimitMinutes,
-                'total_marks'          => $totalMarks,
-                'answer_key'           => $answerKey,
-                'section_b_questions'  => $sectionBCount,
+                'title' => $request->input('title'),
+                'type' => 'Diagnostic Test',
+                'subject_id' => $subject->id,
+                'is_global' => false,
+                'created_by_admin' => true,
+                'target_level' => $subject->form_year ?? 'All Levels',
+                'total_questions' => $totalQuestions,
+                'time_limit_minutes' => (int) $timeLimitMinutes,
+                'total_marks' => $totalMarks,
+                'answer_key' => $answerKey,
+                'section_b_questions' => $sectionBCount,
                 'section_b_answer_key' => $sectionBKey,
-                'questions_data'       => !empty($questionsData) ? $questionsData : null,
-                'is_interactive_pdf'   => $filePath && !preg_match('/\.pdf$/i', $fileName ?? '') ? false : $request->boolean('is_interactive_pdf', true),
-                'topic'                => 'General Diagnostic',
-                'description'          => "Diagnostic assessment for {$subject->display_name}",
+                'questions_data' => ! empty($questionsData) ? $questionsData : null,
+                'is_interactive_pdf' => $filePath && ! preg_match('/\.pdf$/i', $fileName ?? '') ? false : $request->boolean('is_interactive_pdf', true),
+                'topic' => 'General Diagnostic',
+                'description' => "Diagnostic assessment for {$subject->display_name}",
             ];
 
             if ($filePath) {
@@ -550,15 +552,15 @@ class CurriculumService
                 $data['file_size'] = $fileSize;
             }
 
-            if ($subject->diagnostic_assignment_id && ($existing = \App\Models\Assignment::find($subject->diagnostic_assignment_id))) {
+            if ($subject->diagnostic_assignment_id && ($existing = Assignment::find($subject->diagnostic_assignment_id))) {
                 $existing->update($data);
                 $a = $existing;
             } else {
-                $a = \App\Models\Assignment::create($data);
+                $a = Assignment::create($data);
             }
 
             $subject->update([
-                'diagnostic_assignment_id'    => $a->id,
+                'diagnostic_assignment_id' => $a->id,
                 'diagnostic_duration_minutes' => $request->input('diagnostic_duration_minutes') ?: null,
             ]);
 
@@ -582,7 +584,7 @@ class CurriculumService
         $testTitle = $subject->diagnosticTest?->title ?? 'Diagnostic Test';
 
         $subject->update([
-            'diagnostic_assignment_id'    => null,
+            'diagnostic_assignment_id' => null,
             'diagnostic_duration_minutes' => null,
         ]);
 
@@ -592,16 +594,16 @@ class CurriculumService
     /**
      * Retroactively create StudentAssignment records for all students enrolled in the subject.
      */
-    private function assignDiagnosticToEnrolledStudents(Subject $subject, \App\Models\Assignment $assignment): int
+    private function assignDiagnosticToEnrolledStudents(Subject $subject, Assignment $assignment): int
     {
         $courseIds = Course::where('subject_id', $subject->id)->pluck('id');
-        $studentIds = \App\Models\Enrollment::whereIn('course_id', $courseIds)
+        $studentIds = Enrollment::whereIn('course_id', $courseIds)
             ->pluck('student_id')
             ->unique();
 
         $count = 0;
         foreach ($studentIds as $studentId) {
-            \App\Models\StudentAssignment::firstOrCreate(
+            StudentAssignment::firstOrCreate(
                 ['student_id' => $studentId, 'assignment_id' => $assignment->id],
                 ['status' => 'pending']
             );

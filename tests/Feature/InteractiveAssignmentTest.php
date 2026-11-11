@@ -9,7 +9,6 @@ use App\Models\Enrollment;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\StudentAssignmentSubmission;
-use App\Models\SubmissionPage;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\User;
@@ -24,14 +23,23 @@ class InteractiveAssignmentTest extends TestCase
     use RefreshDatabase;
 
     private User $adminUser;
+
     private User $teacherUser;
+
     private Teacher $teacher;
+
     private User $studentUserA;
+
     private Student $studentA;
+
     private User $studentUserB;
+
     private Student $studentB;
+
     private Subject $subject;
+
     private Course $course;
+
     private Assignment $assignment;
 
     protected function setUp(): void
@@ -41,49 +49,49 @@ class InteractiveAssignmentTest extends TestCase
 
         // 1. Admin
         $this->adminUser = User::factory()->create([
-            'name'     => 'Admin User',
-            'email'    => 'admin@olympia.test',
-            'role'     => 'admin',
+            'name' => 'Admin User',
+            'email' => 'admin@olympia.test',
+            'role' => 'admin',
             'password' => Hash::make('password'),
         ]);
 
         // 2. Teacher
         $this->teacherUser = User::factory()->create([
-            'name'     => 'Cikgu Rahman',
-            'email'    => 'rahman@teacher.test',
-            'role'     => 'teacher',
+            'name' => 'Cikgu Rahman',
+            'email' => 'rahman@teacher.test',
+            'role' => 'teacher',
             'password' => Hash::make('password'),
         ]);
         $this->teacher = Teacher::factory()->create([
-            'user_id'            => $this->teacherUser->id,
+            'user_id' => $this->teacherUser->id,
             'application_status' => 'active',
-            'qualification'      => 'Master of Mathematics',
+            'qualification' => 'Master of Mathematics',
         ]);
 
         // 3. Student A
         $this->studentUserA = User::factory()->create([
-            'name'     => 'Student A',
-            'email'    => 'studenta@olympia.test',
-            'role'     => 'student',
+            'name' => 'Student A',
+            'email' => 'studenta@olympia.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
         $this->studentA = Student::factory()->create([
             'user_id' => $this->studentUserA->id,
-            'level'   => 'Form 4',
-            'status'  => 'active',
+            'level' => 'Form 4',
+            'status' => 'active',
         ]);
 
         // 4. Student B
         $this->studentUserB = User::factory()->create([
-            'name'     => 'Student B',
-            'email'    => 'studentb@olympia.test',
-            'role'     => 'student',
+            'name' => 'Student B',
+            'email' => 'studentb@olympia.test',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
         $this->studentB = Student::factory()->create([
             'user_id' => $this->studentUserB->id,
-            'level'   => 'Form 4',
-            'status'  => 'active',
+            'level' => 'Form 4',
+            'status' => 'active',
         ]);
 
         // 5. Subject & Course
@@ -93,18 +101,18 @@ class InteractiveAssignmentTest extends TestCase
             'code' => 'ADM',
         ]);
         $this->course = Course::create([
-            'title'      => 'Add Math Form 4 Intensive',
+            'title' => 'Add Math Form 4 Intensive',
             'teacher_id' => $this->teacher->id,
             'subject_id' => $this->subject->id,
-            'level'      => 'Form 4',
-            'price'      => 120,
+            'level' => 'Form 4',
+            'price' => 120,
         ]);
 
         // Enroll Student A in Course
         Enrollment::create([
             'student_id' => $this->studentA->id,
-            'course_id'  => $this->course->id,
-            'status'     => 'active',
+            'course_id' => $this->course->id,
+            'status' => 'active',
         ]);
 
         // 6. Assignment with PDF file
@@ -113,14 +121,14 @@ class InteractiveAssignmentTest extends TestCase
         Storage::disk('public')->put($pdfPath, $pdfContent);
 
         $this->assignment = Assignment::create([
-            'course_id'          => $this->course->id,
-            'title'              => 'Quadratic Equations Exercise 01',
-            'type'               => 'Assignment',
-            'total_marks'        => 100,
-            'due_date'           => now()->addDays(7)->toDateString(),
-            'file_path'          => $pdfPath,
-            'file_name'          => 'test_assignment.pdf',
-            'file_size'          => strlen($pdfContent),
+            'course_id' => $this->course->id,
+            'title' => 'Quadratic Equations Exercise 01',
+            'type' => 'Assignment',
+            'total_marks' => 100,
+            'due_date' => now()->addDays(7)->toDateString(),
+            'file_path' => $pdfPath,
+            'file_name' => 'test_assignment.pdf',
+            'file_size' => strlen($pdfContent),
             'is_interactive_pdf' => true,
         ]);
     }
@@ -134,14 +142,14 @@ class InteractiveAssignmentTest extends TestCase
         $response->assertSee('Quadratic Equations Exercise 01');
 
         $this->assertDatabaseHas('student_assignments', [
-            'student_id'    => $this->studentA->id,
+            'student_id' => $this->studentA->id,
             'assignment_id' => $this->assignment->id,
         ]);
 
         $this->assertDatabaseHas('student_assignment_submissions', [
             'assignment_id' => $this->assignment->id,
-            'student_id'    => $this->studentA->id,
-            'status'        => 'draft',
+            'student_id' => $this->studentA->id,
+            'status' => 'draft',
         ]);
     }
 
@@ -170,18 +178,18 @@ class InteractiveAssignmentTest extends TestCase
     {
         // Student A creates draft
         $sa = StudentAssignment::create([
-            'student_id'    => $this->studentA->id,
+            'student_id' => $this->studentA->id,
             'assignment_id' => $this->assignment->id,
-            'status'        => 'submitted',
-            'submitted_at'  => now(),
+            'status' => 'submitted',
+            'submitted_at' => now(),
         ]);
 
         $sub = StudentAssignmentSubmission::create([
             'student_assignment_id' => $sa->id,
-            'assignment_id'         => $this->assignment->id,
-            'student_id'            => $this->studentA->id,
-            'status'                => 'submitted',
-            'submitted_at'          => now(),
+            'assignment_id' => $this->assignment->id,
+            'student_id' => $this->studentA->id,
+            'status' => 'submitted',
+            'submitted_at' => now(),
         ]);
 
         $response = $this->actingAs($this->teacherUser)
@@ -195,27 +203,27 @@ class InteractiveAssignmentTest extends TestCase
     {
         // Unrelated teacher
         $otherTeacherUser = User::factory()->create([
-            'name'     => 'Cikgu Siti',
-            'email'    => 'siti@teacher.test',
-            'role'     => 'teacher',
+            'name' => 'Cikgu Siti',
+            'email' => 'siti@teacher.test',
+            'role' => 'teacher',
             'password' => Hash::make('password'),
         ]);
         $otherTeacher = Teacher::factory()->create([
-            'user_id'            => $otherTeacherUser->id,
+            'user_id' => $otherTeacherUser->id,
             'application_status' => 'active',
-            'qualification'      => 'Bachelor of Education',
+            'qualification' => 'Bachelor of Education',
         ]);
 
         $sa = StudentAssignment::create([
-            'student_id'    => $this->studentA->id,
+            'student_id' => $this->studentA->id,
             'assignment_id' => $this->assignment->id,
-            'status'        => 'submitted',
+            'status' => 'submitted',
         ]);
         $sub = StudentAssignmentSubmission::create([
             'student_assignment_id' => $sa->id,
-            'assignment_id'         => $this->assignment->id,
-            'student_id'            => $this->studentA->id,
-            'status'                => 'submitted',
+            'assignment_id' => $this->assignment->id,
+            'student_id' => $this->studentA->id,
+            'status' => 'submitted',
         ]);
 
         $response = $this->actingAs($otherTeacherUser)
@@ -227,15 +235,15 @@ class InteractiveAssignmentTest extends TestCase
     public function test_admin_can_review_any_interactive_submission(): void
     {
         $sa = StudentAssignment::create([
-            'student_id'    => $this->studentA->id,
+            'student_id' => $this->studentA->id,
             'assignment_id' => $this->assignment->id,
-            'status'        => 'submitted',
+            'status' => 'submitted',
         ]);
         $sub = StudentAssignmentSubmission::create([
             'student_assignment_id' => $sa->id,
-            'assignment_id'         => $this->assignment->id,
-            'student_id'            => $this->studentA->id,
-            'status'                => 'submitted',
+            'assignment_id' => $this->assignment->id,
+            'student_id' => $this->studentA->id,
+            'status' => 'submitted',
         ]);
 
         $response = $this->actingAs($this->adminUser)
@@ -257,17 +265,17 @@ class InteractiveAssignmentTest extends TestCase
                 'version' => 1,
                 'strokes' => [
                     [
-                        'id'     => 'stroke-1',
-                        'tool'   => 'pen',
-                        'color'  => '#111827',
-                        'width'  => 3,
+                        'id' => 'stroke-1',
+                        'tool' => 'pen',
+                        'color' => '#111827',
+                        'width' => 3,
                         'points' => [[0.1, 0.2, 0.5], [0.15, 0.25, 0.5]],
                     ],
                 ],
             ]),
             'stroke_count' => 1,
             'current_zoom' => 1.25,
-            'total_pages'  => 5,
+            'total_pages' => 5,
         ];
 
         $response = $this->actingAs($this->studentUserA)
@@ -278,8 +286,8 @@ class InteractiveAssignmentTest extends TestCase
 
         $this->assertDatabaseHas('submission_pages', [
             'submission_id' => $sub->id,
-            'page_number'   => 1,
-            'stroke_count'  => 1,
+            'page_number' => 1,
+            'stroke_count' => 1,
         ]);
     }
 
@@ -361,10 +369,10 @@ class InteractiveAssignmentTest extends TestCase
         // 2. Teacher grades the assignment and uploads graded file
         $response = $this->actingAs($this->teacherUser)
             ->post(route('teacher.tasks.grade', ['assignmentId' => $this->assignment->id, 'studentId' => $this->studentA->id]), [
-                'score'            => 92,
-                'status'           => 'graded',
+                'score' => 92,
+                'status' => 'graded',
                 'teacher_feedback' => 'Excellent reasoning in step 3!',
-                'graded_file'      => $fakeGradedPdf,
+                'graded_file' => $fakeGradedPdf,
             ]);
 
         $response->assertSessionHasNoErrors();
@@ -415,14 +423,14 @@ class InteractiveAssignmentTest extends TestCase
 
         $response = $this->actingAs($this->adminUser)
             ->post(route('admin.tasks.grade', ['assignmentId' => $this->assignment->id, 'studentId' => $this->studentA->id]), [
-                'score'            => 98,
+                'score' => 98,
                 'teacher_feedback' => 'Flawless work across all sections.',
-                'graded_file'      => $fakeGradedPdf,
+                'graded_file' => $fakeGradedPdf,
             ], ['X-Requested-With' => 'XMLHttpRequest']);
 
         $response->assertStatus(200);
         $response->assertJson([
-            'success'          => true,
+            'success' => true,
             'graded_file_name' => 'admin_graded_notes.pdf',
         ]);
 
@@ -433,5 +441,3 @@ class InteractiveAssignmentTest extends TestCase
         Storage::disk('public')->assertExists($sa->graded_file_path);
     }
 }
-
-

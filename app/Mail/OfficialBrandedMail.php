@@ -6,15 +6,21 @@ use App\Models\Setting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\Part\File;
 
 class OfficialBrandedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public string $emailSubject;
+
     public string $htmlContent;
+
     public string $plainTextContent;
+
     public ?string $replyToEmail;
+
     public ?string $senderName;
 
     /**
@@ -27,11 +33,11 @@ class OfficialBrandedMail extends Mailable
         ?string $replyToEmail = null,
         ?string $senderName = null
     ) {
-        $this->emailSubject     = $emailSubject;
-        $this->htmlContent      = $htmlContent;
+        $this->emailSubject = $emailSubject;
+        $this->htmlContent = $htmlContent;
         $this->plainTextContent = $plainTextContent;
-        $this->replyToEmail     = $replyToEmail;
-        $this->senderName       = $senderName;
+        $this->replyToEmail = $replyToEmail;
+        $this->senderName = $senderName;
     }
 
     /**
@@ -40,8 +46,8 @@ class OfficialBrandedMail extends Mailable
     public function build()
     {
         $fromAddress = Setting::get('sender_email_address', config('mail.from.address', 'noreply@olympiascholars.edu.my'));
-        $fromName    = $this->senderName ?: Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars'));
-        $replyTo     = $this->replyToEmail ?: Setting::get('reply_to_email', config('mail.from.address'));
+        $fromName = $this->senderName ?: Setting::get('sender_display_name', config('mail.from.name', 'Olympia Scholars'));
+        $replyTo = $this->replyToEmail ?: Setting::get('reply_to_email', config('mail.from.address'));
 
         $html = $this->htmlContent;
         $localBannerPath = $this->resolveLocalBannerPath();
@@ -56,25 +62,25 @@ class OfficialBrandedMail extends Mailable
 
             // Derive domain for RFC-compliant Content-ID (RFC 2392 requires id@domain)
             $fromHost = substr(strrchr($fromAddress, '@'), 1);
-            $appHost  = parse_url(config('app.url', 'http://olympiascholars.edu.my'), PHP_URL_HOST);
-            $domain   = (!empty($fromHost) && !in_array($fromHost, ['localhost', '127.0.0.1']))
+            $appHost = parse_url(config('app.url', 'http://olympiascholars.edu.my'), PHP_URL_HOST);
+            $domain = (! empty($fromHost) && ! in_array($fromHost, ['localhost', '127.0.0.1']))
                 ? $fromHost
-                : ((!empty($appHost) && !in_array($appHost, ['localhost', '127.0.0.1'])) ? $appHost : 'olympiascholars.edu.my');
+                : ((! empty($appHost) && ! in_array($appHost, ['localhost', '127.0.0.1'])) ? $appHost : 'olympiascholars.edu.my');
 
-            $cid = 'email-banner@' . $domain;
+            $cid = 'email-banner@'.$domain;
 
             // Replace banner img src with cid:email-banner@domain
             $pattern1 = '/(<img[^>]*class=["\'][^"\']*banner-img[^"\']*["\'][^>]*src=["\'])[^"\']*(["\'])/is';
-            $html = preg_replace($pattern1, '${1}cid:' . $cid . '${2}', $html);
+            $html = preg_replace($pattern1, '${1}cid:'.$cid.'${2}', $html);
 
-            if (!str_contains($html, 'cid:' . $cid)) {
+            if (! str_contains($html, 'cid:'.$cid)) {
                 $pattern2 = '/(<img[^>]*src=["\'])[^"\']*(["\'][^>]*class=["\'][^"\']*banner-img[^"\']*["\'])/is';
-                $html = preg_replace($pattern2, '${1}cid:' . $cid . '${2}', $html);
+                $html = preg_replace($pattern2, '${1}cid:'.$cid.'${2}', $html);
             }
 
             $this->withSymfonyMessage(function ($symfonyMessage) use ($localBannerPath, $filename, $mimeType, $cid) {
-                $part = new \Symfony\Component\Mime\Part\DataPart(
-                    new \Symfony\Component\Mime\Part\File($localBannerPath),
+                $part = new DataPart(
+                    new File($localBannerPath),
                     $filename,
                     $mimeType
                 );
@@ -88,14 +94,14 @@ class OfficialBrandedMail extends Mailable
             ->subject($this->emailSubject)
             ->html($html);
 
-        if (!empty($this->plainTextContent)) {
+        if (! empty($this->plainTextContent)) {
             $mail->text('emails.official-template-text', [
-                'subject'   => $this->emailSubject,
+                'subject' => $this->emailSubject,
                 'plainBody' => $this->plainTextContent,
             ]);
         }
 
-        if (!empty($replyTo)) {
+        if (! empty($replyTo)) {
             $mail->replyTo($replyTo);
         }
 
@@ -119,7 +125,7 @@ class OfficialBrandedMail extends Mailable
         if ($storedBanner) {
             // Check storage/banners/ path
             if (preg_match('#storage/banners/([^/?#]+)#', $storedBanner, $matches)) {
-                $storageFile = storage_path('app/public/banners/' . $matches[1]);
+                $storageFile = storage_path('app/public/banners/'.$matches[1]);
                 if (file_exists($storageFile)) {
                     return $storageFile;
                 }
@@ -154,11 +160,12 @@ class OfficialBrandedMail extends Mailable
         }
 
         $host = parse_url($url, PHP_URL_HOST);
-        if (!$host) {
+        if (! $host) {
             return false;
         }
 
         $localHosts = ['localhost', '127.0.0.1', '::1'];
-        return !in_array(strtolower($host), $localHosts, true);
+
+        return ! in_array(strtolower($host), $localHosts, true);
     }
 }

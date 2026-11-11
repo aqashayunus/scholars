@@ -28,16 +28,23 @@ class FeeStructure extends Model
     use HasFactory, SoftDeletes;
 
     // ── Package Type Constants ────────────────────────────────────────────────
-    const TYPE_INDIVIDUAL    = 'individual';
-    const TYPE_FIXED_BUNDLE  = 'fixed_bundle';
-    const TYPE_PICK_N        = 'pick_n';
-    const TYPE_TIERED        = 'tiered';
-    const TYPE_CUSTOM        = 'custom';
+    const TYPE_INDIVIDUAL = 'individual';
+
+    const TYPE_FIXED_BUNDLE = 'fixed_bundle';
+
+    const TYPE_PICK_N = 'pick_n';
+
+    const TYPE_TIERED = 'tiered';
+
+    const TYPE_CUSTOM = 'custom';
 
     // ── Status Constants ──────────────────────────────────────────────────────
-    const STATUS_DRAFT    = 'draft';
-    const STATUS_ACTIVE   = 'active';
+    const STATUS_DRAFT = 'draft';
+
+    const STATUS_ACTIVE = 'active';
+
     const STATUS_INACTIVE = 'inactive';
+
     const STATUS_ARCHIVED = 'archived';
 
     protected $fillable = [
@@ -63,15 +70,15 @@ class FeeStructure extends Model
     ];
 
     protected $casts = [
-        'amount'               => 'decimal:2',
-        'is_active'            => 'boolean',
-        'is_stackable_discount'=> 'boolean',
-        'minimum_subjects'     => 'integer',
-        'maximum_subjects'     => 'integer',
-        'version'              => 'integer',
-        'effective_from'       => 'date',
-        'effective_until'      => 'date',
-        'deleted_at'           => 'datetime',
+        'amount' => 'decimal:2',
+        'is_active' => 'boolean',
+        'is_stackable_discount' => 'boolean',
+        'minimum_subjects' => 'integer',
+        'maximum_subjects' => 'integer',
+        'version' => 'integer',
+        'effective_from' => 'date',
+        'effective_until' => 'date',
+        'deleted_at' => 'datetime',
     ];
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -97,9 +104,9 @@ class FeeStructure extends Model
     public function subjects()
     {
         return $this->belongsToMany(Subject::class, 'fee_structure_subjects')
-                    ->withPivot(['is_required', 'sort_order'])
-                    ->withTimestamps()
-                    ->orderBy('fee_structure_subjects.sort_order');
+            ->withPivot(['is_required', 'sort_order'])
+            ->withTimestamps()
+            ->orderBy('fee_structure_subjects.sort_order');
     }
 
     /**
@@ -108,9 +115,9 @@ class FeeStructure extends Model
     public function requiredSubjects()
     {
         return $this->belongsToMany(Subject::class, 'fee_structure_subjects')
-                    ->withPivot(['is_required', 'sort_order'])
-                    ->wherePivot('is_required', true)
-                    ->orderBy('fee_structure_subjects.sort_order');
+            ->withPivot(['is_required', 'sort_order'])
+            ->wherePivot('is_required', true)
+            ->orderBy('fee_structure_subjects.sort_order');
     }
 
     /**
@@ -152,16 +159,17 @@ class FeeStructure extends Model
     {
         return $query->where(function ($q) {
             $q->where('status', self::STATUS_ACTIVE)
-              ->orWhere(function ($q2) {
-                  // Legacy: packages without the new status column use is_active
-                  $q2->whereNull('status')->where('is_active', true);
-              });
+                ->orWhere(function ($q2) {
+                    // Legacy: packages without the new status column use is_active
+                    $q2->whereNull('status')->where('is_active', true);
+                });
         });
     }
 
     public function scopeCurrentlyValid($query)
     {
         $today = now()->toDateString();
+
         return $query->where(function ($q) use ($today) {
             $q->whereNull('effective_from')->orWhere('effective_from', '<=', $today);
         })->where(function ($q) use ($today) {
@@ -182,11 +190,16 @@ class FeeStructure extends Model
     public function getIsCurrentlyValidAttribute(): bool
     {
         $today = now()->toDate();
-        $validFrom  = $this->effective_from  ? $this->effective_from->toDate()  : null;
+        $validFrom = $this->effective_from ? $this->effective_from->toDate() : null;
         $validUntil = $this->effective_until ? $this->effective_until->toDate() : null;
 
-        if ($validFrom  && $today < $validFrom)  return false;
-        if ($validUntil && $today > $validUntil) return false;
+        if ($validFrom && $today < $validFrom) {
+            return false;
+        }
+        if ($validUntil && $today > $validUntil) {
+            return false;
+        }
+
         return true;
     }
 
@@ -222,10 +235,10 @@ class FeeStructure extends Model
     {
         return match ($this->package_type) {
             self::TYPE_FIXED_BUNDLE => 'Fixed Bundle',
-            self::TYPE_PICK_N       => 'Pick-Any-N',
-            self::TYPE_TIERED       => 'Tiered Pricing',
-            self::TYPE_CUSTOM       => 'Custom',
-            default                 => 'Individual',
+            self::TYPE_PICK_N => 'Pick-Any-N',
+            self::TYPE_TIERED => 'Tiered Pricing',
+            self::TYPE_CUSTOM => 'Custom',
+            default => 'Individual',
         };
     }
 
@@ -237,6 +250,7 @@ class FeeStructure extends Model
         if ($this->status) {
             return ucfirst($this->status);
         }
+
         return $this->is_active ? 'Active' : 'Inactive';
     }
 }

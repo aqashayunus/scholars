@@ -9,6 +9,7 @@ use Tests\TestCase;
 class AdminAttendanceTabTest extends TestCase
 {
     use RefreshDatabase;
+
     public function test_admin_attendance_route_redirects_to_dashboard_attendance_fragment(): void
     {
         $admin = User::where('role', 'admin')->first() ?? User::factory()->create(['role' => 'admin']);
@@ -35,9 +36,9 @@ class AdminAttendanceTabTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAs($admin)->post('/admin/settings/attendance', [
-            'late_threshold_minutes'    => 20,
+            'late_threshold_minutes' => 20,
             'early_join_window_minutes' => 10,
-            'excused_in_denominator'    => '1',
+            'excused_in_denominator' => '1',
         ]);
 
         $response->assertSessionHas('success');

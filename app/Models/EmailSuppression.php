@@ -17,7 +17,7 @@ class EmailSuppression extends Model
 
     protected $casts = [
         'suppressed_at' => 'datetime',
-        'created_at'    => 'datetime',
+        'created_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -38,9 +38,9 @@ class EmailSuppression extends Model
         return static::firstOrCreate(
             ['email' => strtolower(trim($email))],
             [
-                'reason'        => $reason,
+                'reason' => $reason,
                 'suppressed_at' => now(),
-                'created_at'    => now(),
+                'created_at' => now(),
             ]
         );
     }

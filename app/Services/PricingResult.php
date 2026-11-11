@@ -15,7 +15,7 @@ final class PricingResult
 {
     public function __construct(
         /** ID of the fee structure used */
-        public readonly int    $feeStructureId,
+        public readonly int $feeStructureId,
 
         /** Snapshot of the package name at calculation time */
         public readonly string $packageName,
@@ -24,26 +24,26 @@ final class PricingResult
         public readonly string $packageType,
 
         /** Subject IDs selected by the student */
-        public readonly array  $subjectIds,
+        public readonly array $subjectIds,
 
         /** Base tuition price calculated by the engine */
-        public readonly float  $tuitionPrice,
+        public readonly float $tuitionPrice,
 
         /**
          * Line items ready for InvoiceItem::create().
          * Each element: [subject_id, description, item_type, package_name,
          *                billing_frequency, unit_price, quantity, amount]
          */
-        public readonly array  $lineItems,
+        public readonly array $lineItems,
 
         /** Sum of all line item amounts */
-        public readonly float  $subtotal,
+        public readonly float $subtotal,
 
         /** Total discount applied (0 until promotion engine is integrated) */
-        public readonly float  $discountAmount,
+        public readonly float $discountAmount,
 
         /** Final amount to charge (subtotal - discountAmount) */
-        public readonly float  $totalAmount,
+        public readonly float $totalAmount,
     ) {}
 
     /**
@@ -53,14 +53,14 @@ final class PricingResult
     {
         return [
             'fee_structure_id' => $this->feeStructureId,
-            'package_name'     => $this->packageName,
-            'package_type'     => $this->packageType,
-            'subject_ids'      => $this->subjectIds,
-            'tuition_price'    => $this->tuitionPrice,
-            'line_items'       => $this->lineItems,
-            'subtotal'         => $this->subtotal,
-            'discount_amount'  => $this->discountAmount,
-            'total_amount'     => $this->totalAmount,
+            'package_name' => $this->packageName,
+            'package_type' => $this->packageType,
+            'subject_ids' => $this->subjectIds,
+            'tuition_price' => $this->tuitionPrice,
+            'line_items' => $this->lineItems,
+            'subtotal' => $this->subtotal,
+            'discount_amount' => $this->discountAmount,
+            'total_amount' => $this->totalAmount,
         ];
     }
 }

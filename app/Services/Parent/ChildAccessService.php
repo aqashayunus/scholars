@@ -2,20 +2,21 @@
 
 namespace App\Services\Parent;
 
+use App\Http\Controllers\Auth\StudentRegistrationController;
 use App\Models\Student;
 use App\Models\User;
+use App\Services\Email\EmailAutomationService;
 use App\Services\ParentLinkService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ChildAccessService
 {
-    public function __construct(private StudentAccessRestrictionService $restrictionService)
-    {
-    }
+    public function __construct(private StudentAccessRestrictionService $restrictionService) {}
 
     /**
      * Get all students that belong to the authenticated parent.
@@ -60,11 +61,13 @@ class ChildAccessService
     {
         if ($childId) {
             $child = $children->firstWhere('id', (int) $childId);
-            if (!$child) {
+            if (! $child) {
                 abort(403, 'You are not authorized to access this student\'s data.');
             }
+
             return $child;
         }
+
         return $children->first();
     }
 
@@ -88,38 +91,38 @@ class ChildAccessService
                 $firstNameSlug = Str::slug($firstName, '');
                 $prefix = strlen($firstNameSlug) >= 2 ? $firstNameSlug : 'student';
 
-                $childEmail = $prefix . '@olympianscholars.my';
+                $childEmail = $prefix.'@olympianscholars.my';
                 $counter = 1;
                 while (User::where('email', $childEmail)->exists()) {
                     $counter++;
-                    $childEmail = $prefix . $counter . '@olympianscholars.my';
+                    $childEmail = $prefix.$counter.'@olympianscholars.my';
                 }
 
-                $childPassword = !empty($validated['password'])
+                $childPassword = ! empty($validated['password'])
                     ? $validated['password']
-                    : Str::random(8) . rand(10, 99) . '!';
+                    : Str::random(8).rand(10, 99).'!';
 
                 $childUser = new User([
-                    'name'     => $validated['name'],
-                    'email'    => $childEmail,
-                    'phone'    => '',
+                    'name' => $validated['name'],
+                    'email' => $childEmail,
+                    'phone' => '',
                     'password' => Hash::make($childPassword),
                 ]);
                 $childUser->role = 'student';
                 $childUser->save();
 
-                $dob    = Student::dobFromIc($validated['child_ic_number']);
+                $dob = Student::dobFromIc($validated['child_ic_number']);
                 $gender = Student::genderFromIc($validated['child_ic_number']);
 
                 $student = new Student([
-                    'user_id'        => $childUser->id,
+                    'user_id' => $childUser->id,
                     'ic_number_hash' => $childIcHash,
-                    'gender'         => $gender,
-                    'date_of_birth'  => $dob,
-                    'level'          => $validated['level'],
-                    'school_name'    => $validated['school_name'] ?? null,
-                    'total_points'   => 0,
-                    'streak_days'    => 1,
+                    'gender' => $gender,
+                    'date_of_birth' => $dob,
+                    'level' => $validated['level'],
+                    'school_name' => $validated['school_name'] ?? null,
+                    'total_points' => 0,
+                    'streak_days' => 1,
                 ]);
                 $student->parent_user_id = $parent->id;
                 $student->save();
@@ -127,18 +130,18 @@ class ChildAccessService
                 // Link via pivot table
                 DB::table('parent_student')->insertOrIgnore([
                     'parent_user_id' => $parent->id,
-                    'student_id'     => $student->id,
-                    'relationship'   => $validated['relationship'] ?? 'Guardian',
-                    'is_primary'     => true,
-                    'status'         => 'active',
-                    'created_at'     => now(),
-                    'updated_at'     => now(),
+                    'student_id' => $student->id,
+                    'relationship' => $validated['relationship'] ?? 'Guardian',
+                    'is_primary' => true,
+                    'status' => 'active',
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 // Enroll in selected subjects if provided
                 $subjectNames = $validated['subjects'] ?? [];
-                if (!empty($subjectNames)) {
-                    \App\Http\Controllers\Auth\StudentRegistrationController::enrollInSubjects(
+                if (! empty($subjectNames)) {
+                    StudentRegistrationController::enrollInSubjects(
                         $student, $subjectNames, $validated['level'] ?? null
                     );
                 }
@@ -149,6 +152,7 @@ class ChildAccessService
             return ['status' => 'created', 'student' => $student];
         } catch (\Exception $e) {
             report($e);
+
             return ['status' => 'error'];
         }
     }
@@ -161,14 +165,14 @@ class ChildAccessService
     {
         // Check if identifier is an IC number (12 digits)
         $cleanDigits = preg_replace('/\D/', '', $identifier);
-        $student     = null;
+        $student = null;
 
         if (strlen($cleanDigits) === 12) {
-            $icHash  = Student::hashIc($identifier);
+            $icHash = Student::hashIc($identifier);
             $student = Student::where('ic_number_hash', $icHash)->with('user')->first();
         }
 
-        if (!$student) {
+        if (! $student) {
             // Try by student's user email
             $studentUser = User::where('email', $identifier)->where('role', 'student')->first();
             if ($studentUser) {
@@ -176,7 +180,7 @@ class ChildAccessService
             }
         }
 
-        if (!$student) {
+        if (! $student) {
             return ['status' => 'not_found'];
         }
 
@@ -188,17 +192,17 @@ class ChildAccessService
             // ParentLinkService already decides whether this link activates
             // immediately or requires the existing guardian's approval first).
             try {
-                \App\Services\Email\EmailAutomationService::trigger(
+                EmailAutomationService::trigger(
                     'parent_student_linked',
                     [
-                        'user'    => $parent,
-                        'parent'  => $parent,
+                        'user' => $parent,
+                        'parent' => $parent,
                         'student' => $student,
                     ],
                     "parent_link_{$parent->id}_{$student->id}"
                 );
             } catch (\Throwable $emailErr) {
-                \Illuminate\Support\Facades\Log::warning('[ParentDashboard] Child linked email trigger failed: ' . $emailErr->getMessage());
+                Log::warning('[ParentDashboard] Child linked email trigger failed: '.$emailErr->getMessage());
             }
         }
 

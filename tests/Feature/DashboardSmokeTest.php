@@ -29,9 +29,9 @@ class DashboardSmokeTest extends TestCase
         // that previously crashed first-time dashboard load via the
         // hardcoded teacher_id fallback in PageController::enrollStudentInSubjects.
         $user = User::factory()->create([
-            'name'     => 'Fresh Student',
-            'email'    => 'freshstudent@test.com',
-            'role'     => 'student',
+            'name' => 'Fresh Student',
+            'email' => 'freshstudent@test.com',
+            'role' => 'student',
             'password' => Hash::make('password'),
         ]);
         Student::factory()->create(['user_id' => $user->id, 'level' => 'SPM']);
@@ -44,16 +44,16 @@ class DashboardSmokeTest extends TestCase
     public function test_teacher_dashboard_loads_for_a_brand_new_teacher(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Fresh Teacher',
-            'email'    => 'freshteacher@test.com',
-            'role'     => 'teacher',
+            'name' => 'Fresh Teacher',
+            'email' => 'freshteacher@test.com',
+            'role' => 'teacher',
             'password' => Hash::make('password'),
         ]);
         Teacher::create([
-            'user_id'          => $user->id,
-            'specialization'   => 'General Academic',
-            'qualification'    => 'B.Ed',
-            'rating'           => 5.0,
+            'user_id' => $user->id,
+            'specialization' => 'General Academic',
+            'qualification' => 'B.Ed',
+            'rating' => 5.0,
             'experience_years' => 1,
         ]);
 
@@ -65,9 +65,9 @@ class DashboardSmokeTest extends TestCase
     public function test_parent_dashboard_loads_for_a_parent_with_no_children_yet(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Fresh Parent',
-            'email'    => 'freshparent@test.com',
-            'role'     => 'parent',
+            'name' => 'Fresh Parent',
+            'email' => 'freshparent@test.com',
+            'role' => 'parent',
             'password' => Hash::make('password'),
         ]);
 
@@ -79,9 +79,9 @@ class DashboardSmokeTest extends TestCase
     public function test_admin_dashboard_loads_for_a_fresh_admin(): void
     {
         $user = User::factory()->create([
-            'name'     => 'Fresh Admin',
-            'email'    => 'freshadmin@test.com',
-            'role'     => 'admin',
+            'name' => 'Fresh Admin',
+            'email' => 'freshadmin@test.com',
+            'role' => 'admin',
             'password' => Hash::make('password'),
         ]);
 

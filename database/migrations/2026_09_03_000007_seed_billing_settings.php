@@ -31,16 +31,16 @@ return new class extends Migration
             ['key' => 'billing.bank_name',           'value' => '', 'group' => 'billing', 'label' => 'Bank Name'],
             ['key' => 'billing.bank_account_number', 'value' => '', 'group' => 'billing', 'label' => 'Bank Account Number'],
             ['key' => 'billing.bank_account_name',   'value' => '', 'group' => 'billing', 'label' => 'Bank Account Name'],
-            ['key' => 'billing.payment_instructions','value' => '', 'group' => 'billing', 'label' => 'Additional Payment Instructions'],
+            ['key' => 'billing.payment_instructions', 'value' => '', 'group' => 'billing', 'label' => 'Additional Payment Instructions'],
         ];
 
         foreach ($defaults as $setting) {
             DB::table('settings')->updateOrInsert(
                 ['key' => $setting['key']],
                 [
-                    'value'      => $setting['value'],
-                    'group'      => $setting['group'],
-                    'label'      => $setting['label'],
+                    'value' => $setting['value'],
+                    'group' => $setting['group'],
+                    'label' => $setting['label'],
                     'updated_at' => now(),
                     'created_at' => now(),
                 ]

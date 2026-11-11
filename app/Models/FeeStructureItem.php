@@ -26,18 +26,27 @@ class FeeStructureItem extends Model
 
     // Item type constants
     const TYPE_REGISTRATION = 'registration';
-    const TYPE_TUITION      = 'tuition';
-    const TYPE_MATERIAL     = 'material';
-    const TYPE_RESOURCE     = 'resource';
-    const TYPE_ASSESSMENT   = 'assessment';
-    const TYPE_DEPOSIT      = 'deposit';
-    const TYPE_OTHER        = 'other';
+
+    const TYPE_TUITION = 'tuition';
+
+    const TYPE_MATERIAL = 'material';
+
+    const TYPE_RESOURCE = 'resource';
+
+    const TYPE_ASSESSMENT = 'assessment';
+
+    const TYPE_DEPOSIT = 'deposit';
+
+    const TYPE_OTHER = 'other';
 
     // Billing frequency constants
     const FREQ_ONE_TIME = 'one_time';
-    const FREQ_MONTHLY  = 'monthly';
-    const FREQ_TERM     = 'term';
-    const FREQ_ANNUAL   = 'annual';
+
+    const FREQ_MONTHLY = 'monthly';
+
+    const FREQ_TERM = 'term';
+
+    const FREQ_ANNUAL = 'annual';
 
     protected $fillable = [
         'fee_structure_id',
@@ -53,11 +62,11 @@ class FeeStructureItem extends Model
     ];
 
     protected $casts = [
-        'amount'       => 'decimal:2',
-        'quantity'     => 'integer',
-        'is_optional'  => 'boolean',
-        'is_refundable'=> 'boolean',
-        'sort_order'   => 'integer',
+        'amount' => 'decimal:2',
+        'quantity' => 'integer',
+        'is_optional' => 'boolean',
+        'is_refundable' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function feeStructure()
@@ -80,10 +89,10 @@ class FeeStructureItem extends Model
     {
         return match ($this->billing_frequency) {
             self::FREQ_ONE_TIME => 'One-time',
-            self::FREQ_MONTHLY  => 'Monthly',
-            self::FREQ_TERM     => 'Per Term',
-            self::FREQ_ANNUAL   => 'Annual',
-            default             => ucfirst(str_replace('_', ' ', $this->billing_frequency)),
+            self::FREQ_MONTHLY => 'Monthly',
+            self::FREQ_TERM => 'Per Term',
+            self::FREQ_ANNUAL => 'Annual',
+            default => ucfirst(str_replace('_', ' ', $this->billing_frequency)),
         };
     }
 }

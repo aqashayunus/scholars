@@ -15,19 +15,42 @@ class Teacher extends Model
         'bank_name', 'bank_account_number', 'bank_account_holder',
     ];
 
-    public function user()     { return $this->belongsTo(User::class); }
-    public function courses()           { return $this->hasMany(Course::class); }
-    public function learningMaterials() { return $this->hasMany(LearningMaterial::class); }
-    public function subjects()          { return $this->belongsToMany(Subject::class, 'teacher_subject'); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
-    public function getNameAttribute()  { return $this->user->name; }
-    public function getEmailAttribute() { return $this->user->email; }
+    public function courses()
+    {
+        return $this->hasMany(Course::class);
+    }
+
+    public function learningMaterials()
+    {
+        return $this->hasMany(LearningMaterial::class);
+    }
+
+    public function subjects()
+    {
+        return $this->belongsToMany(Subject::class, 'teacher_subject');
+    }
+
+    public function getNameAttribute()
+    {
+        return $this->user->name;
+    }
+
+    public function getEmailAttribute()
+    {
+        return $this->user->email;
+    }
 
     public function getStarsAttribute(): string
     {
-        $full  = floor($this->rating);
-        $half  = ($this->rating - $full) >= 0.5 ? 1 : 0;
+        $full = floor($this->rating);
+        $half = ($this->rating - $full) >= 0.5 ? 1 : 0;
         $empty = 5 - $full - $half;
-        return str_repeat('★', $full) . str_repeat('⯨', $half) . str_repeat('☆', $empty);
+
+        return str_repeat('★', $full).str_repeat('⯨', $half).str_repeat('☆', $empty);
     }
 }

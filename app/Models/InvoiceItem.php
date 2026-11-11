@@ -24,8 +24,8 @@ class InvoiceItem extends Model
 
     protected $casts = [
         'unit_price' => 'decimal:2',
-        'amount'     => 'decimal:2',
-        'quantity'   => 'integer',
+        'amount' => 'decimal:2',
+        'quantity' => 'integer',
     ];
 
     public function invoice()

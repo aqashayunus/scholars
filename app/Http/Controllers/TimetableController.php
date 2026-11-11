@@ -14,9 +14,7 @@ use Illuminate\Http\Request;
 
 class TimetableController extends Controller
 {
-    public function __construct(private TimetableService $timetable)
-    {
-    }
+    public function __construct(private TimetableService $timetable) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. STUDENT TIMETABLE
@@ -47,7 +45,7 @@ class TimetableController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
     public function adminIndex(Request $request)
     {
-        return redirect(route('admin.dashboard') . '#timetable');
+        return redirect(route('admin.dashboard').'#timetable');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -85,7 +83,7 @@ class TimetableController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Session successfully rescheduled to {$result['newDateTime']->format('d M Y, h:i A')}. All enrolled students and parents have been notified.",
-                'class'   => $result['liveClass'],
+                'class' => $result['liveClass'],
             ]);
         }
 
@@ -105,7 +103,7 @@ class TimetableController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'New live class session created successfully.',
-                'class'   => $liveClass,
+                'class' => $liveClass,
             ]);
         }
 
@@ -125,7 +123,7 @@ class TimetableController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Class session successfully rescheduled to {$result['newDateTime']->format('d M Y, h:i A')}. Teacher, students, and parents notified.",
-                'class'   => $result['liveClass'],
+                'class' => $result['liveClass'],
             ]);
         }
 
@@ -142,7 +140,7 @@ class TimetableController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'New live class session scheduled successfully.',
-                'class'   => $liveClass,
+                'class' => $liveClass,
             ]);
         }
 
@@ -202,27 +200,27 @@ class TimetableController extends Controller
         $title = $liveClass->title;
         $subject = $liveClass->course->subject->display_name ?? $liveClass->course->subject->name ?? 'Course';
         $teacher = $liveClass->course->teacher->user->name ?? 'Olympian Scholars Instructor';
-        $description = "Subject: {$subject}\\nInstructor: {$teacher}\\nLink: " . ($liveClass->meeting_url ?? 'N/A');
+        $description = "Subject: {$subject}\\nInstructor: {$teacher}\\nLink: ".($liveClass->meeting_url ?? 'N/A');
 
-        $ics = "BEGIN:VCALENDAR\r\n" .
-               "VERSION:2.0\r\n" .
-               "PRODID:-//Olympian Scholars//Timetable Calendar//EN\r\n" .
-               "CALSCALE:GREGORIAN\r\n" .
-               "METHOD:PUBLISH\r\n" .
-               "BEGIN:VEVENT\r\n" .
-               "UID:olympian-class-{$liveClass->id}@olympianscholars.com\r\n" .
-               "DTSTAMP:" . now()->utc()->format('Ymd\THis\Z') . "\r\n" .
-               "DTSTART:" . $start->utc()->format('Ymd\THis\Z') . "\r\n" .
-               "DTEND:" . $end->utc()->format('Ymd\THis\Z') . "\r\n" .
-               "SUMMARY:{$title} ({$subject})\r\n" .
-               "DESCRIPTION:{$description}\r\n" .
-               "STATUS:CONFIRMED\r\n" .
-               "END:VEVENT\r\n" .
+        $ics = "BEGIN:VCALENDAR\r\n".
+               "VERSION:2.0\r\n".
+               "PRODID:-//Olympian Scholars//Timetable Calendar//EN\r\n".
+               "CALSCALE:GREGORIAN\r\n".
+               "METHOD:PUBLISH\r\n".
+               "BEGIN:VEVENT\r\n".
+               "UID:olympian-class-{$liveClass->id}@olympianscholars.com\r\n".
+               'DTSTAMP:'.now()->utc()->format('Ymd\THis\Z')."\r\n".
+               'DTSTART:'.$start->utc()->format('Ymd\THis\Z')."\r\n".
+               'DTEND:'.$end->utc()->format('Ymd\THis\Z')."\r\n".
+               "SUMMARY:{$title} ({$subject})\r\n".
+               "DESCRIPTION:{$description}\r\n".
+               "STATUS:CONFIRMED\r\n".
+               "END:VEVENT\r\n".
                "END:VCALENDAR\r\n";
 
         return response($ics, 200, [
-            'Content-Type'        => 'text/calendar; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="olympian-class-' . $liveClass->id . '.ics"',
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="olympian-class-'.$liveClass->id.'.ics"',
         ]);
     }
 }

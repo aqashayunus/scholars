@@ -18,11 +18,11 @@ class ChatMessageFactory extends Factory
     {
         return [
             'conversation_id' => Conversation::factory(),
-            'sender_id'       => User::factory(),
-            'body'            => fake()->sentence(),
-            'type'            => 'text',
-            'reply_to_id'     => null,
-            'status'          => 'sent',
+            'sender_id' => User::factory(),
+            'body' => fake()->sentence(),
+            'type' => 'text',
+            'reply_to_id' => null,
+            'status' => 'sent',
         ];
     }
 }

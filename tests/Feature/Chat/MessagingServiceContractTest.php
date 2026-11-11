@@ -3,12 +3,14 @@
 namespace Tests\Feature\Chat;
 
 use App\Models\ChatMessage;
+use App\Models\ChatMessageAttachment;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -29,7 +31,7 @@ class MessagingServiceContractTest extends TestCase
 
     private function makeUser(string $role, string $email): User
     {
-        return User::factory()->create(['name' => ucfirst($role) . ' ' . $email, 'email' => $email, 'role' => $role, 'password' => Hash::make('password')]);
+        return User::factory()->create(['name' => ucfirst($role).' '.$email, 'email' => $email, 'role' => $role, 'password' => Hash::make('password')]);
     }
 
     private function makeDirectConversation(User $a, User $b): Conversation
@@ -56,9 +58,9 @@ class MessagingServiceContractTest extends TestCase
         $response->assertStatus(201);
         $this->assertDatabaseHas('chat_messages', [
             'conversation_id' => $conv->id,
-            'sender_id'       => $a->id,
-            'body'            => 'Hello there',
-            'type'            => 'text',
+            'sender_id' => $a->id,
+            'body' => 'Hello there',
+            'type' => 'text',
         ]);
         $this->assertSame($conv->fresh()->last_message_id, $response->json('id'));
     }
@@ -78,7 +80,7 @@ class MessagingServiceContractTest extends TestCase
         $this->assertDatabaseMissing('chat_messages', ['conversation_id' => $conv->id, 'body' => 'Should not land']);
     }
 
-    public function test_getMessages_marks_the_other_participants_messages_as_read(): void
+    public function test_get_messages_marks_the_other_participants_messages_as_read(): void
     {
         $a = $this->makeUser('parent', 'a3@test.com');
         $b = $this->makeUser('student', 'b3@test.com');
@@ -86,9 +88,9 @@ class MessagingServiceContractTest extends TestCase
 
         $msg = ChatMessage::factory()->create([
             'conversation_id' => $conv->id,
-            'sender_id'       => $b->id,
-            'body'            => 'From B',
-            'status'          => 'sent',
+            'sender_id' => $b->id,
+            'body' => 'From B',
+            'status' => 'sent',
         ]);
 
         $response = $this->actingAs($a)->getJson(route('chat.conversations.messages', $conv->id));
@@ -101,7 +103,7 @@ class MessagingServiceContractTest extends TestCase
         $this->assertSame($msg->id, $participant->last_read_message_id);
     }
 
-    public function test_getOlderMessages_paginates_backwards_from_before_id(): void
+    public function test_get_older_messages_paginates_backwards_from_before_id(): void
     {
         $a = $this->makeUser('parent', 'a4@test.com');
         $b = $this->makeUser('student', 'b4@test.com');
@@ -109,11 +111,11 @@ class MessagingServiceContractTest extends TestCase
 
         $messages = collect(range(1, 5))->map(fn () => ChatMessage::factory()->create([
             'conversation_id' => $conv->id,
-            'sender_id'       => $b->id,
+            'sender_id' => $b->id,
         ]));
         $oldestId = $messages->min('id');
 
-        $response = $this->actingAs($a)->getJson(route('chat.conversations.messages.older', $conv->id) . '?before_id=' . $oldestId + 100);
+        $response = $this->actingAs($a)->getJson(route('chat.conversations.messages.older', $conv->id).'?before_id='.$oldestId + 100);
 
         $response->assertOk();
         $this->assertCount(5, $response->json('messages'));
@@ -148,7 +150,7 @@ class MessagingServiceContractTest extends TestCase
         $this->actingAs($a)->postJson(route('chat.conversations.attachments', $conv->id), [
             'file' => UploadedFile::fake()->image('secret.jpg'),
         ]);
-        $attachmentId = \App\Models\ChatMessageAttachment::first()->id;
+        $attachmentId = ChatMessageAttachment::first()->id;
 
         $response = $this->actingAs($outsider)->get(route('chat.attachment.download', $attachmentId));
 
@@ -223,7 +225,7 @@ class MessagingServiceContractTest extends TestCase
         $parent = $this->makeUser('parent', 'mon1@test.com');
         $childUser = $this->makeUser('student', 'child1@test.com');
         $student = Student::factory()->create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
-        \Illuminate\Support\Facades\DB::table('parent_student')->insert([
+        DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id, 'student_id' => $student->id,
             'relationship' => 'Guardian', 'status' => 'active', 'is_primary' => true,
             'created_at' => now(), 'updated_at' => now(),
@@ -249,7 +251,7 @@ class MessagingServiceContractTest extends TestCase
         $parent = $this->makeUser('parent', 'mon2@test.com');
         $childUser = $this->makeUser('student', 'child2@test.com');
         $student = Student::factory()->create(['user_id' => $childUser->id, 'parent_user_id' => $parent->id, 'level' => 'SPM']);
-        \Illuminate\Support\Facades\DB::table('parent_student')->insert([
+        DB::table('parent_student')->insert([
             'parent_user_id' => $parent->id, 'student_id' => $student->id,
             'relationship' => 'Guardian', 'status' => 'active', 'is_primary' => true,
             'created_at' => now(), 'updated_at' => now(),

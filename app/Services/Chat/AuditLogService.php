@@ -14,12 +14,12 @@ class AuditLogService
     public function log(int $viewerId, int $childId, ?int $conversationId, string $action): void
     {
         ChatAuditLog::create([
-            'viewer_id'       => $viewerId,
-            'child_id'        => $childId,
+            'viewer_id' => $viewerId,
+            'child_id' => $childId,
             'conversation_id' => $conversationId,
-            'action'          => $action,
-            'ip_address'      => request()->ip(),
-            'user_agent'      => request()->userAgent(),
+            'action' => $action,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
         ]);
     }
 }

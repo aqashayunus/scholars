@@ -37,9 +37,9 @@ class RouteAuthorizationMatrixTest extends TestCase
 
         foreach (self::ROLES as $role) {
             $user = User::factory()->create([
-                'name'     => ucfirst($role) . ' Matrix Tester',
-                'email'    => $role . '@matrix.test',
-                'role'     => $role,
+                'name' => ucfirst($role).' Matrix Tester',
+                'email' => $role.'@matrix.test',
+                'role' => $role,
                 'password' => Hash::make('password'),
             ]);
 
@@ -48,10 +48,10 @@ class RouteAuthorizationMatrixTest extends TestCase
             }
             if ($role === 'teacher') {
                 Teacher::factory()->create([
-                    'user_id'          => $user->id,
-                    'specialization'   => 'General Academic',
-                    'qualification'    => 'B.Ed',
-                    'rating'           => 5.0,
+                    'user_id' => $user->id,
+                    'specialization' => 'General Academic',
+                    'qualification' => 'B.Ed',
+                    'rating' => 5.0,
                     'experience_years' => 1,
                 ]);
             }
@@ -68,6 +68,7 @@ class RouteAuthorizationMatrixTest extends TestCase
                     return true;
                 }
             }
+
             return false;
         });
 
@@ -86,7 +87,7 @@ class RouteAuthorizationMatrixTest extends TestCase
 
             $method = collect($route->methods())->first(fn ($m) => $m !== 'HEAD');
             $rawUri = ltrim($route->uri(), '/');
-            $uri = '/' . preg_replace('/\{[^}]+\}/', '999999', $rawUri);
+            $uri = '/'.preg_replace('/\{[^}]+\}/', '999999', $rawUri);
 
             foreach (self::ROLES as $testRole) {
                 if (in_array($testRole, $allowedRoles, true)) {
@@ -112,7 +113,7 @@ class RouteAuthorizationMatrixTest extends TestCase
                     ? in_array($status, [302, 403, 404], true)
                     : in_array($status, [403, 404], true);
 
-                if (!$acceptable) {
+                if (! $acceptable) {
                     $failures[] = sprintf(
                         '%s %s as %s => %d (expected %s)',
                         $method, $uri, $testRole, $status,
@@ -128,7 +129,7 @@ class RouteAuthorizationMatrixTest extends TestCase
             $checked++;
             $guestResponse = $this->call($method, $uri);
             $guestStatus = $guestResponse->getStatusCode();
-            if (!in_array($guestStatus, [302, 401, 403, 404], true)) {
+            if (! in_array($guestStatus, [302, 401, 403, 404], true)) {
                 $failures[] = sprintf(
                     '%s %s as GUEST => %d (expected 302/401/403/404)',
                     $method, $uri, $guestStatus

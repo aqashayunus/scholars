@@ -11,7 +11,6 @@ use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class InteractiveAssignmentController extends Controller
@@ -28,13 +27,13 @@ class InteractiveAssignmentController extends Controller
 
         // Verify PDF attachment exists
         $resolvedPdfPath = self::resolvePdfPath($assignment->file_path);
-        if (!$resolvedPdfPath || !file_exists($resolvedPdfPath)) {
+        if (! $resolvedPdfPath || ! file_exists($resolvedPdfPath)) {
             return redirect()->route('student.tasks')->with('error', 'The assignment PDF document is currently unavailable.');
         }
 
         // Find or create the parent student_assignment record
         $studentAssignment = StudentAssignment::firstOrCreate([
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
         ], [
             'status' => 'pending',
@@ -45,13 +44,13 @@ class InteractiveAssignmentController extends Controller
             'student_assignment_id' => $studentAssignment->id,
         ], [
             'assignment_id' => $assignment->id,
-            'student_id'    => $student->id,
-            'status'        => 'draft',
-            'current_page'  => 1,
-            'zoom_level'    => 1.00,
-            'total_pages'   => 1,
-            'version'       => 1,
-            'started_at'    => now(),
+            'student_id' => $student->id,
+            'status' => 'draft',
+            'current_page' => 1,
+            'zoom_level' => 1.00,
+            'total_pages' => 1,
+            'version' => 1,
+            'started_at' => now(),
         ]);
 
         // Authorization check
@@ -61,13 +60,13 @@ class InteractiveAssignmentController extends Controller
         $pages = $submission->pages()->get()->keyBy('page_number');
 
         return view('student.assignments.interactive', [
-            'assignment'        => $assignment,
-            'student'           => $student,
+            'assignment' => $assignment,
+            'student' => $student,
             'studentAssignment' => $studentAssignment,
-            'submission'        => $submission,
-            'pagesData'         => $pages,
-            'pdfStreamUrl'      => route('student.assignments.pdf-stream', $assignment->id),
-            'isLocked'          => $submission->isLocked(),
+            'submission' => $submission,
+            'pagesData' => $pages,
+            'pdfStreamUrl' => route('student.assignments.pdf-stream', $assignment->id),
+            'isLocked' => $submission->isLocked(),
         ]);
     }
 
@@ -82,27 +81,27 @@ class InteractiveAssignmentController extends Controller
         // Verify authorization: Admin, Teacher, or Student
         if ($user->isStudent()) {
             $student = Student::where('user_id', $user->id)->first();
-            if (!$student) {
+            if (! $student) {
                 abort(403, 'Unauthorized student profile.');
             }
         } elseif ($user->isTeacher()) {
             $teacher = $user->teacherProfile;
-            if (!$teacher) {
+            if (! $teacher) {
                 abort(403, 'Unauthorized teacher profile.');
             }
-        } elseif (!$user->isAdmin()) {
+        } elseif (! $user->isAdmin()) {
             abort(403, 'Unauthorized access.');
         }
 
         $resolvedPath = self::resolvePdfPath($assignment->file_path);
-        if (!$resolvedPath || !file_exists($resolvedPath)) {
+        if (! $resolvedPath || ! file_exists($resolvedPath)) {
             abort(404, 'PDF document file not found on server.');
         }
 
         return response()->file($resolvedPath, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . basename($resolvedPath) . '"',
-            'Cache-Control'       => 'private, max-age=86400',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.basename($resolvedPath).'"',
+            'Cache-Control' => 'private, max-age=86400',
         ]);
     }
 
@@ -116,23 +115,23 @@ class InteractiveAssignmentController extends Controller
 
         $pagesMap = [];
         foreach ($submission->pages as $page) {
-            $pagesMap[(string)$page->page_number] = [
-                'page_number'     => $page->page_number,
+            $pagesMap[(string) $page->page_number] = [
+                'page_number' => $page->page_number,
                 'annotation_json' => $page->annotation_json,
-                'stroke_count'    => $page->stroke_count,
-                'page_version'    => $page->page_version,
+                'stroke_count' => $page->stroke_count,
+                'page_version' => $page->page_version,
             ];
         }
 
         return response()->json([
             'submission_id' => $submission->id,
-            'status'        => $submission->status,
-            'current_page'  => $submission->current_page,
-            'zoom_level'    => (float) $submission->zoom_level,
-            'total_pages'   => $submission->total_pages,
-            'is_locked'     => $submission->isLocked(),
+            'status' => $submission->status,
+            'current_page' => $submission->current_page,
+            'zoom_level' => (float) $submission->zoom_level,
+            'total_pages' => $submission->total_pages,
+            'is_locked' => $submission->isLocked(),
             'last_saved_at' => $submission->last_saved_at ? $submission->last_saved_at->toIso8601String() : null,
-            'pages'         => $pagesMap,
+            'pages' => $pagesMap,
         ]);
     }
 
@@ -152,11 +151,11 @@ class InteractiveAssignmentController extends Controller
         }
 
         $validated = $request->validate([
-            'annotation_json'  => 'required|string',
-            'stroke_count'     => 'nullable|integer|min:0|max:10000',
-            'client_version'   => 'nullable|integer',
-            'current_zoom'     => 'nullable|numeric|min:0.2|max:5.0',
-            'total_pages'      => 'nullable|integer|min:1|max:500',
+            'annotation_json' => 'required|string',
+            'stroke_count' => 'nullable|integer|min:0|max:10000',
+            'client_version' => 'nullable|integer',
+            'current_zoom' => 'nullable|numeric|min:0.2|max:5.0',
+            'total_pages' => 'nullable|integer|min:1|max:500',
         ]);
 
         $pageNum = (int) $pageNumber;
@@ -171,7 +170,7 @@ class InteractiveAssignmentController extends Controller
 
         // Validate JSON structure
         $decoded = json_decode($validated['annotation_json'], true);
-        if (!is_array($decoded) || !isset($decoded['strokes'])) {
+        if (! is_array($decoded) || ! isset($decoded['strokes'])) {
             return response()->json(['success' => false, 'message' => 'Malformed annotation data payload.'], 422);
         }
 
@@ -197,39 +196,39 @@ class InteractiveAssignmentController extends Controller
                 }
 
                 $page->annotation_json = $validated['annotation_json'];
-                $page->stroke_count    = $strokeCount;
-                $page->page_version   += 1;
+                $page->stroke_count = $strokeCount;
+                $page->page_version += 1;
                 $page->save();
 
                 $savedVersion = $page->page_version;
             } else {
                 $page = SubmissionPage::create([
-                    'submission_id'   => $submission->id,
-                    'page_number'     => $pageNum,
+                    'submission_id' => $submission->id,
+                    'page_number' => $pageNum,
                     'annotation_json' => $validated['annotation_json'],
-                    'stroke_count'    => $strokeCount,
-                    'page_version'    => 1,
+                    'stroke_count' => $strokeCount,
+                    'page_version' => 1,
                 ]);
 
                 $savedVersion = 1;
             }
 
             // Update submission metadata
-            $submission->current_page  = $pageNum;
+            $submission->current_page = $pageNum;
             $submission->last_saved_at = now();
-            if (!empty($validated['current_zoom'])) {
+            if (! empty($validated['current_zoom'])) {
                 $submission->zoom_level = (float) $validated['current_zoom'];
             }
-            if (!empty($validated['total_pages'])) {
+            if (! empty($validated['total_pages'])) {
                 $submission->total_pages = (int) $validated['total_pages'];
             }
             $submission->save();
         });
 
         return response()->json([
-            'success'       => true,
-            'page_number'   => $pageNum,
-            'page_version'  => $savedVersion,
+            'success' => true,
+            'page_number' => $pageNum,
+            'page_version' => $savedVersion,
             'last_saved_at' => now()->format('h:i:s A'),
         ]);
     }
@@ -256,8 +255,8 @@ class InteractiveAssignmentController extends Controller
         $finalPdfPath = null;
         if ($request->hasFile('final_pdf')) {
             $pdfFile = $request->file('final_pdf');
-            $dir = 'submissions/' . $submission->student_assignment_id;
-            $fileName = 'final_submission_' . time() . '.pdf';
+            $dir = 'submissions/'.$submission->student_assignment_id;
+            $fileName = 'final_submission_'.time().'.pdf';
             $finalPdfPath = $pdfFile->storeAs($dir, $fileName, 'public');
         }
 
@@ -265,8 +264,8 @@ class InteractiveAssignmentController extends Controller
             $now = now();
 
             // Lock the interactive submission
-            $submission->status        = 'submitted';
-            $submission->submitted_at  = $now;
+            $submission->status = 'submitted';
+            $submission->submitted_at = $now;
             if ($finalPdfPath) {
                 $submission->final_pdf_path = $finalPdfPath;
             }
@@ -275,7 +274,7 @@ class InteractiveAssignmentController extends Controller
             // Synchronize parent student_assignments record for 100% backward compatibility
             $studentAssignment = $submission->studentAssignment;
             if ($studentAssignment) {
-                $studentAssignment->status       = 'submitted';
+                $studentAssignment->status = 'submitted';
                 $studentAssignment->submitted_at = $now;
                 if ($finalPdfPath) {
                     $studentAssignment->file_path = $finalPdfPath;
@@ -293,8 +292,8 @@ class InteractiveAssignmentController extends Controller
         if ($teacherUserId) {
             UserNotification::create([
                 'user_id' => $teacherUserId,
-                'type'    => 'submission',
-                'title'   => 'Interactive Assignment Submitted',
+                'type' => 'submission',
+                'title' => 'Interactive Assignment Submitted',
                 'message' => "{$studentName} submitted handwritten answers for '{$assignmentTitle}'.",
             ]);
         }
@@ -302,14 +301,14 @@ class InteractiveAssignmentController extends Controller
         // Student confirmation notification
         UserNotification::create([
             'user_id' => auth()->id(),
-            'type'    => 'task',
-            'title'   => 'Assignment Submitted',
+            'type' => 'task',
+            'title' => 'Assignment Submitted',
             'message' => "You successfully submitted answers for '{$assignmentTitle}'.",
         ]);
 
         return response()->json([
-            'success'      => true,
-            'message'      => 'Your assignment answers have been successfully submitted!',
+            'success' => true,
+            'message' => 'Your assignment answers have been successfully submitted!',
             'redirect_url' => route('student.tasks'),
         ]);
     }
@@ -323,28 +322,28 @@ class InteractiveAssignmentController extends Controller
         Gate::authorize('view', $submission);
 
         $filePath = $submission->final_pdf_path;
-        if (!$filePath) {
+        if (! $filePath) {
             abort(404, 'Final submitted PDF is not available.');
         }
 
         $fullPath = null;
         if (Storage::disk('public')->exists($filePath)) {
             $fullPath = Storage::disk('public')->path($filePath);
-        } elseif (file_exists(storage_path('app/public/' . $filePath))) {
-            $fullPath = storage_path('app/public/' . $filePath);
-        } elseif (file_exists(public_path('storage/' . $filePath))) {
-            $fullPath = public_path('storage/' . $filePath);
-        } elseif (file_exists(base_path('storage/app/public/' . $filePath))) {
-            $fullPath = base_path('storage/app/public/' . $filePath);
+        } elseif (file_exists(storage_path('app/public/'.$filePath))) {
+            $fullPath = storage_path('app/public/'.$filePath);
+        } elseif (file_exists(public_path('storage/'.$filePath))) {
+            $fullPath = public_path('storage/'.$filePath);
+        } elseif (file_exists(base_path('storage/app/public/'.$filePath))) {
+            $fullPath = base_path('storage/app/public/'.$filePath);
         }
 
-        if (!$fullPath || !file_exists($fullPath)) {
+        if (! $fullPath || ! file_exists($fullPath)) {
             abort(404, 'Final submitted PDF is not available on server disk.');
         }
 
         return response()->file($fullPath, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="submission_' . $submission->id . '.pdf"',
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="submission_'.$submission->id.'.pdf"',
         ]);
     }
 
@@ -365,14 +364,14 @@ class InteractiveAssignmentController extends Controller
         $pagesMap = $submission->pages->keyBy('page_number');
 
         return view('teacher.submissions.review', [
-            'submission'        => $submission,
-            'assignment'        => $submission->assignment,
-            'student'           => $submission->student,
+            'submission' => $submission,
+            'assignment' => $submission->assignment,
+            'student' => $submission->student,
             'studentAssignment' => $submission->studentAssignment,
-            'pagesData'         => $pagesMap,
-            'pdfStreamUrl'      => route('student.assignments.pdf-stream', $submission->assignment_id),
-            'finalPdfUrl'       => $submission->final_pdf_path ? route('teacher.submissions.final-pdf', $submission->id) : null,
-            'role'              => 'teacher',
+            'pagesData' => $pagesMap,
+            'pdfStreamUrl' => route('student.assignments.pdf-stream', $submission->assignment_id),
+            'finalPdfUrl' => $submission->final_pdf_path ? route('teacher.submissions.final-pdf', $submission->id) : null,
+            'role' => 'teacher',
         ]);
     }
 
@@ -393,14 +392,14 @@ class InteractiveAssignmentController extends Controller
         $pagesMap = $submission->pages->keyBy('page_number');
 
         return view('teacher.submissions.review', [
-            'submission'        => $submission,
-            'assignment'        => $submission->assignment,
-            'student'           => $submission->student,
+            'submission' => $submission,
+            'assignment' => $submission->assignment,
+            'student' => $submission->student,
             'studentAssignment' => $submission->studentAssignment,
-            'pagesData'         => $pagesMap,
-            'pdfStreamUrl'      => route('student.assignments.pdf-stream', $submission->assignment_id),
-            'finalPdfUrl'       => $submission->final_pdf_path ? route('admin.submissions.final-pdf', $submission->id) : null,
-            'role'              => 'admin',
+            'pagesData' => $pagesMap,
+            'pdfStreamUrl' => route('student.assignments.pdf-stream', $submission->assignment_id),
+            'finalPdfUrl' => $submission->final_pdf_path ? route('admin.submissions.final-pdf', $submission->id) : null,
+            'role' => 'admin',
         ]);
     }
 
@@ -433,16 +432,18 @@ class InteractiveAssignmentController extends Controller
             if (Storage::disk('public')->exists($normalized)) {
                 $candidates[] = Storage::disk('public')->path($normalized);
             }
-            if (Storage::disk('public')->exists('assignments/' . $filename)) {
-                $candidates[] = Storage::disk('public')->path('assignments/' . $filename);
+            if (Storage::disk('public')->exists('assignments/'.$filename)) {
+                $candidates[] = Storage::disk('public')->path('assignments/'.$filename);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         try {
             if (Storage::disk('local')->exists($clean)) {
                 $candidates[] = Storage::disk('local')->path($clean);
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
 
         $baseDirs = [
             storage_path('app/public'),
@@ -453,13 +454,13 @@ class InteractiveAssignmentController extends Controller
             base_path('storage'),
             base_path('public_html/storage'),
             base_path('public_html'),
-            dirname(base_path()) . '/public_html/storage',
-            dirname(base_path()) . '/public_html',
+            dirname(base_path()).'/public_html/storage',
+            dirname(base_path()).'/public_html',
         ];
 
-        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+        if (! empty($_SERVER['DOCUMENT_ROOT'])) {
             $docRoot = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/');
-            $baseDirs[] = $docRoot . '/storage';
+            $baseDirs[] = $docRoot.'/storage';
             $baseDirs[] = $docRoot;
         }
 
@@ -467,14 +468,14 @@ class InteractiveAssignmentController extends Controller
             $clean,
             $normalized,
             ltrim($normalized, '/'),
-            'assignments/' . $filename,
+            'assignments/'.$filename,
             $filename,
         ]);
 
         foreach ($baseDirs as $dir) {
             $dir = rtrim(str_replace('\\', '/', $dir), '/');
             foreach ($subPaths as $sub) {
-                $candidates[] = $dir . '/' . ltrim($sub, '/');
+                $candidates[] = $dir.'/'.ltrim($sub, '/');
             }
         }
 
@@ -494,9 +495,9 @@ class InteractiveAssignmentController extends Controller
             base_path('public_html/storage'),
             base_path('storage/assignments'),
         ];
-        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
-            $searchDirs[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/storage/assignments';
-            $searchDirs[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/') . '/storage';
+        if (! empty($_SERVER['DOCUMENT_ROOT'])) {
+            $searchDirs[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/').'/storage/assignments';
+            $searchDirs[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/').'/storage';
         }
 
         foreach (array_unique($searchDirs) as $searchDir) {
@@ -505,7 +506,7 @@ class InteractiveAssignmentController extends Controller
                 if (is_array($files)) {
                     foreach ($files as $f) {
                         if ($f !== '.' && $f !== '..' && strtolower($f) === $lowerFilename) {
-                            $full = rtrim(str_replace('\\', '/', $searchDir), '/') . '/' . $f;
+                            $full = rtrim(str_replace('\\', '/', $searchDir), '/').'/'.$f;
                             if (is_file($full)) {
                                 return $full;
                             }

@@ -16,13 +16,13 @@ class ChatMessageAttachmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'message_id'    => ChatMessage::factory(),
-            'disk'          => 'local',
-            'path'          => 'chat-attachments/' . fake()->uuid() . '.pdf',
-            'original_name' => fake()->word() . '.pdf',
-            'mime_type'     => 'application/pdf',
-            'size_bytes'    => fake()->numberBetween(1024, 2_000_000),
-            'checksum'      => null,
+            'message_id' => ChatMessage::factory(),
+            'disk' => 'local',
+            'path' => 'chat-attachments/'.fake()->uuid().'.pdf',
+            'original_name' => fake()->word().'.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => fake()->numberBetween(1024, 2_000_000),
+            'checksum' => null,
         ];
     }
 }

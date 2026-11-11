@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -34,25 +35,25 @@ class Registration extends Model
     /**
      * Store and retrieve names in uppercase.
      */
-    protected function studentName(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function studentName(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: fn ($value) => $value ? mb_strtoupper($value, 'UTF-8') : $value,
             set: fn ($value) => $value ? mb_strtoupper(trim($value), 'UTF-8') : $value,
         );
     }
 
-    protected function parentName(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function parentName(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: fn ($value) => $value ? mb_strtoupper($value, 'UTF-8') : $value,
             set: fn ($value) => $value ? mb_strtoupper(trim($value), 'UTF-8') : $value,
         );
     }
 
-    protected function educatorName(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function educatorName(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
+        return Attribute::make(
             get: fn ($value) => $value ? mb_strtoupper($value, 'UTF-8') : $value,
             set: fn ($value) => $value ? mb_strtoupper(trim($value), 'UTF-8') : $value,
         );

@@ -17,15 +17,15 @@ class RecordedClassFactory extends Factory
     public function definition(): array
     {
         return [
-            'course_id'        => Course::factory(),
-            'subject_id'       => Subject::factory(),
-            'title'            => fake()->sentence(4),
-            'topic_name'       => fake()->word(),
-            'video_url'        => 'https://example.com/videos/' . fake()->uuid() . '.mp4',
-            'thumbnail'        => null,
+            'course_id' => Course::factory(),
+            'subject_id' => Subject::factory(),
+            'title' => fake()->sentence(4),
+            'topic_name' => fake()->word(),
+            'video_url' => 'https://example.com/videos/'.fake()->uuid().'.mp4',
+            'thumbnail' => null,
             'duration_minutes' => 45,
-            'views_count'      => 0,
-            'summary'          => fake()->optional()->sentence(),
+            'views_count' => 0,
+            'summary' => fake()->optional()->sentence(),
         ];
     }
 }

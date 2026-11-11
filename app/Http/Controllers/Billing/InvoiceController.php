@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Billing;
 
 use App\Enums\InvoiceStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Student;
@@ -18,10 +19,10 @@ class InvoiceController extends Controller
 
     public function studentIndex()
     {
-        $user    = Auth::user();
+        $user = Auth::user();
         $student = $user->student;
 
-        if (!$student) {
+        if (! $student) {
             abort(404, 'Student profile not found.');
         }
 
@@ -32,10 +33,10 @@ class InvoiceController extends Controller
 
         $summary = [
             'total_invoices' => $invoices->count(),
-            'outstanding'    => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->count(),
-            'paid'           => $invoices->where('status', InvoiceStatus::Paid)->count(),
-            'overdue'        => $invoices->where('status', InvoiceStatus::Overdue)->count(),
-            'total_owed'     => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->sum('outstanding_amount'),
+            'outstanding' => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->count(),
+            'paid' => $invoices->where('status', InvoiceStatus::Paid)->count(),
+            'overdue' => $invoices->where('status', InvoiceStatus::Overdue)->count(),
+            'total_owed' => $invoices->whereIn('status', InvoiceStatus::unpaidStatuses())->sum('outstanding_amount'),
         ];
 
         return view('student.fees.index', compact('invoices', 'summary', 'student'));
@@ -76,7 +77,7 @@ class InvoiceController extends Controller
     {
         $this->authorizeInvoiceAccess($invoice);
 
-        if (!$invoice->requiresPayment()) {
+        if (! $invoice->requiresPayment()) {
             return back()->with('error', 'This invoice does not require payment.');
         }
 
@@ -87,10 +88,10 @@ class InvoiceController extends Controller
 
         // Find or create a pending payment for this invoice
         $payment = $invoice->paymentTransactions()
-            ->where('status', \App\Enums\PaymentStatus::Pending)
+            ->where('status', PaymentStatus::Pending)
             ->first();
 
-        if (!$payment) {
+        if (! $payment) {
             // Create the payment record
             $payment = $this->paymentService->initiateManualTransfer(
                 [$invoice->id],
@@ -117,17 +118,19 @@ class InvoiceController extends Controller
 
         if ($user->role === 'student') {
             $student = $user->student;
-            if (!$student || $student->id !== $invoice->student_id) {
+            if (! $student || $student->id !== $invoice->student_id) {
                 abort(403, 'You do not have access to this invoice.');
             }
+
             return;
         }
 
         if ($user->role === 'parent') {
             $childIds = $user->authorizedChildren()->pluck('students.id')->toArray();
-            if (!in_array($invoice->student_id, $childIds)) {
+            if (! in_array($invoice->student_id, $childIds)) {
                 abort(403, 'You do not have access to this invoice.');
             }
+
             return;
         }
 

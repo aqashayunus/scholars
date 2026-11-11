@@ -15,7 +15,7 @@ class SubmitTaskRequest extends FormRequest
     {
         return [
             'submission_notes' => 'nullable|string|max:3000',
-            'file'             => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
+            'file' => 'nullable|file|max:30720|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ];
     }
 }

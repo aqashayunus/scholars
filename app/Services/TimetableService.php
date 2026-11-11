@@ -16,7 +16,6 @@ use App\Models\UserNotification;
 use App\Services\Parent\ChildAccessService;
 use App\Services\Student\ClassScheduleService;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,9 +25,7 @@ use Illuminate\Support\Facades\DB;
  */
 class TimetableService
 {
-    public function __construct(private ChildAccessService $childAccess)
-    {
-    }
+    public function __construct(private ChildAccessService $childAccess) {}
 
     public static function colorPalette(): array
     {
@@ -50,7 +47,7 @@ class TimetableService
     {
         $student = Student::where('user_id', $user->id)->firstOrFail();
 
-        $courses = Course::whereHas('enrollments', fn($q) => $q->where('student_id', $student->id))
+        $courses = Course::whereHas('enrollments', fn ($q) => $q->where('student_id', $student->id))
             ->with('subject')
             ->get();
 
@@ -73,15 +70,15 @@ class TimetableService
         $subjects = $courses->pluck('subject')->filter()->unique('id')->values();
 
         $courseIds = $courses->pluck('id');
-        $classesThisWeek = LiveClass::where(fn($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
+        $classesThisWeek = LiveClass::where(fn ($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
             ->whereBetween('scheduled_at', [now()->startOfWeek(), now()->endOfWeek()])
             ->count();
 
-        $upcomingCount = LiveClass::where(fn($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
+        $upcomingCount = LiveClass::where(fn ($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
             ->activeOrUpcoming()
             ->count();
 
-        $rescheduledCount = LiveClass::where(fn($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
+        $rescheduledCount = LiveClass::where(fn ($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
             ->where('is_rescheduled', true)
             ->count();
 
@@ -91,7 +88,7 @@ class TimetableService
     public function parentIndexData(User $user): array
     {
         $children = $this->childAccess->getParentChildren($user);
-        $palette  = self::colorPalette();
+        $palette = self::colorPalette();
 
         foreach ($children as $idx => $ch) {
             $ch->theme = $palette[$idx % count($palette)];
@@ -108,11 +105,11 @@ class TimetableService
     {
         if ($startStr && $endStr) {
             $startDate = Carbon::parse($startStr)->startOfDay();
-            $endDate   = Carbon::parse($endStr)->endOfDay();
+            $endDate = Carbon::parse($endStr)->endOfDay();
         } else {
             // Default to entire requested year for seamless annual + month navigation
             $startDate = Carbon::createFromDate($year, 1, 1)->startOfDay();
-            $endDate   = Carbon::createFromDate($year, 12, 31)->endOfDay();
+            $endDate = Carbon::createFromDate($year, 12, 31)->endOfDay();
         }
 
         $events = [];
@@ -121,16 +118,16 @@ class TimetableService
         $academicEvents = AcademicEvent::inDateRange($startDate, $endDate)->get();
         foreach ($academicEvents as $ae) {
             $events[] = [
-                'id'          => 'academic_' . $ae->id,
+                'id' => 'academic_'.$ae->id,
                 'academic_id' => $ae->id,
-                'type'        => $ae->event_type,
-                'title'       => $ae->title,
+                'type' => $ae->event_type,
+                'title' => $ae->title,
                 'description' => $ae->description,
-                'start'       => $ae->start_date->format('Y-m-d'),
-                'end'         => $ae->end_date ? $ae->end_date->format('Y-m-d') : $ae->start_date->format('Y-m-d'),
-                'is_all_day'  => (bool) $ae->is_all_day,
-                'color'       => $ae->display_color,
-                'can_edit'    => $role === 'admin',
+                'start' => $ae->start_date->format('Y-m-d'),
+                'end' => $ae->end_date ? $ae->end_date->format('Y-m-d') : $ae->start_date->format('Y-m-d'),
+                'is_all_day' => (bool) $ae->is_all_day,
+                'color' => $ae->display_color,
+                'can_edit' => $role === 'admin',
             ];
         }
 
@@ -148,11 +145,11 @@ class TimetableService
             }
         } elseif ($role === 'parent') {
             $children = $this->childAccess->getParentChildren($user);
-            $palette  = self::colorPalette();
+            $palette = self::colorPalette();
 
             foreach ($children as $idx => $child) {
                 $theme = $palette[$idx % count($palette)];
-                $childName = $child->user->name ?? 'Child ' . ($idx + 1);
+                $childName = $child->user->name ?? 'Child '.($idx + 1);
                 $this->appendStudentClassEvents($child, $startDate, $endDate, $events, $childName, $theme['color'], $theme);
                 $this->appendStudentAssignmentEvents($child, $startDate, $endDate, $events, $childName, $theme['color'], $theme);
             }
@@ -163,7 +160,7 @@ class TimetableService
             if ($teacherIdFilter) {
                 $classQuery->where(function ($q) use ($teacherIdFilter) {
                     $q->where('teacher_id', $teacherIdFilter)
-                      ->orWhereHas('course', fn($c) => $c->where('teacher_id', $teacherIdFilter));
+                        ->orWhereHas('course', fn ($c) => $c->where('teacher_id', $teacherIdFilter));
                 });
             }
 
@@ -181,36 +178,36 @@ class TimetableService
                 $studentCount = $course?->enrollments?->count() ?? 0;
 
                 $events[] = [
-                    'id'                    => 'class_' . $lc->id,
-                    'class_id'              => $lc->id,
-                    'course_id'             => $course?->id,
-                    'teacher_id'            => $lc->teacher_id ?? $course?->teacher_id,
-                    'type'                  => 'live_class',
-                    'title'                 => $lc->title,
-                    'subject_name'          => $subject,
-                    'course_title'          => $course?->title ?? '',
-                    'teacher_name'          => $teacherName,
-                    'student_count'         => $studentCount,
-                    'start'                 => $lc->scheduled_at->toIso8601String(),
-                    'end'                   => $endTime->toIso8601String(),
-                    'date_str'              => $lc->scheduled_at->format('Y-m-d'),
-                    'time_str'              => $lc->scheduled_at->format('h:i A'),
-                    'duration_minutes'      => $duration,
-                    'meeting_url'           => $lc->meeting_url,
-                    'status'                => $lc->status->value,
-                    'is_rescheduled'        => (bool) $lc->is_rescheduled,
+                    'id' => 'class_'.$lc->id,
+                    'class_id' => $lc->id,
+                    'course_id' => $course?->id,
+                    'teacher_id' => $lc->teacher_id ?? $course?->teacher_id,
+                    'type' => 'live_class',
+                    'title' => $lc->title,
+                    'subject_name' => $subject,
+                    'course_title' => $course?->title ?? '',
+                    'teacher_name' => $teacherName,
+                    'student_count' => $studentCount,
+                    'start' => $lc->scheduled_at->toIso8601String(),
+                    'end' => $endTime->toIso8601String(),
+                    'date_str' => $lc->scheduled_at->format('Y-m-d'),
+                    'time_str' => $lc->scheduled_at->format('h:i A'),
+                    'duration_minutes' => $duration,
+                    'meeting_url' => $lc->meeting_url,
+                    'status' => $lc->status->value,
+                    'is_rescheduled' => (bool) $lc->is_rescheduled,
                     'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
-                    'reschedule_reason'     => $lc->reschedule_reason,
-                    'color'                 => '#2563eb',
-                    'can_edit'              => true,
+                    'reschedule_reason' => $lc->reschedule_reason,
+                    'color' => '#2563eb',
+                    'can_edit' => true,
                 ];
             }
         }
 
         return [
-            'year'   => $year,
-            'start'  => $startDate->toDateString(),
-            'end'    => $endDate->toDateString(),
+            'year' => $year,
+            'start' => $startDate->toDateString(),
+            'end' => $endDate->toDateString(),
             'events' => $events,
         ];
     }
@@ -225,37 +222,37 @@ class TimetableService
         $courseIds = $teacher->courses->pluck('id')->toArray();
 
         $liveClass = LiveClass::where('id', $liveClassId)
-            ->where(fn($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
+            ->where(fn ($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
             ->with(['course.subject', 'course.enrollments.student.user'])
             ->firstOrFail();
 
-        $newDateTime = Carbon::parse($validated['scheduled_date'] . ' ' . $validated['scheduled_time']);
+        $newDateTime = Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
         $oldDateTime = $liveClass->scheduled_at ? $liveClass->scheduled_at->copy() : null;
 
         $liveClass->update([
-            'is_rescheduled'        => true,
+            'is_rescheduled' => true,
             'original_scheduled_at' => $liveClass->original_scheduled_at ?? $oldDateTime,
-            'scheduled_at'          => $newDateTime,
-            'duration_minutes'      => $validated['duration_minutes'] ?? $liveClass->duration_minutes,
-            'meeting_url'           => !empty($validated['meeting_url']) ? $validated['meeting_url'] : $liveClass->meeting_url,
-            'reschedule_reason'     => $validated['reason'],
-            'rescheduled_by'        => $user->id,
+            'scheduled_at' => $newDateTime,
+            'duration_minutes' => $validated['duration_minutes'] ?? $liveClass->duration_minutes,
+            'meeting_url' => ! empty($validated['meeting_url']) ? $validated['meeting_url'] : $liveClass->meeting_url,
+            'reschedule_reason' => $validated['reason'],
+            'rescheduled_by' => $user->id,
         ]);
 
         ClassRequest::create([
             'live_class_id' => $liveClass->id,
-            'teacher_id'    => $teacher->id,
-            'type'          => 'reschedule',
-            'reason'        => $validated['reason'],
-            'requested_at'  => $newDateTime,
-            'status'        => 'approved',
-            'admin_note'    => 'Rescheduled directly by instructor ' . $user->name,
+            'teacher_id' => $teacher->id,
+            'type' => 'reschedule',
+            'reason' => $validated['reason'],
+            'requested_at' => $newDateTime,
+            'status' => 'approved',
+            'admin_note' => 'Rescheduled directly by instructor '.$user->name,
         ]);
 
         $this->notifyStudentsAndParentsOfReschedule($liveClass, $oldDateTime, $newDateTime, $validated['reason'], $user->name);
 
         return [
-            'liveClass'   => $liveClass,
+            'liveClass' => $liveClass,
             'newDateTime' => $newDateTime,
         ];
     }
@@ -263,17 +260,17 @@ class TimetableService
     public function quickCreateByTeacher(User $user, array $validated): LiveClass
     {
         $teacher = Teacher::where('user_id', $user->id)->firstOrFail();
-        $scheduledAt = Carbon::parse($validated['scheduled_date'] . ' ' . $validated['scheduled_time']);
+        $scheduledAt = Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
         $course = Course::findOrFail($validated['course_id']);
 
         $liveClass = LiveClass::create([
-            'course_id'        => $course->id,
-            'teacher_id'       => $teacher->id,
-            'title'            => $validated['title'],
-            'scheduled_at'     => $scheduledAt,
+            'course_id' => $course->id,
+            'teacher_id' => $teacher->id,
+            'title' => $validated['title'],
+            'scheduled_at' => $scheduledAt,
             'duration_minutes' => $validated['duration_minutes'],
-            'meeting_url'      => $validated['meeting_url'] ?? null,
-            'status'           => 'upcoming',
+            'meeting_url' => $validated['meeting_url'] ?? null,
+            'status' => 'upcoming',
         ]);
 
         $this->notifyStudentsAndParentsOfNewClass($liveClass);
@@ -284,6 +281,7 @@ class TimetableService
     public function teacherCourseIds(User $user): array
     {
         $teacher = Teacher::where('user_id', $user->id)->firstOrFail();
+
         return $teacher->courses->pluck('id')->toArray();
     }
 
@@ -296,17 +294,17 @@ class TimetableService
         $liveClass = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user', 'course.enrollments.student.user'])
             ->findOrFail($liveClassId);
 
-        $newDateTime = Carbon::parse($validated['scheduled_date'] . ' ' . $validated['scheduled_time']);
+        $newDateTime = Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
         $oldDateTime = $liveClass->scheduled_at ? $liveClass->scheduled_at->copy() : null;
 
         $liveClass->update([
-            'is_rescheduled'        => true,
+            'is_rescheduled' => true,
             'original_scheduled_at' => $liveClass->original_scheduled_at ?? $oldDateTime,
-            'scheduled_at'          => $newDateTime,
-            'duration_minutes'      => $validated['duration_minutes'] ?? $liveClass->duration_minutes,
-            'reschedule_reason'     => $validated['reason'],
-            'meeting_url'           => $validated['meeting_url'] ?? $liveClass->meeting_url,
-            'rescheduled_by'        => $actorId,
+            'scheduled_at' => $newDateTime,
+            'duration_minutes' => $validated['duration_minutes'] ?? $liveClass->duration_minutes,
+            'reschedule_reason' => $validated['reason'],
+            'meeting_url' => $validated['meeting_url'] ?? $liveClass->meeting_url,
+            'rescheduled_by' => $actorId,
         ]);
 
         $teacherUser = $liveClass->teacher?->user ?? $liveClass->course?->teacher?->user;
@@ -317,14 +315,14 @@ class TimetableService
         if ($teacherUser) {
             UserNotification::create([
                 'user_id' => $teacherUser->id,
-                'type'    => 'class_reminder',
-                'title'   => 'Class Session Rescheduled by Administrator',
+                'type' => 'class_reminder',
+                'title' => 'Class Session Rescheduled by Administrator',
                 'message' => "Session '{$liveClass->title}' has been moved to {$newDateTime->format('d M Y, h:i A')} by administration. Reason: \"{$validated['reason']}\".",
             ]);
         }
 
         return [
-            'liveClass'   => $liveClass,
+            'liveClass' => $liveClass,
             'newDateTime' => $newDateTime,
         ];
     }
@@ -332,8 +330,8 @@ class TimetableService
     public function quickCreateByAdmin(array $validated): LiveClass
     {
         $course = Course::findOrFail($validated['course_id']);
-        $teacherId = (!empty($validated['teacher_id'])) ? $validated['teacher_id'] : $course->teacher_id;
-        $scheduledAt = Carbon::parse($validated['scheduled_date'] . ' ' . $validated['scheduled_time']);
+        $teacherId = (! empty($validated['teacher_id'])) ? $validated['teacher_id'] : $course->teacher_id;
+        $scheduledAt = Carbon::parse($validated['scheduled_date'].' '.$validated['scheduled_time']);
 
         // Auto-sync eligible students to this course if it currently has 0 enrollments
         if ($course->enrollments()->count() === 0) {
@@ -341,7 +339,7 @@ class TimetableService
             $candidateStudentIds = collect();
 
             if ($subjectName) {
-                $matchingCourseIds = Course::whereHas('subject', fn($sq) => $sq->where('name', $subjectName))->pluck('id');
+                $matchingCourseIds = Course::whereHas('subject', fn ($sq) => $sq->where('name', $subjectName))->pluck('id');
                 $candidateStudentIds = Enrollment::whereIn('course_id', $matchingCourseIds)->pluck('student_id');
             }
 
@@ -355,7 +353,7 @@ class TimetableService
 
             foreach ($candidateStudentIds->unique() as $stId) {
                 $enrollment = Enrollment::firstOrNew(['student_id' => $stId, 'course_id' => $course->id]);
-                if (!$enrollment->exists) {
+                if (! $enrollment->exists) {
                     $enrollment->status = 'active';
                     $enrollment->progress_pct = 0;
                     $enrollment->completed_lessons = 0;
@@ -366,21 +364,21 @@ class TimetableService
         }
 
         $liveClass = LiveClass::create([
-            'course_id'        => $course->id,
-            'teacher_id'       => $teacherId,
-            'title'            => $validated['title'],
-            'scheduled_at'     => $scheduledAt,
+            'course_id' => $course->id,
+            'teacher_id' => $teacherId,
+            'title' => $validated['title'],
+            'scheduled_at' => $scheduledAt,
             'duration_minutes' => $validated['duration_minutes'],
-            'meeting_url'      => $validated['meeting_url'] ?? null,
-            'status'           => 'upcoming',
+            'meeting_url' => $validated['meeting_url'] ?? null,
+            'status' => 'upcoming',
         ]);
 
         $teacher = Teacher::with('user')->find($teacherId);
         if ($teacher?->user) {
             UserNotification::create([
                 'user_id' => $teacher->user->id,
-                'type'    => 'class_reminder',
-                'title'   => 'New Class Session Scheduled by Administration',
+                'type' => 'class_reminder',
+                'title' => 'New Class Session Scheduled by Administration',
                 'message' => "A new live class session '{$liveClass->title}' has been scheduled for {$scheduledAt->format('d M Y, h:i A')}.",
             ]);
         }
@@ -441,29 +439,29 @@ class TimetableService
             $endTime = $lc->scheduled_at->copy()->addMinutes($duration);
 
             $events[] = [
-                'id'                    => 'class_' . $lc->id . '_' . $student->id,
-                'class_id'              => $lc->id,
-                'type'                  => 'live_class',
-                'title'                 => $lc->title,
-                'subject_name'          => $subject,
-                'course_title'          => $course?->title ?? '',
-                'teacher_name'          => $teacherName,
-                'start'                 => $lc->scheduled_at->toIso8601String(),
-                'end'                   => $endTime->toIso8601String(),
-                'date_str'              => $lc->scheduled_at->format('Y-m-d'),
-                'time_str'              => $lc->scheduled_at->format('h:i A'),
-                'duration_minutes'      => $duration,
-                'meeting_url'           => $lc->meeting_url,
-                'status'                => $lc->status->value,
-                'is_rescheduled'        => (bool) $lc->is_rescheduled,
+                'id' => 'class_'.$lc->id.'_'.$student->id,
+                'class_id' => $lc->id,
+                'type' => 'live_class',
+                'title' => $lc->title,
+                'subject_name' => $subject,
+                'course_title' => $course?->title ?? '',
+                'teacher_name' => $teacherName,
+                'start' => $lc->scheduled_at->toIso8601String(),
+                'end' => $endTime->toIso8601String(),
+                'date_str' => $lc->scheduled_at->format('Y-m-d'),
+                'time_str' => $lc->scheduled_at->format('h:i A'),
+                'duration_minutes' => $duration,
+                'meeting_url' => $lc->meeting_url,
+                'status' => $lc->status->value,
+                'is_rescheduled' => (bool) $lc->is_rescheduled,
                 'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
-                'reschedule_reason'     => $lc->reschedule_reason,
-                'attendance_status'     => $attStatus,
-                'child_name'            => $childLabel,
-                'child_id'              => $student->id,
-                'child_theme'           => $childTheme,
-                'color'                 => $overrideColor ?: '#2563eb',
-                'can_edit'              => false,
+                'reschedule_reason' => $lc->reschedule_reason,
+                'attendance_status' => $attStatus,
+                'child_name' => $childLabel,
+                'child_id' => $student->id,
+                'child_theme' => $childTheme,
+                'color' => $overrideColor ?: '#2563eb',
+                'can_edit' => false,
             ];
         }
     }
@@ -472,7 +470,7 @@ class TimetableService
     {
         $courseIds = $teacher->courses->pluck('id');
 
-        $classes = LiveClass::where(fn($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
+        $classes = LiveClass::where(fn ($q) => $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id))
             ->whereBetween('scheduled_at', [$start, $end])
             ->with(['course.subject', 'course.enrollments'])
             ->get();
@@ -485,33 +483,33 @@ class TimetableService
             $studentCount = $course?->enrollments?->count() ?? 0;
 
             $events[] = [
-                'id'                    => 'class_' . $lc->id,
-                'class_id'              => $lc->id,
-                'course_id'             => $course?->id,
-                'type'                  => 'live_class',
-                'title'                 => $lc->title,
-                'subject_name'          => $subject,
-                'course_title'          => $course?->title ?? '',
-                'student_count'         => $studentCount,
-                'start'                 => $lc->scheduled_at->toIso8601String(),
-                'end'                   => $endTime->toIso8601String(),
-                'date_str'              => $lc->scheduled_at->format('Y-m-d'),
-                'time_str'              => $lc->scheduled_at->format('h:i A'),
-                'duration_minutes'      => $duration,
-                'meeting_url'           => $lc->meeting_url,
-                'status'                => $lc->status->value,
-                'is_rescheduled'        => (bool) $lc->is_rescheduled,
+                'id' => 'class_'.$lc->id,
+                'class_id' => $lc->id,
+                'course_id' => $course?->id,
+                'type' => 'live_class',
+                'title' => $lc->title,
+                'subject_name' => $subject,
+                'course_title' => $course?->title ?? '',
+                'student_count' => $studentCount,
+                'start' => $lc->scheduled_at->toIso8601String(),
+                'end' => $endTime->toIso8601String(),
+                'date_str' => $lc->scheduled_at->format('Y-m-d'),
+                'time_str' => $lc->scheduled_at->format('h:i A'),
+                'duration_minutes' => $duration,
+                'meeting_url' => $lc->meeting_url,
+                'status' => $lc->status->value,
+                'is_rescheduled' => (bool) $lc->is_rescheduled,
                 'original_scheduled_at' => $lc->original_scheduled_at ? $lc->original_scheduled_at->format('d M Y, h:i A') : null,
-                'reschedule_reason'     => $lc->reschedule_reason,
-                'color'                 => '#2563eb',
-                'can_edit'              => true,
+                'reschedule_reason' => $lc->reschedule_reason,
+                'color' => '#2563eb',
+                'can_edit' => true,
             ];
         }
     }
 
     private function appendStudentAssignmentEvents(Student $student, Carbon $start, Carbon $end, array &$events, ?string $childLabel = null, ?string $overrideColor = null, ?array $childTheme = null): void
     {
-        $assignments = Assignment::whereHas('course.enrollments', fn($q) => $q->where('student_id', $student->id))
+        $assignments = Assignment::whereHas('course.enrollments', fn ($q) => $q->where('student_id', $student->id))
             ->whereNotNull('due_date')
             ->whereBetween('due_date', [$start, $end])
             ->with('course.subject')
@@ -520,20 +518,20 @@ class TimetableService
         foreach ($assignments as $a) {
             $dueDate = Carbon::parse($a->due_date);
             $events[] = [
-                'id'           => 'task_' . $a->id . '_' . $student->id,
-                'type'         => 'assignment',
-                'title'        => 'Due: ' . $a->title,
+                'id' => 'task_'.$a->id.'_'.$student->id,
+                'type' => 'assignment',
+                'title' => 'Due: '.$a->title,
                 'subject_name' => $a->course->subject->display_name ?? $a->course->subject->name ?? 'Course Task',
                 'course_title' => $a->course->title ?? '',
-                'start'        => $dueDate->toIso8601String(),
-                'end'          => $dueDate->copy()->addHour()->toIso8601String(),
-                'date_str'     => $dueDate->format('Y-m-d'),
-                'time_str'     => $dueDate->format('h:i A'),
-                'child_name'   => $childLabel,
-                'child_id'     => $student->id,
-                'child_theme'  => $childTheme,
-                'color'        => $overrideColor ?: '#f59e0b',
-                'can_edit'     => false,
+                'start' => $dueDate->toIso8601String(),
+                'end' => $dueDate->copy()->addHour()->toIso8601String(),
+                'date_str' => $dueDate->format('Y-m-d'),
+                'time_str' => $dueDate->format('h:i A'),
+                'child_name' => $childLabel,
+                'child_id' => $student->id,
+                'child_theme' => $childTheme,
+                'color' => $overrideColor ?: '#f59e0b',
+                'can_edit' => false,
             ];
         }
     }
@@ -547,15 +545,15 @@ class TimetableService
 
         foreach ($enrollments as $enrollment) {
             $student = $enrollment->student;
-            if (!$student) {
+            if (! $student) {
                 continue;
             }
 
             if ($student->user) {
                 UserNotification::create([
                     'user_id' => $student->user->id,
-                    'type'    => 'class_reminder',
-                    'title'   => 'Class Rescheduled: ' . $liveClass->title,
+                    'type' => 'class_reminder',
+                    'title' => 'Class Rescheduled: '.$liveClass->title,
                     'message' => "Teacher {$teacherName} has rescheduled {$liveClass->title} from {$oldTimeStr} to {$newTimeStr}. Reason: \"{$reason}\".",
                 ]);
             }
@@ -563,8 +561,8 @@ class TimetableService
             foreach ($this->activeParentIdsOf($student) as $parentId) {
                 UserNotification::create([
                     'user_id' => $parentId,
-                    'type'    => 'class_reminder',
-                    'title'   => "Child's Class Rescheduled ({$student->user->name})",
+                    'type' => 'class_reminder',
+                    'title' => "Child's Class Rescheduled ({$student->user->name})",
                     'message' => "{$liveClass->title} for {$student->user->name} has been moved to {$newTimeStr} by {$teacherName}. Reason: \"{$reason}\".",
                 ]);
             }
@@ -582,13 +580,15 @@ class TimetableService
 
         foreach ($enrollments as $enrollment) {
             $student = $enrollment->student;
-            if (!$student) continue;
+            if (! $student) {
+                continue;
+            }
 
             if ($student->user) {
                 UserNotification::create([
                     'user_id' => $student->user->id,
-                    'type'    => 'class_reminder',
-                    'title'   => "New Class Scheduled: {$liveClass->title}",
+                    'type' => 'class_reminder',
+                    'title' => "New Class Scheduled: {$liveClass->title}",
                     'message' => "A new {$subjectName} live class '{$liveClass->title}' with {$teacherName} has been scheduled for {$timeStr}.",
                 ]);
             }
@@ -596,8 +596,8 @@ class TimetableService
             foreach ($this->activeParentIdsOf($student) as $parentId) {
                 UserNotification::create([
                     'user_id' => $parentId,
-                    'type'    => 'class_reminder',
-                    'title'   => "New Class Scheduled for {$student->user->name}",
+                    'type' => 'class_reminder',
+                    'title' => "New Class Scheduled for {$student->user->name}",
                     'message' => "A new live class session '{$liveClass->title}' ({$subjectName}) has been scheduled for {$student->user->name} on {$timeStr}.",
                 ]);
             }

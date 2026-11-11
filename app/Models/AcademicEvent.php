@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class AcademicEvent extends Model
 {
@@ -25,7 +25,7 @@ class AcademicEvent extends Model
 
     protected $casts = [
         'start_date' => 'date',
-        'end_date'   => 'date',
+        'end_date' => 'date',
         'is_all_day' => 'boolean',
     ];
 
@@ -44,15 +44,15 @@ class AcademicEvent extends Model
     public function scopeInDateRange(Builder $query, $start, $end): Builder
     {
         $startDate = $start instanceof Carbon ? $start->toDateString() : $start;
-        $endDate   = $end instanceof Carbon ? $end->toDateString() : $end;
+        $endDate = $end instanceof Carbon ? $end->toDateString() : $end;
 
         return $query->where(function ($q) use ($startDate, $endDate) {
             $q->whereBetween('start_date', [$startDate, $endDate])
-              ->orWhere(function ($q2) use ($startDate, $endDate) {
-                  $q2->whereNotNull('end_date')
-                     ->where('start_date', '<=', $endDate)
-                     ->where('end_date', '>=', $startDate);
-              });
+                ->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNotNull('end_date')
+                        ->where('start_date', '<=', $endDate)
+                        ->where('end_date', '>=', $startDate);
+                });
         });
     }
 
@@ -61,10 +61,10 @@ class AcademicEvent extends Model
     {
         return $query->where(function ($q) use ($year) {
             $q->whereYear('start_date', $year)
-              ->orWhere(function ($q2) use ($year) {
-                  $q2->whereNotNull('end_date')
-                     ->whereYear('end_date', $year);
-              });
+                ->orWhere(function ($q2) use ($year) {
+                    $q2->whereNotNull('end_date')
+                        ->whereYear('end_date', $year);
+                });
         });
     }
 
@@ -77,10 +77,10 @@ class AcademicEvent extends Model
 
         return match ($this->event_type) {
             'public_holiday' => '#ef4444', // red
-            'school_break'   => '#f59e0b', // amber
-            'exam_period'    => '#8b5cf6', // purple
-            'academic_term'  => '#3b82f6', // blue
-            default          => '#10b981', // emerald
+            'school_break' => '#f59e0b', // amber
+            'exam_period' => '#8b5cf6', // purple
+            'academic_term' => '#3b82f6', // blue
+            default => '#10b981', // emerald
         };
     }
 }

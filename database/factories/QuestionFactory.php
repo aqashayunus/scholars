@@ -16,16 +16,16 @@ class QuestionFactory extends Factory
     public function definition(): array
     {
         return [
-            'quiz_id'        => Quiz::factory(),
-            'type'           => 'text',
-            'question_text'  => fake()->sentence() . '?',
-            'image_path'     => null,
-            'option_a'       => fake()->word(),
-            'option_b'       => fake()->word(),
-            'option_c'       => fake()->word(),
-            'option_d'       => fake()->word(),
+            'quiz_id' => Quiz::factory(),
+            'type' => 'text',
+            'question_text' => fake()->sentence().'?',
+            'image_path' => null,
+            'option_a' => fake()->word(),
+            'option_b' => fake()->word(),
+            'option_c' => fake()->word(),
+            'option_d' => fake()->word(),
             'correct_option' => 'a',
-            'explanation'    => null,
+            'explanation' => null,
         ];
     }
 }

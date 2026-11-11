@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -25,8 +26,11 @@ class BillingEnumRenderSmokeTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $parent;
+
     private User $studentUser;
+
     private Student $student;
 
     protected function setUp(): void
@@ -40,43 +44,43 @@ class BillingEnumRenderSmokeTest extends TestCase
         // authorizeInvoiceAccess() (Billing\InvoiceController) checks only the
         // pivot-based authorizedChildren(), not the legacy parent_user_id
         // column — both must be set for the parent fixture to be authorized.
-        \Illuminate\Support\Facades\DB::table('parent_student')->insert([
+        DB::table('parent_student')->insert([
             'parent_user_id' => $this->parent->id,
-            'student_id'     => $this->student->id,
-            'status'         => 'active',
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'student_id' => $this->student->id,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         // One invoice per status so every match()/badge branch actually renders.
         foreach (InvoiceStatus::cases() as $i => $status) {
             Invoice::factory()->create([
-                'student_id'     => $this->student->id,
-                'invoice_number' => 'INV-RENDER-' . $i,
-                'title'          => 'Render Test Invoice ' . $status->value,
+                'student_id' => $this->student->id,
+                'invoice_number' => 'INV-RENDER-'.$i,
+                'title' => 'Render Test Invoice '.$status->value,
                 'billing_period' => 'September 2026',
-                'subtotal'       => 100,
-                'total_amount'   => 100,
-                'amount_paid'    => $status === InvoiceStatus::Paid ? 100 : 0,
-                'issued_date'    => now()->toDateString(),
-                'due_date'       => now()->addDays(7)->toDateString(),
-                'status'         => $status,
+                'subtotal' => 100,
+                'total_amount' => 100,
+                'amount_paid' => $status === InvoiceStatus::Paid ? 100 : 0,
+                'issued_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+                'status' => $status,
             ]);
         }
 
         // One payment per status so every match()/badge branch actually renders.
         foreach (PaymentStatus::cases() as $i => $status) {
             Payment::create([
-                'user_id'        => $this->parent->id,
-                'student_id'     => $this->student->id,
-                'payer_id'       => $this->parent->id,
-                'payer_type'     => 'parent',
-                'description'    => 'Render Test Payment ' . $status->value,
-                'amount'         => 50,
+                'user_id' => $this->parent->id,
+                'student_id' => $this->student->id,
+                'payer_id' => $this->parent->id,
+                'payer_type' => 'parent',
+                'description' => 'Render Test Payment '.$status->value,
+                'amount' => 50,
                 'payment_method' => 'bank_transfer',
-                'reference_no'   => 'REF-RENDER-' . $i,
-                'status'         => $status,
-                'paid_at'        => now(),
+                'reference_no' => 'REF-RENDER-'.$i,
+                'status' => $status,
+                'paid_at' => now(),
             ]);
         }
     }

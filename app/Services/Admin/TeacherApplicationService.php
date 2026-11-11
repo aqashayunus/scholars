@@ -21,7 +21,7 @@ class TeacherApplicationService
         DB::transaction(function () use ($application, $adminNotes) {
             $user = User::where('email', $application->email)->first();
 
-            if (!$user) {
+            if (! $user) {
                 // Random per-teacher password, not a shared default previously
                 // known to every approved teacher (and never actually emailed
                 // to them, meaning it was distributed out-of-band as tribal
@@ -30,9 +30,9 @@ class TeacherApplicationService
                 $tempPassword = Str::password(14);
 
                 $user = new User([
-                    'name'     => $application->full_name,
-                    'email'    => $application->email,
-                    'phone'    => $application->phone,
+                    'name' => $application->full_name,
+                    'email' => $application->email,
+                    'phone' => $application->phone,
                     'password' => Hash::make($tempPassword),
                 ]);
                 $user->role = 'teacher';
@@ -57,8 +57,8 @@ class TeacherApplicationService
             $teacher->save();
 
             $application->update([
-                'user_id'     => $user->id,
-                'status'      => TeacherApplicationStatus::Approved,
+                'user_id' => $user->id,
+                'status' => TeacherApplicationStatus::Approved,
                 'admin_notes' => $adminNotes ?? 'Application approved.',
                 'approved_at' => now(),
             ]);
@@ -66,8 +66,8 @@ class TeacherApplicationService
             try {
                 UserNotification::create([
                     'user_id' => $user->id,
-                    'type'    => 'application',
-                    'title'   => 'TEACHER APPLICATION APPROVED',
+                    'type' => 'application',
+                    'title' => 'TEACHER APPLICATION APPROVED',
                     'message' => 'Congratulations! Your educator application has been approved. Your educator account is now active.',
                     'read_at' => null,
                 ]);
@@ -79,7 +79,7 @@ class TeacherApplicationService
     public function reject(TeacherApplication $application, ?string $adminNotes): void
     {
         $application->update([
-            'status'      => TeacherApplicationStatus::Rejected,
+            'status' => TeacherApplicationStatus::Rejected,
             'admin_notes' => $adminNotes ?? 'Application not approved at this time.',
         ]);
 
@@ -87,8 +87,8 @@ class TeacherApplicationService
             try {
                 UserNotification::create([
                     'user_id' => $application->user_id,
-                    'type'    => 'application',
-                    'title'   => 'APPLICATION STATUS UPDATE',
+                    'type' => 'application',
+                    'title' => 'APPLICATION STATUS UPDATE',
                     'message' => 'Your educator application has been reviewed. Status: Not approved at this time.',
                     'read_at' => null,
                 ]);
@@ -105,8 +105,8 @@ class TeacherApplicationService
             if ($teacher->user_id) {
                 UserNotification::create([
                     'user_id' => $teacher->user_id,
-                    'type'    => 'subject',
-                    'title'   => 'TEACHING SUBJECTS UPDATED',
+                    'type' => 'subject',
+                    'title' => 'TEACHING SUBJECTS UPDATED',
                     'message' => 'Your assigned teaching subjects have been updated.',
                     'read_at' => null,
                 ]);
@@ -118,18 +118,18 @@ class TeacherApplicationService
     public function createClass(Teacher $teacher, array $validated): Course
     {
         $course = Course::create([
-            'teacher_id'    => $teacher->id,
-            'subject_id'    => $validated['subject_id'],
-            'title'         => $validated['title'],
-            'level'         => $validated['level'],
-            'schedule'      => $validated['schedule'] ?? null,
+            'teacher_id' => $teacher->id,
+            'subject_id' => $validated['subject_id'],
+            'title' => $validated['title'],
+            'level' => $validated['level'],
+            'schedule' => $validated['schedule'] ?? null,
             'total_lessons' => $validated['total_lessons'] ?? 12,
-            'status'        => $validated['status'],
-            'price'         => $validated['price'],
-            'description'   => $validated['description'] ?? null,
+            'status' => $validated['status'],
+            'price' => $validated['price'],
+            'description' => $validated['description'] ?? null,
         ]);
 
-        if (!$teacher->subjects()->where('subject_id', $validated['subject_id'])->exists()) {
+        if (! $teacher->subjects()->where('subject_id', $validated['subject_id'])->exists()) {
             $teacher->subjects()->attach($validated['subject_id']);
         }
 
@@ -137,8 +137,8 @@ class TeacherApplicationService
             if ($teacher->user_id) {
                 UserNotification::create([
                     'user_id' => $teacher->user_id,
-                    'type'    => 'course',
-                    'title'   => 'NEW CLASS ASSIGNED',
+                    'type' => 'course',
+                    'title' => 'NEW CLASS ASSIGNED',
                     'message' => "A new class '{$course->title}' ({$course->level}) has been assigned to your educator profile.",
                     'read_at' => null,
                 ]);

@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class StudentAttendance extends Model
 {
     public const STATUS_ATTENDED = 'attended';
-    public const STATUS_LATE     = 'late';
-    public const STATUS_ABSENT   = 'absent';
-    public const STATUS_EXCUSED  = 'excused';
-    public const STATUS_PENDING  = 'pending_verification';
+
+    public const STATUS_LATE = 'late';
+
+    public const STATUS_ABSENT = 'absent';
+
+    public const STATUS_EXCUSED = 'excused';
+
+    public const STATUS_PENDING = 'pending_verification';
 
     protected $fillable = [
         'student_id',
@@ -24,8 +28,8 @@ class StudentAttendance extends Model
     ];
 
     protected $casts = [
-        'joined_at'   => 'datetime',
-        'left_at'     => 'datetime',
+        'joined_at' => 'datetime',
+        'left_at' => 'datetime',
         'verified_at' => 'datetime',
     ];
 
@@ -56,7 +60,7 @@ class StudentAttendance extends Model
 
     public function isVerified(): bool
     {
-        return !is_null($this->verified_at);
+        return ! is_null($this->verified_at);
     }
 
     public function isAttendedOrLate(): bool

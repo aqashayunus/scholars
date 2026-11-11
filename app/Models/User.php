@@ -72,10 +72,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at'     => 'datetime',
-            'password'              => 'hashed',
-            'is_active'             => 'boolean',
-            'must_change_password'  => 'boolean',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'is_active' => 'boolean',
+            'must_change_password' => 'boolean',
         ];
     }
 
@@ -124,39 +124,72 @@ class User extends Authenticatable
         return ! $this->isAccountActive();
     }
 
-    public function isAdmin(): bool    { return $this->role === 'admin'; }
-    public function isTeacher(): bool  { return $this->role === 'teacher'; }
-    public function isStudent(): bool  { return $this->role === 'student'; }
-    public function isParent(): bool   { return $this->role === 'parent'; }
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->role === 'teacher';
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->role === 'student';
+    }
+
+    public function isParent(): bool
+    {
+        return $this->role === 'parent';
+    }
 
     public function hasRole(string|array ...$roles): bool
     {
         $flattened = collect($roles)->flatten()->all();
+
         return in_array($this->role, $flattened);
     }
 
     public function getDashboardRoute(): string
     {
-        return match($this->role) {
-            'admin'   => 'admin.dashboard',
+        return match ($this->role) {
+            'admin' => 'admin.dashboard',
             'teacher' => 'teacher.dashboard',
-            'parent'  => 'parent.dashboard',
-            default   => 'student.dashboard',
+            'parent' => 'parent.dashboard',
+            default => 'student.dashboard',
         };
     }
 
-    public function teacherProfile() { return $this->hasOne(Teacher::class); }
-    public function student()        { return $this->hasOne(Student::class); }  // alias for studentProfile
-    public function studentProfile() { return $this->hasOne(Student::class); }
+    public function teacherProfile()
+    {
+        return $this->hasOne(Teacher::class);
+    }
+
+    public function student()
+    {
+        return $this->hasOne(Student::class);
+    }  // alias for studentProfile
+
+    public function studentProfile()
+    {
+        return $this->hasOne(Student::class);
+    }
+
     /** Legacy: children linked via parent_user_id — kept for backward compatibility */
-    public function children()       { return $this->hasMany(Student::class, 'parent_user_id'); }
+    public function children()
+    {
+        return $this->hasMany(Student::class, 'parent_user_id');
+    }
+
     /** Pivot-based: all students linked via parent_student pivot */
     public function studentChildren()
     {
         return $this->belongsToMany(Student::class, 'parent_student', 'parent_user_id', 'student_id')
-                    ->withPivot('relationship', 'is_primary', 'status')
-                    ->withTimestamps();
+            ->withPivot('relationship', 'is_primary', 'status')
+            ->withTimestamps();
     }
+
     /**
      * Authorized children for billing: students linked via parent_student pivot
      * (regardless of is_primary). Used by billing controllers to scope invoice access.
@@ -165,6 +198,14 @@ class User extends Authenticatable
     {
         return $this->studentChildren();
     }
-    public function payments()       { return $this->hasMany(Payment::class); }
-    public function blogPosts()      { return $this->hasMany(BlogPost::class); }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function blogPosts()
+    {
+        return $this->hasMany(BlogPost::class);
+    }
 }

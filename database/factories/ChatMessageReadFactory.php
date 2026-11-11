@@ -18,8 +18,8 @@ class ChatMessageReadFactory extends Factory
     {
         return [
             'message_id' => ChatMessage::factory(),
-            'user_id'    => User::factory(),
-            'read_at'    => now(),
+            'user_id' => User::factory(),
+            'read_at' => now(),
         ];
     }
 }

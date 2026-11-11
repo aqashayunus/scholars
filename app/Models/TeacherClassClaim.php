@@ -35,12 +35,12 @@ class TeacherClassClaim extends Model
     ];
 
     protected $casts = [
-        'class_date'       => 'date',
+        'class_date' => 'date',
         'duration_minutes' => 'integer',
-        'rate_per_class'   => 'decimal:2',
-        'amount'           => 'decimal:2',
-        'approved_at'      => 'datetime',
-        'paid_at'          => 'datetime',
+        'rate_per_class' => 'decimal:2',
+        'amount' => 'decimal:2',
+        'approved_at' => 'datetime',
+        'paid_at' => 'datetime',
     ];
 
     public function teacher()
@@ -65,17 +65,17 @@ class TeacherClassClaim extends Model
 
     public static function generateClaimNumber(): string
     {
-        $prefix = 'CLM-' . date('Ym') . '-';
-        $latest = static::where('claim_number', 'LIKE', $prefix . '%')
+        $prefix = 'CLM-'.date('Ym').'-';
+        $latest = static::where('claim_number', 'LIKE', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 
-        if ($latest && preg_match('/' . preg_quote($prefix, '/') . '(\d+)/', $latest->claim_number, $matches)) {
+        if ($latest && preg_match('/'.preg_quote($prefix, '/').'(\d+)/', $latest->claim_number, $matches)) {
             $num = intval($matches[1]) + 1;
         } else {
             $num = 1;
         }
 
-        return $prefix . str_pad((string) $num, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $num, 4, '0', STR_PAD_LEFT);
     }
 }

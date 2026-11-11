@@ -5,7 +5,6 @@ namespace Tests\Feature\Admin;
 use App\Models\Certificate;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\UserNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
@@ -27,8 +26,8 @@ class CertificateManagementTest extends TestCase
 
         $response = $this->actingAs($admin)->post(route('admin.certificates.store'), [
             'student_id' => $student->id,
-            'title'      => 'Certificate of Excellence',
-            'file'       => UploadedFile::fake()->create('cert.pdf', 100, 'application/pdf'),
+            'title' => 'Certificate of Excellence',
+            'file' => UploadedFile::fake()->create('cert.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertRedirect();
@@ -36,7 +35,7 @@ class CertificateManagementTest extends TestCase
 
         $this->assertDatabaseHas('certificates', [
             'student_id' => $student->id,
-            'title'      => 'Certificate of Excellence',
+            'title' => 'Certificate of Excellence',
         ]);
 
         $certificate = Certificate::first();
@@ -46,13 +45,13 @@ class CertificateManagementTest extends TestCase
 
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $student->user_id,
-            'type'    => 'certificate',
-            'title'   => 'NEW CERTIFICATE AWARDED',
+            'type' => 'certificate',
+            'title' => 'NEW CERTIFICATE AWARDED',
         ]);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $parent->id,
-            'type'    => 'certificate',
-            'title'   => 'STUDENT CERTIFICATE AWARDED',
+            'type' => 'certificate',
+            'title' => 'STUDENT CERTIFICATE AWARDED',
         ]);
     }
 
@@ -61,15 +60,15 @@ class CertificateManagementTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $student = Student::factory()->create();
         Certificate::create([
-            'student_id'  => $student->id,
-            'title'       => 'Existing',
+            'student_id' => $student->id,
+            'title' => 'Existing',
             'cert_number' => 'OSC-DUPLICATE',
-            'issued_at'   => now(),
+            'issued_at' => now(),
         ]);
 
         $response = $this->actingAs($admin)->post(route('admin.certificates.store'), [
-            'student_id'  => $student->id,
-            'title'       => 'New Certificate',
+            'student_id' => $student->id,
+            'title' => 'New Certificate',
             'cert_number' => 'OSC-DUPLICATE',
         ]);
 
@@ -86,11 +85,11 @@ class CertificateManagementTest extends TestCase
         $filePath = UploadedFile::fake()->create('cert.pdf', 50)->store('certificates', 'public');
 
         $certificate = Certificate::create([
-            'student_id'  => $student->id,
-            'title'       => 'To Be Removed',
+            'student_id' => $student->id,
+            'title' => 'To Be Removed',
             'cert_number' => 'OSC-TO-REMOVE',
-            'file_path'   => $filePath,
-            'issued_at'   => now(),
+            'file_path' => $filePath,
+            'issued_at' => now(),
         ]);
 
         $response = $this->actingAs($admin)->delete(route('admin.certificates.destroy', $certificate->id));

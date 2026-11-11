@@ -14,7 +14,7 @@ class QuizSubmitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'score'           => 'required|integer',
+            'score' => 'required|integer',
             'total_questions' => 'required|integer',
         ];
     }

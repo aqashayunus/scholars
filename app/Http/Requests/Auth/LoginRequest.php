@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,7 +48,7 @@ class LoginRequest extends FormRequest
 
         // 1. If input is 'admin', find the admin account
         if (strtolower($loginInput) === 'admin') {
-            $adminUser = \App\Models\User::where('role', 'admin')
+            $adminUser = User::where('role', 'admin')
                 ->orWhere('email', 'like', 'admin@%')
                 ->first();
             if ($adminUser) {
@@ -55,15 +56,15 @@ class LoginRequest extends FormRequest
             }
         }
         // 2. If input looks like a phone number, find user by phone
-        elseif (!filter_var($loginInput, FILTER_VALIDATE_EMAIL) && preg_match('/^[0-9\+\-\s\(\)]{8,20}$/', $loginInput)) {
-            $user = \App\Models\User::where('phone', $loginInput)->first();
+        elseif (! filter_var($loginInput, FILTER_VALIDATE_EMAIL) && preg_match('/^[0-9\+\-\s\(\)]{8,20}$/', $loginInput)) {
+            $user = User::where('phone', $loginInput)->first();
             if ($user) {
                 $email = $user->email;
             }
         }
         // 3. If input is a username / name without email format
-        elseif (!filter_var($loginInput, FILTER_VALIDATE_EMAIL)) {
-            $user = \App\Models\User::where('name', $loginInput)
+        elseif (! filter_var($loginInput, FILTER_VALIDATE_EMAIL)) {
+            $user = User::where('name', $loginInput)
                 ->orWhere('email', $loginInput)
                 ->first();
             if ($user) {

@@ -25,12 +25,12 @@ class EmailAutomation extends Model
     ];
 
     protected $casts = [
-        'is_enabled'         => 'boolean',
-        'delay_minutes'      => 'integer',
-        'recipient_rules'    => 'array',
-        'last_triggered_at'  => 'datetime',
-        'success_count'      => 'integer',
-        'failure_count'      => 'integer',
+        'is_enabled' => 'boolean',
+        'delay_minutes' => 'integer',
+        'recipient_rules' => 'array',
+        'last_triggered_at' => 'datetime',
+        'success_count' => 'integer',
+        'failure_count' => 'integer',
     ];
 
     public function template()

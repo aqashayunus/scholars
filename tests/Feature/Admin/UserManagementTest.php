@@ -29,9 +29,9 @@ class UserManagementTest extends TestCase
         Mail::fake();
 
         $response = $this->actingAs($this->admin)->post(route('admin.users.store'), [
-            'name'      => 'New Student',
-            'email'     => 'newstudent@example.com',
-            'role'      => 'student',
+            'name' => 'New Student',
+            'email' => 'newstudent@example.com',
+            'role' => 'student',
             'ic_number' => '030101010101',
         ]);
 
@@ -52,16 +52,16 @@ class UserManagementTest extends TestCase
         Student::create(['user_id' => $user->id, 'level' => 'SPM', 'total_points' => 0]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.users.update', $user->id), [
-            'name'  => 'Renamed User',
+            'name' => 'Renamed User',
             'email' => $user->email,
-            'role'  => 'student',
+            'role' => 'student',
         ]);
 
         $response->assertRedirect();
         $this->assertSame('RENAMED USER', $user->refresh()->name); // User.name casts via mb_strtoupper
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $user->id,
-            'title'   => 'ACCOUNT PROFILE UPDATED',
+            'title' => 'ACCOUNT PROFILE UPDATED',
         ]);
     }
 
@@ -95,7 +95,7 @@ class UserManagementTest extends TestCase
         $response->assertSessionHas('success', "Password for '{$user->name}' has been reset. They will be asked to set a new password on next login.");
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $user->id,
-            'title'   => 'PASSWORD UPDATED',
+            'title' => 'PASSWORD UPDATED',
         ]);
     }
 
@@ -118,8 +118,8 @@ class UserManagementTest extends TestCase
         $this->assertFalse((bool) $user->refresh()->is_active);
 
         $this->assertDatabaseHas('financial_audit_logs', [
-            'action'      => 'student_status_changed',
-            'target_id'   => $student->id,
+            'action' => 'student_status_changed',
+            'target_id' => $student->id,
         ]);
     }
 
@@ -164,8 +164,8 @@ class UserManagementTest extends TestCase
         $activeStudent = User::factory()->create(['role' => 'student', 'is_active' => true]);
 
         $response = $this->actingAs($this->admin)->post(route('admin.outreach.blast-email'), [
-            'blast_subject'  => 'We miss you',
-            'blast_body'     => 'Come back!',
+            'blast_subject' => 'We miss you',
+            'blast_body' => 'Come back!',
             'blast_audience' => 'students_only',
         ]);
 

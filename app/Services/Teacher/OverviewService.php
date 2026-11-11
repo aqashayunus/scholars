@@ -27,8 +27,8 @@ class OverviewService
         }
 
         return Teacher::where('user_id', auth()->id())
-                      ->with($with)
-                      ->firstOrFail();
+            ->with($with)
+            ->firstOrFail();
     }
 
     /**
@@ -38,18 +38,17 @@ class OverviewService
     public function getAttendanceStats(Collection $courseIds): array
     {
         $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
+        $end = now()->endOfMonth();
 
-        $records = StudentAttendance::whereHas('liveClass', fn ($q) =>
-            $q->whereIn('course_id', $courseIds)
-              ->whereBetween('scheduled_at', [$start, $end])
+        $records = StudentAttendance::whereHas('liveClass', fn ($q) => $q->whereIn('course_id', $courseIds)
+            ->whereBetween('scheduled_at', [$start, $end])
         )->get();
 
-        $total    = $records->count();
+        $total = $records->count();
         $attended = $records->whereIn('status', ['attended', 'late'])->count();
-        $absent   = $records->where('status', 'absent')->count();
-        $late     = $records->where('status', 'late')->count();
-        $pct      = $total > 0 ? round($attended / $total * 100) : 0;
+        $absent = $records->where('status', 'absent')->count();
+        $late = $records->where('status', 'late')->count();
+        $pct = $total > 0 ? round($attended / $total * 100) : 0;
 
         return compact('total', 'attended', 'absent', 'late', 'pct');
     }
@@ -61,7 +60,7 @@ class OverviewService
     {
         $studentsData = [];
         $start = now()->startOfMonth();
-        $end   = now()->endOfMonth();
+        $end = now()->endOfMonth();
 
         $courseIds = $teacher->courses->pluck('id');
         $studentIds = $teacher->courses->flatMap(fn ($c) => $c->enrollments->pluck('student_id'))->unique();
@@ -72,7 +71,7 @@ class OverviewService
             ->whereHas('liveClass', fn ($q) => $q->whereIn('course_id', $courseIds)->whereBetween('scheduled_at', [$start, $end]))
             ->with('liveClass:id,course_id')
             ->get()
-            ->groupBy(fn ($a) => $a->student_id . ':' . $a->liveClass->course_id);
+            ->groupBy(fn ($a) => $a->student_id.':'.$a->liveClass->course_id);
 
         // Pending task counts, batched per (student_id, course_id).
         $pendingByKey = StudentAssignment::whereIn('student_id', $studentIds)
@@ -80,7 +79,7 @@ class OverviewService
             ->whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds))
             ->with('assignment:id,course_id')
             ->get()
-            ->groupBy(fn ($sa) => $sa->student_id . ':' . $sa->assignment->course_id)
+            ->groupBy(fn ($sa) => $sa->student_id.':'.$sa->assignment->course_id)
             ->map(fn ($group) => $group->count());
 
         // Latest quiz result per (student_id, course_id) — fetch all, ordered
@@ -90,24 +89,26 @@ class OverviewService
             ->with('quiz:id,course_id')
             ->latest('completed_at')
             ->get()
-            ->unique(fn ($sq) => $sq->student_id . ':' . $sq->quiz->course_id)
-            ->keyBy(fn ($sq) => $sq->student_id . ':' . $sq->quiz->course_id);
+            ->unique(fn ($sq) => $sq->student_id.':'.$sq->quiz->course_id)
+            ->keyBy(fn ($sq) => $sq->student_id.':'.$sq->quiz->course_id);
 
         foreach ($teacher->courses as $course) {
             foreach ($course->enrollments as $enrollment) {
                 $student = $enrollment->student;
-                $sUser   = $student->user;
-                $sid     = $student->id;
+                $sUser = $student->user;
+                $sid = $student->id;
 
-                if (isset($studentsData[$sid])) continue;
+                if (isset($studentsData[$sid])) {
+                    continue;
+                }
 
-                $key = $sid . ':' . $course->id;
+                $key = $sid.':'.$course->id;
 
                 // Real attendance this month
-                $attRecords  = $attByKey->get($key, collect());
-                $attTotal    = $attRecords->count();
+                $attRecords = $attByKey->get($key, collect());
+                $attTotal = $attRecords->count();
                 $attAttended = $attRecords->whereIn('status', ['attended', 'late'])->count();
-                $attPct      = $attTotal > 0 ? round($attAttended / $attTotal * 100) : 0;
+                $attPct = $attTotal > 0 ? round($attAttended / $attTotal * 100) : 0;
 
                 // Real progress
                 $progressPct = (int) ($enrollment->progress_pct ?? 0);
@@ -116,43 +117,43 @@ class OverviewService
                 $pendingTasks = $pendingByKey->get($key, 0);
 
                 // Latest quiz score
-                $latestQuiz  = $latestQuizByKey->get($key);
-                $latestScore = $latestQuiz ? $latestQuiz->percent . '%' : '–';
-                $latestDate  = $latestQuiz ? $latestQuiz->completed_at->format('d M Y') : '–';
+                $latestQuiz = $latestQuizByKey->get($key);
+                $latestScore = $latestQuiz ? $latestQuiz->percent.'%' : '–';
+                $latestDate = $latestQuiz ? $latestQuiz->completed_at->format('d M Y') : '–';
 
                 // Determine status
                 $category = 'good';
-                $status   = 'Good';
+                $status = 'Good';
                 if ($attPct < 80 || $progressPct < 60) {
                     $category = 'attention';
-                    $status   = 'Needs Attention';
+                    $status = 'Needs Attention';
                 }
                 if ($progressPct < 55) {
                     $category = 'intervention';
-                    $status   = 'Intervention';
+                    $status = 'Intervention';
                 }
                 if ($pendingTasks > 2) {
                     $category = 'catchup';
-                    $status   = 'Needs Attention';
+                    $status = 'Needs Attention';
                 }
 
                 $studentsData[$sid] = [
-                    'id'               => 'S24' . str_pad($sid, 3, '0', STR_PAD_LEFT),
-                    'name'             => $sUser->name,
-                    'class'            => $course->level,
-                    'subject'          => $course->subject->name ?? 'General',
-                    'attendance'       => $attPct,
-                    'progress'         => $progressPct,
-                    'pendingTasks'     => $pendingTasks > 0 ? "{$pendingTasks} Pending" : "0 Pending",
+                    'id' => 'S24'.str_pad($sid, 3, '0', STR_PAD_LEFT),
+                    'name' => $sUser->name,
+                    'class' => $course->level,
+                    'subject' => $course->subject->name ?? 'General',
+                    'attendance' => $attPct,
+                    'progress' => $progressPct,
+                    'pendingTasks' => $pendingTasks > 0 ? "{$pendingTasks} Pending" : '0 Pending',
                     'latestAssessment' => $latestScore,
-                    'latestDate'       => $latestDate,
-                    'status'           => $status,
-                    'category'         => $category,
-                    'strengths'        => 'Basic concepts',
-                    'weaknesses'       => 'Advanced application',
-                    'catchup'          => $pendingTasks > 0 ? 'Pending Tasks' : 'None',
-                    'intervention'     => $category === 'intervention' ? 'Active Support' : 'None',
-                    'note'             => 'Progress tracked from enrollment data.',
+                    'latestDate' => $latestDate,
+                    'status' => $status,
+                    'category' => $category,
+                    'strengths' => 'Basic concepts',
+                    'weaknesses' => 'Advanced application',
+                    'catchup' => $pendingTasks > 0 ? 'Pending Tasks' : 'None',
+                    'intervention' => $category === 'intervention' ? 'Active Support' : 'None',
+                    'note' => 'Progress tracked from enrollment data.',
                 ];
             }
         }
@@ -164,44 +165,41 @@ class OverviewService
     {
         $teacher = $this->getTeacher();
 
-        $courses       = $teacher->courses;
-        $courseIds     = $courses->pluck('id');
-        $totalStudents = $courses->sum(fn($c) => $c->enrollments->count());
+        $courses = $teacher->courses;
+        $courseIds = $courses->pluck('id');
+        $totalStudents = $courses->sum(fn ($c) => $c->enrollments->count());
 
-        $todaysClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                                      $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-                                  })
-                                  ->whereDate('scheduled_at', today())
-                                  ->with('course.subject')
-                                  ->orderBy('scheduled_at')
-                                  ->get();
+        $todaysClasses = LiveClass::where(function ($q) use ($courseIds, $teacher) {
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
+            ->whereDate('scheduled_at', today())
+            ->with('course.subject')
+            ->orderBy('scheduled_at')
+            ->get();
 
-        $upcomingClass = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                                      $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-                                  })
-                                  ->where('scheduled_at', '>', now())
-                                  ->with('course.subject')
-                                  ->orderBy('scheduled_at')
-                                  ->first();
+        $upcomingClass = LiveClass::where(function ($q) use ($courseIds, $teacher) {
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
+            ->where('scheduled_at', '>', now())
+            ->with('course.subject')
+            ->orderBy('scheduled_at')
+            ->first();
 
         $attStats = $this->getAttendanceStats($courseIds);
 
-        $pendingReviews = StudentAssignment::whereHas('assignment', fn($q) =>
-                $q->whereIn('course_id', $courseIds)
-            )
+        $pendingReviews = StudentAssignment::whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds)
+        )
             ->where('status', 'submitted')
             ->with('assignment.course.subject', 'student.user')
             ->orderByDesc('submitted_at')
             ->take(5)
             ->get();
-        $pendingReviewCount = StudentAssignment::whereHas('assignment', fn($q) =>
-                $q->whereIn('course_id', $courseIds)
-            )->where('status', 'submitted')->count();
+        $pendingReviewCount = StudentAssignment::whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds)
+        )->where('status', 'submitted')->count();
 
         $catchUpStudents = StudentAttendance::where('status', 'absent')
-            ->whereHas('liveClass', fn($q) =>
-                $q->whereIn('course_id', $courseIds)
-                  ->whereBetween('scheduled_at', [now()->startOfMonth(), now()])
+            ->whereHas('liveClass', fn ($q) => $q->whereIn('course_id', $courseIds)
+                ->whereBetween('scheduled_at', [now()->startOfMonth(), now()])
             )
             ->with('student.user', 'liveClass.course.subject')
             ->orderByDesc('created_at')
@@ -209,23 +207,23 @@ class OverviewService
             ->get();
 
         $allStudents = $this->buildStudentData($teacher);
-        $attentionStudents = array_filter($allStudents, fn($s) => $s['category'] !== 'good');
+        $attentionStudents = array_filter($allStudents, fn ($s) => $s['category'] !== 'good');
 
-        $performanceBySubject = $courses->map(fn($c) => [
+        $performanceBySubject = $courses->map(fn ($c) => [
             'subject' => $c->subject->name ?? 'N/A',
-            'avg'     => (int) round($c->enrollments->avg('progress_pct') ?? 0),
+            'avg' => (int) round($c->enrollments->avg('progress_pct') ?? 0),
         ]);
 
         $openGigsCount = TeachingGig::where('status', 'open')->count();
-        $claimedGigs   = TeachingGig::where('assigned_teacher_id', $teacher->id)
-                                    ->whereIn('status', ['claimed', 'checked_in'])
-                                    ->orderBy('scheduled_at')
-                                    ->get();
+        $claimedGigs = TeachingGig::where('assigned_teacher_id', $teacher->id)
+            ->whereIn('status', ['claimed', 'checked_in'])
+            ->orderBy('scheduled_at')
+            ->get();
 
         $recentEarnings = TeacherEarning::where('teacher_id', $teacher->id)
-                                         ->orderByDesc('id')
-                                         ->take(5)
-                                         ->get();
+            ->orderByDesc('id')
+            ->take(5)
+            ->get();
 
         $announcements = [
             ['date' => now()->subDays(1)->format('d M'), 'text' => 'Aster Edu Dispatch: High-demand SPM substitute slots available.'],
@@ -245,21 +243,21 @@ class OverviewService
     {
         $teacher = $this->getTeacher();
 
-        $courseIds   = $teacher->courses->pluck('id');
-        $attStats    = $this->getAttendanceStats($courseIds);
+        $courseIds = $teacher->courses->pluck('id');
+        $attStats = $this->getAttendanceStats($courseIds);
 
-        $upcomingClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-            })
+        $upcomingClasses = LiveClass::where(function ($q) use ($courseIds, $teacher) {
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
             ->where('scheduled_at', '>=', now())
             ->with('course.subject')
             ->orderBy('scheduled_at')
             ->take(10)
             ->get();
 
-        $pastClasses = LiveClass::where(function($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-            })
+        $pastClasses = LiveClass::where(function ($q) use ($courseIds, $teacher) {
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
             ->where('scheduled_at', '<', now())
             ->with('course.subject')
             ->orderByDesc('scheduled_at')
@@ -278,10 +276,10 @@ class OverviewService
             'learningMaterials',
             'assignments.results',
             'enrollments.student.user',
-            'liveClasses' => fn($q) => $q->orderBy('scheduled_at', 'asc'),
+            'liveClasses' => fn ($q) => $q->orderBy('scheduled_at', 'asc'),
         ])->first();
 
-        if (!$course) {
+        if (! $course) {
             abort(404, 'Class not found or you do not have permission.');
         }
 
@@ -297,7 +295,7 @@ class OverviewService
             if (empty($lc->meeting_url)) {
                 return false;
             }
-            if (!$lc->scheduled_at) {
+            if (! $lc->scheduled_at) {
                 return false;
             }
             $start = $lc->scheduled_at;
@@ -318,10 +316,11 @@ class OverviewService
             if (in_array($lc->getRawOriginal('status'), ['cancelled', 'completed'])) {
                 return false;
             }
-            if (!$lc->scheduled_at) {
+            if (! $lc->scheduled_at) {
                 return false;
             }
             $end = $lc->scheduled_at->copy()->addMinutes($lc->duration_minutes ?: 60);
+
             return $now->lt($end);
         })->sortBy('scheduled_at')->first() ?? $course->liveClasses->filter(
             fn ($lc) => $lc->getRawOriginal('status') !== 'cancelled'
@@ -335,7 +334,7 @@ class OverviewService
 
         // Class Progress Average & Below Target Count
         $classAvgProgress = $course->enrollments->count() > 0 ? (int) round($course->enrollments->avg('progress_pct') ?? 0) : 0;
-        $studentsBelowTarget = $course->enrollments->filter(fn($e) => ($e->progress_pct ?? 0) < 60 && ($e->progress_pct ?? 0) > 0)->count();
+        $studentsBelowTarget = $course->enrollments->filter(fn ($e) => ($e->progress_pct ?? 0) < 60 && ($e->progress_pct ?? 0) > 0)->count();
 
         // Real Subject Topics
         $topics = $course->subject?->topics ?? collect();
@@ -362,7 +361,7 @@ class OverviewService
 
     public function studentsData(): array
     {
-        $teacher        = $this->getTeacher();
+        $teacher = $this->getTeacher();
         $mappedStudents = $this->buildStudentData($teacher);
 
         return compact('teacher', 'mappedStudents');
@@ -372,9 +371,9 @@ class OverviewService
     {
         $teacher = $this->getTeacher();
 
-        $courseIds     = $teacher->courses->pluck('id');
-        $totalStudents = $teacher->courses->sum(fn($c) => $c->enrollments->count());
-        $attStats      = $this->getAttendanceStats($courseIds);
+        $courseIds = $teacher->courses->pluck('id');
+        $totalStudents = $teacher->courses->sum(fn ($c) => $c->enrollments->count());
+        $attStats = $this->getAttendanceStats($courseIds);
 
         // Per-subject performance
         $performanceBySubject = $teacher->courses->map(function ($c) {
@@ -399,14 +398,14 @@ class OverviewService
                 : 100;
 
             return [
-                'course_id'    => $c->id,
-                'title'        => $c->title,
-                'level'        => $c->level,
-                'subject'      => $c->subject->display_name ?? $c->subject->name ?? 'General',
+                'course_id' => $c->id,
+                'title' => $c->title,
+                'level' => $c->level,
+                'subject' => $c->subject->display_name ?? $c->subject->name ?? 'General',
                 'avg_progress' => $avgProgress,
-                'enrolled'     => $totalEnrollments,
-                'tasks_count'  => $taskCount,
-                'att_pct'      => $courseAttPct,
+                'enrolled' => $totalEnrollments,
+                'tasks_count' => $taskCount,
+                'att_pct' => $courseAttPct,
             ];
         });
 
@@ -415,9 +414,8 @@ class OverviewService
 
         // Absent students this month
         $catchUpStudents = StudentAttendance::where('status', 'absent')
-            ->whereHas('liveClass', fn($q) =>
-                $q->whereIn('course_id', $courseIds)
-                  ->whereBetween('scheduled_at', [now()->startOfMonth(), now()])
+            ->whereHas('liveClass', fn ($q) => $q->whereIn('course_id', $courseIds)
+                ->whereBetween('scheduled_at', [now()->startOfMonth(), now()])
             )
             ->with('student.user', 'liveClass.course.subject')
             ->orderByDesc('created_at')
@@ -428,22 +426,22 @@ class OverviewService
         $totalAssessments = Assignment::whereIn('course_id', $courseIds)->count()
             + Quiz::whereIn('course_id', $courseIds)->count();
 
-        $totalSubmissions = StudentAssignment::whereHas('assignment', fn($q) => $q->whereIn('course_id', $courseIds))
+        $totalSubmissions = StudentAssignment::whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds))
             ->whereIn('status', ['submitted', 'graded'])
             ->count();
 
-        $totalExpectedSubmissions = StudentAssignment::whereHas('assignment', fn($q) => $q->whereIn('course_id', $courseIds))->count();
+        $totalExpectedSubmissions = StudentAssignment::whereHas('assignment', fn ($q) => $q->whereIn('course_id', $courseIds))->count();
         $tasksCompletedPct = $totalExpectedSubmissions > 0 ? (int) round(($totalSubmissions / $totalExpectedSubmissions) * 100) : 100;
 
         $totalLiveClassesHeld = LiveClass::where(function ($q) use ($courseIds, $teacher) {
-                $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
-            })
+            $q->whereIn('course_id', $courseIds)->orWhere('teacher_id', $teacher->id);
+        })
             ->where('scheduled_at', '<', now())
             ->where('status', '!=', 'cancelled')
             ->count();
 
-        $attentionStudents = collect($allStudents)->filter(fn($s) => $s['category'] !== 'good')->values()->all();
-        $interventionStudents = collect($allStudents)->filter(fn($s) => $s['category'] === 'intervention')->values()->all();
+        $attentionStudents = collect($allStudents)->filter(fn ($s) => $s['category'] !== 'good')->values()->all();
+        $interventionStudents = collect($allStudents)->filter(fn ($s) => $s['category'] === 'intervention')->values()->all();
 
         return compact(
             'teacher', 'totalStudents', 'attStats',

@@ -27,8 +27,8 @@ use Tests\TestCase;
  */
 class OverviewServiceBuildStudentDataTest extends TestCase
 {
-    use RefreshDatabase;
     use CountsQueries;
+    use RefreshDatabase;
 
     public function test_batched_attendance_pending_tasks_and_latest_quiz_match_per_student_per_course(): void
     {
@@ -68,8 +68,8 @@ class OverviewServiceBuildStudentDataTest extends TestCase
         $data = app(OverviewService::class)->buildStudentData($teacher);
         $bySid = collect($data)->keyBy(fn ($row) => $row['id']);
 
-        $sidX = 'S24' . str_pad($studentX->id, 3, '0', STR_PAD_LEFT);
-        $sidY = 'S24' . str_pad($studentY->id, 3, '0', STR_PAD_LEFT);
+        $sidX = 'S24'.str_pad($studentX->id, 3, '0', STR_PAD_LEFT);
+        $sidY = 'S24'.str_pad($studentY->id, 3, '0', STR_PAD_LEFT);
 
         // buildStudentData() dedupes by student (first course encountered wins),
         // so Student X's row reflects whichever course was iterated first --

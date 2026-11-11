@@ -33,10 +33,10 @@ class BillingAdminManagementTest extends TestCase
     public function test_admin_can_create_a_fee_structure(): void
     {
         $response = $this->actingAs($this->admin)->post(route('admin.fee-structures.store'), [
-            'name'            => 'Standard Tuition',
-            'amount'          => 250,
+            'name' => 'Standard Tuition',
+            'amount' => 250,
             'education_level' => 'SPM',
-            'frequency'       => 'monthly',
+            'frequency' => 'monthly',
         ]);
 
         $response->assertRedirect();
@@ -49,10 +49,10 @@ class BillingAdminManagementTest extends TestCase
         $fee = FeeStructure::create(['name' => 'Old', 'amount' => 100, 'education_level' => 'SPM', 'frequency' => 'monthly', 'is_active' => true]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.fee-structures.update', $fee->id), [
-            'name'            => 'New Name',
-            'amount'          => 150,
+            'name' => 'New Name',
+            'amount' => 150,
             'education_level' => 'SPM',
-            'frequency'       => 'monthly',
+            'frequency' => 'monthly',
         ]);
 
         $response->assertRedirect();
@@ -179,7 +179,7 @@ class BillingAdminManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.invoices.admin-update', $invoice->id), [
-            'title'    => 'New Title',
+            'title' => 'New Title',
             'due_date' => now()->addDays(7)->toDateString(),
         ]);
 
@@ -197,7 +197,7 @@ class BillingAdminManagementTest extends TestCase
 
         $response = $this->actingAs($this->admin)->putJson(route('admin.invoices.due-date.update', $invoice->id), [
             'due_date' => now()->subDays(10)->toDateString(),
-            'reason'   => 'Testing overdue reconciliation',
+            'reason' => 'Testing overdue reconciliation',
         ]);
 
         $response->assertOk()->assertJson(['success' => true]);
@@ -239,10 +239,10 @@ class BillingAdminManagementTest extends TestCase
     public function test_admin_can_update_finance_settings(): void
     {
         $response = $this->actingAs($this->admin)->post(route('admin.settings.finance'), [
-            'company_bank_name'           => 'Test Bank',
-            'company_bank_account_name'   => 'Olympia Scholars Sdn Bhd',
+            'company_bank_name' => 'Test Bank',
+            'company_bank_account_name' => 'Olympia Scholars Sdn Bhd',
             'company_bank_account_number' => '1234567890',
-            'gateway_provider'            => 'mock_fpx',
+            'gateway_provider' => 'mock_fpx',
         ]);
 
         $response->assertRedirect();

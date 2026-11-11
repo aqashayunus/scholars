@@ -17,13 +17,13 @@ class ChatAuditLogFactory extends Factory
     public function definition(): array
     {
         return [
-            'viewer_id'       => User::factory(),
-            'child_id'        => User::factory(),
+            'viewer_id' => User::factory(),
+            'child_id' => User::factory(),
             'conversation_id' => Conversation::factory(),
-            'action'          => 'conversation_viewed',
-            'metadata'        => null,
-            'ip_address'      => fake()->ipv4(),
-            'user_agent'      => fake()->userAgent(),
+            'action' => 'conversation_viewed',
+            'metadata' => null,
+            'ip_address' => fake()->ipv4(),
+            'user_agent' => fake()->userAgent(),
         ];
     }
 }

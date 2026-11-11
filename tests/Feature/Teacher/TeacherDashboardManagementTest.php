@@ -3,18 +3,15 @@
 namespace Tests\Feature\Teacher;
 
 use App\Models\Assignment;
-use App\Models\ClassRequest;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LearningMaterial;
 use App\Models\LiveClass;
-use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\RecordedClass;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\Teacher;
-use App\Models\TeacherEarning;
 use App\Models\TeachingGig;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -145,8 +142,8 @@ class TeacherDashboardManagementTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $this->teacher->id]);
 
         $response = $this->actingAsTeacher()->post(route('teacher.classes.store'), [
-            'course_id'    => $course->id,
-            'title'        => 'Live Session',
+            'course_id' => $course->id,
+            'title' => 'Live Session',
             'scheduled_at' => now()->addDay()->toDateTimeString(),
         ]);
 
@@ -173,7 +170,7 @@ class TeacherDashboardManagementTest extends TestCase
         $liveClass = LiveClass::create(['course_id' => $course->id, 'teacher_id' => $this->teacher->id, 'title' => 'Class', 'scheduled_at' => now()->addDay(), 'duration_minutes' => 60]);
 
         $response = $this->actingAsTeacher()->post(route('teacher.classes.reschedule', $liveClass->id), [
-            'reason'       => 'Venue conflict arose',
+            'reason' => 'Venue conflict arose',
             'requested_at' => now()->addDays(2)->toDateTimeString(),
         ]);
 
@@ -188,7 +185,7 @@ class TeacherDashboardManagementTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $this->teacher->id]);
 
         $response = $this->actingAsTeacher()->post(route('teacher.classes.tasks.store', $course->id), [
-            'title'    => 'Homework 1',
+            'title' => 'Homework 1',
             'due_date' => now()->addDays(3)->toDateString(),
         ]);
 
@@ -204,9 +201,9 @@ class TeacherDashboardManagementTest extends TestCase
 
         $response = $this->actingAsTeacher()->post(route('teacher.tasks.store'), [
             'course_id' => $course->id,
-            'type'      => 'Assessment',
-            'title'     => 'Mid-term Assessment',
-            'due_date'  => now()->addDays(5)->toDateString(),
+            'type' => 'Assessment',
+            'title' => 'Mid-term Assessment',
+            'due_date' => now()->addDays(5)->toDateString(),
         ]);
 
         $response->assertRedirect();
@@ -221,8 +218,8 @@ class TeacherDashboardManagementTest extends TestCase
 
         $response = $this->actingAsTeacher()->put(route('teacher.tasks.update', $assignment->id), [
             'course_id' => $course->id,
-            'title'     => 'New Title',
-            'due_date'  => now()->addDays(4)->toDateString(),
+            'title' => 'New Title',
+            'due_date' => now()->addDays(4)->toDateString(),
         ]);
 
         $response->assertRedirect();
@@ -247,7 +244,7 @@ class TeacherDashboardManagementTest extends TestCase
         $student = Student::factory()->create();
 
         $response = $this->actingAsTeacher()->post(route('teacher.tasks.grade', [$assignment->id, $student->id]), [
-            'score'  => 92,
+            'score' => 92,
             'status' => 'graded',
         ]);
 
@@ -262,7 +259,7 @@ class TeacherDashboardManagementTest extends TestCase
 
         $response = $this->actingAsTeacher()->post(route('teacher.quizzes.store'), [
             'course_id' => $course->id,
-            'title'     => 'Practice Quiz',
+            'title' => 'Practice Quiz',
             'questions' => [
                 ['question_text' => 'Q1?', 'option_a' => 'a', 'option_b' => 'b', 'option_c' => 'c', 'option_d' => 'd', 'correct_option' => 'A'],
             ],
@@ -294,9 +291,9 @@ class TeacherDashboardManagementTest extends TestCase
 
         $response = $this->actingAsTeacher()->post(route('teacher.materials.store'), [
             'course_id' => $course->id,
-            'title'     => 'Chapter 1 Notes',
-            'type'      => 'Notes',
-            'file'      => UploadedFile::fake()->create('notes.pdf', 100, 'application/pdf'),
+            'title' => 'Chapter 1 Notes',
+            'type' => 'Notes',
+            'file' => UploadedFile::fake()->create('notes.pdf', 100, 'application/pdf'),
         ]);
 
         $response->assertRedirect();
@@ -345,8 +342,8 @@ class TeacherDashboardManagementTest extends TestCase
 
         $response = $this->actingAsTeacher()->put(route('teacher.materials.update', $material->id), [
             'course_id' => $course->id,
-            'title'     => 'New',
-            'type'      => 'Notes',
+            'title' => 'New',
+            'type' => 'Notes',
         ]);
 
         $response->assertRedirect();
@@ -361,9 +358,9 @@ class TeacherDashboardManagementTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $this->teacher->id]);
 
         $response = $this->actingAsTeacher()->post(route('teacher.recordings.store'), [
-            'course_id'        => $course->id,
-            'title'            => 'Lesson 1 Recording',
-            'topic_name'       => 'Introduction',
+            'course_id' => $course->id,
+            'title' => 'Lesson 1 Recording',
+            'topic_name' => 'Introduction',
             'duration_minutes' => 30,
         ]);
 
@@ -377,9 +374,9 @@ class TeacherDashboardManagementTest extends TestCase
         $recording = RecordedClass::create(['course_id' => $course->id, 'subject_id' => $course->subject_id, 'title' => 'Old', 'topic_name' => 'Topic', 'video_url' => 'https://example.com/v', 'duration_minutes' => 20]);
 
         $response = $this->actingAsTeacher()->put(route('teacher.recordings.update', $recording->id), [
-            'course_id'        => $course->id,
-            'title'            => 'New',
-            'topic_name'       => 'Topic',
+            'course_id' => $course->id,
+            'title' => 'New',
+            'topic_name' => 'Topic',
             'duration_minutes' => 25,
         ]);
 

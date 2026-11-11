@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
-use App\Models\Student;
-use App\Models\Setting;
 use App\Models\Payment;
+use App\Models\Setting;
+use App\Models\Student;
+use Illuminate\Database\Seeder;
 
 class FinancialFeeSeeder extends Seeder
 {
@@ -26,36 +26,36 @@ class FinancialFeeSeeder extends Seeder
         // 2. Seed Fee Structures
         $fees = [
             [
-                'name'            => 'SPM Core Monthly Tuition',
-                'description'     => 'Monthly standard tuition covering Bahasa Melayu, English, Mathematics & Science.',
-                'amount'          => 250.00,
+                'name' => 'SPM Core Monthly Tuition',
+                'description' => 'Monthly standard tuition covering Bahasa Melayu, English, Mathematics & Science.',
+                'amount' => 250.00,
                 'education_level' => 'Form 4–5',
-                'frequency'       => 'monthly',
-                'is_active'       => true,
+                'frequency' => 'monthly',
+                'is_active' => true,
             ],
             [
-                'name'            => 'PT3 Lower Secondary Monthly Tuition',
-                'description'     => 'Comprehensive tuition for Form 1 to Form 3 core subjects.',
-                'amount'          => 200.00,
+                'name' => 'PT3 Lower Secondary Monthly Tuition',
+                'description' => 'Comprehensive tuition for Form 1 to Form 3 core subjects.',
+                'amount' => 200.00,
                 'education_level' => 'Form 1–3',
-                'frequency'       => 'monthly',
-                'is_active'       => true,
+                'frequency' => 'monthly',
+                'is_active' => true,
             ],
             [
-                'name'            => 'Primary UPSR Foundation Tuition',
-                'description'     => 'Primary mastery foundation program for Year 4 to Year 6.',
-                'amount'          => 160.00,
+                'name' => 'Primary UPSR Foundation Tuition',
+                'description' => 'Primary mastery foundation program for Year 4 to Year 6.',
+                'amount' => 160.00,
                 'education_level' => 'Year 4–6',
-                'frequency'       => 'monthly',
-                'is_active'       => true,
+                'frequency' => 'monthly',
+                'is_active' => true,
             ],
             [
-                'name'            => 'Annual Digital Resource & Exam Drill Access',
-                'description'     => 'Access to digital past-year SPM papers, video replay archive, and AI practice drills.',
-                'amount'          => 120.00,
+                'name' => 'Annual Digital Resource & Exam Drill Access',
+                'description' => 'Access to digital past-year SPM papers, video replay archive, and AI practice drills.',
+                'amount' => 120.00,
                 'education_level' => 'All',
-                'frequency'       => 'yearly',
-                'is_active'       => true,
+                'frequency' => 'yearly',
+                'is_active' => true,
             ],
         ];
 
@@ -69,52 +69,52 @@ class FinancialFeeSeeder extends Seeder
         $students = Student::with('user')->get();
         foreach ($students as $index => $student) {
             // Outstanding Invoice (Current Month)
-            $invNumber = 'INV-' . date('Y') . '-' . str_pad($student->id * 10 + 1, 5, '0', STR_PAD_LEFT);
+            $invNumber = 'INV-'.date('Y').'-'.str_pad($student->id * 10 + 1, 5, '0', STR_PAD_LEFT);
             Invoice::firstOrCreate([
                 'invoice_number' => $invNumber,
             ], [
-                'student_id'       => $student->id,
+                'student_id' => $student->id,
                 'fee_structure_id' => $spmFee?->id,
-                'title'            => 'Tuition Fee – ' . date('F Y'),
-                'description'      => 'Monthly tuition fee including interactive live classes and study materials.',
-                'subtotal'         => 250.00,
-                'discount_amount'  => 0.00,
-                'total_amount'     => 250.00,
-                'due_date'         => now()->addDays(14)->toDateString(),
-                'status'           => 'outstanding',
+                'title' => 'Tuition Fee – '.date('F Y'),
+                'description' => 'Monthly tuition fee including interactive live classes and study materials.',
+                'subtotal' => 250.00,
+                'discount_amount' => 0.00,
+                'total_amount' => 250.00,
+                'due_date' => now()->addDays(14)->toDateString(),
+                'status' => 'outstanding',
             ]);
 
             // Paid Invoice (Previous Month)
-            $paidInvNumber = 'INV-' . date('Y') . '-' . str_pad($student->id * 10 + 2, 5, '0', STR_PAD_LEFT);
+            $paidInvNumber = 'INV-'.date('Y').'-'.str_pad($student->id * 10 + 2, 5, '0', STR_PAD_LEFT);
             $paidInvoice = Invoice::firstOrCreate([
                 'invoice_number' => $paidInvNumber,
             ], [
-                'student_id'       => $student->id,
+                'student_id' => $student->id,
                 'fee_structure_id' => $spmFee?->id,
-                'title'            => 'Tuition Fee – ' . now()->subMonth()->format('F Y'),
-                'description'      => 'Monthly tuition fee including interactive live classes and study materials.',
-                'subtotal'         => 250.00,
-                'discount_amount'  => 0.00,
-                'total_amount'     => 250.00,
-                'due_date'         => now()->subMonth()->toDateString(),
-                'status'           => 'paid',
+                'title' => 'Tuition Fee – '.now()->subMonth()->format('F Y'),
+                'description' => 'Monthly tuition fee including interactive live classes and study materials.',
+                'subtotal' => 250.00,
+                'discount_amount' => 0.00,
+                'total_amount' => 250.00,
+                'due_date' => now()->subMonth()->toDateString(),
+                'status' => 'paid',
             ]);
 
             // Create corresponding paid payment record
             Payment::firstOrCreate([
                 'invoice_id' => $paidInvoice->id,
             ], [
-                'user_id'        => $student->user_id,
-                'student_id'     => $student->id,
-                'payer_id'       => $student->user_id,
-                'payer_type'     => 'student',
-                'description'    => $paidInvoice->title,
-                'amount'         => 250.00,
+                'user_id' => $student->user_id,
+                'student_id' => $student->id,
+                'payer_id' => $student->user_id,
+                'payer_type' => 'student',
+                'description' => $paidInvoice->title,
+                'amount' => 250.00,
                 'payment_method' => 'fpx',
-                'reference_no'   => 'TXN-FPX-' . strtoupper(substr(md5($paidInvoice->id . '-' . $student->id), 0, 8)),
-                'receipt_number' => 'RCP-' . date('Y') . '-' . str_pad($paidInvoice->id, 5, '0', STR_PAD_LEFT),
-                'status'         => 'paid',
-                'paid_at'        => now()->subMonth()->addDays(2),
+                'reference_no' => 'TXN-FPX-'.strtoupper(substr(md5($paidInvoice->id.'-'.$student->id), 0, 8)),
+                'receipt_number' => 'RCP-'.date('Y').'-'.str_pad($paidInvoice->id, 5, '0', STR_PAD_LEFT),
+                'status' => 'paid',
+                'paid_at' => now()->subMonth()->addDays(2),
             ]);
         }
     }

@@ -26,43 +26,55 @@ class StudentAssignment extends Model
         'graded_file_path',
         'graded_file_name',
     ];
+
     protected $casts = [
-        'submitted_at'       => 'datetime',
-        'answers_json'       => 'array',
+        'submitted_at' => 'datetime',
+        'answers_json' => 'array',
         'time_taken_seconds' => 'integer',
-        'score'              => 'integer',
-        'status'             => StudentAssignmentStatus::class,
+        'score' => 'integer',
+        'status' => StudentAssignmentStatus::class,
     ];
 
     public function getTahapBadgeClass(): string
     {
-        return match($this->tahap_kepandaian) {
-            'Cemerlang'       => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-            'Baik'            => 'bg-blue-50 text-blue-700 border-blue-200',
-            'Sederhana'       => 'bg-amber-50 text-amber-700 border-amber-200',
+        return match ($this->tahap_kepandaian) {
+            'Cemerlang' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            'Baik' => 'bg-blue-50 text-blue-700 border-blue-200',
+            'Sederhana' => 'bg-amber-50 text-amber-700 border-amber-200',
             'Perlu Bimbingan' => 'bg-rose-50 text-rose-700 border-rose-200',
-            default           => 'bg-gray-100 text-gray-700 border-gray-200',
+            default => 'bg-gray-100 text-gray-700 border-gray-200',
         };
     }
 
     public function getTahapDescription(): string
     {
-        return match($this->tahap_kepandaian) {
-            'Cemerlang'       => 'Tahap Penguasaan Tinggi (Kefahaman & Aplikasi Mantap)',
-            'Baik'            => 'Tahap Penguasaan Sederhana Tinggi (Kefahaman Baik)',
-            'Sederhana'       => 'Tahap Penguasaan Asas (Memerlukan Pengukuhan Konsep)',
+        return match ($this->tahap_kepandaian) {
+            'Cemerlang' => 'Tahap Penguasaan Tinggi (Kefahaman & Aplikasi Mantap)',
+            'Baik' => 'Tahap Penguasaan Sederhana Tinggi (Kefahaman Baik)',
+            'Sederhana' => 'Tahap Penguasaan Asas (Memerlukan Pengukuhan Konsep)',
             'Perlu Bimbingan' => 'Tahap Penguasaan Rendah (Memerlukan Bimbingan Intensif)',
-            default           => 'Belum Diuji',
+            default => 'Belum Diuji',
         };
     }
 
-    public function student()    { return $this->belongsTo(Student::class); }
-    public function assignment() { return $this->belongsTo(Assignment::class); }
-    public function interactiveSubmission() { return $this->hasOne(StudentAssignmentSubmission::class, 'student_assignment_id'); }
+    public function student()
+    {
+        return $this->belongsTo(Student::class);
+    }
+
+    public function assignment()
+    {
+        return $this->belongsTo(Assignment::class);
+    }
+
+    public function interactiveSubmission()
+    {
+        return $this->hasOne(StudentAssignmentSubmission::class, 'student_assignment_id');
+    }
 
     public function getFileUrlAttribute(): ?string
     {
-        if (!$this->file_path && !$this->interactiveSubmission?->final_pdf_path) {
+        if (! $this->file_path && ! $this->interactiveSubmission?->final_pdf_path) {
             return null;
         }
 
@@ -71,7 +83,7 @@ class StudentAssignment extends Model
 
     public function getGradedFileUrlAttribute(): ?string
     {
-        if (!$this->graded_file_path) {
+        if (! $this->graded_file_path) {
             return null;
         }
 

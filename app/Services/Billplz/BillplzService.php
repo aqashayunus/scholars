@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Log;
 class BillplzService
 {
     const SANDBOX_BASE_URL = 'https://www.billplz-sandbox.com/api/v3/';
-    const LIVE_BASE_URL    = 'https://www.billplz.com/api/v3/';
+
+    const LIVE_BASE_URL = 'https://www.billplz.com/api/v3/';
 
     /**
      * Get API Key (Dynamic DB Setting has priority, falls back to config).
@@ -59,18 +60,18 @@ class BillplzService
     /**
      * Create a Bill via Billplz API v3.
      *
-     * @param  array $params {
-     *     collection_id: string (optional, defaults to configured collection)
-     *     email:         string
-     *     mobile:        string (optional)
-     *     name:          string
-     *     amount:        float (in Ringgit Malaysia, e.g. 150.00)
-     *     callback_url:  string (webhook URL)
-     *     redirect_url:  string (return URL)
-     *     description:   string
-     *     reference_1:   string (optional)
-     *     reference_2:   string (optional)
-     * }
+     * @param  array  $params  {
+     *                         collection_id: string (optional, defaults to configured collection)
+     *                         email:         string
+     *                         mobile:        string (optional)
+     *                         name:          string
+     *                         amount:        float (in Ringgit Malaysia, e.g. 150.00)
+     *                         callback_url:  string (webhook URL)
+     *                         redirect_url:  string (return URL)
+     *                         description:   string
+     *                         reference_1:   string (optional)
+     *                         reference_2:   string (optional)
+     *                         }
      * @return array Returned bill data from Billplz
      */
     public function createBill(array $params): array
@@ -89,24 +90,24 @@ class BillplzService
         $amountInCents = (int) round(((float) $params['amount']) * 100);
 
         $payload = [
-            'collection_id'      => $collectionId,
-            'email'              => $params['email'],
-            'mobile'             => $params['mobile'] ?? null,
-            'name'               => $params['name'],
-            'amount'             => $amountInCents,
-            'callback_url'       => $params['callback_url'],
-            'redirect_url'       => $params['redirect_url'] ?? null,
-            'description'        => substr($params['description'] ?? 'Tuition Fee Payment', 0, 200),
-            'reference_1_label'  => !empty($params['reference_1']) ? 'Invoice Ref' : null,
-            'reference_1'        => $params['reference_1'] ?? null,
-            'reference_2_label'  => !empty($params['reference_2']) ? 'Payment Ref' : null,
-            'reference_2'        => $params['reference_2'] ?? null,
+            'collection_id' => $collectionId,
+            'email' => $params['email'],
+            'mobile' => $params['mobile'] ?? null,
+            'name' => $params['name'],
+            'amount' => $amountInCents,
+            'callback_url' => $params['callback_url'],
+            'redirect_url' => $params['redirect_url'] ?? null,
+            'description' => substr($params['description'] ?? 'Tuition Fee Payment', 0, 200),
+            'reference_1_label' => ! empty($params['reference_1']) ? 'Invoice Ref' : null,
+            'reference_1' => $params['reference_1'] ?? null,
+            'reference_2_label' => ! empty($params['reference_2']) ? 'Payment Ref' : null,
+            'reference_2' => $params['reference_2'] ?? null,
         ];
 
         // Filter out null values
-        $payload = array_filter($payload, fn($val) => $val !== null);
+        $payload = array_filter($payload, fn ($val) => $val !== null);
 
-        $url = rtrim($this->getBaseUrl(), '/') . '/bills';
+        $url = rtrim($this->getBaseUrl(), '/').'/bills';
 
         try {
             $response = Http::withBasicAuth($apiKey, '')
@@ -114,18 +115,18 @@ class BillplzService
                 ->asForm()
                 ->post($url, $payload);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 Log::error('[BillplzService] createBill failed', [
                     'status' => $response->status(),
-                    'body'   => $response->body(),
-                    'payload'=> $payload,
+                    'body' => $response->body(),
+                    'payload' => $payload,
                 ]);
-                throw new \RuntimeException('Billplz API Error (' . $response->status() . '): ' . $response->body());
+                throw new \RuntimeException('Billplz API Error ('.$response->status().'): '.$response->body());
             }
 
             return $response->json();
         } catch (\Throwable $e) {
-            Log::error('[BillplzService] Exception in createBill: ' . $e->getMessage());
+            Log::error('[BillplzService] Exception in createBill: '.$e->getMessage());
             throw $e;
         }
     }
@@ -140,14 +141,14 @@ class BillplzService
             throw new \RuntimeException('Billplz API Key is missing.');
         }
 
-        $url = rtrim($this->getBaseUrl(), '/') . '/bills/' . urlencode($billId);
+        $url = rtrim($this->getBaseUrl(), '/').'/bills/'.urlencode($billId);
 
         $response = Http::withBasicAuth($apiKey, '')
             ->timeout(15)
             ->get($url);
 
-        if (!$response->successful()) {
-            throw new \RuntimeException('Failed to fetch bill from Billplz: ' . $response->body());
+        if (! $response->successful()) {
+            throw new \RuntimeException('Failed to fetch bill from Billplz: '.$response->body());
         }
 
         return $response->json();
@@ -158,10 +159,10 @@ class BillplzService
      */
     public function testConnection(?string $apiKey = null, ?string $collectionId = null, ?bool $isSandbox = null): array
     {
-        $key        = $apiKey ?? $this->getApiKey();
+        $key = $apiKey ?? $this->getApiKey();
         $collection = $collectionId ?? $this->getCollectionId();
-        $sandbox    = $isSandbox ?? $this->isSandbox();
-        $baseUrl    = $sandbox ? self::SANDBOX_BASE_URL : self::LIVE_BASE_URL;
+        $sandbox = $isSandbox ?? $this->isSandbox();
+        $baseUrl = $sandbox ? self::SANDBOX_BASE_URL : self::LIVE_BASE_URL;
 
         if (empty($key)) {
             return ['success' => false, 'message' => 'API Key is empty.'];
@@ -169,48 +170,49 @@ class BillplzService
 
         try {
             // Verify Collection if provided
-            if (!empty($collection)) {
-                $url = rtrim($baseUrl, '/') . '/collections/' . urlencode($collection);
+            if (! empty($collection)) {
+                $url = rtrim($baseUrl, '/').'/collections/'.urlencode($collection);
                 $resp = Http::withBasicAuth($key, '')->timeout(10)->get($url);
 
                 if ($resp->successful()) {
                     $data = $resp->json();
+
                     return [
-                        'success'         => true,
-                        'message'         => 'Connected successfully to Billplz! Collection: ' . ($data['title'] ?? $collection),
-                        'collection_title'=> $data['title'] ?? null,
-                        'collection_id'   => $collection,
-                        'mode'            => $sandbox ? 'Sandbox' : 'Production',
+                        'success' => true,
+                        'message' => 'Connected successfully to Billplz! Collection: '.($data['title'] ?? $collection),
+                        'collection_title' => $data['title'] ?? null,
+                        'collection_id' => $collection,
+                        'mode' => $sandbox ? 'Sandbox' : 'Production',
                     ];
                 }
 
                 return [
                     'success' => false,
-                    'message' => 'Billplz API replied: ' . $resp->body(),
-                    'status'  => $resp->status(),
+                    'message' => 'Billplz API replied: '.$resp->body(),
+                    'status' => $resp->status(),
                 ];
             }
 
             // If no collection ID, test general API connectivity
-            $url = rtrim($baseUrl, '/') . '/collections';
+            $url = rtrim($baseUrl, '/').'/collections';
             $resp = Http::withBasicAuth($key, '')->timeout(10)->get($url, ['page' => 1]);
 
             if ($resp->successful()) {
                 return [
                     'success' => true,
-                    'message' => 'API Key authenticated successfully with Billplz (' . ($sandbox ? 'Sandbox' : 'Production') . ').',
-                    'mode'    => $sandbox ? 'Sandbox' : 'Production',
+                    'message' => 'API Key authenticated successfully with Billplz ('.($sandbox ? 'Sandbox' : 'Production').').',
+                    'mode' => $sandbox ? 'Sandbox' : 'Production',
                 ];
             }
 
             return [
                 'success' => false,
-                'message' => 'Authentication failed: ' . $resp->body(),
+                'message' => 'Authentication failed: '.$resp->body(),
             ];
         } catch (\Throwable $e) {
             return [
                 'success' => false,
-                'message' => 'Connection failed: ' . $e->getMessage(),
+                'message' => 'Connection failed: '.$e->getMessage(),
             ];
         }
     }
@@ -225,6 +227,7 @@ class BillplzService
         $xSignatureKey = $this->getXSignatureKey();
         if (empty($xSignatureKey)) {
             Log::warning('[BillplzService] X-Signature key not configured; skipping signature verification.');
+
             return true; // If admin hasn't configured X-Signature yet, allow fallback
         }
 
@@ -248,7 +251,7 @@ class BillplzService
         // Build source string: key + value concatenation
         $source = '';
         foreach ($data as $k => $v) {
-            $source .= $k . $v;
+            $source .= $k.$v;
         }
 
         $expected = hash_hmac('sha256', $source, $xSignatureKey);
@@ -273,7 +276,7 @@ class BillplzService
 
         $source = '';
         foreach ($data as $k => $v) {
-            $source .= $k . $v;
+            $source .= $k.$v;
         }
 
         return hash_hmac('sha256', $source, (string) $xSignatureKey);

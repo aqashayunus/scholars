@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -44,9 +45,9 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('account/set-password', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'show'])
+    Route::get('account/set-password', [ForcePasswordChangeController::class, 'show'])
         ->name('password.force.show');
-    Route::post('account/set-password', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'update'])
+    Route::post('account/set-password', [ForcePasswordChangeController::class, 'update'])
         ->name('password.force.update');
 
     Route::get('verify-email', EmailVerificationPromptController::class)
@@ -70,4 +71,3 @@ Route::middleware('auth')->group(function () {
 
 Route::match(['get', 'post'], 'logout', [AuthenticatedSessionController::class, 'destroy'])
     ->name('logout');
-

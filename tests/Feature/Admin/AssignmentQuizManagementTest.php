@@ -10,7 +10,6 @@ use App\Models\Quiz;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\User;
-use App\Models\UserNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -37,8 +36,8 @@ class AssignmentQuizManagementTest extends TestCase
         Student::factory()->create(['level' => 'PT3']);
 
         $response = $this->actingAs($this->admin)->post(route('admin.tasks.store'), [
-            'title'        => 'Chapter 1 Homework',
-            'type'         => 'Homework',
+            'title' => 'Chapter 1 Homework',
+            'type' => 'Homework',
             'target_level' => 'SPM',
         ]);
 
@@ -53,8 +52,8 @@ class AssignmentQuizManagementTest extends TestCase
         $student = Student::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.tasks.store'), [
-            'title'      => 'Personal Notes',
-            'type'       => 'Notes',
+            'title' => 'Personal Notes',
+            'type' => 'Notes',
             'student_id' => $student->id,
         ]);
 
@@ -63,7 +62,7 @@ class AssignmentQuizManagementTest extends TestCase
         $this->assertSame(1, StudentAssignment::where('assignment_id', $assignment->id)->count());
         $this->assertDatabaseHas('student_assignments', [
             'assignment_id' => $assignment->id,
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
         ]);
     }
 
@@ -75,8 +74,8 @@ class AssignmentQuizManagementTest extends TestCase
         Enrollment::create(['student_id' => $enrolled->id, 'course_id' => $course->id, 'status' => 'active']);
 
         $this->actingAs($this->admin)->post(route('admin.tasks.store'), [
-            'title'     => 'Course Task',
-            'type'      => 'Homework',
+            'title' => 'Course Task',
+            'type' => 'Homework',
             'course_id' => $course->id,
         ]);
 
@@ -89,8 +88,8 @@ class AssignmentQuizManagementTest extends TestCase
     public function test_admin_can_create_a_task_with_a_question_builder_payload(): void
     {
         $this->actingAs($this->admin)->post(route('admin.tasks.store'), [
-            'title'     => 'Diagnostic 1',
-            'type'      => 'Diagnostic Test',
+            'title' => 'Diagnostic 1',
+            'type' => 'Diagnostic Test',
             'questions' => [
                 ['number' => 1, 'type' => 'mcq', 'correct_answer' => 'a'],
                 ['number' => 2, 'type' => 'fill_in_blank', 'correct_answer' => 'oxygen'],
@@ -110,7 +109,7 @@ class AssignmentQuizManagementTest extends TestCase
 
         $response = $this->actingAs($this->admin)->put(route('admin.tasks.update', $assignment->id), [
             'title' => 'New Title',
-            'type'  => 'Homework',
+            'type' => 'Homework',
         ]);
 
         $response->assertRedirect();
@@ -169,7 +168,7 @@ class AssignmentQuizManagementTest extends TestCase
         $student = Student::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.tasks.grade', [$assignment->id, $student->id]), [
-            'score'            => 85,
+            'score' => 85,
             'teacher_feedback' => 'Great work',
         ]);
 
@@ -199,8 +198,8 @@ class AssignmentQuizManagementTest extends TestCase
         Enrollment::create(['student_id' => $student->id, 'course_id' => $course->id, 'status' => 'active']);
 
         $response = $this->actingAs($this->admin)->post(route('admin.quizzes.store'), [
-            'course_id'       => $course->id,
-            'title'           => 'Practice Quiz 1',
+            'course_id' => $course->id,
+            'title' => 'Practice Quiz 1',
             'total_questions' => 5,
         ]);
 
@@ -208,8 +207,8 @@ class AssignmentQuizManagementTest extends TestCase
         $this->assertDatabaseHas('quizzes', ['title' => 'Practice Quiz 1']);
         $this->assertDatabaseHas('user_notifications', [
             'user_id' => $student->user_id,
-            'type'    => 'quiz',
-            'title'   => 'NEW DRILL QUIZ ADDED',
+            'type' => 'quiz',
+            'title' => 'NEW DRILL QUIZ ADDED',
         ]);
     }
 
@@ -219,8 +218,8 @@ class AssignmentQuizManagementTest extends TestCase
         $quiz = Quiz::create(['course_id' => $course->id, 'title' => 'Old', 'total_questions' => 5]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.quizzes.update', $quiz->id), [
-            'course_id'       => $course->id,
-            'title'           => 'New',
+            'course_id' => $course->id,
+            'title' => 'New',
             'total_questions' => 10,
         ]);
 
@@ -247,12 +246,12 @@ class AssignmentQuizManagementTest extends TestCase
         $quiz = Quiz::create(['course_id' => $course->id, 'title' => 'Quiz', 'total_questions' => 5]);
 
         $response = $this->actingAs($this->admin)->post(route('admin.quizzes.questions.store', $quiz->id), [
-            'type'           => 'text',
-            'question_text'  => 'What is 2+2?',
-            'option_a'       => '3',
-            'option_b'       => '4',
-            'option_c'       => '5',
-            'option_d'       => '6',
+            'type' => 'text',
+            'question_text' => 'What is 2+2?',
+            'option_a' => '3',
+            'option_b' => '4',
+            'option_c' => '5',
+            'option_d' => '6',
             'correct_option' => 'B',
         ]);
 
@@ -270,12 +269,12 @@ class AssignmentQuizManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.questions.update', $question->id), [
-            'type'           => 'text',
-            'question_text'  => 'New?',
-            'option_a'       => 'a',
-            'option_b'       => 'b',
-            'option_c'       => 'c',
-            'option_d'       => 'd',
+            'type' => 'text',
+            'question_text' => 'New?',
+            'option_a' => 'a',
+            'option_b' => 'b',
+            'option_c' => 'c',
+            'option_d' => 'd',
             'correct_option' => 'B',
         ]);
 

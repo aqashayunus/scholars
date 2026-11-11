@@ -17,14 +17,14 @@ class TeacherActiveMiddleware
     {
         $user = $request->user();
 
-        if (!$user || $user->role !== 'teacher') {
+        if (! $user || $user->role !== 'teacher') {
             return $next($request);
         }
 
         $teacher = $user->teacherProfile;
 
         // If teacher profile doesn't exist or status is not active, redirect to pending page
-        if (!$teacher || $teacher->application_status !== 'active') {
+        if (! $teacher || $teacher->application_status !== 'active') {
             return redirect()->route('teacher.pending');
         }
 

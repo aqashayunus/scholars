@@ -11,25 +11,25 @@ return new class extends Migration
         // Step 1: Add subject_id to assignments (so an assignment can belong to a subject)
         Schema::table('assignments', function (Blueprint $table) {
             $table->foreignId('subject_id')
-                  ->nullable()
-                  ->after('course_id')
-                  ->constrained('subjects')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('course_id')
+                ->constrained('subjects')
+                ->nullOnDelete();
         });
 
         // Step 2: Add diagnostic_assignment_id to subjects (pointer to the one diagnostic test)
         Schema::table('subjects', function (Blueprint $table) {
             $table->foreignId('diagnostic_assignment_id')
-                  ->nullable()
-                  ->after('is_active')
-                  ->constrained('assignments')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('is_active')
+                ->constrained('assignments')
+                ->nullOnDelete();
 
             // Allow admin to override default duration per subject
             $table->unsignedSmallInteger('diagnostic_duration_minutes')
-                  ->nullable()
-                  ->after('diagnostic_assignment_id')
-                  ->comment('Admin-configurable diagnostic test duration in minutes (default 20)');
+                ->nullable()
+                ->after('diagnostic_assignment_id')
+                ->comment('Admin-configurable diagnostic test duration in minutes (default 20)');
         });
     }
 

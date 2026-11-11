@@ -14,7 +14,7 @@ class LinkParentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'parent_ic'    => 'required|string|max:20',
+            'parent_ic' => 'required|string|max:20',
             'relationship' => 'nullable|string|max:30',
         ];
     }

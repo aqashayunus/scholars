@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Assignment;
 use App\Models\Course;
-use App\Models\StudentAssignment;
+use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,9 +29,9 @@ class AdminPersonalTaskUploadTest extends TestCase
             'name' => 'Muhammad Hariz',
         ]);
 
-        $student = \App\Models\Student::create([
+        $student = Student::create([
             'user_id' => $user->id,
-            'level'   => 'SPM',
+            'level' => 'SPM',
         ]);
 
         $subject = Subject::create([
@@ -52,25 +52,25 @@ class AdminPersonalTaskUploadTest extends TestCase
         $file = UploadedFile::fake()->create('remedial_notes.pdf', 500, 'application/pdf');
 
         $response = $this->actingAs($admin)->post(route('admin.tasks.store'), [
-            'student_id'         => $student->id,
-            'redirect_tab'       => '#student',
-            'title'              => 'SPM Math Remedial Notes',
-            'type'               => 'Remedial Notes',
-            'course_id'          => $course->id,
-            'total_marks'        => 100,
+            'student_id' => $student->id,
+            'redirect_tab' => '#student',
+            'title' => 'SPM Math Remedial Notes',
+            'type' => 'Remedial Notes',
+            'course_id' => $course->id,
+            'total_marks' => 100,
             'is_interactive_pdf' => '1',
-            'instructions'       => 'Please complete all exercises on page 2.',
-            'file'               => $file,
+            'instructions' => 'Please complete all exercises on page 2.',
+            'file' => $file,
         ]);
 
-        $response->assertRedirect(route('admin.dashboard') . '#student');
+        $response->assertRedirect(route('admin.dashboard').'#student');
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('assignments', [
-            'title'              => 'SPM Math Remedial Notes',
-            'type'               => 'Remedial Notes',
-            'course_id'          => $course->id,
-            'total_marks'        => 100,
+            'title' => 'SPM Math Remedial Notes',
+            'type' => 'Remedial Notes',
+            'course_id' => $course->id,
+            'total_marks' => 100,
             'is_interactive_pdf' => 1,
         ]);
 
@@ -80,9 +80,9 @@ class AdminPersonalTaskUploadTest extends TestCase
         Storage::disk('public')->assertExists($assignment->file_path);
 
         $this->assertDatabaseHas('student_assignments', [
-            'student_id'    => $student->id,
+            'student_id' => $student->id,
             'assignment_id' => $assignment->id,
-            'status'        => 'pending',
+            'status' => 'pending',
         ]);
     }
 
@@ -99,36 +99,36 @@ class AdminPersonalTaskUploadTest extends TestCase
             'name' => 'Ahmad Faiz',
         ]);
 
-        $student = \App\Models\Student::create([
+        $student = Student::create([
             'user_id' => $user->id,
-            'level'   => 'Form 4',
+            'level' => 'Form 4',
         ]);
 
         $file = UploadedFile::fake()->create('diagnostic_notes.docx', 300, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
 
         $response = $this->actingAs($admin)->post(route('admin.tasks.store'), [
-            'student_id'   => $student->id,
+            'student_id' => $student->id,
             'redirect_tab' => '#students',
-            'title'        => 'Diagnostic Follow-Up Notes',
-            'type'         => 'Assignment',
-            'due_date'     => now()->addDays(5)->toDateString(),
-            'total_marks'  => 80,
+            'title' => 'Diagnostic Follow-Up Notes',
+            'type' => 'Assignment',
+            'due_date' => now()->addDays(5)->toDateString(),
+            'total_marks' => 80,
             'instructions' => 'Read and answer the questions.',
-            'file'         => $file,
+            'file' => $file,
         ]);
 
-        $response->assertRedirect(route('admin.dashboard') . '#students');
+        $response->assertRedirect(route('admin.dashboard').'#students');
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('assignments', [
-            'title'       => 'Diagnostic Follow-Up Notes',
-            'type'        => 'Assignment',
+            'title' => 'Diagnostic Follow-Up Notes',
+            'type' => 'Assignment',
             'total_marks' => 80,
         ]);
 
         $this->assertDatabaseHas('student_assignments', [
             'student_id' => $student->id,
-            'status'     => 'pending',
+            'status' => 'pending',
         ]);
     }
 }

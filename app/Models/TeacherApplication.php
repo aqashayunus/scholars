@@ -45,7 +45,7 @@ class TeacherApplication extends Model
      */
     public function getTeachingLevelsListAttribute(): array
     {
-        if (!empty($this->teaching_level)) {
+        if (! empty($this->teaching_level)) {
             if (is_array($this->teaching_level)) {
                 return $this->teaching_level;
             }
@@ -53,11 +53,12 @@ class TeacherApplication extends Model
             if (is_array($decoded)) {
                 return $decoded;
             }
+
             return array_values(array_filter(array_map('trim', explode(',', $this->teaching_level))));
         }
 
         // Contextual fallback from preferred subjects or qualifications for older records
-        $text = ($this->preferred_subjects ?? '') . ' ' . ($this->qualification ?? '');
+        $text = ($this->preferred_subjects ?? '').' '.($this->qualification ?? '');
         $inferred = [];
         if (preg_match('/(form\s*[45]|spm|upper\s*secondary|add\s*math|addmath|physics|chemistry|biology)/i', $text)) {
             $inferred[] = 'Form 4–5 (SPM)';
@@ -69,6 +70,6 @@ class TeacherApplication extends Model
             $inferred[] = 'Year 4–6 (Primary)';
         }
 
-        return !empty($inferred) ? array_unique($inferred) : ['All Levels'];
+        return ! empty($inferred) ? array_unique($inferred) : ['All Levels'];
     }
 }

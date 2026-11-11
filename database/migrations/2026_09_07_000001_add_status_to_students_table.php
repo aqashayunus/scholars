@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('students', 'status')) {
+        if (! Schema::hasColumn('students', 'status')) {
             Schema::table('students', function (Blueprint $table) {
                 $table->string('status', 20)->default('active')->after('level');
             });

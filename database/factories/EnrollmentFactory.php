@@ -17,12 +17,12 @@ class EnrollmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'student_id'         => Student::factory(),
-            'course_id'          => Course::factory(),
-            'status'             => 'active',
-            'progress_pct'       => 0,
-            'completed_lessons'  => 0,
-            'enrolled_at'        => now(),
+            'student_id' => Student::factory(),
+            'course_id' => Course::factory(),
+            'status' => 'active',
+            'progress_pct' => 0,
+            'completed_lessons' => 0,
+            'enrolled_at' => now(),
         ];
     }
 }

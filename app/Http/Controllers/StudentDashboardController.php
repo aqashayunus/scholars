@@ -12,15 +12,23 @@ use App\Http\Requests\Student\UpdateStudentProfileRequest;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentTopicMastery;
+use App\Models\UserNotification;
 use App\Services\AttendanceService;
+use App\Services\Student\AchievementService;
+use App\Services\Student\AssignmentService;
+use App\Services\Student\BillingService;
 use App\Services\Student\ClassScheduleService;
+use App\Services\Student\DashboardMetricsService;
+use App\Services\Student\LearningService;
+use App\Services\Student\ProfileService;
+use App\Services\Student\QuizPerformanceService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 
 class StudentDashboardController extends Controller
 {
-    public function dashboard(\App\Services\Student\DashboardMetricsService $metrics)
+    public function dashboard(DashboardMetricsService $metrics)
     {
         $user = auth()->user();
         if ($user->role !== 'student') {
@@ -30,28 +38,28 @@ class StudentDashboardController extends Controller
         return view('student.dashboard', $metrics->build($user));
     }
 
-    public function learning(\App\Services\Student\LearningService $learningService)
+    public function learning(LearningService $learningService)
     {
         $student = $this->getStudent();
 
         return view('student.learning', array_merge(['student' => $student], $learningService->learningData($student)));
     }
 
-    public function classes(\App\Services\Student\ClassScheduleService $schedule)
+    public function classes(ClassScheduleService $schedule)
     {
         $student = $this->getStudent();
 
         return view('student.classes', array_merge(['student' => $student], $schedule->classesData($student)));
     }
 
-    public function tasks(\App\Services\Student\AssignmentService $assignmentService)
+    public function tasks(AssignmentService $assignmentService)
     {
         $student = $this->getStudent();
 
         return view('student.tasks', array_merge(['student' => $student], $assignmentService->tasksData($student)));
     }
 
-    public function submitTask(SubmitTaskRequest $request, $id, \App\Services\Student\AssignmentService $assignmentService)
+    public function submitTask(SubmitTaskRequest $request, $id, AssignmentService $assignmentService)
     {
         $student = $this->getStudent();
 
@@ -62,24 +70,26 @@ class StudentDashboardController extends Controller
         return redirect()->back()->with('success', 'Assignment submitted successfully! Your teacher will review and grade your work.');
     }
 
-    public function quiz(\App\Services\Student\QuizPerformanceService $quizzes)
+    public function quiz(QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
         $quizId = $quizzes->firstQuizId($student);
         if ($quizId) {
             return redirect()->route('student.quiz.show', $quizId);
         }
+
         return view('student.quiz', compact('student'));
     }
 
-    public function quizShow($id, \App\Services\Student\QuizPerformanceService $quizzes)
+    public function quizShow($id, QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
         $quiz = $quizzes->showQuiz($id);
+
         return view('student.quiz', compact('student', 'quiz'));
     }
 
-    public function quizSubmit(QuizSubmitRequest $request, $id, \App\Services\Student\QuizPerformanceService $quizzes)
+    public function quizSubmit(QuizSubmitRequest $request, $id, QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
 
@@ -95,18 +105,18 @@ class StudentDashboardController extends Controller
         $student = $this->getStudent();
         $enrollments = $student->enrollments()->with('course.subject.topics.subtopics', 'course.teacher.user')->get();
         $topicMasteries = StudentTopicMastery::where('student_id', $student->id)->get();
-        
+
         $overallProgress = $enrollments->count() > 0 ? (int) round($enrollments->avg('progress_pct') ?? 0) : 0;
-        $attStats = app(\App\Services\Student\ClassScheduleService::class)->attendanceStats($student);
+        $attStats = app(ClassScheduleService::class)->attendanceStats($student);
 
         // Personal performance trajectory chart from actual student quiz records
         ['performanceLabels' => $performanceLabels, 'performanceData' => $performanceData] =
-            app(\App\Services\Student\QuizPerformanceService::class)->performanceChartData($student);
+            app(QuizPerformanceService::class)->performanceChartData($student);
 
         return view('student.progress', compact('student', 'enrollments', 'overallProgress', 'attStats', 'topicMasteries', 'performanceLabels', 'performanceData'));
     }
 
-    public function achievements(\App\Services\Student\AchievementService $achievementService)
+    public function achievements(AchievementService $achievementService)
     {
         $student = $this->getStudent();
         $user = auth()->user();
@@ -120,12 +130,21 @@ class StudentDashboardController extends Controller
     public function messages()
     {
         $student = $this->getStudent();
+
         return view('student.messages', compact('student'));
     }
 
-    public function myCourses()  { return $this->learning(); }
-    public function timetable() { return $this->classes(); }
-    public function profile(Request $request, \App\Services\Student\ProfileService $profileService)
+    public function myCourses()
+    {
+        return $this->learning();
+    }
+
+    public function timetable()
+    {
+        return $this->classes();
+    }
+
+    public function profile(Request $request, ProfileService $profileService)
     {
         $student = $this->getStudent();
         $activeTab = $request->query('tab', 'profile');
@@ -136,15 +155,15 @@ class StudentDashboardController extends Controller
     /**
      * Link the student's account to a parent account by the parent's IC number.
      */
-    public function linkParent(LinkParentRequest $request, \App\Services\Student\ProfileService $profileService)
+    public function linkParent(LinkParentRequest $request, ProfileService $profileService)
     {
-        $student      = $this->getStudent();
-        $rawIc        = trim($request->input('parent_ic'));
+        $student = $this->getStudent();
+        $rawIc = trim($request->input('parent_ic'));
         $relationship = $request->input('relationship', 'Guardian');
 
         $result = $profileService->linkParent($student, $rawIc, $relationship);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             return redirect()->route('student.profile', ['tab' => 'profile'])
                 ->withInput()
                 ->withErrors(['parent_ic' => $result['field_error']]);
@@ -157,9 +176,9 @@ class StudentDashboardController extends Controller
     /**
      * Update the student's personal information (name, email, phone, level).
      */
-    public function updateProfile(UpdateStudentProfileRequest $request, \App\Services\Student\ProfileService $profileService)
+    public function updateProfile(UpdateStudentProfileRequest $request, ProfileService $profileService)
     {
-        $user    = auth()->user();
+        $user = auth()->user();
         $student = Student::where('user_id', $user->id)->first();
 
         $validated = $request->validated();
@@ -182,21 +201,22 @@ class StudentDashboardController extends Controller
      * Update the student's password.
      * Parent-managed students are allowed to set a new password without knowing the current one.
      */
-    public function updatePassword(UpdateStudentPasswordRequest $request, \App\Services\Student\ProfileService $profileService)
+    public function updatePassword(UpdateStudentPasswordRequest $request, ProfileService $profileService)
     {
-        $user    = auth()->user();
+        $user = auth()->user();
         $validated = $request->validated();
 
         $profileService->updatePassword($user, $validated['password']);
 
         return Redirect::route('student.profile', ['tab' => 'security'])->with('password_updated', 'Password changed successfully!');
     }
+
     public function readAllNotifications()
     {
         $userId = auth()->id();
-        \App\Models\UserNotification::where('user_id', $userId)
-                                    ->whereNull('read_at')
-                                    ->update(['read_at' => now()]);
+        UserNotification::where('user_id', $userId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
 
         return response()->json(['success' => true]);
     }
@@ -204,7 +224,7 @@ class StudentDashboardController extends Controller
     /**
      * Display Student "My Fees" portal.
      */
-    public function fees(\App\Services\Student\BillingService $billing)
+    public function fees(BillingService $billing)
     {
         $student = $this->getStudent();
 
@@ -214,7 +234,7 @@ class StudentDashboardController extends Controller
     /**
      * Process invoice payment by student.
      */
-    public function payInvoice(PayInvoiceRequest $request, $id, \App\Services\Student\BillingService $billing)
+    public function payInvoice(PayInvoiceRequest $request, $id, BillingService $billing)
     {
         $student = $this->getStudent();
         $paymentMethod = $request->input('payment_method', 'fpx');
@@ -223,7 +243,7 @@ class StudentDashboardController extends Controller
 
         return match ($result['status']) {
             'already_paid' => back()->with('info', $result['message']),
-            default        => back()->with('success', $result['message']),
+            default => back()->with('success', $result['message']),
         };
     }
 
@@ -249,16 +269,17 @@ class StudentDashboardController extends Controller
 
         $result = $schedule->authorizeAndJoin($student, $liveClass, $request, $restrictionService, $attendanceService);
 
-        if (!$result['success']) {
+        if (! $result['success']) {
             [$statusCode, $redirectRoute] = match ($result['error'] ?? null) {
                 'payment_restricted' => [403, 'student.fees'],
-                'not_enrolled'       => [403, 'student.classes'],
-                default              => [422, 'student.classes'],
+                'not_enrolled' => [403, 'student.classes'],
+                default => [422, 'student.classes'],
             };
 
             if ($request->wantsJson()) {
                 return response()->json($result, $statusCode);
             }
+
             return redirect()->route($redirectRoute)->with('error', $result['message']);
         }
 
@@ -303,14 +324,14 @@ class StudentDashboardController extends Controller
         }
 
         $student = Student::firstOrCreate([
-            'user_id' => $user->id
+            'user_id' => $user->id,
         ], [
             'level' => 'SPM',
             'total_points' => 0,
         ]);
 
-        \App\Http\Controllers\PageController::syncStudentEnrollments($student);
-        app(\App\Services\Student\AssignmentService::class)->syncStudentAssignments($student);
+        PageController::syncStudentEnrollments($student);
+        app(AssignmentService::class)->syncStudentAssignments($student);
 
         return $student;
     }
