@@ -446,8 +446,8 @@
             </div>
 
             {{-- Task Modal --}}
-            <div x-show="showTaskModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
-                <div @click.away="showTaskModal = false" class="bg-white rounded-3xl p-6 max-w-md w-full border border-gray-100 shadow-2xl space-y-4">
+            <div x-show="showTaskModal" x-cloak x-data="{ assignTarget: 'all' }" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+                <div @click.away="showTaskModal = false" class="bg-white rounded-3xl p-6 max-w-md w-full border border-gray-100 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
                     <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                         <h4 class="font-heading font-black text-base text-gray-900">Create New Task / Assignment</h4>
                         <button type="button" @click="showTaskModal = false" class="text-gray-400 font-bold">✕</button>
@@ -471,6 +471,28 @@
                         <div>
                             <label class="font-bold block mb-1">Due Date *</label>
                             <input type="date" name="due_date" required min="{{ date('Y-m-d') }}" value="{{ date('Y-m-d', strtotime('+7 days')) }}" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 outline-none">
+                        </div>
+
+                        <div>
+                            <label class="font-bold block mb-1">Assign To</label>
+                            <select name="assign_target" x-model="assignTarget" class="w-full p-2.5 bg-gray-50 rounded-xl border border-gray-200 outline-none cursor-pointer">
+                                <option value="all">All Students in Class</option>
+                                <option value="selected">Selected Students Only</option>
+                            </select>
+                        </div>
+
+                        <div x-show="assignTarget === 'selected'" class="space-y-1">
+                            <label class="font-bold block mb-1">Select Students</label>
+                            <div class="max-h-36 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-1 bg-gray-50">
+                                @forelse($course->enrollments as $enrollment)
+                                    <label class="flex items-center gap-2 py-1 cursor-pointer">
+                                        <input type="checkbox" name="student_ids[]" value="{{ $enrollment->student_id }}" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                        <span>{{ $enrollment->student?->user?->name ?? 'Student #' . $enrollment->student_id }}</span>
+                                    </label>
+                                @empty
+                                    <span class="text-gray-400">No enrolled students.</span>
+                                @endforelse
+                            </div>
                         </div>
 
                         <div class="pt-2 flex items-center justify-end gap-2">

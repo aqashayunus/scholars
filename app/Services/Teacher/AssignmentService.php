@@ -47,7 +47,15 @@ class AssignmentService
                 $submittedCount = 0;
                 $lateCount = 0;
 
-                foreach ($enrollments as $enrollment) {
+                // If the task was assigned to selected students only, narrow the roster
+                // to those students instead of every course enrollment.
+                $targetEnrollments = $enrollments;
+                if (($assignment->assign_target ?? 'all') === 'selected') {
+                    $assignedStudentIds = $assignment->results->pluck('student_id')->all();
+                    $targetEnrollments = $enrollments->whereIn('student_id', $assignedStudentIds);
+                }
+
+                foreach ($targetEnrollments as $enrollment) {
                     $student = $enrollment->student;
                     $studentName = $student?->user?->name ?? 'Student';
                     $studentEmail = $student?->user?->email ?? '';
@@ -94,7 +102,7 @@ class AssignmentService
                     }
                 }
 
-                $totalStudents = $enrollmentCount;
+                $totalStudents = $targetEnrollments->count();
                 $pendingCount = max(0, $totalStudents - $submittedCount);
                 $pct = $totalStudents > 0 ? round(($submittedCount / $totalStudents) * 100) : 0;
                 $hasOpen = $submittedCount < $totalStudents;
@@ -126,6 +134,7 @@ class AssignmentService
                     'attachmentUrl'    => $assignment->file_url,
                     'attachmentName'   => $assignment->file_name,
                     'course_id'        => $course->id,
+                    'assign_target'    => $assignment->assign_target ?? 'all',
                     'rawDueDate'       => $assignment->due_date ? $assignment->due_date->format('Y-m-d') : date('Y-m-d'),
                     'delete_url'       => route('teacher.tasks.destroy', $assignment->id),
                     'roster'           => $roster,
@@ -208,10 +217,13 @@ class AssignmentService
         $course = $teacher->courses->where('id', $courseId)->firstOrFail();
 
         $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date'    => 'required|date|after_or_equal:today',
-            'file'        => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg,mp4',
+            'title'          => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'due_date'       => 'required|date|after_or_equal:today',
+            'assign_target'  => 'nullable|in:all,selected',
+            'student_ids'    => 'nullable|array',
+            'student_ids.*'  => 'integer',
+            'file'           => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg,mp4',
         ]);
 
         $filePath = null;
@@ -226,15 +238,23 @@ class AssignmentService
         }
 
         $assignment = $course->assignments()->create([
-            'title'       => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'due_date'    => $validated['due_date'],
-            'file_path'   => $filePath,
-            'file_name'   => $fileName,
-            'file_size'   => $fileSize,
+            'title'         => $validated['title'],
+            'description'   => $validated['description'] ?? null,
+            'due_date'      => $validated['due_date'],
+            'file_path'     => $filePath,
+            'file_name'     => $fileName,
+            'file_size'     => $fileSize,
+            'assign_target' => $validated['assign_target'] ?? 'all',
         ]);
 
-        foreach ($course->enrollments as $enrollment) {
+        // Narrow to the teacher's selected students instead of every course enrollment.
+        $targetEnrollments = $course->enrollments;
+        if ($request->input('assign_target') === 'selected' && !empty($request->input('student_ids'))) {
+            $selectedIds = collect($request->input('student_ids'))->map(fn ($sid) => (int) $sid)->all();
+            $targetEnrollments = $course->enrollments->whereIn('student_id', $selectedIds);
+        }
+
+        foreach ($targetEnrollments as $enrollment) {
             StudentAssignment::firstOrCreate([
                 'student_id'    => $enrollment->student_id,
                 'assignment_id' => $assignment->id,
@@ -252,11 +272,12 @@ class AssignmentService
             }
         }
 
+        $assignedCount = $targetEnrollments->count();
         UserNotification::create([
             'user_id' => auth()->id(),
             'type'    => 'task',
             'title'   => 'Task Published & Assigned',
-            'message' => "You successfully assigned '{$validated['title']}' to {$course->title} ({$course->enrollments->count()} students).",
+            'message' => "You successfully assigned '{$validated['title']}' to {$course->title} ({$assignedCount} students).",
         ]);
 
         return $assignment;
