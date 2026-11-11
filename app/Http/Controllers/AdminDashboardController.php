@@ -17,6 +17,7 @@ use App\Models\Assignment;
 use App\Services\Admin\AssignmentQuizService;
 use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
+use App\Services\Admin\ParentAccountService;
 use App\Services\Admin\TeacherApplicationService;
 use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
@@ -342,6 +343,43 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#teachers')
             ->with('success', "Teacher '{$name}' status updated to {$label} (Company record preserved).");
+    }
+
+    // ── PARENT ACCOUNTS DIRECTORY ──────────────────────────────────────────────
+
+    public function linkParentStudent(Request $request, ParentAccountService $parentAccounts)
+    {
+        $validated = $request->validate([
+            'parent_user_id' => 'required|exists:users,id',
+            'student_id'     => 'required|exists:students,id',
+            'relationship'   => 'nullable|string|max:50',
+            'is_primary'     => 'nullable|boolean',
+        ]);
+
+        try {
+            ['parent' => $parent, 'student' => $student] = $parentAccounts->linkParentStudent(
+                $validated,
+                $request->boolean('is_primary', false)
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#parent-accounts')
+            ->with('success', "Successfully linked parent '{$parent->name}' with student '{$student->user->name}'.");
+    }
+
+    public function unlinkParentStudent(Request $request, ParentAccountService $parentAccounts)
+    {
+        $validated = $request->validate([
+            'parent_user_id' => 'required|exists:users,id',
+            'student_id'     => 'required|exists:students,id',
+        ]);
+
+        $parentAccounts->unlinkParentStudent($validated);
+
+        return redirect()->to(route('admin.dashboard') . '#parent-accounts')
+            ->with('success', 'Parent and child link removed successfully.');
     }
 
     // ── OUTREACH & ENGAGEMENT HUB ─────────────────────────────────────────────

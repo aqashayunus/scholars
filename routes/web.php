@@ -334,6 +334,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/diagnostic/{id}/grade', [\App\Http\Controllers\DiagnosticTestController::class, 'saveAdminGrade'])->name('diagnostic.grade');
     Route::post('/diagnostic/test-rule', [\App\Http\Controllers\DiagnosticTestController::class, 'testGradingRule'])->name('diagnostic.test-rule');
 
+    // Parent Accounts Directory
+    Route::post('/parents/link', [AdminDashboardController::class, 'linkParentStudent'])->name('parents.link');
+    Route::post('/parents/unlink', [AdminDashboardController::class, 'unlinkParentStudent'])->name('parents.unlink');
+
 
     // Quiz CRUD
     Route::post('/quizzes', [AdminDashboardController::class, 'storeQuiz'])->name('quizzes.store');

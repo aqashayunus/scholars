@@ -846,6 +846,8 @@
             </div>
         </div>
 
+        @include('admin.partials.parents-tab')
+
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB 3: STUDENT ENGAGEMENT & TOPIC MASTERY TABLE                   --}}
         {{-- ══════════════════════════════════════════════════════════════════ --}}
@@ -7528,6 +7530,9 @@
             }
             if (tabId === 'tab-student' && typeof renderStudentDirPagination === 'function') {
                 renderStudentDirPagination();
+            }
+            if (tabId === 'tab-parent-accounts' && typeof renderParentAccountsPagination === 'function') {
+                renderParentAccountsPagination();
             }
             if (window.OSTablePaginator) {
                 window.OSTablePaginator.renderVisible();

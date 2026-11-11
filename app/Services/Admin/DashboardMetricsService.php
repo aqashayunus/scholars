@@ -28,11 +28,16 @@ use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\TeachingGig;
 use App\Models\User;
+use App\Services\Admin\ParentAccountService;
 use App\Services\StudentAccessRestrictionService;
 use Illuminate\Support\Carbon;
 
 class DashboardMetricsService
 {
+    public function __construct(protected ParentAccountService $parentAccounts)
+    {
+    }
+
     /**
      * Builds the full view-model for the admin dashboard. Pure aggregation —
      * no writes are persisted; the only mutation is decorating in-memory
@@ -534,6 +539,11 @@ class DashboardMetricsService
         $attendanceEarlyJoinWindow      = (int) Setting::get('attendance.early_join_window_minutes', 15);
         $attendanceExcusedInDenominator = (bool) Setting::get('attendance.excused_in_denominator', 0);
 
+        // ── Parents & Linkages Directory ──────────────────────────────────────
+        $parentsDirectory = $this->parentAccounts->parentsDirectoryData();
+        $allParentsList = $parentsDirectory['allParentsList'];
+        $allParentStudentLinks = $parentsDirectory['allParentStudentLinks'];
+
         return [
             'totalUsers' => $totalUsers, 'totalStudents' => $totalStudents, 'totalTeachers' => $totalTeachers, 'totalParents' => $totalParents, 'totalAdmins' => $totalAdmins,
             'totalCourses' => $totalCourses, 'publishedCourses' => $publishedCourses, 'draftCourses' => $draftCourses, 'archivedCourses' => $archivedCourses,
@@ -562,6 +572,7 @@ class DashboardMetricsService
             'allAttendances' => $allAttendances, 'attendanceTotalRecords' => $attendanceTotalRecords, 'attendanceAttendedCount' => $attendanceAttendedCount, 'attendanceLateCount' => $attendanceLateCount,
             'attendanceAbsentCount' => $attendanceAbsentCount, 'attendanceExcusedCount' => $attendanceExcusedCount, 'attendancePendingCount' => $attendancePendingCount,
             'pendingAttendanceCorrections' => $pendingAttendanceCorrections, 'attendanceLateThreshold' => $attendanceLateThreshold, 'attendanceEarlyJoinWindow' => $attendanceEarlyJoinWindow, 'attendanceExcusedInDenominator' => $attendanceExcusedInDenominator,
+            'allParentsList' => $allParentsList, 'allParentStudentLinks' => $allParentStudentLinks,
         ];
     }
 }
