@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChatMessage;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LiveClass;
@@ -38,6 +39,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Mail\WelcomeMail;
@@ -424,18 +426,44 @@ class AdminDashboardController extends Controller
             ];
         });
 
-        $msgLogs = Message::with(['sender', 'receiver'])->latest('id')->take(10)->get()->map(function ($m) {
-            return [
-                'id'        => 'MSG-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
-                'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
-                'role'      => ucfirst($m->sender->role ?? 'User'),
-                'action'    => 'Sent live communication message to ' . ($m->receiver->name ?? 'User #' . $m->receiver_id),
-                'module'    => 'Messenger',
-                'status'    => 'SENT',
-                'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
-                'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
-            ];
-        });
+        $msgLogs = collect();
+        if (Schema::hasTable('messages')) {
+            try {
+                $msgLogs = Message::with(['sender', 'receiver'])->latest('id')->take(10)->get()->map(function ($m) {
+                    return [
+                        'id'        => 'MSG-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
+                        'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
+                        'role'      => ucfirst($m->sender->role ?? 'User'),
+                        'action'    => 'Sent live communication message to ' . ($m->receiver->name ?? 'User #' . $m->receiver_id),
+                        'module'    => 'Messenger',
+                        'status'    => 'SENT',
+                        'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
+                        'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
+                    ];
+                });
+            } catch (\Throwable $e) {
+                $msgLogs = collect();
+            }
+        }
+
+        if ($msgLogs->isEmpty() && Schema::hasTable('chat_messages')) {
+            try {
+                $msgLogs = ChatMessage::with(['sender'])->latest('id')->take(10)->get()->map(function ($m) {
+                    return [
+                        'id'        => 'CHAT-' . str_pad($m->id, 5, '0', STR_PAD_LEFT),
+                        'user'      => $m->sender->name ?? 'User #' . $m->sender_id,
+                        'role'      => ucfirst($m->sender->role ?? 'User'),
+                        'action'    => 'Sent message in conversation #' . $m->conversation_id,
+                        'module'    => 'Chat',
+                        'status'    => strtoupper($m->status ?? 'SENT'),
+                        'date'      => $m->created_at ? $m->created_at->format('d M Y, H:i') : 'Recent',
+                        'timestamp' => $m->created_at ? $m->created_at->timestamp : 0,
+                    ];
+                });
+            } catch (\Throwable $e) {
+                $msgLogs = collect();
+            }
+        }
 
         $userLogs = User::latest('id')->take(10)->get()->map(function ($u) {
             return [
