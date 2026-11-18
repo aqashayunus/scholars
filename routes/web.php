@@ -387,14 +387,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/certificates', [AdminSettingsController::class, 'storeCertificate'])->name('certificates.store');
     Route::delete('/certificates/{id}', [AdminSettingsController::class, 'destroyCertificate'])->name('certificates.destroy');
 
-    // Topic & Subtopic CRUD
-    Route::post('/topics', [AdminCurriculumController::class, 'storeTopic'])->name('topics.store');
-    Route::put('/topics/{id}', [AdminCurriculumController::class, 'updateTopic'])->name('topics.update');
-    Route::delete('/topics/{id}', [AdminCurriculumController::class, 'destroyTopic'])->name('topics.destroy');
-    Route::post('/topics/{topicId}/subtopics', [AdminCurriculumController::class, 'storeSubtopic'])->name('topics.subtopics.store');
-    Route::put('/subtopics/{id}', [AdminCurriculumController::class, 'updateSubtopic'])->name('subtopics.update');
-    Route::delete('/subtopics/{id}', [AdminCurriculumController::class, 'destroySubtopic'])->name('subtopics.destroy');
-
     // Financial & Payment Management (Fee Structures, Invoices, Payment Verification, Gateway Settings)
     Route::post('/fee-structures', [AdminFinanceController::class, 'storeFeeStructure'])->name('fee-structures.store');
     Route::put('/fee-structures/{id}', [AdminFinanceController::class, 'updateFeeStructure'])->name('fee-structures.update');

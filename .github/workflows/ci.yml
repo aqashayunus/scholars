@@ -2,56 +2,112 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    paths: &ci-paths
+      - 'app/**'
+      - 'bootstrap/**'
+      - 'config/**'
+      - 'database/**'
+      - 'resources/**'
+      - 'routes/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'phpstan.neon'
+      - 'phpstan-baseline.neon'
+      - 'phpunit.xml'
+      - 'vite.config.js'
+      - '.env.example'
+      - '.github/workflows/ci.yml'
   pull_request:
-    branches: ['**']
+    branches: ['main', 'khai-QA-refactor']
+    paths: *ci-paths
+  workflow_dispatch: {}
 
 jobs:
-  ci:
+  test:
+    name: Static analysis & tests
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, pdo_sqlite, pdo_mysql, gd, zip
+          php-version: '8.2'
+          extensions: mbstring, xml, dom, ctype, fileinfo, openssl, pdo, pdo_sqlite, sqlite3, bcmath, gd, zip, curl, intl
           coverage: none
 
-      - name: Cache Composer dependencies
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Cache Composer packages
         uses: actions/cache@v4
         with:
           path: vendor
-          key: composer-${{ hashFiles('composer.lock') }}
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
-      - name: Setup Node
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install Node dependencies
+      - name: Install npm dependencies
         run: npm ci
 
       - name: Build frontend assets
         run: npm run build
+
+      - name: Check PHP syntax (lint)
+        run: find app bootstrap config database routes tests -type f -name "*.php" -exec php -l {} +
 
       - name: Prepare environment
         run: |
           cp .env.example .env
           php artisan key:generate
 
+      - name: Verify route table loads
+        run: php artisan route:list
+
       - name: Check code style (Pint)
         run: composer format:check
 
       - name: Static analysis (Larastan)
-        run: composer analyse
+        run: composer analyse -- --memory-limit=1G
 
       - name: Run test suite
         run: php artisan test
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+
+      # Runs LAST, deliberately. config:cache freezes .env's DB settings into
+      # bootstrap/cache/config.php, which would override the test step's
+      # DB_CONNECTION=sqlite above and break the suite if run any earlier.
+      # If any of these three fail here, cd.yml's `php artisan optimize`
+      # would otherwise fail on the live host AFTER migrate --force has
+      # already applied schema changes -- the worst moment to find out.
+      - name: Production cache integrity
+        run: |
+          set -eo pipefail
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+
+      # Targeted clears, not optimize:clear -- optimize:clear's cache:clear
+      # step would try to reach whatever CACHE_STORE points to in .env,
+      # which may not be reachable from this runner.
+      - name: Clear production caches
+        if: always()
+        run: |
+          php artisan config:clear
+          php artisan route:clear
+          php artisan view:clear

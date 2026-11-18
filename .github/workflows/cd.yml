@@ -1,0 +1,253 @@
+name: CD
+
+# Deploys olympia-scholars to the live cPanel server. See docs/CICD.md for
+# the full picture.
+#
+# `build` both builds AND ships the code (direct rsync from the runner's own
+# workspace, no GitHub Actions artifact hand-off -- olympia-crm's own CD
+# pipeline hit a permanent "Artifact storage quota" wall using the
+# artifact-based approach and never got it to recover; built artifact-free
+# here from day one instead, see docs/CICD.md §3/§7.7).
+#
+# Two deploy targets by design (matching olympia-crm's crmtest/ocrm split):
+#   deploy-test -> scholars.olympia-education.com, automatic on every
+#                  CI-green push to main/khai-QA-refactor (both branches are
+#                  kept in lockstep as of 2026-11-18 -- main was reset to
+#                  match khai-QA-refactor, which is now the canonical trunk).
+#   deploy-prod -> gated behind an explicit workflow_dispatch with
+#                  deploy_production checked. NOT YET PROVISIONED -- no
+#                  production subdomain exists, and CPANEL_DEPLOY_PATH_PROD /
+#                  CPANEL_HEALTH_CHECK_URL_PROD are unset. The job and its
+#                  guard steps are wired now so nothing further needs
+#                  touching here once that subdomain exists -- just set the
+#                  two secrets. Until then this job is dead code by design,
+#                  and the guard steps make sure an accidental dispatch with
+#                  deploy_production:true fails loudly instead of silently
+#                  rsyncing/cd-ing into an empty path.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'main'
+      deploy_production:
+        description: 'Also deploy to production? Leave unchecked to deploy to the test target only.'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: Build and deploy release
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       (github.event.workflow_run.head_branch == 'main' || github.event.workflow_run.head_branch == 'khai-QA-refactor'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch) || 'main' }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, fileinfo, openssl, pdo, pdo_mysql, mysqli, bcmath, gd, zip, dom, curl, intl
+          coverage: none
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-prod-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-prod-${{ runner.os }}-
+
+      - name: Install Composer dependencies (production)
+        run: composer install --no-interaction --prefer-dist --no-progress --no-dev --optimize-autoloader
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Strip dev-only paths before rsync
+        # Physically removing these (rather than rsync --exclude, which
+        # would PROTECT them from --delete -- the opposite of what's wanted)
+        # lets a single `rsync --delete` safely remove any stale copies of
+        # these from the live host too.
+        run: |
+          rm -rf .git .github node_modules tests docs \
+            phpunit.xml phpstan.neon phpstan-baseline.neon .phpunit.result.cache
+
+      - name: Deploy to cPanel (test) via rsync
+        # Only 3 excludes: .env plus the 2 stateful storage paths confirmed
+        # by grepping every Storage::disk(...)/->store()/->storeAs() call
+        # site in app/ -- see docs/CICD.md §4. No root-level upload dirs
+        # exist outside Laravel's own storage tree on this app.
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: >-
+            -avz --delete
+            --exclude=.env
+            --exclude=/storage/app/private/
+            --exclude=/storage/app/public/
+          path: ./
+          remote_path: ${{ secrets.CPANEL_DEPLOY_PATH }}
+          remote_host: ${{ secrets.CPANEL_SSH_HOST }}
+          remote_port: ${{ secrets.CPANEL_SSH_PORT }}
+          remote_user: ${{ secrets.CPANEL_SSH_USER }}
+          remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      - name: Guard production secrets are configured
+        # Production subdomain does not exist yet (docs/CICD.md §6). If this
+        # job is ever manually dispatched with deploy_production:true before
+        # CPANEL_DEPLOY_PATH_PROD is set, fail loudly here rather than let
+        # the next step rsync with an empty remote_path.
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true
+        run: |
+          if [ -z "${{ secrets.CPANEL_DEPLOY_PATH_PROD }}" ]; then
+            echo "::error::CPANEL_DEPLOY_PATH_PROD is not set -- production subdomain not yet provisioned (see docs/CICD.md section 6). Refusing to deploy to production."
+            exit 1
+          fi
+
+      - name: Deploy to cPanel (production) via rsync
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: >-
+            -avz --delete
+            --exclude=.env
+            --exclude=/storage/app/private/
+            --exclude=/storage/app/public/
+          path: ./
+          remote_path: ${{ secrets.CPANEL_DEPLOY_PATH_PROD }}
+          remote_host: ${{ secrets.CPANEL_SSH_HOST }}
+          remote_port: ${{ secrets.CPANEL_SSH_PORT }}
+          remote_user: ${{ secrets.CPANEL_SSH_USER }}
+          remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+  deploy-test:
+    name: Activate on cPanel (test)
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cpanel-deploy-test-scholars
+      cancel-in-progress: false
+
+    steps:
+      - name: Run post-deploy Artisan sequence
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CPANEL_SSH_HOST }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          username: ${{ secrets.CPANEL_SSH_USER }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            set -o pipefail
+            cd "${{ secrets.CPANEL_DEPLOY_PATH }}"
+
+            # rsync --delete can remove these placeholder-only directories
+            # (they hold only the repo's .gitignore markers) if they were
+            # ever absent from what `build` just synced.
+            mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views
+
+            # --- Pre-migration safety sequence ---
+            mkdir -p ~/backups/scholars_db
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            # Never `source .env` -- a generated password containing shell
+            # metacharacters would be executed as code. grep+cut extracts
+            # the raw value only. tr -d strips a trailing \r (CRLF) and any
+            # surrounding quotes, in case .env is ever re-uploaded from a
+            # Windows editor -- pre-empting ICIPC's documented still-open gap.
+            DB_USERNAME=$(grep '^DB_USERNAME=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_PASSWORD=$(grep '^DB_PASSWORD=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_HOST=$(grep '^DB_HOST=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_DATABASE=$(grep '^DB_DATABASE=' .env | cut -d '=' -f2- | tr -d '\r"')
+            mysqldump --single-transaction --quick --lock-tables=false --no-tablespaces \
+              -u"$DB_USERNAME" -p"$DB_PASSWORD" -h"$DB_HOST" "$DB_DATABASE" \
+              | gzip > ~/backups/scholars_db/pre_deploy_${TIMESTAMP}.sql.gz
+            ls -1t ~/backups/scholars_db/*.sql.gz | tail -n +6 | xargs -r rm --
+
+            php artisan migrate --force
+            php artisan storage:link
+
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+
+            php artisan optimize
+            php artisan queue:restart
+
+            # /up proves PHP-FPM/bootstrap integrity, not DB reachability --
+            # the mysqldump above is what actually proves DB connectivity,
+            # and it already ran before migrate --force touched anything.
+            curl -sf "${{ secrets.CPANEL_HEALTH_CHECK_URL }}" && echo "Deploy OK" || (echo "Health check FAILED" && exit 1)
+
+  deploy-prod:
+    name: Activate on cPanel (production)
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy_production == true
+    concurrency:
+      group: cpanel-deploy-prod-scholars
+      cancel-in-progress: false
+
+    steps:
+      - name: Guard production secrets are configured
+        run: |
+          if [ -z "${{ secrets.CPANEL_DEPLOY_PATH_PROD }}" ]; then
+            echo "::error::CPANEL_DEPLOY_PATH_PROD is not set -- production subdomain not yet provisioned (see docs/CICD.md section 6). Refusing to run the activation sequence."
+            exit 1
+          fi
+
+      - name: Run post-deploy Artisan sequence
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CPANEL_SSH_HOST }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          username: ${{ secrets.CPANEL_SSH_USER }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            set -o pipefail
+            cd "${{ secrets.CPANEL_DEPLOY_PATH_PROD }}"
+
+            mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/testing storage/framework/views
+
+            mkdir -p ~/backups/scholars_db
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            DB_USERNAME=$(grep '^DB_USERNAME=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_PASSWORD=$(grep '^DB_PASSWORD=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_HOST=$(grep '^DB_HOST=' .env | cut -d '=' -f2- | tr -d '\r"')
+            DB_DATABASE=$(grep '^DB_DATABASE=' .env | cut -d '=' -f2- | tr -d '\r"')
+            mysqldump --single-transaction --quick --lock-tables=false --no-tablespaces \
+              -u"$DB_USERNAME" -p"$DB_PASSWORD" -h"$DB_HOST" "$DB_DATABASE" \
+              | gzip > ~/backups/scholars_db/pre_deploy_prod_${TIMESTAMP}.sql.gz
+            ls -1t ~/backups/scholars_db/pre_deploy_prod_*.sql.gz | tail -n +6 | xargs -r rm --
+
+            php artisan migrate --force
+            php artisan storage:link
+
+            php artisan config:clear
+            php artisan route:clear
+            php artisan view:clear
+
+            php artisan optimize
+            php artisan queue:restart
+
+            curl -sf "${{ secrets.CPANEL_HEALTH_CHECK_URL_PROD }}" && echo "Deploy OK" || (echo "Health check FAILED" && exit 1)
