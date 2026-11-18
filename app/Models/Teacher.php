@@ -20,6 +20,7 @@ class Teacher extends Model
     public function learningMaterials() { return $this->hasMany(LearningMaterial::class); }
     public function subjects()          { return $this->belongsToMany(Subject::class, 'teacher_subject'); }
     public function claims()            { return $this->hasMany(TeacherClassClaim::class); }
+    public function classRequests()     { return $this->hasMany(ClassRequest::class); }
 
     public function getNameAttribute()  { return $this->user->name; }
     public function getEmailAttribute() { return $this->user->email; }

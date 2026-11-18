@@ -271,15 +271,22 @@
                                 </a>
                             @endif
 
-                            {{-- Reschedule Action --}}
-                            <button @click="openReschedule({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
-                                Reschedule
-                            </button>
+                            @if($lc->pendingClassRequest)
+                                <span class="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-bold border {{ $lc->pendingClassRequest->type === 'cancel' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200' }}" title="Request submitted on {{ $lc->pendingClassRequest->created_at->format('d M Y, h:i A') }}. Reason: {{ $lc->pendingClassRequest->reason }}">
+                                    <span class="w-2 h-2 rounded-full {{ $lc->pendingClassRequest->type === 'cancel' ? 'bg-rose-500 animate-pulse' : 'bg-amber-500 animate-pulse' }}"></span>
+                                    <span>Pending {{ ucfirst($lc->pendingClassRequest->type) }} Approval</span>
+                                </span>
+                            @else
+                                {{-- Reschedule Action --}}
+                                <button @click="openReschedule({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                                    Reschedule
+                                </button>
 
-                            {{-- Cancel Action --}}
-                            <button @click="openCancel({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
-                                Request Cancel
-                            </button>
+                                {{-- Cancel Action --}}
+                                <button @click="openCancel({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                                    Request Cancel
+                                </button>
+                            @endif
                         </div>
                     </div>
                 @empty

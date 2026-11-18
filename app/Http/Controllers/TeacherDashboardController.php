@@ -515,7 +515,7 @@ class TeacherDashboardController extends Controller
                 });
             })
             ->activeOrUpcoming()
-            ->with('course.subject')
+            ->with(['course.subject', 'pendingClassRequest'])
             ->orderBy('scheduled_at')
             ->get();
 

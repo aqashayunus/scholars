@@ -548,6 +548,7 @@
         </div>
 
         @include('admin.partials.teacher-claims-tab')
+        @include('admin.partials.class-requests-tab')
 
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB: STUDENT DIRECTORY & LINKAGES (PARENT & TEACHER ASSIGNMENTS) --}}
@@ -1622,6 +1623,18 @@
                         </div>
                     </div>
 
+                    @if(($pendingClassRequestsCount ?? 0) > 0)
+                        <div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-2.5 text-amber-900 font-medium">
+                                <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span><strong>{{ $pendingClassRequestsCount }} pending teacher request(s)</strong> awaiting administrative review (rescheduling / cancellations).</span>
+                            </div>
+                            <button onclick="switchTab('tab-class-requests')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition shrink-0 cursor-pointer shadow-2xs">
+                                Review Requests &rarr;
+                            </button>
+                        </div>
+                    @endif
+
                     <div class="overflow-x-auto admin-scrollbar">
                         <table class="w-full text-left text-xs" id="liveClassesTable">
                             <thead>
@@ -1663,9 +1676,14 @@
                                             @endif
                                         </td>
                                         <td class="py-3.5 px-4">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-medium uppercase {{ $lc->status === 'upcoming' ? 'bg-slate-100 text-slate-700' : ($lc->status === 'live' ? 'bg-emerald-50 text-emerald-700 font-semibold' : 'bg-gray-100 text-gray-600') }}">
+                                            <span class="px-2 py-0.5 rounded text-[10px] font-medium uppercase {{ $lc->status === 'upcoming' ? 'bg-slate-100 text-slate-700' : ($lc->status === 'live' ? 'bg-emerald-50 text-emerald-700 font-semibold' : ($lc->status === 'cancelled' ? 'bg-rose-50 text-rose-700' : 'bg-gray-100 text-gray-600')) }}">
                                                 {{ $lc->status ?? 'upcoming' }}
                                             </span>
+                                            @if($lc->pendingClassRequest)
+                                                <button onclick="switchTab('tab-class-requests')" class="block mt-1 text-[10px] font-bold text-amber-700 hover:underline cursor-pointer" title="Has pending request">
+                                                    Req: {{ ucfirst($lc->pendingClassRequest->type) }} &rarr;
+                                                </button>
+                                            @endif
                                         </td>
                                         <td class="py-3.5 px-4 text-right">
                                             <div class="flex items-center justify-end gap-1.5">

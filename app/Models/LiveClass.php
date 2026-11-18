@@ -83,6 +83,8 @@ class LiveClass extends Model
     public function attendances() { return $this->hasMany(StudentAttendance::class); }
     public function attendanceEvents() { return $this->hasMany(AttendanceEvent::class); }
     public function attendanceCorrectionRequests() { return $this->hasMany(AttendanceCorrectionRequest::class); }
+    public function classRequests() { return $this->hasMany(ClassRequest::class); }
+    public function pendingClassRequest() { return $this->hasOne(ClassRequest::class)->where('status', 'pending')->latestOfMany(); }
 
     public function getAssignedTeacherAttribute()
     {

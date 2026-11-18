@@ -323,7 +323,8 @@
 
                 $missingSubjectDiagCount = $missingSubjectDiagnosticCount ?? \App\Models\Subject::where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
                 $pendingTasksToGrade = \App\Models\StudentAssignment::where('status', 'submitted')->count();
-                $curriculumAlertTotal = $missingSubjectDiagCount + $pendingTasksToGrade;
+                $pendingClassRequestsNavCount = \App\Models\ClassRequest::where('status', 'pending')->count();
+                $curriculumAlertTotal = $missingSubjectDiagCount + $pendingTasksToGrade + $pendingClassRequestsNavCount;
 
                 $pendingVerificationsCount = \App\Models\Payment::where('status', 'pending')->count()
                     + \App\Models\Invoice::where('status', 'pending_verification')
@@ -358,10 +359,10 @@
                      },
                      isGroupActive(menu) {
                          const map = {
-                             academics: ['courses', 'timetable'],
+                             academics: ['courses', 'timetable', 'class-requests'],
                              students: ['student', 'students', 'attendance'],
                              parents: ['parent-accounts'],
-                             teachers: ['teachers', 'teacher-claims'],
+                             teachers: ['teachers', 'teacher-claims', 'class-requests'],
                              finance: ['financials'],
                              reports: ['users', 'reports', 'records', 'logs'],
                              system: ['content', 'emailsettings', 'settings']
@@ -372,10 +373,10 @@
                          if (!tabId) return;
                          const clean = tabId.replace('tab-', '').replace('#', '');
                          this.currentTab = clean;
-                         if (['courses', 'timetable'].includes(clean)) this.openMenus.academics = true;
+                         if (['courses', 'timetable', 'class-requests'].includes(clean)) this.openMenus.academics = true;
                          if (['student', 'students', 'attendance'].includes(clean)) this.openMenus.students = true;
                          if (['parent-accounts'].includes(clean)) this.openMenus.parents = true;
-                         if (['teachers', 'teacher-claims'].includes(clean)) this.openMenus.teachers = true;
+                         if (['teachers', 'teacher-claims', 'class-requests'].includes(clean)) this.openMenus.teachers = true;
                          if (['financials'].includes(clean)) this.openMenus.finance = true;
                          if (['users', 'reports', 'records', 'logs'].includes(clean)) this.openMenus.reports = true;
                          if (['content', 'emailsettings', 'settings'].includes(clean)) this.openMenus.system = true;
@@ -469,6 +470,17 @@
                            class="sidebar-admin-link sidebar-sub-link" 
                            id="nav-timetable">
                             <span>Master Timetable</span>
+                        </a>
+
+                        <a href="{{ route('admin.dashboard') }}#class-requests" 
+                           onclick="if(typeof switchTab==='function') switchTab('tab-class-requests')" 
+                           @click="closeMobile()"
+                           class="sidebar-admin-link sidebar-sub-link" 
+                           id="nav-class-requests">
+                            <span>Class Requests</span>
+                            @if($pendingClassRequestsNavCount > 0)
+                                <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-extrabold leading-none" title="{{ $pendingClassRequestsNavCount }} pending class request(s) awaiting review">{{ $pendingClassRequestsNavCount }}</span>
+                            @endif
                         </a>
                     </div>
                 </div>
@@ -625,6 +637,17 @@
                             <span>Teacher Claims</span>
                             @if($pendingClaimsNavCount > 0)
                                 <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-extrabold leading-none">{{ $pendingClaimsNavCount }}</span>
+                            @endif
+                        </a>
+
+                        <a href="{{ route('admin.dashboard') }}#class-requests" 
+                           onclick="if(typeof switchTab==='function') switchTab('tab-class-requests')" 
+                           @click="closeMobile()"
+                           class="sidebar-admin-link sidebar-sub-link" 
+                           id="nav-teacher-class-requests">
+                            <span>Class Requests</span>
+                            @if($pendingClassRequestsNavCount > 0)
+                                <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-extrabold leading-none" title="{{ $pendingClassRequestsNavCount }} pending class request(s) awaiting review">{{ $pendingClassRequestsNavCount }}</span>
                             @endif
                         </a>
                     </div>

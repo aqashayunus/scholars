@@ -307,6 +307,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
     Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
 
+    // Teacher Class Reschedule & Cancellation Requests Management
+    Route::post('/class-requests/{id}/approve', [AdminDashboardController::class, 'approveClassRequest'])->name('class-requests.approve');
+    Route::post('/class-requests/{id}/reject', [AdminDashboardController::class, 'rejectClassRequest'])->name('class-requests.reject');
+
     // Tasks & Diagnostic Tests Management
     Route::post('/tasks', [AdminDashboardController::class, 'storeTask'])->name('tasks.store');
     Route::post('/tasks/parse-pdf', [AdminDashboardController::class, 'parsePdfQuestions'])->name('tasks.parse-pdf');

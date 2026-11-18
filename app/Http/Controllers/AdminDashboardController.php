@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ChatMessage;
+use App\Models\ClassRequest;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\LiveClass;
@@ -147,7 +148,7 @@ class AdminDashboardController extends Controller
         $allSubjects          = Subject::with(['topics.subtopics', 'diagnosticTest'])->orderBy('order', 'asc')->orderBy('id', 'asc')->get();
         $missingSubjectDiagnosticCount = $allSubjects->where('is_active', true)->whereNull('diagnostic_assignment_id')->count();
         $allTopics            = SubjectTopic::with(['subject', 'subtopics'])->orderBy('subject_id')->orderBy('chapter_number')->get();
-        $allLiveClasses       = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user'])->latest('id')->get();
+        $allLiveClasses       = LiveClass::with(['course.subject', 'course.teacher.user', 'teacher.user', 'pendingClassRequest'])->latest('id')->get();
         $allRecordedClasses   = RecordedClass::with(['course.subject', 'subject'])->latest('id')->get();
         $allQuizzes           = Quiz::with(['course.subject', 'questions'])->latest('id')->get();
         $teacherApplications  = TeacherApplication::with('user')->latest('id')->get();
@@ -614,6 +615,16 @@ class AdminDashboardController extends Controller
             ->orderByDesc('parent_student.id')
             ->get();
 
+        // ── 10. Teacher Class Requests (Reschedule & Cancel Approvals) ────────
+        $allClassRequests = ClassRequest::with(['teacher.user', 'liveClass.course.subject', 'liveClass.teacher.user'])
+            ->latest('id')
+            ->get();
+        $pendingClassRequestsCount  = $allClassRequests->where('status', 'pending')->count();
+        $approvedClassRequestsCount = $allClassRequests->where('status', 'approved')->count();
+        $rejectedClassRequestsCount = $allClassRequests->where('status', 'rejected')->count();
+        $rescheduleRequestsCount    = $allClassRequests->where('type', 'reschedule')->count();
+        $cancelRequestsCount        = $allClassRequests->where('type', 'cancel')->count();
+
         return view('admin.dashboard', compact(
             'totalUsers', 'totalStudents', 'totalTeachers', 'totalParents', 'totalAdmins',
             'totalCourses', 'publishedCourses', 'draftCourses', 'archivedCourses',
@@ -641,7 +652,8 @@ class AdminDashboardController extends Controller
             'emailCategoryLabels', 'emailCategoryData',
             'allAttendances', 'attendanceTotalRecords', 'attendanceAttendedCount', 'attendanceLateCount',
             'attendanceAbsentCount', 'attendanceExcusedCount', 'attendancePendingCount',
-            'pendingAttendanceCorrections', 'attendanceLateThreshold', 'attendanceEarlyJoinWindow', 'attendanceExcusedInDenominator'
+            'pendingAttendanceCorrections', 'attendanceLateThreshold', 'attendanceEarlyJoinWindow', 'attendanceExcusedInDenominator',
+            'allClassRequests', 'pendingClassRequestsCount', 'approvedClassRequestsCount', 'rejectedClassRequestsCount', 'rescheduleRequestsCount', 'cancelRequestsCount'
         ));
     }
 
@@ -2931,6 +2943,190 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard') . '#teacher-claims')
             ->with('success', "Class fee claim '{$claim->claim_number}' marked as paid.");
+    }
+
+    // ── TEACHER CLASS REQUESTS (Reschedule & Cancel Approvals) ────────────────
+
+    public function approveClassRequest(Request $request, $id)
+    {
+        $classRequest = ClassRequest::with(['liveClass.course.enrollments.student.user', 'teacher.user'])->findOrFail($id);
+        $liveClass = $classRequest->liveClass;
+        $adminNote = $request->input('admin_note', 'Approved by administration.');
+
+        $classRequest->update([
+            'status'     => 'approved',
+            'admin_note' => $adminNote,
+        ]);
+
+        if ($liveClass) {
+            if ($classRequest->type === 'cancel') {
+                $liveClass->update([
+                    'status' => 'cancelled',
+                ]);
+
+                // Notify Teacher
+                if ($classRequest->teacher?->user_id) {
+                    \App\Models\UserNotification::create([
+                        'user_id' => $classRequest->teacher->user_id,
+                        'type'    => 'class_reminder',
+                        'title'   => 'Class Cancellation Approved',
+                        'message' => "Your cancellation request for '{$liveClass->title}' has been approved by admin.",
+                    ]);
+                }
+
+                // Notify Students and Parents
+                $this->notifyStudentsAndParentsOfCancellation($liveClass, $classRequest->reason);
+
+            } elseif ($classRequest->type === 'reschedule') {
+                $oldDateTime = $liveClass->scheduled_at ? $liveClass->scheduled_at->copy() : null;
+                $newDateTime = $classRequest->requested_at ? Carbon::parse($classRequest->requested_at) : now();
+
+                $liveClass->update([
+                    'is_rescheduled'        => true,
+                    'original_scheduled_at' => $liveClass->original_scheduled_at ?? $oldDateTime,
+                    'scheduled_at'          => $newDateTime,
+                    'reschedule_reason'     => $classRequest->reason,
+                    'rescheduled_by'        => auth()->id(),
+                ]);
+
+                // Notify Teacher
+                if ($classRequest->teacher?->user_id) {
+                    \App\Models\UserNotification::create([
+                        'user_id' => $classRequest->teacher->user_id,
+                        'type'    => 'class_reminder',
+                        'title'   => 'Class Reschedule Approved',
+                        'message' => "Your reschedule request for '{$liveClass->title}' has been approved. The session is now scheduled for " . $newDateTime->format('d M Y, h:i A') . ".",
+                    ]);
+                }
+
+                // Notify Students and Parents
+                $teacherName = $classRequest->teacher?->user?->name ?? 'Instructor';
+                $this->notifyStudentsAndParentsOfReschedule($liveClass, $oldDateTime, $newDateTime, $classRequest->reason, $teacherName);
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Class {$classRequest->type} request approved successfully.",
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#class-requests')
+            ->with('success', "Class {$classRequest->type} request for '{$liveClass?->title}' approved successfully.");
+    }
+
+    public function rejectClassRequest(Request $request, $id)
+    {
+        $classRequest = ClassRequest::with(['liveClass', 'teacher.user'])->findOrFail($id);
+        $adminNote = $request->input('admin_note', 'Request was not approved by administration.');
+
+        $classRequest->update([
+            'status'     => 'rejected',
+            'admin_note' => $adminNote,
+        ]);
+
+        if ($classRequest->teacher?->user_id) {
+            $liveClassTitle = $classRequest->liveClass?->title ?? 'Session';
+            \App\Models\UserNotification::create([
+                'user_id' => $classRequest->teacher->user_id,
+                'type'    => 'class_reminder',
+                'title'   => 'Class Request Rejected',
+                'message' => "Your {$classRequest->type} request for '{$liveClassTitle}' was not approved by administration. Reason: \"{$adminNote}\".",
+            ]);
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Class {$classRequest->type} request rejected.",
+            ]);
+        }
+
+        return redirect()->to(route('admin.dashboard') . '#class-requests')
+            ->with('success', "Class {$classRequest->type} request for '{$classRequest->liveClass?->title}' rejected.");
+    }
+
+    protected function notifyStudentsAndParentsOfReschedule(LiveClass $liveClass, ?Carbon $oldTime, Carbon $newTime, string $reason, string $teacherName): void
+    {
+        $oldTimeStr = $oldTime ? $oldTime->format('D, d M h:i A') : 'previous time';
+        $newTimeStr = $newTime->format('D, d M h:i A');
+
+        $enrollments = $liveClass->course?->enrollments()->with('student.user')->get() ?? collect();
+
+        foreach ($enrollments as $enrollment) {
+            $student = $enrollment->student;
+            if (!$student) continue;
+
+            if ($student->user) {
+                \App\Models\UserNotification::create([
+                    'user_id' => $student->user->id,
+                    'type'    => 'class_reminder',
+                    'title'   => 'Class Rescheduled: ' . $liveClass->title,
+                    'message' => "Teacher {$teacherName} has rescheduled {$liveClass->title} from {$oldTimeStr} to {$newTimeStr}. Reason: \"{$reason}\".",
+                ]);
+            }
+
+            $parentUserIds = [];
+            if ($student->parent_user_id) {
+                $parentUserIds[] = $student->parent_user_id;
+            }
+            $pivotParents = DB::table('parent_student')
+                ->where('student_id', $student->id)
+                ->where('status', 'active')
+                ->pluck('parent_user_id')
+                ->toArray();
+            $parentUserIds = array_unique(array_merge($parentUserIds, $pivotParents));
+
+            foreach ($parentUserIds as $parentId) {
+                \App\Models\UserNotification::create([
+                    'user_id' => $parentId,
+                    'type'    => 'class_reminder',
+                    'title'   => "Child's Class Rescheduled ({$student->user->name})",
+                    'message' => "{$liveClass->title} for {$student->user->name} has been moved to {$newTimeStr} by {$teacherName}. Reason: \"{$reason}\".",
+                ]);
+            }
+        }
+    }
+
+    protected function notifyStudentsAndParentsOfCancellation(LiveClass $liveClass, string $reason): void
+    {
+        $timeStr = $liveClass->scheduled_at ? $liveClass->scheduled_at->format('D, d M Y, h:i A') : 'scheduled time';
+        $enrollments = $liveClass->course?->enrollments()->with('student.user')->get() ?? collect();
+
+        foreach ($enrollments as $enrollment) {
+            $student = $enrollment->student;
+            if (!$student) continue;
+
+            if ($student->user) {
+                \App\Models\UserNotification::create([
+                    'user_id' => $student->user->id,
+                    'type'    => 'class_reminder',
+                    'title'   => 'Class Cancelled: ' . $liveClass->title,
+                    'message' => "The class session '{$liveClass->title}' on {$timeStr} has been cancelled by administration. Reason: \"{$reason}\".",
+                ]);
+            }
+
+            $parentUserIds = [];
+            if ($student->parent_user_id) {
+                $parentUserIds[] = $student->parent_user_id;
+            }
+            $pivotParents = DB::table('parent_student')
+                ->where('student_id', $student->id)
+                ->where('status', 'active')
+                ->pluck('parent_user_id')
+                ->toArray();
+            $parentUserIds = array_unique(array_merge($parentUserIds, $pivotParents));
+
+            foreach ($parentUserIds as $parentId) {
+                \App\Models\UserNotification::create([
+                    'user_id' => $parentId,
+                    'type'    => 'class_reminder',
+                    'title'   => "Child's Class Cancelled ({$student->user->name})",
+                    'message' => "The class session '{$liveClass->title}' on {$timeStr} for {$student->user->name} has been cancelled. Reason: \"{$reason}\".",
+                ]);
+            }
+        }
     }
 
     // ── TEACHING GIGS ─────────────────────────────────────────────────────────
