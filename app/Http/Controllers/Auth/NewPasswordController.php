@@ -43,9 +43,14 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
+                // A password chosen through the emailed reset link (proving
+                // inbox ownership) also satisfies a pending forced change from
+                // a temporary password, so the user is not asked to change it
+                // a second time at their next login.
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
+                    'must_change_password' => false,
                 ])->save();
 
                 event(new PasswordReset($user));

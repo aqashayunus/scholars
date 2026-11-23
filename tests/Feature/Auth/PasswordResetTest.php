@@ -70,4 +70,31 @@ class PasswordResetTest extends TestCase
             return true;
         });
     }
+
+    public function test_resetting_password_by_email_clears_a_pending_forced_change(): void
+    {
+        Notification::fake();
+
+        // e.g. a newly approved teacher whose temporary password never arrived
+        $user = User::factory()->create(['role' => 'teacher']);
+        $user->forceFill(['must_change_password' => true])->save();
+
+        $this->post('/forgot-password', ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $this->post('/reset-password', [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'NewSecurePass2026!',
+                'password_confirmation' => 'NewSecurePass2026!',
+            ])->assertSessionHasNoErrors();
+
+            return true;
+        });
+
+        // EnsurePasswordIsNotExpired only redirects to the forced-change
+        // screen while this flag is set, so clearing it is what stops the
+        // second "set your password" prompt at the next login.
+        $this->assertFalse((bool) $user->refresh()->must_change_password);
+    }
 }
