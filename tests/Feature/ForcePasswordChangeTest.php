@@ -69,4 +69,16 @@ class ForcePasswordChangeTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_set_password_screen_shows_the_olympian_scholars_logo(): void
+    {
+        $user = User::factory()->create(['role' => 'teacher', 'password' => Hash::make('temp-password')]);
+        $user->must_change_password = true;
+        $user->save();
+
+        $this->actingAs($user)->get(route('password.force.show'))
+            ->assertOk()
+            ->assertSee(asset('images/logo-icon.png'), false)
+            ->assertSee('alt="Olympian Scholars"', false);
+    }
 }
