@@ -136,13 +136,6 @@ Route::prefix('student')->name('student.')->middleware(['auth', 'role:student'])
     Route::get('/fees/{invoice}', [InvoiceController::class, 'show'])->name('fees.show');
     Route::post('/fees/{invoice}/proof', [InvoiceController::class, 'uploadProof'])->name('fees.proof');
     Route::post('/fees/pay', [PaymentController::class, 'store'])->name('fees.pay');
-    // Full-page messenger over the Conversation/ChatMessage stack — DISABLED
-    // per repo owner: product currently focuses solely on the floating
-    // widget (resources/views/components/floating-chatbox.blade.php), which
-    // uses the same chat.* backend and is unaffected. View and backend logic
-    // are intact at resources/views/chat/_full-page-messenger.blade.php and
-    // resources/views/student/messages.blade.php — uncomment to re-enable.
-    // Route::view('/messages', 'student.messages')->name('messages');
     Route::get('/profile', [StudentDashboardController::class, 'profile'])->name('profile');
     Route::patch('/profile', [StudentDashboardController::class, 'updateProfile'])->name('profile.update');
     Route::patch('/profile/password', [StudentDashboardController::class, 'updatePassword'])->name('profile.password');
@@ -237,14 +230,16 @@ Route::prefix('teacher')->name('teacher.')->middleware(['auth', 'role:teacher', 
 
     Route::get('/student-monitoring', [TeacherDashboardController::class, 'monitoring'])->name('monitoring');
     Route::get('/progress', [TeacherDashboardController::class, 'monitoring'])->name('progress');
-    // Full-page messenger over the Conversation/ChatMessage stack — DISABLED
-    // per repo owner: product currently focuses solely on the floating
-    // widget (resources/views/components/floating-chatbox.blade.php), which
-    // uses the same chat.* backend and is unaffected. View and backend logic
-    // are intact at resources/views/chat/_full-page-messenger.blade.php and
-    // resources/views/teacher/messages.blade.php — uncomment to re-enable.
-    // Route::view('/messages', 'teacher.messages')->name('messages');
     Route::post('/notifications/read-all', [TeacherDashboardController::class, 'readAllNotifications'])->name('notifications.readAll');
+
+    // Profile & credential documents
+    Route::get('/profile', [TeacherDashboardController::class, 'profile'])->name('profile');
+    Route::put('/profile', [TeacherDashboardController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [TeacherDashboardController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/documents', [TeacherDashboardController::class, 'uploadDocument'])->name('profile.documents.upload');
+    Route::delete('/profile/documents/{type}', [TeacherDashboardController::class, 'deleteDocument'])->name('profile.documents.delete');
+    Route::get('/profile/documents/{type}', [TeacherDashboardController::class, 'viewDocument'])->name('profile.documents.view');
+    Route::get('/profile/documents/{type}/download', [TeacherDashboardController::class, 'downloadDocument'])->name('profile.documents.download');
 
     // Gig routes
     Route::get('/gigs', [TeacherDashboardController::class, 'gigsMarketplace'])->name('gigs');
@@ -351,6 +346,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/teacher-claims/{id}/reject', [AdminDashboardController::class, 'rejectTeacherClaim'])->name('teacher-claims.reject');
     Route::post('/teacher-claims/{id}/mark-paid', [AdminDashboardController::class, 'markPaidTeacherClaim'])->name('teacher-claims.mark-paid');
 
+    // Teacher Class Requests (reschedule & cancellation approvals)
+    Route::post('/class-requests/{id}/approve', [AdminDashboardController::class, 'approveClassRequest'])->name('class-requests.approve');
+    Route::post('/class-requests/{id}/reject', [AdminDashboardController::class, 'rejectClassRequest'])->name('class-requests.reject');
+
     // Quiz CRUD
     Route::post('/quizzes', [AdminDashboardController::class, 'storeQuiz'])->name('quizzes.store');
     Route::put('/quizzes/{id}', [AdminDashboardController::class, 'updateQuiz'])->name('quizzes.update');
@@ -364,6 +363,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     // Teacher Applications Review & Approvals
     Route::post('/teacher-applications/{id}/approve', [AdminDashboardController::class, 'approveTeacherApplication'])->name('teacher-applications.approve');
     Route::post('/teacher-applications/{id}/reject', [AdminDashboardController::class, 'rejectTeacherApplication'])->name('teacher-applications.reject');
+    Route::get('/teacher-applications/{id}/document/{type}', [AdminDashboardController::class, 'viewTeacherApplicationDocument'])->name('teacher-applications.document');
 
     // Teaching Gigs & Masterclasses
     Route::post('/gigs', [AdminDashboardController::class, 'storeGig'])->name('gigs.store');

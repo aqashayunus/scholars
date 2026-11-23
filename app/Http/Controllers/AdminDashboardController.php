@@ -18,6 +18,7 @@ use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\User;
 use App\Services\Admin\AssignmentQuizService;
+use App\Services\Admin\ClassRequestService;
 use App\Services\Admin\DashboardMetricsService;
 use App\Services\Admin\GigService;
 use App\Services\Admin\ParentAccountService;
@@ -25,6 +26,7 @@ use App\Services\Admin\TeacherApplicationService;
 use App\Services\Admin\TeacherClaimService;
 use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
+use App\Services\TeacherDocumentService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -287,6 +289,30 @@ class AdminDashboardController extends Controller
         return back()->with('success', "Teacher application for '{$application->full_name}' has been marked as rejected.");
     }
 
+    /**
+     * Serve an applicant's uploaded document to an admin, inline. Routed
+     * through here (not a public /storage URL) so only admins can open it.
+     */
+    public function viewTeacherApplicationDocument($id, string $type, TeacherDocumentService $documents)
+    {
+        $application = TeacherApplication::findOrFail($id);
+        $type = $documents->normalizeType($type) ?? abort(404, 'Invalid document type requested.');
+
+        $stored = $application->{$documents->column($type)}
+            ?: abort(404, 'No '.str_replace('_', ' ', $type).' has been uploaded for this application.');
+
+        $resolved = $documents->resolvePath($stored);
+        if (! $resolved) {
+            return response()->view('errors.document-not-found', [
+                'documentType' => $documents->label($type),
+                'applicantName' => $application->full_name,
+                'fileName' => basename($stored),
+            ], 404);
+        }
+
+        return response()->file($resolved, $documents->inlineHeaders($resolved));
+    }
+
     // ── TEACHING GIGS ─────────────────────────────────────────────────────────
 
     public function storeGig(StoreGigRequest $request, GigService $gigs)
@@ -410,6 +436,32 @@ class AdminDashboardController extends Controller
 
         return redirect()->to(route('admin.dashboard').'#teacher-claims')
             ->with('success', "Class fee claim '{$claim->claim_number}' marked as paid.");
+    }
+
+    // ── TEACHER CLASS REQUESTS (reschedule & cancellation approvals) ─────────
+
+    public function approveClassRequest(Request $request, $id, ClassRequestService $classRequests)
+    {
+        $classRequest = $classRequests->approve((int) $id, $request->input('admin_note'), (int) $request->user()->id);
+        $message = "Class {$classRequest->type} request for '{$classRequest->liveClass?->title}' approved successfully.";
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->to(route('admin.dashboard').'#class-requests')->with('success', $message);
+    }
+
+    public function rejectClassRequest(Request $request, $id, ClassRequestService $classRequests)
+    {
+        $classRequest = $classRequests->reject((int) $id, $request->input('admin_note'));
+        $message = "Class {$classRequest->type} request for '{$classRequest->liveClass?->title}' rejected.";
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->to(route('admin.dashboard').'#class-requests')->with('success', $message);
     }
 
     // ── OUTREACH & ENGAGEMENT HUB ─────────────────────────────────────────────

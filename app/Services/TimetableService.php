@@ -327,6 +327,55 @@ class TimetableService
         ];
     }
 
+    /**
+     * Cancel a session and notify its teacher, enrolled students and their
+     * active parents. 'cancelled' is a manual status override that survives
+     * LiveClass's saving() recomputation.
+     */
+    public function cancelByAdmin(int $liveClassId, string $reason): LiveClass
+    {
+        $liveClass = LiveClass::with(['course.teacher.user', 'teacher.user'])->findOrFail($liveClassId);
+        $timeStr = $liveClass->scheduled_at ? $liveClass->scheduled_at->format('D, d M Y, h:i A') : 'its scheduled time';
+
+        $liveClass->update(['status' => 'cancelled']);
+
+        $teacherUser = $liveClass->teacher?->user ?? $liveClass->course?->teacher?->user;
+        if ($teacherUser) {
+            UserNotification::create([
+                'user_id' => $teacherUser->id,
+                'type' => 'class_reminder',
+                'title' => 'Class Session Cancelled by Administrator',
+                'message' => "Session '{$liveClass->title}' on {$timeStr} has been cancelled by administration. Reason: \"{$reason}\".",
+            ]);
+        }
+
+        $enrollments = $liveClass->course?->enrollments()->with('student.user')->get() ?? collect();
+        foreach ($enrollments as $enrollment) {
+            $student = $enrollment->student;
+            if (! $student?->user) {
+                continue;
+            }
+
+            UserNotification::create([
+                'user_id' => $student->user->id,
+                'type' => 'class_reminder',
+                'title' => 'Class Cancelled: '.$liveClass->title,
+                'message' => "The class session '{$liveClass->title}' on {$timeStr} has been cancelled by administration. Reason: \"{$reason}\".",
+            ]);
+
+            foreach ($this->activeParentIdsOf($student) as $parentId) {
+                UserNotification::create([
+                    'user_id' => $parentId,
+                    'type' => 'class_reminder',
+                    'title' => "Child's Class Cancelled ({$student->user->name})",
+                    'message' => "The class session '{$liveClass->title}' on {$timeStr} for {$student->user->name} has been cancelled. Reason: \"{$reason}\".",
+                ]);
+            }
+        }
+
+        return $liveClass;
+    }
+
     public function quickCreateByAdmin(array $validated): LiveClass
     {
         $course = Course::findOrFail($validated['course_id']);

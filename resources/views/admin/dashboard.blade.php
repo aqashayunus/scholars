@@ -340,10 +340,10 @@
                                             <div class="flex items-center justify-end gap-1.5">
                                                 <button type="button"
                                                         data-applicant-name="{{ e($app->full_name) }}"
-                                                        data-resume="{{ $app->resume_path ? asset('storage/' . $app->resume_path) : '' }}"
-                                                        data-certificate="{{ $app->certificate_path ? asset('storage/' . $app->certificate_path) : '' }}"
-                                                        data-transcript="{{ $app->transcript_path ? asset('storage/' . $app->transcript_path) : '' }}"
-                                                        data-additional="{{ $app->additional_document_path ? asset('storage/' . $app->additional_document_path) : '' }}"
+                                                        data-resume="{{ $app->resume_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'resume']) : '' }}"
+                                                        data-certificate="{{ $app->certificate_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'certificate']) : '' }}"
+                                                        data-transcript="{{ $app->transcript_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'transcript']) : '' }}"
+                                                        data-additional="{{ $app->additional_document_path ? route('admin.teacher-applications.document', ['id' => $app->id, 'type' => 'additional_document']) : '' }}"
                                                         onclick="openTeacherDocsModal(this)"
                                                         class="px-2.5 py-1 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-[11px] font-normal transition cursor-pointer">
                                                     View Documents
@@ -419,10 +419,10 @@
                                         'is_online' => (bool)$t->is_online,
                                         'joined_date' => $t->created_at ? $t->created_at->format('d M Y') : '—',
                                         'documents' => [
-                                            'resume'              => $tApp && $tApp->resume_path ? asset('storage/' . $tApp->resume_path) : null,
-                                            'certificate'         => $tApp && $tApp->certificate_path ? asset('storage/' . $tApp->certificate_path) : null,
-                                            'transcript'          => $tApp && $tApp->transcript_path ? asset('storage/' . $tApp->transcript_path) : null,
-                                            'additional_document' => $tApp && $tApp->additional_document_path ? asset('storage/' . $tApp->additional_document_path) : null,
+                                            'resume'              => $tApp && $tApp->resume_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'resume']) : null,
+                                            'certificate'         => $tApp && $tApp->certificate_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'certificate']) : null,
+                                            'transcript'          => $tApp && $tApp->transcript_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'transcript']) : null,
+                                            'additional_document' => $tApp && $tApp->additional_document_path ? route('admin.teacher-applications.document', ['id' => $tApp->id, 'type' => 'additional_document']) : null,
                                         ],
                                         'subjects' => $t->subjects->map(fn($s) => [
                                             'name' => $s->name,
@@ -848,6 +848,7 @@
 
         @include('admin.partials.parents-tab')
         @include('admin.partials.teacher-claims-tab')
+        @include('admin.partials.class-requests-tab')
 
         {{-- ══════════════════════════════════════════════════════════════════ --}}
         {{-- TAB 3: STUDENT ENGAGEMENT & TOPIC MASTERY TABLE                   --}}

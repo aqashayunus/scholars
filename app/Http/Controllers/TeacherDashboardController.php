@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Teacher\UpdateTeacherPasswordRequest;
+use App\Http\Requests\Teacher\UpdateTeacherProfileRequest;
+use App\Http\Requests\Teacher\UploadTeacherDocumentRequest;
 use App\Models\Assignment;
 use App\Models\AttendanceCorrectionRequest;
 use App\Models\LiveClass;
@@ -13,6 +16,7 @@ use App\Services\Teacher\ClassScheduleService;
 use App\Services\Teacher\GigService;
 use App\Services\Teacher\MaterialService;
 use App\Services\Teacher\OverviewService;
+use App\Services\Teacher\ProfileService;
 use App\Services\Teacher\RecordingService;
 use Illuminate\Http\Request;
 
@@ -60,6 +64,59 @@ class TeacherDashboardController extends Controller
     public function claimsIndex(ClaimService $claims)
     {
         return view('teacher.claims.index', $claims->claimsIndexData());
+    }
+
+    public function profile(Request $request, ProfileService $profile)
+    {
+        $activeTab = (string) $request->query('tab', session('active_tab', 'documents'));
+
+        return view('teacher.profile', $profile->profileData($activeTab));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PROFILE & DOCUMENTS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function updateProfile(UpdateTeacherProfileRequest $request, ProfileService $profile)
+    {
+        $profile->updateProfile($request->validated(), $request->boolean('remove_avatar'), $request->file('avatar'));
+
+        return redirect()->route('teacher.profile', ['tab' => $request->input('tab', 'profile')])
+            ->with('success', 'Profile information updated successfully!');
+    }
+
+    public function updatePassword(UpdateTeacherPasswordRequest $request, ProfileService $profile)
+    {
+        $profile->updatePassword($request->user(), $request->validated('password'));
+
+        return redirect()->route('teacher.profile', ['tab' => 'security'])
+            ->with('success', 'Your password has been changed successfully!');
+    }
+
+    public function uploadDocument(UploadTeacherDocumentRequest $request, ProfileService $profile)
+    {
+        $label = $profile->uploadDocument($request->validated('document_type'), $request->file('file'));
+
+        return redirect()->route('teacher.profile', ['tab' => 'documents'])
+            ->with('success', "Your {$label} was uploaded and saved successfully!");
+    }
+
+    public function deleteDocument(string $type, ProfileService $profile)
+    {
+        $label = $profile->deleteDocument($type);
+
+        return redirect()->route('teacher.profile', ['tab' => 'documents'])
+            ->with('success', "{$label} has been removed from your profile.");
+    }
+
+    public function viewDocument(string $type, ProfileService $profile)
+    {
+        return $profile->documentResponse($type, false);
+    }
+
+    public function downloadDocument(string $type, ProfileService $profile)
+    {
+        return $profile->documentResponse($type, true);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

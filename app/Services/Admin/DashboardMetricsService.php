@@ -45,7 +45,8 @@ class DashboardMetricsService
 {
     public function __construct(
         protected ParentAccountService $parentAccounts,
-        protected TeacherClaimService $teacherClaims
+        protected TeacherClaimService $teacherClaims,
+        protected ClassRequestService $classRequests
     ) {}
 
     /**
@@ -559,7 +560,7 @@ class DashboardMetricsService
         // ── Teacher Class Fee Claims ────────────────────────────────────────────
         $allTeacherClaims = $this->teacherClaims->dashboardData()['allTeacherClaims'];
 
-        return [
+        return $this->classRequests->dashboardData() + [
             'totalUsers' => $totalUsers, 'totalStudents' => $totalStudents, 'totalTeachers' => $totalTeachers, 'totalParents' => $totalParents, 'totalAdmins' => $totalAdmins,
             'totalCourses' => $totalCourses, 'publishedCourses' => $publishedCourses, 'draftCourses' => $draftCourses, 'archivedCourses' => $archivedCourses,
             'activeEnrollments' => $activeEnrollments, 'totalSubjects' => $totalSubjects, 'totalLiveClasses' => $totalLiveClasses, 'totalGigs' => $totalGigs,

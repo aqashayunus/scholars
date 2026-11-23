@@ -127,13 +127,6 @@ class StudentDashboardController extends Controller
         ));
     }
 
-    public function messages()
-    {
-        $student = $this->getStudent();
-
-        return view('student.messages', compact('student'));
-    }
-
     public function myCourses()
     {
         return $this->learning();
