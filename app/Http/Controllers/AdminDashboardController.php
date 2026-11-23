@@ -277,7 +277,7 @@ class AdminDashboardController extends Controller
 
     // ── TEACHER APPLICATIONS ──────────────────────────────────────────────────
 
-    public function approveTeacherApplication(Request $request, $id, TeacherApplicationService $teacherApplications)
+    public function approveTeacherApplication(Request $request, int $id, TeacherApplicationService $teacherApplications): RedirectResponse
     {
         $application = TeacherApplication::findOrFail($id);
         $result = $teacherApplications->approve($application, $request->input('admin_notes'));

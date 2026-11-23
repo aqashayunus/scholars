@@ -1221,25 +1221,13 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\TeacherApplication\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\TeacherApplication\>\:\:\$full_name\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Http/Controllers/AdminDashboardController.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:\$name\.$#'
 			identifier: property.notFound
 			count: 2
-			path: app/Http/Controllers/AdminDashboardController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AdminDashboardController\:\:approveTeacherApplication\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AdminDashboardController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\AdminDashboardController\:\:approveTeacherApplication\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
-			count: 1
 			path: app/Http/Controllers/AdminDashboardController.php
 
 		-
@@ -1581,12 +1569,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\AdminDashboardController\:\:uploadQuestionImage\(\) has no return type specified\.$#'
 			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/AdminDashboardController.php
-
-		-
-			message: '#^Parameter \#1 \$application of method App\\Services\\Admin\\TeacherApplicationService\:\:approve\(\) expects App\\Models\\TeacherApplication, App\\Models\\TeacherApplication\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\TeacherApplication\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Http/Controllers/AdminDashboardController.php
 
