@@ -94,10 +94,12 @@ jobs:
             phpunit.xml phpstan.neon phpstan-baseline.neon .phpunit.result.cache
 
       - name: Deploy to cPanel (test) via rsync
-        # Only 3 excludes: .env plus the 2 stateful storage paths confirmed
-        # by grepping every Storage::disk(...)/->store()/->storeAs() call
-        # site in app/ -- see docs/CICD.md §4. No root-level upload dirs
-        # exist outside Laravel's own storage tree on this app.
+        # Excludes: .env, the 2 Laravel storage disk roots, storage/logs, and
+        # public/uploads/. public/uploads/ is written directly via
+        # ->move(public_path('uploads/...')) in AdminContentController (blog
+        # thumbnails, popups) and AssignmentQuizService (question images) --
+        # a Storage::disk() grep misses it. Without this exclude every
+        # deploy's --delete wipes admin-uploaded images. See docs/CICD.md §4.
         uses: burnett01/rsync-deployments@7.0.1
         with:
           switches: >-
@@ -105,6 +107,8 @@ jobs:
             --exclude=.env
             --exclude=/storage/app/private/
             --exclude=/storage/app/public/
+            --exclude=/storage/logs/
+            --exclude=/public/uploads/
           path: ./
           remote_path: ${{ secrets.CPANEL_DEPLOY_PATH }}
           remote_host: ${{ secrets.CPANEL_SSH_HOST }}
@@ -133,6 +137,8 @@ jobs:
             --exclude=.env
             --exclude=/storage/app/private/
             --exclude=/storage/app/public/
+            --exclude=/storage/logs/
+            --exclude=/public/uploads/
           path: ./
           remote_path: ${{ secrets.CPANEL_DEPLOY_PATH_PROD }}
           remote_host: ${{ secrets.CPANEL_SSH_HOST }}
