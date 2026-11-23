@@ -323,7 +323,12 @@
                             <tbody class="divide-y divide-gray-100">
                                 @foreach($teacherApplications as $app)
                                     <tr class="hover:bg-amber-50/40 transition target-row">
-                                        <td class="py-3 px-3 font-medium text-gray-900">{{ $app->full_name }}</td>
+                                        <td class="py-3 px-3 font-medium text-gray-900">
+                                            {{ $app->full_name }}
+                                            @if($app->ic_number)
+                                                <span class="text-gray-400 block text-[10px] font-mono">IC: {{ $app->ic_number }}</span>
+                                            @endif
+                                        </td>
                                         <td class="py-3 px-3 text-gray-600 font-normal">{{ $app->email }} <span class="text-gray-400 block text-[10px]">{{ $app->phone }}</span></td>
                                         <td class="py-3 px-3 text-gray-700 font-normal">{{ $app->qualification }}</td>
                                         <td class="py-3 px-3 font-medium text-gray-800">{{ $app->experience_years }} Years</td>

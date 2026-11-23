@@ -16,17 +16,28 @@ use Illuminate\Support\Str;
 
 class TeacherApplicationService
 {
-    public function approve(TeacherApplication $application, ?string $adminNotes): void
+    /**
+     * Activate the applicant as a teacher.
+     *
+     * A brand-new account gets a random temporary password, emailed in the
+     * welcome mail (the only place it ever exists) and replaced at first
+     * login via must_change_password. The mail is sent only after the
+     * approval has committed, so a rolled-back approval never emails a
+     * password for an account that does not exist.
+     *
+     * @return array{newAccount: bool, welcomeEmailSent: bool}
+     */
+    public function approve(TeacherApplication $application, ?string $adminNotes): array
     {
-        DB::transaction(function () use ($application, $adminNotes) {
+        $tempPassword = null;
+
+        $user = DB::transaction(function () use ($application, $adminNotes, &$tempPassword) {
             $user = User::where('email', $application->email)->first();
 
             if (! $user) {
-                // Random per-teacher password, not a shared default previously
-                // known to every approved teacher (and never actually emailed
-                // to them, meaning it was distributed out-of-band as tribal
-                // knowledge). Emailed via WelcomeMail below; must_change_password
-                // forces a real password before first real use.
+                // Random per-teacher password, never derived from the IC number
+                // (which appears on many documents and would make the password
+                // guessable from the applicant's name + IC).
                 $tempPassword = Str::password(14);
 
                 $user = new User([
@@ -37,17 +48,12 @@ class TeacherApplicationService
                 ]);
                 $user->role = 'teacher';
                 $user->must_change_password = true;
-                $user->save();
-
-                try {
-                    Mail::to($user->email)->send(new WelcomeMail($user, $tempPassword));
-                } catch (\Exception $e) {
-                    report($e);
-                }
             } else {
                 $user->role = 'teacher';
-                $user->save();
             }
+
+            $this->attachIcHash($user, $application->ic_number);
+            $user->save();
 
             $teacher = Teacher::firstOrNew(['user_id' => $user->id]);
             $teacher->application_status = 'active';
@@ -73,7 +79,47 @@ class TeacherApplicationService
                 ]);
             } catch (\Throwable $e) {
             }
+
+            return $user;
         });
+
+        if ($tempPassword === null) {
+            return ['newAccount' => false, 'welcomeEmailSent' => false];
+        }
+
+        try {
+            Mail::to($user->email)->send(new WelcomeMail($user, $tempPassword));
+            $sent = true;
+        } catch (\Throwable $e) {
+            report($e);
+            $sent = false;
+        }
+
+        return ['newAccount' => true, 'welcomeEmailSent' => $sent];
+    }
+
+    /**
+     * Store the applicant's MyKad as the account's IC hash (the same hash
+     * parents' accounts use), so admins and parent-link lookups can match it.
+     * Skipped for passports (normaliseIc() keeps digits only, which would
+     * mangle them), when the account already has a hash, or when another
+     * account already holds this IC (users.ic_number_hash is unique, and a
+     * collision must not block the approval).
+     */
+    private function attachIcHash(User $user, ?string $icNumber): void
+    {
+        if (! $icNumber || $user->ic_number_hash || strlen(User::normaliseIc($icNumber)) !== 12) {
+            return;
+        }
+
+        $hash = User::hashIc($icNumber);
+        $takenByOther = User::where('ic_number_hash', $hash)
+            ->when($user->exists, fn ($q) => $q->whereKeyNot($user->getKey()))
+            ->exists();
+
+        if (! $takenByOther) {
+            $user->ic_number_hash = $hash;
+        }
     }
 
     public function reject(TeacherApplication $application, ?string $adminNotes): void

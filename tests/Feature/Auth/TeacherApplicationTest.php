@@ -30,6 +30,7 @@ class TeacherApplicationTest extends TestCase
             'full_name' => 'Cikgu Sarah',
             'email' => 'sarah_teacher@example.com',
             'phone' => '+60 12-345 6789',
+            'ic_number' => '900101-14-5678',
             'qualification' => 'Bachelor of Science (Mathematics)',
             'experience_years' => 4,
             'preferred_subjects' => 'Additional Mathematics, Modern Mathematics',
@@ -53,6 +54,7 @@ class TeacherApplicationTest extends TestCase
             'full_name' => 'Cikgu Sarah',
             'email' => 'sarah_teacher@example.com',
             'phone' => '+60 12-345 6789',
+            'ic_number' => ' 900101-14-5678 ',
             'qualification' => 'Bachelor of Science (Mathematics)',
             'experience_years' => 4,
             'preferred_subjects' => 'Additional Mathematics, Modern Mathematics',
@@ -64,6 +66,7 @@ class TeacherApplicationTest extends TestCase
 
         $application = TeacherApplication::where('email', 'sarah_teacher@example.com')->first();
         $this->assertNotNull($application);
+        $this->assertSame('900101-14-5678', $application->ic_number);
         $this->assertNotNull($application->resume_path);
         Storage::disk('public')->assertExists($application->resume_path);
     }
@@ -81,6 +84,7 @@ class TeacherApplicationTest extends TestCase
             'full_name' => 'Ustaz Farhan',
             'email' => 'farhan@example.com',
             'phone' => '+60 17-987 6543',
+            'ic_number' => 'a12345678',
             'institution' => 'SMK Damansara Utama',
             'qualification' => 'Master in Education (Physics)',
             'experience_years' => 6,
@@ -96,6 +100,7 @@ class TeacherApplicationTest extends TestCase
 
         $application = TeacherApplication::where('email', 'farhan@example.com')->first();
         $this->assertNotNull($application);
+        $this->assertSame('A12345678', $application->ic_number, 'Passport numbers are kept, uppercased.');
         $this->assertNotNull($application->resume_path);
         $this->assertNotNull($application->certificate_path);
         $this->assertNotNull($application->transcript_path);
@@ -105,5 +110,34 @@ class TeacherApplicationTest extends TestCase
         Storage::disk('public')->assertExists($application->certificate_path);
         Storage::disk('public')->assertExists($application->transcript_path);
         Storage::disk('public')->assertExists($application->additional_document_path);
+    }
+
+    public function test_teacher_application_requires_a_valid_ic_number(): void
+    {
+        $base = [
+            'full_name' => 'Cikgu Aina',
+            'email' => 'aina@example.com',
+            'phone' => '+60 12-111 2222',
+            'qualification' => 'B.Ed',
+            'experience_years' => 2,
+            'preferred_subjects' => 'Science',
+            'resume' => UploadedFile::fake()->create('cv.pdf', 100, 'application/pdf'),
+        ];
+
+        foreach (['' => 'missing', '12345' => 'too short', '900101<script>' => 'bad characters'] as $ic => $case) {
+            $this->from(route('register.teacher'))
+                ->post(route('register.teacher.submit'), $base + ['ic_number' => $ic])
+                ->assertSessionHasErrors('ic_number', "IC {$case} should be rejected");
+        }
+
+        $this->assertDatabaseMissing('teacher_applications', ['email' => 'aina@example.com']);
+    }
+
+    public function test_application_form_shows_ic_field(): void
+    {
+        $this->get(route('register.teacher'))
+            ->assertOk()
+            ->assertSee('name="ic_number"', false)
+            ->assertSee('IC / Passport Number');
     }
 }

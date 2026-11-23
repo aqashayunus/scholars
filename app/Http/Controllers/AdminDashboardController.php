@@ -280,9 +280,20 @@ class AdminDashboardController extends Controller
     public function approveTeacherApplication(Request $request, $id, TeacherApplicationService $teacherApplications)
     {
         $application = TeacherApplication::findOrFail($id);
-        $teacherApplications->approve($application, $request->input('admin_notes'));
+        $result = $teacherApplications->approve($application, $request->input('admin_notes'));
 
-        return back()->with('success', "Teacher application for '{$application->full_name}' has been approved and their educator account is now active.");
+        $message = "Teacher application for '{$application->full_name}' has been approved and their educator account is now active.";
+
+        if (! $result['newAccount']) {
+            return back()->with('success', $message." {$application->email} already had an account, so it keeps its existing password (no temporary password was emailed).");
+        }
+
+        if (! $result['welcomeEmailSent']) {
+            return back()->with('success', $message)
+                ->with('error', "The welcome email with the temporary password could not be sent to {$application->email}. Set one with 'Quick Reset Password' in User Management, or ask them to use 'Forgot password?' on the login page.");
+        }
+
+        return back()->with('success', $message.' A temporary password has been emailed to them.');
     }
 
     public function rejectTeacherApplication(Request $request, $id, TeacherApplicationService $teacherApplications)

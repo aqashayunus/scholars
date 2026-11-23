@@ -9,6 +9,7 @@ use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -81,6 +82,74 @@ class TeacherApplicationManagementTest extends TestCase
         $existingUser->refresh();
         $this->assertSame('teacher', $existingUser->role);
         Mail::assertNotSent(WelcomeMail::class);
+    }
+
+    public function test_approval_emails_a_random_password_never_derived_from_the_ic(): void
+    {
+        Mail::fake();
+        $application = TeacherApplication::create([
+            'full_name' => 'Ahmad Zaki',
+            'email' => 'ahmad.zaki@example.com',
+            'phone' => '0123456782',
+            'ic_number' => '900101-14-5678',
+            'qualification' => 'B.Ed',
+            'preferred_subjects' => 'Mathematics',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.teacher-applications.approve', $application->id))
+            ->assertSessionHas('success', fn ($msg) => str_contains($msg, 'temporary password has been emailed'));
+
+        $user = User::where('email', 'ahmad.zaki@example.com')->firstOrFail();
+
+        Mail::assertSent(WelcomeMail::class, function (WelcomeMail $mail) use ($user) {
+            $this->assertSame(14, strlen($mail->tempPassword));
+            $this->assertNotSame('AH145678', $mail->tempPassword, 'Old IC-derived formula must not be used');
+            $this->assertTrue(Hash::check($mail->tempPassword, $user->password));
+
+            return true;
+        });
+
+        $this->assertTrue($user->matchesIc('900101145678'), 'MyKad stored as hash on the account');
+        $this->assertDatabaseMissing('users', ['ic_number_hash' => '900101-14-5678']);
+    }
+
+    public function test_approval_skips_ic_hash_for_passports_and_for_an_ic_already_on_another_account(): void
+    {
+        Mail::fake();
+        $passport = TeacherApplication::create([
+            'full_name' => 'Jane Doe', 'email' => 'jane@example.com', 'phone' => '0123456783',
+            'ic_number' => 'A12345678', 'qualification' => 'MA', 'preferred_subjects' => 'English',
+        ]);
+        $parent = User::factory()->create(['role' => 'parent']);
+        $parent->setIcNumber('880202-10-1234');
+        $parent->save();
+        $taken = TeacherApplication::create([
+            'full_name' => 'Same IC', 'email' => 'same.ic@example.com', 'phone' => '0123456784',
+            'ic_number' => '880202-10-1234', 'qualification' => 'BSc', 'preferred_subjects' => 'Physics',
+        ]);
+
+        $this->actingAs($this->admin)->post(route('admin.teacher-applications.approve', $passport->id));
+        $this->actingAs($this->admin)->post(route('admin.teacher-applications.approve', $taken->id));
+
+        $this->assertNull(User::where('email', 'jane@example.com')->value('ic_number_hash'));
+        $this->assertNull(User::where('email', 'same.ic@example.com')->value('ic_number_hash'));
+        $this->assertSame(TeacherApplicationStatus::Approved, $taken->refresh()->status, 'IC collision must not block approval');
+    }
+
+    public function test_admin_is_warned_when_the_welcome_email_cannot_be_sent(): void
+    {
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP down'));
+        $application = TeacherApplication::create([
+            'full_name' => 'No Mail', 'email' => 'nomail@example.com', 'phone' => '0123456785',
+            'qualification' => 'B.Ed', 'preferred_subjects' => 'Science',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.teacher-applications.approve', $application->id))
+            ->assertSessionHas('error', fn ($msg) => str_contains($msg, 'could not be sent'));
+
+        $this->assertSame(TeacherApplicationStatus::Approved, $application->refresh()->status);
     }
 
     public function test_admin_can_reject_application(): void
