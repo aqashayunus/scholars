@@ -187,7 +187,11 @@ jobs:
             mysqldump --single-transaction --quick --lock-tables=false --no-tablespaces \
               -u"$DB_USERNAME" -p"$DB_PASSWORD" -h"$DB_HOST" "$DB_DATABASE" \
               | gzip > ~/backups/scholars_db/pre_deploy_${TIMESTAMP}.sql.gz
-            ls -1t ~/backups/scholars_db/*.sql.gz | tail -n +6 | xargs -r rm --
+            # Prune ONLY test's own pre-deploy dumps (pre_deploy_<digits>...).
+            # This folder is shared with production: a bare *.sql.gz here
+            # used to delete prod's pre_deploy_prod_* and hand-made prod
+            # backups once more than 5 files accumulated.
+            ls -1t ~/backups/scholars_db/pre_deploy_[0-9]*.sql.gz 2>/dev/null | tail -n +6 | xargs -r rm -- || true
 
             php artisan migrate --force
             php artisan storage:link
@@ -202,7 +206,18 @@ jobs:
             # /up proves PHP-FPM/bootstrap integrity, not DB reachability --
             # the mysqldump above is what actually proves DB connectivity,
             # and it already ran before migrate --force touched anything.
-            curl -sf "${{ secrets.CPANEL_HEALTH_CHECK_URL }}" && echo "Deploy OK" || (echo "Health check FAILED" && exit 1)
+            # Retried: right after the file swap + cache rebuild, LiteSpeed's
+            # PHP workers can answer 500 for a few seconds (seen on both
+            # hosts 2026-11-23, prod's first CD run failed on exactly this
+            # while the site was healthy). Prints the code on every miss.
+            for attempt in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${{ secrets.CPANEL_HEALTH_CHECK_URL }}" || true)
+              if [ "$code" = "200" ]; then echo "Deploy OK (health check HTTP 200 on attempt $attempt)"; exit 0; fi
+              echo "Health check attempt $attempt: HTTP ${code:-no response}, retrying in 10s"
+              sleep 10
+            done
+            echo "Health check FAILED after 6 attempts"
+            exit 1
 
   deploy-prod:
     name: Activate on cPanel (production)
@@ -256,4 +271,12 @@ jobs:
             php artisan optimize
             php artisan queue:restart
 
-            curl -sf "${{ secrets.CPANEL_HEALTH_CHECK_URL_PROD }}" && echo "Deploy OK" || (echo "Health check FAILED" && exit 1)
+            # Retried for the same post-swap warm-up reason as deploy-test.
+            for attempt in 1 2 3 4 5 6; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "${{ secrets.CPANEL_HEALTH_CHECK_URL_PROD }}" || true)
+              if [ "$code" = "200" ]; then echo "Deploy OK (health check HTTP 200 on attempt $attempt)"; exit 0; fi
+              echo "Health check attempt $attempt: HTTP ${code:-no response}, retrying in 10s"
+              sleep 10
+            done
+            echo "Health check FAILED after 6 attempts"
+            exit 1
