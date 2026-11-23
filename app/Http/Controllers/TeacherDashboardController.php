@@ -18,7 +18,10 @@ use App\Services\Teacher\MaterialService;
 use App\Services\Teacher\OverviewService;
 use App\Services\Teacher\ProfileService;
 use App\Services\Teacher\RecordingService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TeacherDashboardController extends Controller
 {
@@ -66,18 +69,18 @@ class TeacherDashboardController extends Controller
         return view('teacher.claims.index', $claims->claimsIndexData());
     }
 
-    public function profile(Request $request, ProfileService $profile)
+    // ─────────────────────────────────────────────────────────────────────────
+    // PROFILE & DOCUMENTS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function profile(Request $request, ProfileService $profile): View
     {
         $activeTab = (string) $request->query('tab', session('active_tab', 'documents'));
 
         return view('teacher.profile', $profile->profileData($activeTab));
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PROFILE & DOCUMENTS
-    // ─────────────────────────────────────────────────────────────────────────
-
-    public function updateProfile(UpdateTeacherProfileRequest $request, ProfileService $profile)
+    public function updateProfile(UpdateTeacherProfileRequest $request, ProfileService $profile): RedirectResponse
     {
         $profile->updateProfile($request->validated(), $request->boolean('remove_avatar'), $request->file('avatar'));
 
@@ -85,7 +88,7 @@ class TeacherDashboardController extends Controller
             ->with('success', 'Profile information updated successfully!');
     }
 
-    public function updatePassword(UpdateTeacherPasswordRequest $request, ProfileService $profile)
+    public function updatePassword(UpdateTeacherPasswordRequest $request, ProfileService $profile): RedirectResponse
     {
         $profile->updatePassword($request->user(), $request->validated('password'));
 
@@ -93,7 +96,7 @@ class TeacherDashboardController extends Controller
             ->with('success', 'Your password has been changed successfully!');
     }
 
-    public function uploadDocument(UploadTeacherDocumentRequest $request, ProfileService $profile)
+    public function uploadDocument(UploadTeacherDocumentRequest $request, ProfileService $profile): RedirectResponse
     {
         $label = $profile->uploadDocument($request->validated('document_type'), $request->file('file'));
 
@@ -101,7 +104,7 @@ class TeacherDashboardController extends Controller
             ->with('success', "Your {$label} was uploaded and saved successfully!");
     }
 
-    public function deleteDocument(string $type, ProfileService $profile)
+    public function deleteDocument(string $type, ProfileService $profile): RedirectResponse
     {
         $label = $profile->deleteDocument($type);
 
@@ -109,12 +112,12 @@ class TeacherDashboardController extends Controller
             ->with('success', "{$label} has been removed from your profile.");
     }
 
-    public function viewDocument(string $type, ProfileService $profile)
+    public function viewDocument(string $type, ProfileService $profile): BinaryFileResponse
     {
         return $profile->documentResponse($type, false);
     }
 
-    public function downloadDocument(string $type, ProfileService $profile)
+    public function downloadDocument(string $type, ProfileService $profile): BinaryFileResponse
     {
         return $profile->documentResponse($type, true);
     }

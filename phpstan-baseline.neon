@@ -2821,12 +2821,6 @@ parameters:
 			path: app/Http/Controllers/StudentDashboardController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:messages\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StudentDashboardController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:myCourses\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -4373,18 +4367,6 @@ parameters:
 			identifier: missingType.return
 			count: 1
 			path: app/Models/ChatMessageRead.php
-
-		-
-			message: '#^Method App\\Models\\ClassRequest\:\:liveClass\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ClassRequest.php
-
-		-
-			message: '#^Method App\\Models\\ClassRequest\:\:teacher\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/ClassRequest.php
 
 		-
 			message: '#^Class App\\Models\\Conversation uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
@@ -6419,6 +6401,24 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/Admin/CertificateService.php
+
+		-
+			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/ClassRequestService.php
+
+		-
+			message: '#^Relation ''teacher'' is not found in App\\Models\\LiveClass model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/ClassRequestService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/ClassRequestService.php
 
 		-
 			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$subject_id\.$#'
@@ -9799,6 +9799,24 @@ parameters:
 			path: app/Services/Teacher/OverviewService.php
 
 		-
+			message: '#^Relation ''courses'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ProfileService.php
+
+		-
+			message: '#^Relation ''subjects'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ProfileService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Teacher model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Teacher/ProfileService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Course\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Course\>\:\:\$enrollments\.$#'
 			identifier: property.notFound
 			count: 1
@@ -9873,7 +9891,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\LiveClass\:\:\$course\.$#'
 			identifier: property.notFound
-			count: 4
+			count: 6
 			path: app/Services/TimetableService.php
 
 		-
@@ -10047,7 +10065,7 @@ parameters:
 		-
 			message: '#^Relation ''course'' is not found in App\\Models\\LiveClass model\.$#'
 			identifier: larastan.relationExistence
-			count: 6
+			count: 7
 			path: app/Services/TimetableService.php
 
 		-
@@ -10071,7 +10089,7 @@ parameters:
 		-
 			message: '#^Relation ''teacher'' is not found in App\\Models\\LiveClass model\.$#'
 			identifier: larastan.relationExistence
-			count: 3
+			count: 4
 			path: app/Services/TimetableService.php
 
 		-
@@ -10113,5 +10131,5 @@ parameters:
 		-
 			message: '#^Using nullsafe property access "\?\-\>user" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
-			count: 1
+			count: 2
 			path: app/Services/TimetableService.php

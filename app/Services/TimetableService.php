@@ -335,7 +335,7 @@ class TimetableService
     public function cancelByAdmin(int $liveClassId, string $reason): LiveClass
     {
         $liveClass = LiveClass::with(['course.teacher.user', 'teacher.user'])->findOrFail($liveClassId);
-        $timeStr = $liveClass->scheduled_at ? $liveClass->scheduled_at->format('D, d M Y, h:i A') : 'its scheduled time';
+        $timeStr = $liveClass->scheduled_at->format('D, d M Y, h:i A');
 
         $liveClass->update(['status' => 'cancelled']);
 

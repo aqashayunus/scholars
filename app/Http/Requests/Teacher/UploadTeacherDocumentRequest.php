@@ -12,6 +12,9 @@ class UploadTeacherDocumentRequest extends FormRequest
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         $documents = app(TeacherDocumentService::class);
@@ -23,6 +26,9 @@ class UploadTeacherDocumentRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function messages(): array
     {
         $documents = app(TeacherDocumentService::class);

@@ -33,6 +33,9 @@ class ProfileService
         return Teacher::where('user_id', auth()->id())->firstOrFail();
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function profileData(string $activeTab): array
     {
         $teacher = $this->currentTeacher();
@@ -81,7 +84,9 @@ class ProfileService
         $column = $this->documents->column($type);
 
         $previous = $this->documents->resolvePath($application->{$column});
-        $application->update([$column => $file->store($this->documents->folder($type), 'public')]);
+        $stored = $file->store($this->documents->folder($type), 'public')
+            ?: abort(500, 'The document could not be saved. Please try again.');
+        $application->update([$column => $stored]);
 
         if ($previous) {
             @unlink($previous);
@@ -135,6 +140,8 @@ class ProfileService
     /**
      * Update personal, professional and bank details, keeping the
      * application record's copies of name/phone/qualification in sync.
+     *
+     * @param  array<string, mixed>  $validated
      */
     public function updateProfile(array $validated, bool $removeAvatar, ?UploadedFile $avatar): void
     {
@@ -146,8 +153,9 @@ class ProfileService
                 if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                     Storage::disk('public')->delete($user->avatar);
                 }
-                $user->avatar = $avatar?->store('avatars', 'public');
-                $teacher->photo = $user->avatar;
+                $stored = $avatar?->store('avatars', 'public');
+                $user->avatar = $stored ?: null;
+                $teacher->photo = $stored ?: null;
             }
 
             $user->name = $validated['name'];

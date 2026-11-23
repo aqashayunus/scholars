@@ -77,7 +77,7 @@ class ClassRequestService
             $classRequest->update(['status' => 'rejected', 'admin_note' => $note]);
 
             if ($classRequest->teacher?->user_id) {
-                $title = $classRequest->liveClass?->title ?? 'Session';
+                $title = $classRequest->liveClass->title ?? 'Session';
                 UserNotification::create([
                     'user_id' => $classRequest->teacher->user_id,
                     'type' => 'class_reminder',

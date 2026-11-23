@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ClassRequest extends Model
 {
@@ -20,12 +21,18 @@ class ClassRequest extends Model
         'requested_at' => 'datetime',
     ];
 
-    public function liveClass()
+    /**
+     * @return BelongsTo<LiveClass, $this>
+     */
+    public function liveClass(): BelongsTo
     {
         return $this->belongsTo(LiveClass::class);
     }
 
-    public function teacher()
+    /**
+     * @return BelongsTo<Teacher, $this>
+     */
+    public function teacher(): BelongsTo
     {
         return $this->belongsTo(Teacher::class);
     }

@@ -27,7 +27,11 @@ use App\Services\Admin\TeacherClaimService;
 use App\Services\Admin\UserManagementService;
 use App\Services\PdfDiagnosticParser;
 use App\Services\TeacherDocumentService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminDashboardController extends Controller
@@ -293,7 +297,7 @@ class AdminDashboardController extends Controller
      * Serve an applicant's uploaded document to an admin, inline. Routed
      * through here (not a public /storage URL) so only admins can open it.
      */
-    public function viewTeacherApplicationDocument($id, string $type, TeacherDocumentService $documents)
+    public function viewTeacherApplicationDocument(int $id, string $type, TeacherDocumentService $documents): BinaryFileResponse|Response
     {
         $application = TeacherApplication::findOrFail($id);
         $type = $documents->normalizeType($type) ?? abort(404, 'Invalid document type requested.');
@@ -440,9 +444,9 @@ class AdminDashboardController extends Controller
 
     // ── TEACHER CLASS REQUESTS (reschedule & cancellation approvals) ─────────
 
-    public function approveClassRequest(Request $request, $id, ClassRequestService $classRequests)
+    public function approveClassRequest(Request $request, int $id, ClassRequestService $classRequests): RedirectResponse|JsonResponse
     {
-        $classRequest = $classRequests->approve((int) $id, $request->input('admin_note'), (int) $request->user()->id);
+        $classRequest = $classRequests->approve($id, $request->input('admin_note'), (int) $request->user()->id);
         $message = "Class {$classRequest->type} request for '{$classRequest->liveClass?->title}' approved successfully.";
 
         if ($request->wantsJson()) {
@@ -452,9 +456,9 @@ class AdminDashboardController extends Controller
         return redirect()->to(route('admin.dashboard').'#class-requests')->with('success', $message);
     }
 
-    public function rejectClassRequest(Request $request, $id, ClassRequestService $classRequests)
+    public function rejectClassRequest(Request $request, int $id, ClassRequestService $classRequests): RedirectResponse|JsonResponse
     {
-        $classRequest = $classRequests->reject((int) $id, $request->input('admin_note'));
+        $classRequest = $classRequests->reject($id, $request->input('admin_note'));
         $message = "Class {$classRequest->type} request for '{$classRequest->liveClass?->title}' rejected.";
 
         if ($request->wantsJson()) {
