@@ -100,10 +100,14 @@ class BillplzController extends Controller
             return redirect($redirectRoute)->with('info', 'Returned from payment gateway.');
         }
 
-        // Verify signature if provided
-        $isValidSig = $this->billplzService->verifySignature($request->all());
-        if (! $isValidSig) {
-            Log::warning('[BillplzController] Return signature mismatch.', $request->all());
+        // The redirect is an ordinary browser URL anyone can type, so it may
+        // only change payment state when Billplz's X-Signature checks out.
+        // Otherwise touch nothing (neither paid nor failed) and let the
+        // signed server-to-server callback settle the payment.
+        if (! $this->billplzService->verifySignature($request->all())) {
+            Log::warning('[BillplzController] Return redirect with missing/invalid X-Signature; payment state left unchanged.', $request->all());
+
+            return redirect($redirectRoute)->with('info', 'We are confirming your payment with the bank. Your invoice will update automatically within a few minutes.');
         }
 
         if ($isPaid) {

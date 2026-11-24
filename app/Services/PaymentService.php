@@ -269,9 +269,19 @@ class PaymentService
 
     /**
      * Mark a Billplz gateway payment as successful and reconcile linked invoices.
-     * Strictly idempotent — safe to call from both Webhook and Return redirect.
+     *
+     * Callers must have verified the X-Signature first. Strictly idempotent
+     * and safe when the callback and the redirect arrive at the same moment
+     * (Billplz does not order them): the payment row is locked and its status
+     * re-checked inside the transaction, so only one of them settles it.
+     *
+     * When the gateway reports a paid amount (the callback does; the redirect
+     * does not) it must equal the billed amount, otherwise the payment is left
+     * pending and flagged for admin review instead of settling the invoices.
+     *
+     * @param  array<mixed>  $gatewayData
      */
-    public function completeGatewayPayment(string $billplzBillId, array $gatewayData = []): Payment
+    public function completeGatewayPayment(string $billplzBillId, array $gatewayData = [], ?int $paidAmountCents = null): Payment
     {
         $payment = Payment::where('billplz_bill_id', $billplzBillId)
             ->orWhere('gateway_transaction_id', $billplzBillId)
@@ -281,17 +291,35 @@ class PaymentService
             throw new \RuntimeException("Payment not found for Billplz Bill ID: {$billplzBillId}");
         }
 
-        // Idempotency: if already successful, skip recalculation
-        if ($payment->status === PaymentStatus::Successful) {
-            Log::info("[PaymentService] Payment #{$payment->id} already marked successful.");
+        $expectedCents = (int) round(((float) $payment->amount) * 100);
+        if ($paidAmountCents !== null && $paidAmountCents !== $expectedCents) {
+            Log::critical("[PaymentService] Billplz paid amount mismatch for payment #{$payment->id}: billed {$expectedCents} cents, gateway reported {$paidAmountCents} cents. Left pending for review.", $gatewayData);
+            $payment->update([
+                'gateway_payload' => $gatewayData,
+                'payment_proof_notes' => 'Needs review: Billplz reported RM '.number_format($paidAmountCents / 100, 2).' paid, but RM '.number_format($expectedCents / 100, 2).' was billed.',
+            ]);
+            $this->log('billplz_amount_mismatch', 'Payment', $payment->id, $payment->user_id, [
+                'billplz_bill_id' => $billplzBillId,
+                'billed_cents' => $expectedCents,
+                'reported_cents' => $paidAmountCents,
+            ]);
 
             return $payment;
         }
 
-        DB::transaction(function () use ($payment, $gatewayData) {
-            $receiptNumber = $payment->receipt_number ?: Payment::generateReceiptNumber();
+        $settled = DB::transaction(function () use ($payment, $gatewayData) {
+            $locked = Payment::whereKey($payment->getKey())->lockForUpdate()->firstOrFail();
 
-            $payment->update([
+            // Idempotency: already settled (by a duplicate or the other channel)
+            if ($locked->status === PaymentStatus::Successful) {
+                Log::info("[PaymentService] Payment #{$locked->id} already marked successful.");
+
+                return false;
+            }
+
+            $receiptNumber = $locked->receipt_number ?: Payment::generateReceiptNumber();
+
+            $locked->update([
                 'status' => PaymentStatus::Successful,
                 'receipt_number' => $receiptNumber,
                 'gateway_payload' => $gatewayData,
@@ -299,25 +327,33 @@ class PaymentService
             ]);
 
             // Recalculate each linked invoice
-            $allocations = $payment->paymentInvoices()->with('invoice')->get();
+            $allocations = $locked->paymentInvoices()->with('invoice')->get();
             if ($allocations->isNotEmpty()) {
                 foreach ($allocations as $allocation) {
                     if ($allocation->invoice) {
                         $this->invoiceService->recalculateAmountPaid($allocation->invoice);
                     }
                 }
-            } elseif ($payment->invoice_id && $payment->invoice) {
-                $this->invoiceService->recalculateAmountPaid($payment->invoice);
+            } elseif ($locked->invoice_id && $locked->invoice) {
+                $this->invoiceService->recalculateAmountPaid($locked->invoice);
             }
 
-            $this->log('billplz_payment_successful', 'Payment', $payment->id, $payment->user_id, [
+            $this->log('billplz_payment_successful', 'Payment', $locked->id, $locked->user_id, [
                 'receipt_number' => $receiptNumber,
-                'billplz_bill_id' => $payment->billplz_bill_id,
-                'amount' => $payment->amount,
+                'billplz_bill_id' => $locked->billplz_bill_id,
+                'amount' => $locked->amount,
             ]);
+
+            return true;
         });
 
-        // Trigger in-app alerts for student & parents
+        $payment->refresh();
+
+        if (! $settled) {
+            return $payment;
+        }
+
+        // Trigger in-app alerts for student & parents (only from the call that settled it)
         try {
             $freshPayment = $payment->fresh(['invoices.student.user']);
             $firstInvoice = $freshPayment->invoices->first();
@@ -376,19 +412,35 @@ class PaymentService
             throw new \InvalidArgumentException('Missing bill ID in webhook payload.');
         }
 
-        // Verify cryptographic signature if X-Signature key is configured
+        // Fails closed: an unsigned, mis-signed, or unverifiable (no key
+        // configured) callback is rejected before anything is touched.
         if (! $this->billplzService->verifySignature($payload)) {
             Log::error('[PaymentService] Invalid Billplz webhook X-Signature.', $payload);
             throw new \InvalidArgumentException('Invalid webhook signature.');
         }
 
-        $isPaid = isset($payload['paid']) && ($payload['paid'] === 'true' || $payload['paid'] === true || $payload['state'] === 'paid');
+        $paid = $payload['paid'] ?? null;
+        $isPaid = $paid === true || $paid === 'true' || ($payload['state'] ?? null) === 'paid';
 
         if ($isPaid) {
-            $this->completeGatewayPayment($billId, $payload);
+            $this->completeGatewayPayment($billId, $payload, $this->paidAmountInCents($payload));
         } else {
             $this->failGatewayPayment($billId, $payload, 'Payment cancelled or failed at FPX checkout.');
         }
+    }
+
+    /**
+     * Amount Billplz reports as paid, in cents (callback "paid_amount",
+     * falling back to the bill "amount"); null when the payload has neither
+     * (the redirect carries no amount).
+     *
+     * @param  array<mixed>  $payload
+     */
+    private function paidAmountInCents(array $payload): ?int
+    {
+        $raw = $payload['paid_amount'] ?? $payload['amount'] ?? null;
+
+        return is_numeric($raw) ? (int) round((float) $raw) : null;
     }
 
     // ── Audit Log ─────────────────────────────────────────────────────────────

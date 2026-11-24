@@ -24,6 +24,11 @@
                 ✗ {{ session('error') }}
             </div>
         @endif
+        @if(session('info'))
+            <div class="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl px-4 py-3 text-sm font-medium">
+                ⓘ {{ session('info') }}
+            </div>
+        @endif
 
         {{-- ── Summary Cards ── --}}
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -218,67 +218,92 @@ class BillplzService
     }
 
     /**
-     * Verify Billplz X-Signature for Webhook or Return Redirect.
+     * Verify the X-Signature on a Billplz callback (POST, flat fields) or
+     * redirect (GET, fields nested as billplz[...]).
      *
-     * Billplz signs the request with HMAC SHA256 using the X-Signature Key.
+     * Fails CLOSED: with no X-Signature key configured nothing can be
+     * verified, so nothing is trusted. (It previously returned true, which
+     * let anyone post a forged "paid" callback.)
+     *
+     * @param  array<mixed>  $data
      */
     public function verifySignature(array $data, ?string $signature = null): bool
     {
         $xSignatureKey = $this->getXSignatureKey();
         if (empty($xSignatureKey)) {
-            Log::warning('[BillplzService] X-Signature key not configured; skipping signature verification.');
+            Log::critical('[BillplzService] X-Signature key is not configured, so Billplz callbacks and redirects cannot be verified and are being rejected. Set it in Admin > Finance settings (Billplz dashboard: Settings > Keys & Integration).');
 
-            return true; // If admin hasn't configured X-Signature yet, allow fallback
-        }
-
-        $sig = $signature ?? ($data['x_signature'] ?? null);
-        if (empty($sig)) {
             return false;
         }
 
-        // Exclude x_signature from the payload
-        unset($data['x_signature']);
-
-        // Handle redirect format if data is wrapped in billplz[...]
-        if (isset($data['billplz']) && is_array($data['billplz'])) {
-            $data = $data['billplz'];
-            unset($data['x_signature']);
+        $sig = $signature ?? $data['x_signature'] ?? ($data['billplz']['x_signature'] ?? null);
+        if (! is_string($sig) || $sig === '') {
+            return false;
         }
 
-        // Sort keys alphabetically
-        ksort($data);
-
-        // Build source string: key + value concatenation
-        $source = '';
-        foreach ($data as $k => $v) {
-            $source .= $k.$v;
-        }
-
-        $expected = hash_hmac('sha256', $source, $xSignatureKey);
-
-        return hash_equals($expected, $sig);
+        return hash_equals($this->generateSignature($data, $xSignatureKey), strtolower(trim($sig)));
     }
 
     /**
-     * Generate Billplz X-Signature HMAC SHA256 string for verification or testing.
+     * HMAC-SHA256 X-Signature over signatureSource().
+     *
+     * @param  array<mixed>  $data
      */
     public function generateSignature(array $data, ?string $key = null): string
     {
-        $xSignatureKey = $key ?? $this->getXSignatureKey();
+        return hash_hmac('sha256', $this->signatureSource($data), (string) ($key ?? $this->getXSignatureKey()));
+    }
 
-        unset($data['x_signature']);
-        if (isset($data['billplz']) && is_array($data['billplz'])) {
-            $data = $data['billplz'];
-            unset($data['x_signature']);
+    /**
+     * The X-Signature source string, per Billplz's documented algorithm
+     * (support.billplz.com/api, Security > X Signature):
+     *  - every field except x_signature, nested fields prefixed with their
+     *    parent key (redirect billplz[id] becomes "billplzid")
+     *  - each piece is key immediately followed by value (empty value = key only)
+     *  - pieces sorted ascending, case-insensitively, as whole strings, so
+     *    "paid_amount100" sorts before "paidtrue"
+     *  - joined with "|"
+     *
+     * Verified against both worked examples in the Billplz docs; see
+     * tests/Unit/BillplzSignatureTest.php.
+     *
+     * @param  array<mixed>  $data
+     */
+    public function signatureSource(array $data): string
+    {
+        $pieces = [];
+        $this->collectSignaturePieces($data, '', $pieces);
+        usort($pieces, 'strcasecmp');
+
+        return implode('|', $pieces);
+    }
+
+    /**
+     * @param  array<mixed>  $data
+     * @param  list<string>  $pieces
+     */
+    private function collectSignaturePieces(array $data, string $prefix, array &$pieces): void
+    {
+        foreach ($data as $key => $value) {
+            if ($key === 'x_signature') {
+                continue;
+            }
+
+            $name = $prefix.(is_int($key) ? '' : $key);
+
+            if (is_array($value)) {
+                $this->collectSignaturePieces($value, $name, $pieces);
+
+                continue;
+            }
+
+            $pieces[] = $name.match (true) {
+                $value === true => 'true',
+                $value === false => 'false',
+                $value === null => '',
+                is_scalar($value) => (string) $value,
+                default => '',
+            };
         }
-
-        ksort($data);
-
-        $source = '';
-        foreach ($data as $k => $v) {
-            $source .= $k.$v;
-        }
-
-        return hash_hmac('sha256', $source, (string) $xSignatureKey);
     }
 }

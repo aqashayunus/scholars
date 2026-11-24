@@ -33,6 +33,9 @@
         @if(session('error'))
             <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl px-4 py-3 text-sm font-medium">✗ {{ session('error') }}</div>
         @endif
+        @if(session('info'))
+            <div class="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl px-4 py-3 text-sm font-medium">ⓘ {{ session('info') }}</div>
+        @endif
 
         {{-- ── Per-child Invoice Sections ── --}}
         @forelse($children as $child)

@@ -319,19 +319,136 @@ class BillplzPaymentTest extends TestCase
             ], 200),
         ]);
 
+        $redirect = ['billplz' => [
+            'id' => 'bill_return_test_1',
+            'paid' => 'true',
+            'paid_at' => now()->format('Y-m-d H:i:s O'),
+        ]];
+        $redirect['billplz']['x_signature'] = $this->billplzService->generateSignature($redirect, $this->xSignatureKey);
+
         $response = $this->actingAs($this->studentUser)
-            ->get(route('billing.billplz.return', [
-                'billplz' => [
-                    'id' => 'bill_return_test_1',
-                    'paid' => 'true',
-                ],
-            ]));
+            ->get(route('billing.billplz.return', $redirect));
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
         $payment->refresh();
         $this->assertEquals(PaymentStatus::Successful, $payment->status);
+    }
+
+    private function pendingPayment(string $billId, float $amount): Payment
+    {
+        $invoice = $this->createTestInvoice($amount);
+        $payment = Payment::create([
+            'user_id' => $this->studentUser->id,
+            'invoice_id' => $invoice->id,
+            'student_id' => $this->student->id,
+            'amount' => $amount,
+            'payment_method' => 'fpx',
+            'description' => 'FPX Online Payment Test',
+            'status' => PaymentStatus::Pending,
+            'billplz_bill_id' => $billId,
+        ]);
+        PaymentInvoice::create(['payment_id' => $payment->id, 'invoice_id' => $invoice->id, 'amount_applied' => $amount]);
+
+        return $payment;
+    }
+
+    /**
+     * The return URL is a normal browser link: a hand-made "paid=true" link
+     * must not settle (or fail) anything without a valid X-Signature.
+     */
+    public function test_forged_unsigned_return_redirect_does_not_change_payment(): void
+    {
+        $payment = $this->pendingPayment('bill_forged_return', 80.00);
+
+        $this->actingAs($this->studentUser)
+            ->get(route('billing.billplz.return', ['billplz' => ['id' => 'bill_forged_return', 'paid' => 'true']]))
+            ->assertRedirect()
+            ->assertSessionHas('info');
+
+        $this->assertEquals(PaymentStatus::Pending, $payment->refresh()->status);
+        $this->assertNull($payment->receipt_number);
+
+        // A forged "paid=false" link must not cancel someone's pending payment either
+        $this->get(route('billing.billplz.return', ['billplz' => ['id' => 'bill_forged_return', 'paid' => 'false', 'x_signature' => 'bogus']]))
+            ->assertSessionHas('info');
+        $this->assertEquals(PaymentStatus::Pending, $payment->refresh()->status);
+    }
+
+    /**
+     * Previously verifySignature() returned true when no key was configured,
+     * so any forged callback was accepted. It must now fail closed.
+     */
+    public function test_webhook_is_rejected_when_no_x_signature_key_is_configured(): void
+    {
+        $payment = $this->pendingPayment('bill_no_key', 100.00);
+        Setting::set('billplz_x_signature_key', '', 'finance');
+        config(['services.billplz.x_signature_key' => null]);
+
+        $payload = ['id' => 'bill_no_key', 'paid' => 'true', 'paid_amount' => '10000', 'state' => 'paid'];
+        $payload['x_signature'] = $this->billplzService->generateSignature($payload, 'attacker-chosen-key');
+
+        $this->post(route('billing.billplz.webhook'), $payload)->assertStatus(400);
+        $this->assertEquals(PaymentStatus::Pending, $payment->refresh()->status);
+    }
+
+    /**
+     * A genuine, correctly signed callback whose paid amount differs from
+     * what was billed is acknowledged (so Billplz stops retrying) but left
+     * pending and flagged, never settling the invoice.
+     */
+    public function test_signed_webhook_with_wrong_paid_amount_is_flagged_not_settled(): void
+    {
+        $payment = $this->pendingPayment('bill_amount_mismatch', 100.00);
+
+        $payload = ['amount' => '10000', 'id' => 'bill_amount_mismatch', 'paid' => 'true', 'paid_amount' => '100', 'state' => 'paid'];
+        $payload['x_signature'] = $this->billplzService->generateSignature($payload, $this->xSignatureKey);
+
+        $this->post(route('billing.billplz.webhook'), $payload)->assertOk();
+
+        $payment->refresh();
+        $this->assertEquals(PaymentStatus::Pending, $payment->status);
+        $this->assertNull($payment->receipt_number);
+        $this->assertStringContainsString('Needs review', (string) $payment->payment_proof_notes);
+        $this->assertEquals(0.0, (float) $payment->invoice->refresh()->amount_paid);
+    }
+
+    /**
+     * An unpaid callback without a "state" field used to throw (undefined
+     * index), answering 500 and making Billplz retry and degrade the account.
+     */
+    public function test_signed_unpaid_webhook_without_state_marks_payment_failed(): void
+    {
+        $payment = $this->pendingPayment('bill_unpaid_no_state', 50.00);
+
+        $payload = ['id' => 'bill_unpaid_no_state', 'paid' => 'false'];
+        $payload['x_signature'] = $this->billplzService->generateSignature($payload, $this->xSignatureKey);
+
+        $this->post(route('billing.billplz.webhook'), $payload)->assertOk();
+        $this->assertEquals(PaymentStatus::Failed, $payment->refresh()->status);
+    }
+
+    /**
+     * Callback and redirect for the same bill (Billplz does not order them)
+     * settle it once: one receipt, invoice paid once.
+     */
+    public function test_callback_then_redirect_for_same_bill_settles_once(): void
+    {
+        $payment = $this->pendingPayment('bill_both_channels', 60.00);
+
+        $callback = ['amount' => '6000', 'id' => 'bill_both_channels', 'paid' => 'true', 'paid_amount' => '6000', 'state' => 'paid'];
+        $callback['x_signature'] = $this->billplzService->generateSignature($callback, $this->xSignatureKey);
+        $this->post(route('billing.billplz.webhook'), $callback)->assertOk();
+        $receipt = $payment->refresh()->receipt_number;
+
+        $redirect = ['billplz' => ['id' => 'bill_both_channels', 'paid' => 'true', 'paid_at' => now()->format('Y-m-d H:i:s O')]];
+        $redirect['billplz']['x_signature'] = $this->billplzService->generateSignature($redirect, $this->xSignatureKey);
+        $this->actingAs($this->studentUser)->get(route('billing.billplz.return', $redirect))->assertSessionHas('success');
+
+        $payment->refresh();
+        $this->assertSame($receipt, $payment->receipt_number);
+        $this->assertEquals(60.00, (float) $payment->invoice->refresh()->amount_paid);
     }
 
     /**

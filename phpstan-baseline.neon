@@ -7489,12 +7489,6 @@ parameters:
 			path: app/Services/Billplz/BillplzService.php
 
 		-
-			message: '#^Method App\\Services\\Billplz\\BillplzService\:\:generateSignature\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Billplz/BillplzService.php
-
-		-
 			message: '#^Method App\\Services\\Billplz\\BillplzService\:\:getBill\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -7502,12 +7496,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Services\\Billplz\\BillplzService\:\:testConnection\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Billplz/BillplzService.php
-
-		-
-			message: '#^Method App\\Services\\Billplz\\BillplzService\:\:verifySignature\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/Billplz/BillplzService.php
@@ -8793,12 +8781,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Payment\:\:\$user\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/PaymentService.php
-
-		-
-			message: '#^Method App\\Services\\PaymentService\:\:completeGatewayPayment\(\) has parameter \$gatewayData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/PaymentService.php
 
