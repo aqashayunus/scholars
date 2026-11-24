@@ -97,7 +97,7 @@ The first six were set with `gh secret set <NAME> --repo MEDIA-Olympia-Education
 | Health-check false failures | **FIXED 2026-11-23** | Retry loop, §7.16 |
 | Test deploy pruning prod backups | **FIXED 2026-11-23** | §7.17 |
 | FK-orphan-audit pre-migrate gate | **MISSING** | `olympia-crm` has one; Scholars doesn't |
-| Missing FK constraints on production | **OPEN** | 49 present vs 121 from a fresh migrate (§9.3). Needs an orphan audit first, then a dedicated, rehearsed migration |
+| Missing FK constraints on production | **FIX READY, not yet on production** | Migration `2026_11_24_000001_add_missing_foreign_keys_to_legacy_schema` (§9.3). Rehearse on a fresh production dump right before the production deploy |
 | CI `php -l` lints one file per batch | **FIXED 2026-11-24** | Now one file per call, all failures reported, §2 |
 | Billplz X-Signature key | **NOT YET CONFIGURED** (account pending) | Verification now fails closed, so online payments are rejected until the key is set. See §7.20 before taking any payment |
 | Double-trigger when `main`/`khai-QA-refactor` are pushed together | **Observed, not fixed** | `cd.yml`'s `build` job matches CI completion on either branch, so pushing the same commit to both fires two independent `build`→`deploy-test` sequences back to back. Harmless (idempotent, serialized by the `cpanel-deploy-test-scholars` concurrency group) but wasteful. Branches are now routinely pushed together, so this happens on every release; filtering `cd.yml` to one branch would halve the work |
@@ -162,7 +162,12 @@ Production was **adopted, not provisioned**. `olympianscholars.com` already ran 
 7. Verified from outside: all pages 200, new routes present, `/.env` 403, logs/dumps 404, no debug traces on error.
 
 ### 9.3 Known differences that remain (deliberately out of scope)
-- **Foreign keys**: production has 49 FK constraints, a fresh migrate has 121. The app works, but deleting a parent row does not cascade there. Fix with an orphan audit plus a dedicated, rehearsed migration.
+- **Foreign keys**: production has 49 FK constraints, a fresh migrate has 121, so deleting a parent row does not cascade there and orphans accumulate. All 72 missing keys have compatible column types. The fix is migration `2026_11_24_000001_add_missing_foreign_keys_to_legacy_schema`:
+  - Orphans are resolved first, following each key's intent. A nullable reference is cleared and the row kept; otherwise the orphan row is deleted, since its parent is already gone. This repeats until a pass changes nothing.
+  - **Every** deleted or changed row is first copied in full (JSON) into the permanent table `legacy_fk_cleanup_backup` (`source_table`, `action`, `reason`, `row_data`). That includes rows that the keys already present cascade-delete or null alongside it.
+  - Signed off 2026-11-24, including removing teacher #24 (its user account was already deleted) together with its 3 courses and their 2 enrolments.
+  - Rehearsed on the 2026-11-23 production copy: 121/121 keys matching the reference, 359 rows backed up (mostly notifications, subtopic progress and teacher-subject links of deleted users, students and teachers), per-table before/after counts equal to the backup, and a second run that does nothing. On a database that already has all keys (test, CI, fresh) it is a no-op and does not even create the backup table.
+  - To restore a row: `SELECT row_data FROM legacy_fk_cleanup_backup WHERE source_table = '...'`.
 - **4 harmless column differences**: production has `longtext` where `text` is expected on 3 columns, and `assignments.section_b_questions` defaults to NULL instead of 0.
 - **`teacher_applications.ic_number`** already existed from the old `main` with real values. `2026_11_23_000002` adds it only where it is missing, so it was a no-op on production.
 
