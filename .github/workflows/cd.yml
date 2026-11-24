@@ -51,7 +51,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.branch || (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch) || 'main' }}
 
@@ -63,13 +63,13 @@ jobs:
           coverage: none
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Cache Composer packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: vendor
           key: composer-prod-${{ runner.os }}-${{ hashFiles('composer.lock') }}
