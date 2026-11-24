@@ -97,7 +97,7 @@ The first six were set with `gh secret set <NAME> --repo MEDIA-Olympia-Education
 | Health-check false failures | **FIXED 2026-11-23** | Retry loop, §7.16 |
 | Test deploy pruning prod backups | **FIXED 2026-11-23** | §7.17 |
 | FK-orphan-audit pre-migrate gate | **MISSING** | `olympia-crm` has one; Scholars doesn't |
-| Missing FK constraints on production | **FIX READY, not yet on production** | Migration `2026_11_24_000001_add_missing_foreign_keys_to_legacy_schema` (§9.3). Rehearse on a fresh production dump right before the production deploy |
+| Missing FK constraints on production | **DONE 2026-11-24** | Migration `2026_11_24_000001_add_missing_foreign_keys_to_legacy_schema` (§9.3): production now has 121/121 keys; 359 rows backed up in `legacy_fk_cleanup_backup`. Rehearsed on a same-day production dump first |
 | CI `php -l` lints one file per batch | **FIXED 2026-11-24** | Now one file per call, all failures reported, §2 |
 | Billplz X-Signature key | **NOT YET CONFIGURED** (account pending) | Verification now fails closed, so online payments are rejected until the key is set. See §7.20 before taking any payment |
 | Double-trigger when `main`/`khai-QA-refactor` are pushed together | **Observed, not fixed** | `cd.yml`'s `build` job matches CI completion on either branch, so pushing the same commit to both fires two independent `build`→`deploy-test` sequences back to back. Harmless (idempotent, serialized by the `cpanel-deploy-test-scholars` concurrency group) but wasteful. Branches are now routinely pushed together, so this happens on every release; filtering `cd.yml` to one branch would halve the work |
