@@ -17,7 +17,7 @@
 | Step | What it proves |
 |---|---|
 | `composer validate --strict` | `composer.json`/`composer.lock` are internally consistent |
-| PHP syntax lint (`php -l`) over `app bootstrap config database routes tests` | Intended: no PHP file fails to parse. **Known gap**: the step runs `find ... -exec php -l {} +`, and `php -l` only lints the *first* file it is given, so in practice only one file per batch is checked. A stray newline before `<?php` in `StudentAttendanceSeeder.php` went unnoticed this way until 2026-11-23. Fix: lint one file per invocation (e.g. `-exec php -l {} \;` with a failure check). |
+| PHP syntax lint (`php -l`) over `app bootstrap config database routes tests` | No PHP file fails to parse. Each file is linted in its own `php -l` call (4 in parallel via `xargs -n1 -P4`); only failures are printed, every broken file is listed, then the step fails. **Fixed 2026-11-24**: the step used to run `find ... -exec php -l {} +`, but `php -l` only lints the *first* file it is given, so just one file per batch was ever checked. That's how a stray newline before `<?php` in `StudentAttendanceSeeder.php` went unnoticed until 2026-11-23. |
 | `php artisan route:list` | The route table itself loads without error |
 | `./vendor/bin/phpstan analyse --memory-limit=1G` (Larastan level 7, baselined) | No *new* static-analysis errors beyond the grandfathered ones. The baseline started at 2,152 entries on 2026-11-18 and stood at 2,154 on 2026-11-24 after the production work (see the policy below) |
 | `php artisan test` (full suite, `DB_CONNECTION=sqlite`, `:memory:`) | Every Feature/Unit test passes (420 on 2026-11-24) |
@@ -98,7 +98,7 @@ The first six were set with `gh secret set <NAME> --repo MEDIA-Olympia-Education
 | Test deploy pruning prod backups | **FIXED 2026-11-23** | §7.17 |
 | FK-orphan-audit pre-migrate gate | **MISSING** | `olympia-crm` has one; Scholars doesn't |
 | Missing FK constraints on production | **OPEN** | 49 present vs 121 from a fresh migrate (§9.3). Needs an orphan audit first, then a dedicated, rehearsed migration |
-| CI `php -l` lints one file per batch | **OPEN** | §2 |
+| CI `php -l` lints one file per batch | **FIXED 2026-11-24** | Now one file per call, all failures reported, §2 |
 | Billplz X-Signature key | **NOT YET CONFIGURED** (account pending) | Verification now fails closed, so online payments are rejected until the key is set. See §7.20 before taking any payment |
 | Double-trigger when `main`/`khai-QA-refactor` are pushed together | **Observed, not fixed** | `cd.yml`'s `build` job matches CI completion on either branch, so pushing the same commit to both fires two independent `build`→`deploy-test` sequences back to back. Harmless (idempotent, serialized by the `cpanel-deploy-test-scholars` concurrency group) but wasteful. Branches are now routinely pushed together, so this happens on every release; filtering `cd.yml` to one branch would halve the work |
 | Leftover old copies on the host | **Kept on purpose** | The `.org` folder (redirected, §10) still holds the pre-CD app; back it up before ever removing it |

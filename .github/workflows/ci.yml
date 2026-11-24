@@ -67,7 +67,17 @@ jobs:
         run: npm run build
 
       - name: Check PHP syntax (lint)
-        run: find app bootstrap config database routes tests -type f -name "*.php" -exec php -l {} +
+        # One file per `php -l` call. `php -l` only lints the FIRST file it
+        # is given, so the previous `find ... -exec php -l {} +` silently
+        # skipped every other file in each batch (an unparseable seeder went
+        # unnoticed that way until 2026-11-23). Runs 4 in parallel, prints
+        # only failures, and reports every broken file before failing
+        # (`exit 1` rather than php's 255 keeps xargs going; it returns 123).
+        run: |
+          set -o pipefail
+          find app bootstrap config database routes tests -type f -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 sh -c 'out=$(php -l "$0" 2>&1) || { printf "%s\n" "$out" | grep -v "^$"; exit 1; }'
+          echo "PHP lint: all files parse."
 
       - name: Prepare environment
         run: |
