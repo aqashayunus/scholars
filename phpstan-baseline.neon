@@ -337,12 +337,6 @@ parameters:
 			path: app/Http/Controllers/Admin/BillingController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:subjectFees\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:updateEmailSettings\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -357,12 +351,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:updateInvoiceStatusQuick\(\) has parameter \$id with no type specified\.$#'
 			identifier: missingType.parameter
-			count: 1
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:updateSubjectFee\(\) has no return type specified\.$#'
-			identifier: missingType.return
 			count: 1
 			path: app/Http/Controllers/Admin/BillingController.php
 
@@ -6499,12 +6487,6 @@ parameters:
 			path: app/Services/Admin/CurriculumService.php
 
 		-
-			message: '#^Method App\\Services\\Admin\\CurriculumService\:\:createCourse\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Admin/CurriculumService.php
-
-		-
 			message: '#^Method App\\Services\\Admin\\CurriculumService\:\:createSubjectDiagnosticTest\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -6536,12 +6518,6 @@ parameters:
 
 		-
 			message: '#^Method App\\Services\\Admin\\CurriculumService\:\:updateCourse\(\) has parameter \$validated with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Admin/CurriculumService.php
-
-		-
-			message: '#^Method App\\Services\\Admin\\CurriculumService\:\:updateCourse\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Services/Admin/CurriculumService.php

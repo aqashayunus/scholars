@@ -8,7 +8,6 @@ use App\Http\Requests\Admin\UpdateCourseRequest;
 use App\Http\Requests\Admin\UpdateSubtopicRequest;
 use App\Http\Requests\Admin\UpdateTopicRequest;
 use App\Models\Course;
-use App\Models\Setting;
 use App\Models\Subject;
 use App\Models\SubjectSubtopic;
 use App\Models\SubjectTopic;
@@ -24,19 +23,19 @@ class CurriculumController extends Controller
 {
     public function storeCourse(StoreCourseRequest $request, CurriculumService $curriculum)
     {
-        [$course, $monthlyFee] = $curriculum->createCourse($request->validated());
+        $course = $curriculum->createCourse($request->validated());
 
         return redirect()->to(route('admin.dashboard').'#courses-catalog')
-            ->with('success', "Course '{$course->title}' created. Subject fee set to ".Setting::get('currency_symbol', 'RM').' '.number_format($monthlyFee, 2).'/month.');
+            ->with('success', "Course '{$course->title}' created.");
     }
 
     public function updateCourse(UpdateCourseRequest $request, $id, CurriculumService $curriculum)
     {
         $course = Course::findOrFail($id);
-        [$course, $monthlyFee] = $curriculum->updateCourse($course, $request->validated());
+        $course = $curriculum->updateCourse($course, $request->validated());
 
         return redirect()->to(route('admin.dashboard').'#courses-catalog')
-            ->with('success', "Course '{$course->title}' updated. Subject fee: ".Setting::get('currency_symbol', 'RM').' '.number_format($monthlyFee, 2).'/month.');
+            ->with('success', "Course '{$course->title}' updated.");
     }
 
     public function destroyCourse($id, CurriculumService $curriculum)

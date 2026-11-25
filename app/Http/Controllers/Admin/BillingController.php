@@ -476,43 +476,6 @@ class BillingController extends Controller
         return view('admin.billing.reminder-history', compact('invoice', 'reminders'));
     }
 
-    // ── Subject Fee Management ────────────────────────────────────────────────
-
-    public function subjectFees()
-    {
-        $subjects = Subject::where('is_active', true)
-            ->orderBy('education_type')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.billing.subject-fees', compact('subjects'));
-    }
-
-    public function updateSubjectFee(Request $request, Subject $subject)
-    {
-        $request->validate([
-            'monthly_fee' => ['required', 'numeric', 'min:0', 'max:9999.99'],
-        ]);
-
-        $oldFee = $subject->monthly_fee;
-        $subject->update(['monthly_fee' => $request->monthly_fee]);
-
-        FinancialAuditLog::create([
-            'user_id' => Auth::id(),
-            'action' => 'subject_fee_updated',
-            'target_type' => 'Subject',
-            'target_id' => $subject->id,
-            'ip_address' => request()->ip(),
-            'details' => json_encode([
-                'subject' => $subject->name,
-                'old_fee' => $oldFee,
-                'new_fee' => $request->monthly_fee,
-            ]),
-        ]);
-
-        return back()->with('success', "Fee for {$subject->name} updated to RM ".number_format($request->monthly_fee, 2).'. New invoices will use this rate.');
-    }
-
     // ── Email Reminder Settings ───────────────────────────────────────────────
 
     public function emailSettings()

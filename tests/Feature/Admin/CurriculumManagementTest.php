@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Course;
+use App\Models\FinancialAuditLog;
 use App\Models\Subject;
 use App\Models\SubjectSubtopic;
 use App\Models\SubjectTopic;
@@ -25,9 +26,9 @@ class CurriculumManagementTest extends TestCase
 
     // ── Course ───────────────────────────────────────────────────────────────
 
-    public function test_admin_can_create_course_and_it_writes_the_monthly_fee_onto_the_subject(): void
+    public function test_admin_can_create_course_and_it_leaves_the_subject_fee_alone(): void
     {
-        $subject = Subject::factory()->create(['monthly_fee' => 0]);
+        $subject = Subject::factory()->create(['monthly_fee' => 60]);
         $teacher = Teacher::factory()->create();
 
         $response = $this->actingAs($this->admin)->post(route('admin.courses.store'), [
@@ -35,13 +36,14 @@ class CurriculumManagementTest extends TestCase
             'subject_id' => $subject->id,
             'teacher_id' => $teacher->id,
             'level' => 'SPM',
-            'monthly_fee' => 150,
+            'monthly_fee' => 150, // stale field from an old form: must be ignored
             'status' => 'published',
         ]);
 
         $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('courses', ['title' => 'SPM Add Maths', 'subject_id' => $subject->id]);
-        $this->assertEquals(150, $subject->refresh()->monthly_fee);
+        $this->assertEquals(60, $subject->refresh()->monthly_fee);
     }
 
     public function test_creating_course_without_teacher_falls_back_to_subjects_own_teacher(): void
@@ -54,7 +56,6 @@ class CurriculumManagementTest extends TestCase
             'title' => 'Fallback Course',
             'subject_id' => $subject->id,
             'level' => 'SPM',
-            'monthly_fee' => 80,
             'status' => 'draft',
         ]);
 
@@ -66,22 +67,22 @@ class CurriculumManagementTest extends TestCase
     public function test_admin_can_update_course_without_clearing_existing_teacher_when_teacher_id_omitted(): void
     {
         $teacher = Teacher::factory()->create();
-        $subject = Subject::factory()->create();
+        $subject = Subject::factory()->create(['monthly_fee' => 75]);
         $course = Course::factory()->create(['subject_id' => $subject->id, 'teacher_id' => $teacher->id]);
 
         $response = $this->actingAs($this->admin)->put(route('admin.courses.update', $course->id), [
             'title' => 'Updated Title',
             'subject_id' => $subject->id,
             'level' => 'SPM',
-            'monthly_fee' => 200,
             'status' => 'published',
         ]);
 
         $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
         $course->refresh();
         $this->assertSame('Updated Title', $course->title);
         $this->assertSame($teacher->id, $course->teacher_id);
-        $this->assertEquals(200, $subject->refresh()->monthly_fee);
+        $this->assertEquals(75, $subject->refresh()->monthly_fee);
     }
 
     public function test_admin_can_delete_course(): void
@@ -151,6 +152,73 @@ class CurriculumManagementTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseHas('subjects', ['slug' => 'history-form-4-1']);
+    }
+
+    private function subjectUpdatePayload(Subject $subject, array $overrides = []): array
+    {
+        return array_merge([
+            'name' => $subject->name,
+            'slug' => $subject->slug,
+            'education_type' => 'primary',
+            'stage' => 'Primary',
+            'form_year' => 'Year 4',
+            'category' => 'Core',
+            'level' => 'KSSR',
+            'color' => '#3b82f6',
+            'is_active' => '1',
+            'monthly_fee' => $subject->monthly_fee ?? 0,
+        ], $overrides);
+    }
+
+    public function test_admin_sets_the_monthly_fee_on_subject_edit_and_it_is_audit_logged(): void
+    {
+        $subject = Subject::factory()->create(['monthly_fee' => 60]);
+
+        $response = $this->actingAs($this->admin)->put(
+            route('admin.subjects.update', $subject->id),
+            $this->subjectUpdatePayload($subject, ['monthly_fee' => 85.50])
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+        $this->assertEquals(85.50, $subject->refresh()->monthly_fee);
+        $log = FinancialAuditLog::where('action', 'subject_fee_updated')->where('target_id', $subject->id)->sole();
+        $this->assertSame($this->admin->id, $log->user_id);
+        $this->assertEquals(['subject' => $subject->name, 'old_fee' => 60, 'new_fee' => 85.5], json_decode($log->details, true));
+    }
+
+    public function test_subject_edit_without_a_fee_change_writes_no_audit_log(): void
+    {
+        $subject = Subject::factory()->create(['monthly_fee' => 60]);
+
+        $this->actingAs($this->admin)->put(
+            route('admin.subjects.update', $subject->id),
+            $this->subjectUpdatePayload($subject, ['name' => 'Renamed Subject'])
+        )->assertSessionHasNoErrors();
+
+        $this->assertSame('Renamed Subject', $subject->refresh()->name);
+        $this->assertSame(0, FinancialAuditLog::where('action', 'subject_fee_updated')->count());
+    }
+
+    public function test_subject_edit_rejects_a_missing_or_negative_fee(): void
+    {
+        $subject = Subject::factory()->create(['monthly_fee' => 60]);
+
+        $payload = $this->subjectUpdatePayload($subject);
+        unset($payload['monthly_fee']);
+        $this->actingAs($this->admin)->put(route('admin.subjects.update', $subject->id), $payload)
+            ->assertSessionHasErrors('monthly_fee');
+
+        $this->actingAs($this->admin)->put(route('admin.subjects.update', $subject->id), $this->subjectUpdatePayload($subject, ['monthly_fee' => -5]))
+            ->assertSessionHasErrors('monthly_fee');
+
+        $this->assertEquals(60, $subject->refresh()->monthly_fee);
+    }
+
+    public function test_old_billing_subject_fees_url_redirects_to_the_subjects_tab(): void
+    {
+        $this->actingAs($this->admin)->get('/admin/billing/subject-fees')
+            ->assertRedirect('/admin/dashboard#courses-subjects');
     }
 
     public function test_admin_can_delete_subject(): void

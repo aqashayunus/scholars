@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Models\Assignment;
 use App\Models\Course;
 use App\Models\Enrollment;
+use App\Models\FinancialAuditLog;
 use App\Models\StudentAssignment;
 use App\Models\Subject;
 use App\Models\SubjectSubtopic;
@@ -12,6 +13,7 @@ use App\Models\SubjectTopic;
 use App\Models\Teacher;
 use App\Models\UserNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,11 +21,10 @@ class CurriculumService
 {
     // ── Course ───────────────────────────────────────────────────────────────
 
-    public function createCourse(array $validated): array
+    // The monthly fee lives on the subject and is edited only through
+    // updateSubject(), so course create/update never touch it.
+    public function createCourse(array $validated): Course
     {
-        $monthlyFee = $validated['monthly_fee'];
-        unset($validated['monthly_fee']);
-
         if (empty($validated['teacher_id'])) {
             $subject = Subject::find($validated['subject_id']);
             $validated['teacher_id'] = $subject?->teachers?->first()?->id ?? Teacher::first()?->id ?? null;
@@ -31,26 +32,18 @@ class CurriculumService
 
         $course = Course::create($validated);
 
-        // Write fee to the subject — this is the authoritative billing source
-        Subject::where('id', $course->subject_id)->update(['monthly_fee' => $monthlyFee]);
-
         $this->notifyCourseAssignedTeacher($course, 'NEW COURSE ASSIGNED', "The course '{$course->title}' ({$course->level}) has been assigned to your educator profile.");
 
-        return [$course, $monthlyFee];
+        return $course;
     }
 
-    public function updateCourse(Course $course, array $validated): array
+    public function updateCourse(Course $course, array $validated): Course
     {
-        $monthlyFee = $validated['monthly_fee'];
-        unset($validated['monthly_fee']);
-
         if (! isset($validated['teacher_id']) || $validated['teacher_id'] === null) {
             unset($validated['teacher_id']);
         }
 
         $course->update($validated);
-
-        Subject::where('id', $course->subject_id)->update(['monthly_fee' => $monthlyFee]);
 
         try {
             $this->notifyCourseAssignedTeacher($course, 'COURSE DETAILS UPDATED', "Details for course '{$course->title}' have been updated.");
@@ -68,7 +61,7 @@ class CurriculumService
         } catch (\Throwable $e) {
         }
 
-        return [$course, $monthlyFee];
+        return $course;
     }
 
     public function deleteCourse(int $id): string
@@ -209,11 +202,28 @@ class CurriculumService
             'color' => 'required|string|max:20',
             'icon' => 'nullable|string|max:50',
             'order' => 'nullable|integer',
+            'monthly_fee' => 'required|numeric|min:0|max:9999.99',
         ]);
 
         $validated['is_active'] = $request->has('is_active') ? 1 : 0;
 
+        $oldFee = $subject->monthly_fee;
         $subject->update($validated);
+
+        if ((float) $oldFee !== (float) $subject->monthly_fee) {
+            FinancialAuditLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'subject_fee_updated',
+                'target_type' => 'Subject',
+                'target_id' => $subject->id,
+                'ip_address' => $request->ip(),
+                'details' => json_encode([
+                    'subject' => $subject->name,
+                    'old_fee' => $oldFee,
+                    'new_fee' => $subject->monthly_fee,
+                ]),
+            ]);
+        }
 
         return $subject;
     }

@@ -18,7 +18,6 @@ class StoreCourseRequest extends FormRequest
             'subject_id' => 'required|exists:subjects,id',
             'teacher_id' => 'nullable|exists:teachers,id',
             'level' => 'required|string|max:50',
-            'monthly_fee' => 'required|numeric|min:0',
             'status' => 'required|in:published,draft,archived',
             'total_lessons' => 'nullable|integer|min:1',
             'description' => 'nullable|string',

@@ -1232,6 +1232,7 @@
                                     <th class="py-3 px-4 w-44">Category &amp; Package</th>
                                     <th class="py-3 px-4 w-24 text-center">Syllabus</th>
                                     <th class="py-3 px-4 w-48">Diagnostic Test</th>
+                                    <th class="py-3 px-4 w-24 text-right">Fee / Month</th>
                                     <th class="py-3 px-4 w-20">Status</th>
                                     <th class="py-3 px-4 text-right w-24">Actions</th>
                                 </tr>
@@ -1334,6 +1335,11 @@
                                             @endif
                                         </td>
 
+                                        {{-- Monthly fee --}}
+                                        <td class="py-3.5 px-4 text-right font-semibold {{ (float) ($s->monthly_fee ?? 0) > 0 ? 'text-emerald-700' : 'text-red-500' }}" title="{{ (float) ($s->monthly_fee ?? 0) > 0 ? '' : 'No fee set' }}">
+                                            {{ $currencySymbol }} {{ number_format($s->monthly_fee ?? 0, 2) }}
+                                        </td>
+
                                         {{-- Status --}}
                                         <td class="py-3.5 px-4">
                                             <span class="px-2 py-0.5 rounded-full text-[10px] font-medium {{ $s->is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600' }}">
@@ -1380,7 +1386,7 @@
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="9" class="text-center py-6 text-gray-400">No subjects found.</td></tr>
+                                    <tr><td colspan="10" class="text-center py-6 text-gray-400">No subjects found.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -5601,8 +5607,8 @@
                 {{-- Row 3: Tuition Fee & Status --}}
                 <div class="grid grid-cols-2 gap-3.5">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-800 mb-1">Subject Fee / Month (RM) *</label>
-                        <input type="number" name="monthly_fee" step="0.01" value="99.00" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-bold text-emerald-700">
+                        <label class="block text-xs font-semibold text-gray-800 mb-1">Subject Fee / Month</label>
+                        <p class="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-500">Uses the subject's fee. Change it under Subjects → Edit.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-800 mb-1">Status *</label>
@@ -5671,8 +5677,9 @@
                 {{-- Row 3: Tuition Fee & Status --}}
                 <div class="grid grid-cols-2 gap-3.5">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-800 mb-1">Subject Fee / Month (RM) *</label>
-                        <input type="number" id="edit_course_monthly_fee" name="monthly_fee" step="0.01" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-bold text-emerald-700">
+                        <label class="block text-xs font-semibold text-gray-800 mb-1">Subject Fee / Month (RM)</label>
+                        <input type="number" id="edit_course_monthly_fee" step="0.01" disabled title="Change it under Subjects → Edit" class="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none font-bold text-gray-500 cursor-not-allowed">
+                        <p class="mt-1 text-[10px] text-gray-400">Set on the subject. Change it under Subjects → Edit.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-800 mb-1">Status *</label>
@@ -5948,6 +5955,12 @@
                         <label class="block text-xs font-semibold text-gray-700 mb-1">SVG Icon</label>
                         <input type="text" id="edit_subject_icon" name="icon" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Monthly Fee (RM) *</label>
+                    <input type="number" id="edit_subject_monthly_fee" name="monthly_fee" step="0.01" min="0" max="9999.99" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-bold text-emerald-700">
+                    <p class="mt-1 text-[10px] text-gray-400">Shown on student registration and used for new invoices. Applies to every course of this subject.</p>
                 </div>
 
                 <div>
@@ -10896,6 +10909,7 @@
             document.getElementById('edit_subject_color').value = subject.color || '#3b82f6';
             document.getElementById('edit_subject_icon').value = subject.icon || 'academic-cap';
             document.getElementById('edit_subject_description').value = subject.description || '';
+            document.getElementById('edit_subject_monthly_fee').value = subject.monthly_fee ?? 0;
             document.getElementById('edit_subject_is_active').checked = !!subject.is_active;
 
             document.getElementById('editSubjectForm').action = '/admin/subjects/' + subject.id;

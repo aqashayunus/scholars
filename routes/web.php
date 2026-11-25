@@ -442,9 +442,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         Route::post('/payments/{payment}/verify', [BillingController::class, 'verifyPayment'])->name('payments.verify');
         Route::post('/payments/{payment}/reject', [BillingController::class, 'rejectPayment'])->name('payments.reject');
 
-        // Subject Fees
-        Route::get('/subject-fees', [BillingController::class, 'subjectFees'])->name('subject-fees');
-        Route::put('/subject-fees/{subject}', [BillingController::class, 'updateSubjectFee'])->name('subject-fees.update');
+        // Subject fees are edited on the subject itself (Curriculum > Subjects > Edit).
+        // Old bookmarks to the removed Billing > Subject Fees page land there.
+        Route::redirect('/subject-fees', '/admin/dashboard#courses-subjects', 301);
 
         // Email Settings (redirects to unified email management hub)
         Route::get('/email-settings', function () {
