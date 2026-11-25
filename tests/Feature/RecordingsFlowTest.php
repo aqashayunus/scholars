@@ -124,6 +124,21 @@ class RecordingsFlowTest extends TestCase
         $this->assertDatabaseHas('recorded_classes', ['id' => $other->id, 'title' => 'Not mine']);
     }
 
+    public function test_teacher_previews_recordings_in_page_instead_of_the_students_only_page(): void
+    {
+        $this->recordingFor($this->course, ['video_url' => 'https://www.youtube.com/watch?v=abcdefghijk']);
+
+        $this->actingAs($this->teacher->user)->get(route('teacher.recordings'))
+            ->assertOk()
+            ->assertSee('previewRecording = rec', false)
+            ->assertViewHas('recordings', fn ($recordings) => $recordings->first()['embed_url'] === 'https://www.youtube.com/embed/abcdefghijk')
+            ->assertDontSee("'/student/recordings/'", false);
+
+        // The student page itself stays students-only.
+        $rec = RecordedClass::where('course_id', $this->course->id)->sole();
+        $this->actingAs($this->teacher->user)->get(route('student.recordings.show', $rec->id))->assertForbidden();
+    }
+
     public function test_upload_form_shows_the_servers_real_limit(): void
     {
         $this->actingAs($this->teacher->user)->get(route('teacher.recordings'))

@@ -44,7 +44,12 @@ class RecordingService
         $recordings = RecordedClass::where(function ($q) use ($courseIds, $subjectIds) {
             $q->whereIn('course_id', $courseIds)
                 ->orWhereIn('subject_id', $subjectIds);
-        })->with(['course.subject', 'subject'])->latest()->get();
+        })->with(['course.subject', 'subject'])->latest()->get()
+            // The teacher previews in-page (the /student/recordings page is students-only).
+            ->map(fn (RecordedClass $r) => $r->toArray() + [
+                'embed_url' => $r->embedUrl(),
+                'is_direct_video' => $r->isDirectVideo(),
+            ]);
 
         $subjects = Subject::where('is_active', true)->get();
 

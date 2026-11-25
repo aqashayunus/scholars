@@ -8,6 +8,7 @@
         showUploadModal: false,
         showEditModal: false,
         editingRecording: null,
+        previewRecording: null,
         videoUploadType: 'url',
         editVideoUploadType: 'url',
         newVideoUrl: '',
@@ -225,9 +226,9 @@
 
                         <div class="flex items-center gap-2">
                             {{-- View / Watch --}}
-                            <a :href="'/student/recordings/' + rec.id" target="_blank" class="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white inline-flex items-center justify-center transition-all shadow-2xs" title="Watch in Vault">
+                            <button type="button" @click="previewRecording = rec" class="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer" title="Watch Recording">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>
-                            </a>
+                            </button>
 
                             {{-- Edit Recording --}}
                             <button type="button" @click="editingRecording = JSON.parse(JSON.stringify(rec)); showEditModal = true;" class="w-8 h-8 rounded-xl bg-amber-50 hover:bg-amber-600 text-amber-600 hover:text-white inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer" title="Edit Recording">
@@ -362,6 +363,36 @@
 
                 </form>
 
+            </div>
+        </div>
+
+        {{-- ── WATCH / PREVIEW MODAL (same player rules as the student page) ── --}}
+        <div x-show="previewRecording" x-cloak @keydown.escape.window="previewRecording = null" class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/80 backdrop-blur-xs flex items-center justify-center p-4">
+            <div @click.away="previewRecording = null" class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-4 sm:p-5 space-y-3 my-auto">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <h3 class="font-heading font-black text-base text-gray-900 truncate" x-text="previewRecording?.title"></h3>
+                        <p class="text-xs text-gray-500 font-medium" x-text="(previewRecording?.topic_name || '') + ' • ' + (previewRecording?.duration_minutes || 0) + ' mins'"></p>
+                    </div>
+                    <button type="button" @click="previewRecording = null" class="text-gray-400 hover:text-gray-600 font-bold text-xl cursor-pointer">✕</button>
+                </div>
+
+                <div class="relative w-full aspect-video rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                    {{-- x-if so the iframe/video is removed (and stops playing) on close --}}
+                    <template x-if="previewRecording?.embed_url">
+                        <iframe class="w-full h-full" :src="previewRecording.embed_url" :title="previewRecording.title" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                    </template>
+                    <template x-if="previewRecording && !previewRecording.embed_url && previewRecording.is_direct_video">
+                        <video controls class="w-full h-full" :src="previewRecording.video_url" :poster="previewRecording.thumbnail || ''"></video>
+                    </template>
+                    <template x-if="previewRecording && !previewRecording.embed_url && !previewRecording.is_direct_video">
+                        <div class="text-center p-8 space-y-3">
+                            <p class="text-sm font-black text-white">This link can't play inside the portal</p>
+                            <a :href="previewRecording.video_url" target="_blank" rel="noopener noreferrer" class="inline-block py-2 px-5 rounded-xl bg-amber-500 text-slate-900 font-bold text-xs">Open Recording ↗</a>
+                        </div>
+                    </template>
+                </div>
+                <p class="text-[11px] text-gray-400">This is what students in the class see.</p>
             </div>
         </div>
 
