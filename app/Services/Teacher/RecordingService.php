@@ -7,6 +7,7 @@ use App\Models\RecordedClass;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\UserNotification;
+use App\Support\UploadLimit;
 use Illuminate\Http\Request;
 
 class RecordingService
@@ -21,6 +22,16 @@ class RecordingService
         }
 
         return Teacher::where('user_id', auth()->id())->with($with)->firstOrFail();
+    }
+
+    /** Rejects meeting, folder and other non-video links (see RecordedClass::linkProblem). */
+    private function linkCheck(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) {
+            if ($problem = RecordedClass::linkProblem(is_string($value) ? $value : null)) {
+                $fail($problem);
+            }
+        };
     }
 
     public function indexData(): array
@@ -50,11 +61,13 @@ class RecordingService
             'title' => 'required|string|max:255',
             'topic_name' => 'required|string|max:255',
             'course_id' => 'required|in:'.implode(',', $courseIds),
-            'video_url' => 'nullable|string|max:1000',
-            'video_file' => 'nullable|file|max:204800|mimes:mp4,mov,avi,mkv,webm',
+            'video_url' => ['nullable', 'url', 'max:1000', 'required_without:video_file', $this->linkCheck()],
+            'video_file' => 'nullable|file|max:'.UploadLimit::kilobytes(204800).'|mimes:mp4,mov,avi,mkv,webm',
             'thumbnail_file' => 'nullable|image|max:10240',
             'duration_minutes' => 'required|integer|min:1|max:480',
             'summary' => 'nullable|string|max:3000',
+        ], [
+            'video_url.required_without' => 'Paste a video link or choose a video file.',
         ]);
 
         $course = Course::findOrFail($validated['course_id']);
@@ -63,10 +76,6 @@ class RecordingService
         if ($request->hasFile('video_file')) {
             $path = $request->file('video_file')->store('recordings', 'public');
             $videoUrl = asset('storage/'.$path);
-        }
-
-        if (empty($videoUrl)) {
-            $videoUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
         }
 
         $thumbnail = null;
@@ -114,14 +123,15 @@ class RecordingService
         $courses = $teacher->courses;
         $courseIds = $courses->pluck('id')->toArray();
 
-        $recording = RecordedClass::findOrFail($id);
+        // Only the teacher's own class recordings.
+        $recording = RecordedClass::whereIn('course_id', $courseIds)->findOrFail($id);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'topic_name' => 'required|string|max:255',
             'course_id' => 'required|in:'.implode(',', $courseIds),
-            'video_url' => 'nullable|string|max:1000',
-            'video_file' => 'nullable|file|max:204800|mimes:mp4,mov,avi,mkv,webm',
+            'video_url' => ['nullable', 'string', 'max:1000', $this->linkCheck()],
+            'video_file' => 'nullable|file|max:'.UploadLimit::kilobytes(204800).'|mimes:mp4,mov,avi,mkv,webm',
             'thumbnail_file' => 'nullable|image|max:10240',
             'duration_minutes' => 'required|integer|min:1|max:480',
             'summary' => 'nullable|string|max:3000',
@@ -166,7 +176,8 @@ class RecordingService
 
     public function destroy(int $id): RecordedClass
     {
-        $recording = RecordedClass::findOrFail($id);
+        $courseIds = Course::where('teacher_id', $this->getTeacher(false)->id)->pluck('id');
+        $recording = RecordedClass::whereIn('course_id', $courseIds)->findOrFail($id);
         $recording->delete();
 
         return $recording;

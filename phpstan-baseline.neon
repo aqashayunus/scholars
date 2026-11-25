@@ -2701,12 +2701,6 @@ parameters:
 			path: app/Http/Controllers/ParentLinkRequestController.php
 
 		-
-			message: '#^Call to an undefined method App\\Models\\RecordedClass\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\RecordedClass\>\:\:increment\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/RecordedClassController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\RecordedClassController\:\:index\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -2715,12 +2709,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\RecordedClassController\:\:show\(\) has no return type specified\.$#'
 			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/RecordedClassController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\RecordedClassController\:\:show\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Http/Controllers/RecordedClassController.php
 

@@ -21,13 +21,20 @@
             <div class="card p-2 bg-slate-900 rounded-3xl overflow-hidden shadow-2xl">
                 <div class="relative w-full aspect-video rounded-2xl overflow-hidden flex items-center justify-center bg-black">
                     @if($recording->video_url)
-                        @if(str_contains($recording->video_url, 'youtube.com') || str_contains($recording->video_url, 'youtu.be') || str_contains($recording->video_url, 'vimeo.com'))
-                            <iframe class="w-full h-full" src="{{ $recording->video_url }}" title="{{ $recording->title }}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
-                        @else
+                        @if($recording->embedUrl())
+                            <iframe class="w-full h-full" src="{{ $recording->embedUrl() }}" title="{{ $recording->title }}" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+                        @elseif($recording->isDirectVideo())
                             <video controls class="w-full h-full" poster="{{ $recording->thumbnail }}">
-                                <source src="{{ $recording->video_url }}" type="video/mp4">
+                                <source src="{{ $recording->video_url }}">
                                 Your browser does not support the video tag.
                             </video>
+                        @else
+                            {{-- e.g. a Zoom cloud recording link: can't be embedded --}}
+                            <div class="text-center p-8 space-y-3">
+                                <h3 class="text-base font-black text-white">This recording opens on another site</h3>
+                                <p class="text-xs text-gray-400 max-w-sm mx-auto">Your teacher shared a link that can't play inside this page.</p>
+                                <a href="{{ $recording->video_url }}" target="_blank" rel="noopener noreferrer" class="inline-block py-2 px-5 rounded-xl bg-amber-500 text-slate-900 font-bold text-xs">Open Recording ↗</a>
+                            </div>
                         @endif
                     @else
                         <div class="text-center p-8 space-y-2">

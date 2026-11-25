@@ -33,10 +33,10 @@
                 {{-- Video Thumbnail Box --}}
                 <div class="relative w-full h-44 rounded-2xl bg-slate-900 overflow-hidden mb-4 group-hover:scale-[1.01] transition-transform flex items-center justify-center">
                     @if($rec->video_url)
-                        @if(str_contains($rec->video_url, 'youtube.com') || str_contains($rec->video_url, 'youtu.be') || str_contains($rec->video_url, 'vimeo.com'))
-                            <iframe class="w-full h-full pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity" src="{{ $rec->video_url }}" title="{{ $rec->title }}"></iframe>
-                        @elseif($rec->thumbnail)
+                        @if($rec->thumbnail)
                             <img src="{{ $rec->thumbnail }}" alt="{{ $rec->title }}" class="w-full h-full object-cover">
+                        @elseif($rec->embedUrl())
+                            <iframe class="w-full h-full pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity" src="{{ $rec->embedUrl() }}" title="{{ $rec->title }}" loading="lazy"></iframe>
                         @else
                             <div class="w-full h-full bg-linear-to-br from-slate-900 to-indigo-950 flex items-center justify-center p-4">
                                 <span class="text-xs text-indigo-300 font-bold">{{ $rec->topic_name }}</span>

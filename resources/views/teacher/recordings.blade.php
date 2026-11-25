@@ -10,7 +10,44 @@
         editingRecording: null,
         videoUploadType: 'url',
         editVideoUploadType: 'url',
-        recordings: {{ \Illuminate\Support\Js::from($recordings) }},
+        newVideoUrl: '',
+        {{-- Instant version of RecordedClass::linkProblem() (the server re-checks). --}}
+        linkCheck(raw) {
+            const url = (raw || '').trim();
+            if (!url) return { ok: null, message: '' };
+            let host = '';
+            try { host = new URL(url).hostname.toLowerCase(); } catch (e) { return { ok: false, message: 'That does not look like a full link. Copy it again (it should start with https://).' }; }
+            const driveFile = /(?:drive|docs)\.google\.com\/(?:file\/d\/|(?:open|uc)\?(?:.*&)?id=)[A-Za-z0-9_-]{10,}/.test(url);
+            const youtube = /(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)[A-Za-z0-9_-]{11}/.test(url);
+            const vimeo = /vimeo\.com\/(?:video\/)?\d+/.test(url);
+            if (host.endsWith('meet.google.com')) return { ok: false, message: 'That is the Google Meet link, not the recording. Find the recording in Google Drive → &quot;Meet Recordings&quot;, then Share → Copy link.' };
+            if (url.includes('/folders/')) return { ok: false, message: 'That is a Google Drive folder link. Open the recording video itself, then Share → Copy link.' };
+            if ((host === 'drive.google.com' || host === 'docs.google.com') && !driveFile) return { ok: false, message: 'That Google Drive link does not point to a video. Open the recording itself, then Share → Copy link.' };
+            if ((host.endsWith('youtube.com') || host === 'youtu.be') && !youtube) return { ok: false, message: 'That YouTube link is not a video. Open the video and use Share → Copy.' };
+            if (driveFile) return { ok: true, message: '✓ Google Drive recording. It will play inside the portal (make sure sharing is set to &quot;Anyone with the link&quot;).' };
+            if (youtube || vimeo) return { ok: true, message: '✓ Video link. It will play inside the portal.' };
+            return { ok: true, message: 'This link will open in a new tab for students (it cannot play inside the portal).' };
+        },
+        uploadLimitBytes:{{ \App\Support\UploadLimit::bytes(204800) }},
+        uploadLimitMb: {{ \App\Support\UploadLimit::megabytes(204800) }},
+        {{-- The server rejects anything over its limit before Laravel runs
+             (413 Content Too Large), so stop oversized files here instead. --}}
+        checkFileSize(event) {
+            const file = event.target.files[0];
+            if (file && file.size > this.uploadLimitBytes) {
+                alert(`This file is ${Math.ceil(file.size / 1048576)} MB, but the server only accepts up to ${this.uploadLimitMb} MB. Upload the video to YouTube (Unlisted) or Google Drive and paste the link instead.`);
+                event.target.value = '';
+            }
+        },
+        checkFormSize(event) {
+            const total = [...event.target.querySelectorAll('input[type=file]:not(:disabled)')]
+                .reduce((sum, input) => sum + (input.files[0]?.size || 0), 0);
+            if (total > this.uploadLimitBytes) {
+                event.preventDefault();
+                alert(`The files together are ${Math.ceil(total / 1048576)} MB, over the server's ${this.uploadLimitMb} MB limit. Use a smaller file or paste a video link instead.`);
+            }
+        },
+        recordings:{{ \Illuminate\Support\Js::from($recordings) }},
         get filteredRecordings() {
             return this.recordings.filter(r => {
                 const matchesQuery = !this.searchQuery || 
@@ -234,7 +271,7 @@
                     <button @click="showUploadModal = false" class="text-gray-400 hover:text-gray-600 font-bold text-xl cursor-pointer">✕</button>
                 </div>
 
-                <form action="{{ route('teacher.recordings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form action="{{ route('teacher.recordings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4" @submit="checkFormSize($event)">
                     @csrf
 
                     {{-- Basic Details --}}
@@ -272,19 +309,34 @@
                     <div class="space-y-3 text-xs">
                         <h4 class="font-heading font-black text-xs text-gray-400 uppercase tracking-wider">2. Video Source</h4>
                         <div class="flex items-center gap-2 p-1 bg-gray-100 rounded-xl">
-                            <button type="button" @click="videoUploadType = 'url'" :class="videoUploadType === 'url' ? 'bg-white text-blue-600 shadow-2xs font-extrabold' : 'text-gray-600'" class="flex-1 py-1.5 text-center rounded-lg transition-all text-xs cursor-pointer">Video Link (YouTube / Zoom / Vimeo)</button>
+                            <button type="button" @click="videoUploadType = 'url'" :class="videoUploadType === 'url' ? 'bg-white text-blue-600 shadow-2xs font-extrabold' : 'text-gray-600'" class="flex-1 py-1.5 text-center rounded-lg transition-all text-xs cursor-pointer">Video Link (Google Drive / YouTube / Vimeo)</button>
                             <button type="button" @click="videoUploadType = 'file'" :class="videoUploadType === 'file' ? 'bg-white text-blue-600 shadow-2xs font-extrabold' : 'text-gray-600'" class="flex-1 py-1.5 text-center rounded-lg transition-all text-xs cursor-pointer">Upload MP4 Video File</button>
                         </div>
 
-                        <div x-show="videoUploadType === 'url'">
-                            <label class="font-extrabold text-gray-900 block mb-1">Video Stream URL</label>
-                            <input type="url" name="video_url" placeholder="https://www.youtube.com/watch?v=... or https://vimeo.com/..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none">
+                        <div x-show="videoUploadType === 'url'" class="space-y-2">
+                            <div>
+                                <label class="font-extrabold text-gray-900 block mb-1">Recording Link</label>
+                                <input type="url" name="video_url" x-model="newVideoUrl" :disabled="videoUploadType !== 'url'" :required="videoUploadType === 'url'" placeholder="https://drive.google.com/file/d/.../view" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none">
+                                <p x-show="linkCheck(newVideoUrl).ok === true" class="text-[11px] text-emerald-700 font-bold mt-1" x-text="linkCheck(newVideoUrl).message"></p>
+                                <p x-show="linkCheck(newVideoUrl).ok === false" class="text-[11px] text-red-600 font-bold mt-1" x-text="linkCheck(newVideoUrl).message"></p>
+                            </div>
+
+                            <details class="bg-blue-50/70 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-950">
+                                <summary class="font-extrabold cursor-pointer">💡 How to share your Google Meet recording</summary>
+                                <ol class="list-decimal pl-4 mt-2 space-y-1 leading-relaxed">
+                                    <li>After class, wait a few minutes. Google saves the recording to <b>Google Drive → "Meet Recordings"</b> and emails the link to the meeting organiser.</li>
+                                    <li>Open the <b>recording video itself</b> in Drive (not the folder).</li>
+                                    <li>Click <b>Share</b>. Under <b>General access</b>, choose <b>"Anyone with the link"</b> as <b>Viewer</b>.</li>
+                                    <li>Click <b>Copy link</b> and paste it above. Students will watch it right here, inside the portal.</li>
+                                </ol>
+                                <p class="mt-2 text-blue-800">Only students in the class you pick can see the recording here. Avoid sharing the link anywhere else.</p>
+                            </details>
                         </div>
 
                         <div x-show="videoUploadType === 'file'">
                             <label class="font-extrabold text-gray-900 block mb-1">Select Video File</label>
-                            <input type="file" name="video_file" accept="video/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
-                            <p class="text-[10px] text-gray-400 mt-0.5">MP4, WebM, MOV, AVI (Max: 200MB)</p>
+                            <input type="file" name="video_file" accept="video/*" :disabled="videoUploadType !== 'file'" :required="videoUploadType === 'file'" @change="checkFileSize($event)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
+                            <p class="text-[10px] text-gray-400 mt-0.5">MP4, WebM, MOV, AVI (Max: <span x-text="uploadLimitMb"></span> MB on this server). For longer videos, upload to YouTube (Unlisted) and use the link.</p>
                         </div>
                     </div>
 
@@ -293,7 +345,7 @@
                         <h4 class="font-heading font-black text-xs text-gray-400 uppercase tracking-wider">3. Cover & Summary</h4>
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Cover Thumbnail Image (Optional)</label>
-                            <input type="file" name="thumbnail_file" accept="image/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
+                            <input type="file" name="thumbnail_file" accept="image/*" @change="checkFileSize($event)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
                         </div>
 
                         <div>
@@ -322,7 +374,7 @@
                     <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 font-bold text-xl cursor-pointer">✕</button>
                 </div>
 
-                <form :action="'/teacher/recordings/' + editingRecording?.id" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <form :action="'/teacher/recordings/' + editingRecording?.id" method="POST" enctype="multipart/form-data" class="space-y-4" @submit="checkFormSize($event)">
                     @csrf
                     @method('PUT')
 
@@ -362,11 +414,13 @@
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Video Stream URL</label>
                             <input type="text" name="video_url" x-model="editingRecording.video_url" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-xs outline-none">
+                            <p x-show="linkCheck(editingRecording?.video_url).ok === true" class="text-[11px] text-emerald-700 font-bold mt-1" x-text="linkCheck(editingRecording?.video_url).message"></p>
+                            <p x-show="linkCheck(editingRecording?.video_url).ok === false" class="text-[11px] text-red-600 font-bold mt-1" x-text="linkCheck(editingRecording?.video_url).message"></p>
                         </div>
 
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Replace Video File (Optional)</label>
-                            <input type="file" name="video_file" accept="video/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
+                            <input type="file" name="video_file" accept="video/*" @change="checkFileSize($event)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
                         </div>
                     </div>
 
@@ -375,7 +429,7 @@
                         <h4 class="font-heading font-black text-xs text-gray-400 uppercase tracking-wider">3. Cover & Summary</h4>
                         <div>
                             <label class="font-extrabold text-gray-900 block mb-1">Replace Cover Thumbnail (Optional)</label>
-                            <input type="file" name="thumbnail_file" accept="image/*" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
+                            <input type="file" name="thumbnail_file" accept="image/*" @change="checkFileSize($event)" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-2 text-xs outline-none file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700">
                         </div>
 
                         <div>

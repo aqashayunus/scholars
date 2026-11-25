@@ -362,6 +362,7 @@ class TeacherDashboardManagementTest extends TestCase
             'course_id' => $course->id,
             'title' => 'Lesson 1 Recording',
             'topic_name' => 'Introduction',
+            'video_url' => 'https://www.youtube.com/watch?v=abcdefghijk',
             'duration_minutes' => 30,
         ]);
 
