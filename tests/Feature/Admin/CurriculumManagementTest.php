@@ -85,6 +85,53 @@ class CurriculumManagementTest extends TestCase
         $this->assertEquals(75, $subject->refresh()->monthly_fee);
     }
 
+    public function test_admin_can_pick_the_teacher_when_creating_a_course(): void
+    {
+        $subjectTeacher = Teacher::factory()->create();
+        $chosen = Teacher::factory()->create();
+        $subject = Subject::factory()->create();
+        $subject->teachers()->attach($subjectTeacher->id);
+
+        $this->actingAs($this->admin)->post(route('admin.courses.store'), [
+            'title' => 'Chosen Teacher Course',
+            'subject_id' => $subject->id,
+            'teacher_id' => $chosen->id,
+            'level' => 'SPM',
+            'status' => 'published',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($chosen->id, Course::where('title', 'Chosen Teacher Course')->value('teacher_id'));
+    }
+
+    public function test_admin_can_change_a_courses_teacher(): void
+    {
+        $old = Teacher::factory()->create();
+        $new = Teacher::factory()->create();
+        $subject = Subject::factory()->create();
+        $course = Course::factory()->create(['subject_id' => $subject->id, 'teacher_id' => $old->id]);
+
+        $this->actingAs($this->admin)->put(route('admin.courses.update', $course->id), [
+            'title' => $course->title,
+            'subject_id' => $subject->id,
+            'teacher_id' => $new->id,
+            'level' => 'SPM',
+            'status' => 'published',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame($new->id, $course->refresh()->teacher_id);
+    }
+
+    public function test_course_forms_offer_a_teacher_dropdown(): void
+    {
+        $teacher = Teacher::factory()->create();
+
+        $this->actingAs($this->admin)->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('id="create_course_teacher_id"', false)
+            ->assertSee('id="edit_course_teacher_id"', false)
+            ->assertSee('<option value="'.$teacher->id.'">', false);
+    }
+
     public function test_admin_can_delete_course(): void
     {
         $course = Course::factory()->create();

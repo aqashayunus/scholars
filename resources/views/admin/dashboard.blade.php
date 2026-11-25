@@ -5604,6 +5604,17 @@
                     <input type="text" name="title" id="create_course_title" required placeholder="e.g. Early Mathematics Masterclass" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-900">
                 </div>
 
+                {{-- Teacher --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-800 mb-1">4. Teacher</label>
+                    <select name="teacher_id" id="create_course_teacher_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer">
+                        <option value="">Auto: the subject's teacher</option>
+                        @foreach($allTeachers->sortBy(fn ($t) => $t->user->name ?? '') as $t)
+                            <option value="{{ $t->id }}">{{ $t->user->name ?? 'Teacher #'.$t->id }}{{ ($t->application_status ?? 'active') !== 'active' ? ' ('.$t->application_status.')' : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 {{-- Row 3: Tuition Fee & Status --}}
                 <div class="grid grid-cols-2 gap-3.5">
                     <div>
@@ -5672,6 +5683,18 @@
                 <div>
                     <label class="block text-xs font-semibold text-gray-800 mb-1">3. Course Title *</label>
                     <input type="text" id="edit_course_title" name="title" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-900">
+                </div>
+
+                {{-- Teacher --}}
+                <div>
+                    <label class="block text-xs font-semibold text-gray-800 mb-1">4. Teacher</label>
+                    <select name="teacher_id" id="edit_course_teacher_id" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500 font-medium cursor-pointer">
+                        <option value="">Keep current teacher</option>
+                        @foreach($allTeachers->sortBy(fn ($t) => $t->user->name ?? '') as $t)
+                            <option value="{{ $t->id }}">{{ $t->user->name ?? 'Teacher #'.$t->id }}{{ ($t->application_status ?? 'active') !== 'active' ? ' ('.$t->application_status.')' : '' }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[10px] text-gray-400">Changing the teacher moves this class, its students and its tasks to the new teacher.</p>
                 </div>
 
                 {{-- Row 3: Tuition Fee & Status --}}
@@ -10473,7 +10496,8 @@
             document.getElementById('edit_course_monthly_fee').value = course.subject ? (course.subject.monthly_fee ?? 0) : 0;
             document.getElementById('edit_course_status').value = course.status || 'published';
             document.getElementById('edit_course_description').value = course.description || '';
-            
+            document.getElementById('edit_course_teacher_id').value = course.teacher_id ? String(course.teacher_id) : '';
+
             filterCourseModalSubjects('edit', course.subject_id);
 
             document.getElementById('editCourseForm').action = '/admin/courses/' + course.id;
