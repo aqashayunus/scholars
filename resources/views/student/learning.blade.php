@@ -167,10 +167,9 @@
                 @endphp
                 @foreach($allMaterials ?? [] as $mat)
                     @php
-                        $subjName = $mat->course->subject->display_name ?? $mat->course->subject->name ?? 'General';
                         $ext = strtoupper($mat->file_type ?: 'PDF');
                     @endphp
-                    <div x-show="activeSubject === '{{ $subjName }}'" class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4 hover:bg-gray-100/70 transition-all">
+                    <div x-show="activeSubjectData.course_id == {{ (int) $mat->course_id }}" class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between gap-4 hover:bg-gray-100/70 transition-all">
                         <div class="flex items-center gap-3.5">
                             <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -209,10 +208,7 @@
             <div x-show="activeTab === 'practice'" x-cloak class="p-6 space-y-3">
                 @foreach($allQuizzes ?? [] as $qz)
                     @if($qz->questions->count() > 0)
-                        @php
-                            $subjName = $qz->course->subject->display_name ?? $qz->course->subject->name ?? 'General';
-                        @endphp
-                        <div x-show="activeSubject === '{{ $subjName }}'" class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between gap-4">
+                        <div x-show="activeSubjectData.course_id == {{ (int) $qz->course_id }}" class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between gap-4">
                             <div>
                                 <h4 class="font-heading font-extrabold text-sm text-gray-900">{{ $qz->title }}</h4>
                                 <p class="text-xs text-amber-900 font-medium">

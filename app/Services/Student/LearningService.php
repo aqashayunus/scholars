@@ -99,6 +99,10 @@ class LearningService
 
             $subjectsData[] = [
                 'id' => $subject->slug,
+                // The view matches quiz/material/recording cards to the selected
+                // tab by these ids, not by name (name vs display_name never matched).
+                'course_id' => $course->id,
+                'subject_id' => $subject->id,
                 'name' => $subject->name,
                 'code' => $subject->code ?? 'KPM-'.$subject->id,
                 'education_type' => $subject->education_type ?? 'secondary',

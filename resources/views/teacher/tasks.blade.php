@@ -935,7 +935,7 @@
                                                 </div>
                                             </template>
                                             <template x-if="!st.hasSubmission">
-                                                <span class="text-gray-400 italic text-[11px]">No submission yet</span>
+                                                <span class="italic text-[11px]" :class="st.status === 'Completed' ? 'text-emerald-700' : 'text-gray-400'" x-text="st.detailsText || 'No submission yet'"></span>
                                             </template>
                                         </td>
                                         <td class="py-3 px-3 font-black text-gray-900" x-text="st.marks"></td>

@@ -158,18 +158,24 @@ class AssignmentService
                         $submittedCount++;
                         $roster[] = [
                             'name' => $studentName,
+                            'email' => $student?->user->email ?? '',
                             'submittedDate' => $sq->completed_at->format('d M Y g:i A'),
                             'marks' => $sq->score.' / '.($sq->total_questions ?: $questionCount),
                             'status' => 'Completed',
                             'statusBg' => 'bg-emerald-50 text-emerald-700',
+                            // Quizzes have no file/notes, so the roster shows this text
+                            // instead of the generic "No submission yet".
+                            'detailsText' => 'Online quiz completed (latest attempt)',
                         ];
                     } else {
                         $roster[] = [
                             'name' => $studentName,
+                            'email' => $student?->user->email ?? '',
                             'submittedDate' => '–',
                             'marks' => '–',
                             'status' => 'Pending',
                             'statusBg' => 'bg-amber-50 text-amber-700',
+                            'detailsText' => 'Not attempted yet',
                         ];
                     }
                 }
