@@ -5179,18 +5179,6 @@ parameters:
 			path: app/Models/Quiz.php
 
 		-
-			message: '#^Method App\\Models\\Quiz\:\:questions\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
-			message: '#^Method App\\Models\\Quiz\:\:results\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Models/Quiz.php
-
-		-
 			message: '#^Class App\\Models\\RecordedClass uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
 			identifier: missingType.generics
 			count: 1
@@ -6824,12 +6812,6 @@ parameters:
 
 		-
 			message: '#^Relation ''paymentTransactions'' is not found in App\\Models\\Invoice model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Admin/DashboardMetricsService.php
-
-		-
-			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Admin/DashboardMetricsService.php
@@ -9181,12 +9163,6 @@ parameters:
 			path: app/Services/Student/LearningService.php
 
 		-
-			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Services/Student/LearningService.php
-
-		-
 			message: '#^Relation ''teacher'' is not found in App\\Models\\LearningMaterial model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
@@ -9260,12 +9236,6 @@ parameters:
 
 		-
 			message: '#^Relation ''course'' is not found in App\\Models\\Quiz model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Services/Student/QuizPerformanceService.php
-
-		-
-			message: '#^Relation ''questions'' is not found in App\\Models\\Quiz model\.$#'
 			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/Student/QuizPerformanceService.php

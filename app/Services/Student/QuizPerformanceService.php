@@ -28,6 +28,15 @@ class QuizPerformanceService
     {
         $quiz = Quiz::findOrFail($quizId);
 
+        // The score is computed in the browser; at least keep it within the
+        // quiz's real question count so it can't exceed 100% of progress.
+        $questionCount = $quiz->questions()->count();
+        if ($questionCount > 0) {
+            $totalQuestions = $questionCount;
+        }
+        $totalQuestions = max(0, $totalQuestions);
+        $score = min(max(0, $score), $totalQuestions);
+
         StudentQuiz::updateOrCreate([
             'student_id' => $student->id,
             'quiz_id' => $quiz->id,
