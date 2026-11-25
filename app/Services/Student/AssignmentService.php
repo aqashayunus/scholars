@@ -8,6 +8,7 @@ use App\Models\StudentAssignment;
 use App\Models\UserNotification;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\ValidationException;
 
 class AssignmentService
 {
@@ -104,6 +105,13 @@ class AssignmentService
         $studentAssignment = StudentAssignment::where('student_id', $student->id)
             ->where('id', $id)
             ->firstOrFail();
+
+        // A resubmission would reset the teacher's grade back to "submitted".
+        if ($studentAssignment->status === StudentAssignmentStatus::Graded) {
+            throw ValidationException::withMessages([
+                'submission' => 'This task has already been graded, so it can no longer be resubmitted. Ask your teacher if you need to redo it.',
+            ]);
+        }
 
         $filePath = $studentAssignment->file_path;
         $fileName = $studentAssignment->file_name;

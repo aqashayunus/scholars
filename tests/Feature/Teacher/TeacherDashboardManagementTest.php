@@ -242,6 +242,7 @@ class TeacherDashboardManagementTest extends TestCase
         $course = Course::factory()->create(['teacher_id' => $this->teacher->id]);
         $assignment = $course->assignments()->create(['title' => 'Task', 'due_date' => now()->addDays(3)]);
         $student = Student::factory()->create();
+        Enrollment::create(['student_id' => $student->id, 'course_id' => $course->id, 'status' => 'active']);
 
         $response = $this->actingAsTeacher()->post(route('teacher.tasks.grade', [$assignment->id, $student->id]), [
             'score' => 92,

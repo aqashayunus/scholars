@@ -5,6 +5,7 @@ namespace App\Services\Teacher;
 use App\Enums\StudentAssignmentStatus;
 use App\Models\Assignment;
 use App\Models\Course;
+use App\Models\Enrollment;
 use App\Models\Question;
 use App\Models\Quiz;
 use App\Models\Student;
@@ -478,11 +479,19 @@ class AssignmentService
         $maxMarks = $assignment->total_marks ?? 100;
 
         $validated = $request->validate([
-            'score' => 'required|numeric|min:0|max:'.max(100, $maxMarks),
+            'score' => 'required|numeric|min:0|max:'.$maxMarks,
             'teacher_feedback' => 'nullable|string|max:3000',
             'status' => 'required|in:graded,submitted,late',
             'graded_file' => 'nullable|file|max:51200|mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,zip,png,jpg,jpeg',
         ]);
+
+        // Only grade students actually in this class.
+        $isEnrolled = Enrollment::where('course_id', $assignment->course_id)
+            ->where('student_id', $studentId)
+            ->exists();
+        if (! $isEnrolled && ! StudentAssignment::where('assignment_id', $assignment->id)->where('student_id', $studentId)->exists()) {
+            abort(404, 'This student is not in this class.');
+        }
 
         $sub = StudentAssignment::firstOrNew([
             'student_id' => $studentId,

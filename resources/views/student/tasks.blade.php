@@ -327,7 +327,7 @@
                                 <p class="text-xs font-extrabold text-blue-950" x-text="selectedTask?.attachmentName || 'Download Question Material'"></p>
                             </div>
                         </div>
-                        <a :href="selectedTask?.attachmentUrl" target="_blank" class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors shrink-0 shadow-2xs inline-flex items-center gap-1.5">
+                        <a :href="selectedTask?.attachmentUrl" :download="selectedTask?.attachmentName || ''" target="_blank" class="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition-colors shrink-0 shadow-2xs inline-flex items-center gap-1.5">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                             <span>Download Worksheet</span>
                         </a>
@@ -349,7 +349,16 @@
                             <template x-if="selectedTask?.score !== null && selectedTask?.score !== undefined">
                                 <div class="pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs">
                                     <span class="font-bold text-emerald-900">Score / Grade:</span>
-                                    <span class="font-black text-base text-emerald-700" x-text="`${selectedTask?.score} / 100`"></span>
+                                    <span class="font-black text-base text-emerald-700" x-text="`${selectedTask?.score} / ${selectedTask?.totalMarks || 100}`"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="selectedTask?.gradedFileUrl">
+                                <div class="pt-2">
+                                    <a :href="selectedTask?.gradedFileUrl" class="inline-flex items-center gap-1.5 py-1.5 px-3 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                        <span x-text="`Teacher's Marked Work (${selectedTask?.gradedFileName || 'File'})`"></span>
+                                    </a>
                                 </div>
                             </template>
 
@@ -374,7 +383,8 @@
                             </template>
                         </div>
 
-                        <div class="text-right">
+                        <p x-show="selectedTask?.isGraded" class="text-right text-[11px] text-gray-500 font-medium">Graded by your teacher, so this task is closed.</p>
+                        <div class="text-right" x-show="!selectedTask?.isGraded">
                             <button type="button" @click="isEditingSubmission = true" class="text-xs font-bold text-blue-600 hover:underline cursor-pointer">
                                 Resubmit or update answer →
                             </button>
@@ -456,6 +466,10 @@
                         status: "{{ $displayStatus }}",
                         dueCategory: "{{ $dueCat }}",
                         score: {{ $sa->score !== null ? $sa->score : 'null' }},
+                        totalMarks: {{ (int) ($sa->assignment?->total_marks ?: 100) }},
+                        isGraded: {{ $sa->status === \App\Enums\StudentAssignmentStatus::Graded ? 'true' : 'false' }},
+                        gradedFileUrl: {!! json_encode($sa->graded_file_url ?? '') !!},
+                        gradedFileName: {!! json_encode($sa->graded_file_name ?? '') !!},
                         attachmentUrl: {!! json_encode($sa->assignment?->file_url ?? '') !!},
                         attachmentName: {!! json_encode($sa->assignment?->file_name ?? '') !!},
                         submissionNotes: {!! json_encode($sa->submission_notes ?? '') !!},

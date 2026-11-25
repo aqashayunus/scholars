@@ -852,7 +852,7 @@
                         <p class="text-xs text-gray-500 font-medium mt-0.5" x-text="(selectedTask?.class || 'Class') + ' • ' + (selectedTask?.subject || 'Subject') + ' • Due: ' + (selectedTask?.dueDate || '–')"></p>
                         <template x-if="selectedTask?.attachmentUrl">
                             <div class="mt-2">
-                                <a :href="selectedTask?.attachmentUrl" target="_blank" class="inline-flex items-center gap-1.5 py-1 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-colors">
+                                <a :href="selectedTask?.attachmentUrl" :download="selectedTask?.attachmentName || ''" target="_blank" class="inline-flex items-center gap-1.5 py-1 px-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                                     <span x-text="`Attached Material (${selectedTask?.attachmentName || 'Download'})`"></span>
                                 </a>
