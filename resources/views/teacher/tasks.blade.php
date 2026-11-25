@@ -150,7 +150,9 @@
                     fileUrl: st.fileUrl || '',
                     interactiveReviewUrl: st.interactiveReviewUrl || '',
                     rawMarks: st.rawMarks !== null && st.rawMarks !== undefined ? st.rawMarks : '',
-                    rawStatus: st.rawStatus || (st.status === 'Reviewed' ? 'graded' : 'graded'),
+                    // Default to "Graded & Reviewed": starting from the current "submitted"
+                    // status showed "Needs Revision", so saving a review left it pending.
+                    rawStatus: st.rawStatus === 'late' ? 'late' : 'graded',
                     teacherFeedback: st.teacherFeedback || '',
                     gradedFileName: st.gradedFileName || '',
                     gradedFileUrl: st.gradedFileUrl || '',

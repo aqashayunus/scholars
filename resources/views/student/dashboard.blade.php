@@ -131,6 +131,11 @@
                 $isLiveNow = now()->gte($upcomingClass->scheduled_at) && now()->lte($upcomingClass->scheduled_at->copy()->addMinutes($upcomingClass->duration_minutes ?? 60));
                 $isStartingSoon = !$isLiveNow && now()->lt($upcomingClass->scheduled_at) && now()->diffInMinutes($upcomingClass->scheduled_at) <= 10;
                 $minsLeft = now()->diffInMinutes($upcomingClass->scheduled_at);
+                // Same window as the Classes page: from 15 min before start until the end.
+                // Joining goes through student.classes.join so attendance is recorded.
+                $canJoin = now()->gte($upcomingClass->scheduled_at->copy()->subMinutes(15))
+                    && now()->lte($upcomingClass->scheduled_at->copy()->addMinutes($upcomingClass->duration_minutes ?? 60));
+                $joinUrl = route('student.classes.join', $upcomingClass->id);
             @endphp
             <div class="bg-white rounded-3xl p-6 sm:p-8 border {{ $isLiveNow ? 'border-red-400 ring-2 ring-red-400/30' : ($isStartingSoon ? 'border-amber-400 ring-2 ring-amber-400/30' : 'border-amber-200/80') }} shadow-md relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
                 <div class="flex items-center gap-5 w-full md:w-auto">
@@ -174,11 +179,17 @@
                     <button @click="activeModal = 'upcoming-class'" class="py-3 px-5 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs transition-colors cursor-pointer">
                         Class Details
                     </button>
-                    <a href="{{ $upcomingClass->meeting_url ?? '#' }}" {{ $upcomingClass->meeting_url ? 'target="_blank"' : '' }}
-                       class="inline-flex items-center justify-center gap-2.5 {{ $isLiveNow ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25' : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/25' }} text-white font-heading font-extrabold text-xs px-7 py-3.5 rounded-2xl shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer">
-                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
-                        <span>{{ $isLiveNow ? 'Join Live Now' : 'Join Class' }}</span>
-                    </a>
+                    @if($canJoin)
+                        <a href="{{ $joinUrl }}" target="_blank"
+                           class="inline-flex items-center justify-center gap-2.5 {{ $isLiveNow ? 'bg-red-600 hover:bg-red-700 shadow-red-500/25' : 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/25' }} text-white font-heading font-extrabold text-xs px-7 py-3.5 rounded-2xl shadow-lg transition-all transform hover:-translate-y-0.5 cursor-pointer">
+                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                            <span>{{ $isLiveNow ? 'Join Live Now' : 'Join Class' }}</span>
+                        </a>
+                    @else
+                        <span class="inline-flex items-center justify-center text-center bg-gray-100 text-gray-500 font-extrabold text-xs px-5 py-3.5 rounded-2xl" title="The Join button opens 15 minutes before class">
+                            Join opens {{ $upcomingClass->scheduled_at->copy()->subMinutes(15)->isToday() ? 'at' : $upcomingClass->scheduled_at->copy()->subMinutes(15)->format('D, d M') . ',' }} {{ $upcomingClass->scheduled_at->copy()->subMinutes(15)->format('g:i A') }}
+                        </span>
+                    @endif
                 </div>
             </div>
         @else
@@ -381,7 +392,11 @@
                         <p><strong class="text-gray-900">Platform:</strong> Olympian Interactive Live Room</p>
                     </div>
                     <div class="pt-4 flex gap-3">
-                        <a href="{{ $upcomingClass->meeting_url ?? '#' }}" {{ $upcomingClass->meeting_url ? 'target="_blank"' : '' }} class="btn-primary w-full justify-center py-3">Join Class Now</a>
+                        @if($canJoin ?? false)
+                            <a href="{{ $joinUrl }}" target="_blank" class="btn-primary w-full justify-center py-3">Join Class Now</a>
+                        @else
+                            <p class="w-full text-center text-xs font-bold text-gray-500 bg-gray-100 rounded-2xl py-3">The Join button opens 15 minutes before class starts.</p>
+                        @endif
                     </div>
                 @else
                     <div class="space-y-2.5 text-sm text-gray-600 py-2">

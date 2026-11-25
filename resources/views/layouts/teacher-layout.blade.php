@@ -36,11 +36,10 @@
            class="fixed inset-y-0 left-0 z-50 lg:z-30 flex flex-col bg-primary-950 border-r border-primary-900 shadow-card transition-all duration-300 ease-in-out overflow-x-hidden no-scrollbar">
         {{-- Logo --}}
         <div class="flex items-center justify-between px-5 py-5 border-b border-primary-900/50 min-h-[73px]">
-            <div class="flex items-center gap-3">
-                <img src="{{ asset('images/logo-white.png') }}" alt="Olympian Scholars" class="h-10 w-auto flex-shrink-0 object-contain">
-                <span x-show="sidebarOpen || mobileMenuOpen" class="font-heading font-bold text-white text-base leading-tight whitespace-nowrap">
-                    Olympian<br><span class="text-accent">Scholars</span>
-                </span>
+            <div class="flex items-center min-w-0">
+                {{-- Wide logo (same as admin) when expanded; just the seal when collapsed --}}
+                <img x-show="sidebarOpen || mobileMenuOpen" src="{{ asset('images/logo-horizontal-white.png') }}" alt="Olympian Scholars" class="h-11 w-auto max-w-[200px] object-contain">
+                <img x-show="!sidebarOpen && !mobileMenuOpen" x-cloak src="{{ asset('images/logo-icon-white.png') }}" alt="Olympian Scholars" class="h-10 w-10 flex-shrink-0 object-contain">
             </div>
             {{-- Mobile close button --}}
             <button @click="mobileMenuOpen = false" class="lg:hidden p-1.5 text-primary-200 hover:text-white rounded-lg focus:outline-none">

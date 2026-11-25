@@ -360,7 +360,7 @@ class="olympia-timetable-wrapper space-y-6">
 
                             <div class="flex items-center justify-between pt-1 border-t border-gray-50">
                                 <span class="text-[11px] text-gray-500 font-normal">Click for details →</span>
-                                <template x-if="evt.meeting_url">
+                                <template x-if="evt.meeting_url && canJoin(evt)">
                                     <a :href="evt.meeting_url" target="_blank" @click.stop class="bg-gray-900 hover:bg-black text-white py-1.5 px-3 rounded-lg text-xs font-medium shadow-2xs">
                                         Join
                                     </a>
@@ -624,7 +624,7 @@ class="olympia-timetable-wrapper space-y-6">
                     </div>
 
                     <div class="flex items-center gap-2 shrink-0 self-end md:self-auto">
-                        <template x-if="evt.meeting_url">
+                        <template x-if="evt.meeting_url && canJoin(evt)">
                             <a :href="evt.meeting_url" target="_blank" @click.stop class="bg-gray-900 hover:bg-black text-white py-1.5 px-4 rounded-xl text-xs font-medium shadow-2xs">
                                 Join Session
                             </a>
@@ -768,7 +768,7 @@ class="olympia-timetable-wrapper space-y-6">
                                     <template x-if="evt.is_rescheduled">
                                         <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium">Rescheduled</span>
                                     </template>
-                                    <template x-if="evt.meeting_url">
+                                    <template x-if="evt.meeting_url && canJoin(evt)">
                                         <a :href="evt.meeting_url" target="_blank" @click.stop class="bg-gray-900 hover:bg-black text-white py-1.5 px-3 rounded-lg text-xs font-medium shadow-2xs">Join</a>
                                     </template>
                                 </div>
@@ -1176,6 +1176,14 @@ function googleCalendar(config) {
         academicEventsUrl: config.academicEventsUrl,
         academicEventsDeleteTemplate: config.academicEventsDeleteTemplate,
         exportIcsUrlTemplate: config.exportIcsUrlTemplate,
+
+        // Join only from 15 min before start until the class ends (matches the Classes page).
+        canJoin(evt) {
+            const now = Date.now();
+            const from = Date.parse(evt.joinable_from || evt.start);
+            const end = Date.parse(evt.end || evt.start);
+            return !isNaN(from) && now >= from && (isNaN(end) || now <= end);
+        },
 
         // State
         activeView: 'month', // 'month', 'week', 'day', 'annual', 'agenda'
