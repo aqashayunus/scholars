@@ -201,7 +201,7 @@ class DashboardMetricsService
             }
             // 2. Check if class is STARTING IN <= 10 MINUTES
             elseif ($now->lt($startTime) && $now->diffInMinutes($startTime, false) <= 10 && $now->diffInMinutes($startTime, false) >= 0) {
-                $minutesLeft = max(1, $now->diffInMinutes($startTime));
+                $minutesLeft = max(1, (int) ceil($now->diffInMinutes($startTime)));
                 $uniqueTag = "[LiveClass ID: {$liveClass->id}] [Status: 10MIN]";
 
                 if (! isset($alreadyNotifiedTags[$uniqueTag])) {

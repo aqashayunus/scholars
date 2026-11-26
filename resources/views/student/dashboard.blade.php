@@ -130,7 +130,7 @@
             @php
                 $isLiveNow = now()->gte($upcomingClass->scheduled_at) && now()->lte($upcomingClass->scheduled_at->copy()->addMinutes($upcomingClass->duration_minutes ?? 60));
                 $isStartingSoon = !$isLiveNow && now()->lt($upcomingClass->scheduled_at) && now()->diffInMinutes($upcomingClass->scheduled_at) <= 10;
-                $minsLeft = now()->diffInMinutes($upcomingClass->scheduled_at);
+                $minsLeft = (int) ceil(now()->diffInMinutes($upcomingClass->scheduled_at));
                 // Same window as the Classes page: from 15 min before start until the end.
                 // Joining goes through student.classes.join so attendance is recorded.
                 $canJoin = now()->gte($upcomingClass->scheduled_at->copy()->subMinutes(15))
