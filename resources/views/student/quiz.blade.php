@@ -18,8 +18,8 @@
             {{-- TOP HEADER & NAV BAR --}}
             <div class="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <a href="{{ route('student.learning') }}" class="text-xs font-bold text-gray-400 hover:text-blue-600 inline-flex items-center gap-1 mb-1 transition-colors">
-                        ← Back to My Learning
+                    <a href="{{ route('student.learning', ['tab' => 'practice', 'course' => $quiz->course_id]) }}" class="text-xs font-bold text-gray-400 hover:text-blue-600 inline-flex items-center gap-1 mb-1 transition-colors">
+                        ← Back to Practice Drills
                     </a>
                     <h2 class="font-heading font-black text-xl text-gray-900">{{ isset($quiz) ? $quiz->title : 'Smart Practice Drill' }}</h2>
                     <p class="text-xs text-gray-500 font-medium">{{ isset($quiz) ? ($quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General') . ' • ' . ($quiz->course->title ?? '') : 'General Subject Practice' }} • <span x-text="questions.length"></span> Questions</p>
@@ -250,8 +250,8 @@
                 <button type="button" @click="restartQuiz()" class="w-full sm:w-auto py-3 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer">
                     Try Again (Restart Drill)
                 </button>
-                <a href="{{ route('student.learning') }}" class="w-full sm:w-auto py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs text-center transition-all">
-                    Return to My Learning
+                <a href="{{ route('student.learning', ['tab' => 'practice', 'course' => $quiz->course_id]) }}" class="w-full sm:w-auto py-3 px-6 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs text-center transition-all">
+                    Back to Practice Drills
                 </a>
             </div>
 
@@ -303,8 +303,8 @@
                     <button type="button" @click="restartQuiz()" class="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition-all cursor-pointer">
                         Try Again (Restart Drill)
                     </button>
-                    <a href="{{ route('student.learning') }}" class="block w-full py-2 text-xs font-extrabold text-gray-400 hover:text-gray-600 transition-all">
-                        Return to My Learning
+                    <a href="{{ route('student.learning', ['tab' => 'practice', 'course' => $quiz->course_id]) }}" class="block w-full py-2 text-xs font-extrabold text-gray-400 hover:text-gray-600 transition-all">
+                        Back to Practice Drills
                     </a>
                 </div>
 

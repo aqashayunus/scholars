@@ -6,6 +6,7 @@ use App\Models\LearningMaterial;
 use App\Models\Quiz;
 use App\Models\RecordedClass;
 use App\Models\Student;
+use App\Models\StudentQuiz;
 use App\Models\StudentSubtopicProgress;
 
 class LearningService
@@ -121,13 +122,19 @@ class LearningService
         }
 
         // All quizzes and learning materials for student's enrolled courses
-        $allQuizzes = Quiz::whereIn('course_id', $courseIds)->with(['course.subject', 'questions'])->get();
+        $allQuizzes = Quiz::whereIn('course_id', $courseIds)->with(['course.subject', 'questions'])->latest()->get();
         $allMaterials = LearningMaterial::whereIn('course_id', $courseIds)
             ->where('status', 'Published')
             ->with('course.subject', 'teacher.user')
             ->latest()
             ->get();
 
-        return compact('enrollments', 'recordings', 'subjectsData', 'allQuizzes', 'allMaterials');
+        // The student's latest result per quiz, for the Practice drills cards.
+        $quizResults = StudentQuiz::where('student_id', $student->id)
+            ->whereIn('quiz_id', $allQuizzes->pluck('id'))
+            ->get()
+            ->keyBy('quiz_id');
+
+        return compact('enrollments', 'recordings', 'subjectsData', 'allQuizzes', 'allMaterials', 'quizResults');
     }
 }

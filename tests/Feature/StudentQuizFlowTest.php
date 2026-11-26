@@ -65,7 +65,31 @@ class StudentQuizFlowTest extends TestCase
         return $quiz;
     }
 
-    public function test_quiz_menu_lists_every_quiz_instead_of_opening_the_first(): void
+    /**
+     * 2026-11-26 (Sisi, option B): quizzes live only in My Learning >
+     * Practice drills; /student/quiz (the quiz notification target) opens
+     * that tab on the class of the newest quiz.
+     */
+    public function test_quiz_menu_opens_practice_drills_on_the_newest_quizs_class(): void
+    {
+        $teacher = Teacher::factory()->create(['application_status' => 'active'])->fresh();
+        $english = Subject::create(['name' => 'English', 'slug' => 'sqf-eng-4', 'code' => 'SQFE4', 'education_type' => 'primary', 'form_year' => 'Year 4']);
+        $englishClass = Course::create(['title' => 'Demo English Class', 'teacher_id' => $teacher->id, 'subject_id' => $english->id, 'level' => 'Year 4', 'price' => 0]);
+        Enrollment::create(['student_id' => $this->student->id, 'course_id' => $englishClass->id]);
+        $newest = Quiz::factory()->create(['course_id' => $englishClass->id, 'title' => 'Grammar Drill']);
+        Question::factory()->create(['quiz_id' => $newest->id]);
+        $this->otherCourseQuiz(); // newer still, but not the student's class
+
+        $this->actingAs($this->studentUser)->get(route('student.quiz'))
+            ->assertRedirect(route('student.learning', ['tab' => 'practice', 'course' => $englishClass->id]));
+
+        $this->actingAs($this->studentUser)->get(route('student.learning', ['tab' => 'practice', 'course' => $englishClass->id]))
+            ->assertOk()
+            ->assertSee('activeTab: "practice"', false)
+            ->assertSee('activeSubject: "English"', false);
+    }
+
+    public function test_practice_drills_show_the_last_score_and_retake(): void
     {
         $second = Quiz::factory()->create(['course_id' => $this->course->id, 'title' => 'Decimals Drill']);
         Question::factory()->create(['quiz_id' => $second->id]);
@@ -73,35 +97,44 @@ class StudentQuizFlowTest extends TestCase
         $this->otherCourseQuiz();
         StudentQuiz::create(['student_id' => $this->student->id, 'quiz_id' => $this->quiz->id, 'score' => 1, 'total_questions' => 2, 'completed_at' => now()]);
 
-        $this->actingAs($this->studentUser)->get(route('student.quiz'))
+        $this->actingAs($this->studentUser)->get(route('student.learning', ['tab' => 'practice', 'course' => $this->course->id]))
             ->assertOk()
-            ->assertSee('My Quizzes')
             ->assertSee('Fractions Drill')
-            ->assertSee('Decimals Drill')
             ->assertSee('Last score: 1 / 2 (50%)')
+            ->assertSee('Retake Drill')
+            ->assertSee('Decimals Drill')
             ->assertSee('Not attempted yet')
             ->assertDontSee('Empty Draft Quiz')
             ->assertDontSee('Not Your Quiz');
     }
 
-    public function test_quiz_menu_shows_an_empty_state_without_a_sample_question(): void
+    public function test_my_learning_ignores_an_unknown_tab(): void
     {
-        Enrollment::query()->delete();
-
-        $this->actingAs($this->studentUser)->get(route('student.quiz'))
+        $this->actingAs($this->studentUser)->get(route('student.learning', ['tab' => '<script>', 'course' => 999999]))
             ->assertOk()
-            ->assertSee('No quizzes available yet.')
-            ->assertDontSee('3x + 9 = 24');
+            ->assertSee('activeTab: "overview"', false)
+            ->assertSee('activeSubject: "Mathematics"', false);
     }
 
-    public function test_an_empty_quiz_shows_a_notice_instead_of_a_fake_question(): void
+    public function test_an_empty_quiz_returns_to_practice_drills_with_a_notice(): void
     {
         $empty = Quiz::factory()->create(['course_id' => $this->course->id, 'title' => 'Empty Draft Quiz']);
 
         $this->actingAs($this->studentUser)->get(route('student.quiz.show', $empty->id))
+            ->assertRedirect(route('student.learning', ['tab' => 'practice', 'course' => $this->course->id]));
+
+        $this->actingAs($this->studentUser)->followingRedirects()->get(route('student.quiz.show', $empty->id))
             ->assertOk()
             ->assertSee('has no questions yet')
             ->assertDontSee('3x + 9 = 24');
+    }
+
+    public function test_quiz_page_links_back_to_its_practice_drills(): void
+    {
+        $this->actingAs($this->studentUser)->get(route('student.quiz.show', $this->quiz->id))
+            ->assertOk()
+            ->assertSee(e(route('student.learning', ['tab' => 'practice', 'course' => $this->course->id])), false)
+            ->assertSee('Back to Practice Drills');
     }
 
     public function test_quiz_page_does_not_contain_the_answer_key(): void

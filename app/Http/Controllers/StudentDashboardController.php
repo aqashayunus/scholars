@@ -38,11 +38,27 @@ class StudentDashboardController extends Controller
         return view('student.dashboard', $metrics->build($user));
     }
 
-    public function learning(LearningService $learningService)
+    /**
+     * ?tab=practice&course=12 opens a given tab on a given class, so quiz
+     * links (notifications, "Back" from a quiz) land on Practice drills.
+     */
+    public function learning(Request $request, LearningService $learningService)
     {
         $student = $this->getStudent();
+        $data = $learningService->learningData($student);
 
-        return view('student.learning', array_merge(['student' => $student], $learningService->learningData($student)));
+        $tab = $request->query('tab');
+        $initialTab = in_array($tab, ['overview', 'lessons', 'practice', 'recordings'], true) ? $tab : 'overview';
+        $courseId = (int) $request->query('course');
+        $initialSubject = $data['subjectsData'][0]['name'] ?? 'Mathematics';
+        foreach ($data['subjectsData'] as $subjectRow) {
+            if ((int) $subjectRow['course_id'] === $courseId) {
+                $initialSubject = $subjectRow['name'];
+                break;
+            }
+        }
+
+        return view('student.learning', array_merge(['student' => $student, 'initialTab' => $initialTab, 'initialSubject' => $initialSubject], $data));
     }
 
     public function classes(ClassScheduleService $schedule)
@@ -72,10 +88,12 @@ class StudentDashboardController extends Controller
 
     public function quiz(QuizPerformanceService $quizzes)
     {
+        // Quizzes live in My Learning > Practice drills. Notifications carry
+        // no link, so open the class of the newest quiz (the likely subject).
         $student = $this->getStudent();
-        $items = $quizzes->listQuizzes($student);
+        $courseId = $quizzes->visibleQuizzes($student)->latest('id')->value('course_id');
 
-        return view('student.quiz-index', compact('student', 'items'));
+        return redirect()->route('student.learning', array_filter(['tab' => 'practice', 'course' => $courseId]));
     }
 
     public function quizShow($id, QuizPerformanceService $quizzes)
@@ -84,10 +102,8 @@ class StudentDashboardController extends Controller
         $quiz = $quizzes->showQuiz($student, (int) $id);
 
         if ($quiz->questions->isEmpty()) {
-            $items = $quizzes->listQuizzes($student);
-            $notice = "\"{$quiz->title}\" has no questions yet. Your teacher is still preparing it.";
-
-            return view('student.quiz-index', compact('student', 'items', 'notice'));
+            return redirect()->route('student.learning', ['tab' => 'practice', 'course' => $quiz->course_id])
+                ->with('quiz_notice', "\"{$quiz->title}\" has no questions yet. Your teacher is still preparing it.");
         }
 
         return view('student.quiz', compact('student', 'quiz'));
@@ -127,11 +143,6 @@ class StudentDashboardController extends Controller
             ['student' => $student, 'user' => $user],
             $achievementService->achievementsData($student, $user)
         ));
-    }
-
-    public function myCourses()
-    {
-        return $this->learning();
     }
 
     public function timetable()

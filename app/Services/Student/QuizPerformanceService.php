@@ -7,7 +7,6 @@ use App\Models\Quiz;
 use App\Models\Student;
 use App\Models\StudentQuiz;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 class QuizPerformanceService
 {
@@ -22,33 +21,6 @@ class QuizPerformanceService
         $courseIds = Enrollment::where('student_id', $student->id)->pluck('course_id');
 
         return Quiz::whereIn('course_id', $courseIds);
-    }
-
-    /**
-     * The "My Quizzes" list: quizzes that have questions, each with the
-     * student's latest result (or null when not attempted).
-     *
-     * @return Collection<int, array{quiz: Quiz, result: StudentQuiz|null}>
-     */
-    public function listQuizzes(Student $student): Collection
-    {
-        $quizzes = $this->visibleQuizzes($student)
-            ->with('course.subject')
-            ->withCount('questions')
-            ->orderByDesc('created_at')
-            ->get()
-            ->filter(fn (Quiz $quiz) => $quiz->questions_count > 0)
-            ->values();
-
-        $results = StudentQuiz::where('student_id', $student->id)
-            ->whereIn('quiz_id', $quizzes->pluck('id'))
-            ->get()
-            ->keyBy('quiz_id');
-
-        return $quizzes->map(fn (Quiz $quiz) => [
-            'quiz' => $quiz,
-            'result' => $results->get($quiz->id),
-        ]);
     }
 
     public function showQuiz(Student $student, int $id): Quiz

@@ -12,8 +12,9 @@
     document.addEventListener('alpine:init', () => {
         Alpine.data('learningWorkspace', () => ({
             subjects: JSON.parse(document.getElementById('learning-subjects-data').textContent || '[]'),
-            activeSubject: '{{ $subjectsData[0]['name'] ?? 'Mathematics' }}', 
-            activeTab: 'overview',
+            // ?tab=…&course=… (e.g. from a quiz link) picks the starting tab/class.
+            activeSubject: @json($initialSubject ?? ($subjectsData[0]['name'] ?? 'Mathematics')),
+            activeTab: @json($initialTab ?? 'overview'),
             get activeSubjectData() {
                 return this.subjects.find(s => s.name === this.activeSubject) || (this.subjects.length > 0 ? this.subjects[0] : { name: 'Subject', teacher: 'Instructor', level: 'SPM', progress: 0, notesCount: 0, practiceCount: 0, videoCount: 0, topics: [] });
             }
@@ -206,16 +207,34 @@
 
             {{-- 3. PRACTICE DRILLS PANEL --}}
             <div x-show="activeTab === 'practice'" x-cloak class="p-6 space-y-3">
+                @if(session('quiz_notice'))
+                    <div class="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-900 font-semibold">
+                        {{ session('quiz_notice') }}
+                    </div>
+                @endif
+
                 @foreach($allQuizzes ?? [] as $qz)
                     @if($qz->questions->count() > 0)
-                        <div x-show="activeSubjectData.course_id == {{ (int) $qz->course_id }}" class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 flex items-center justify-between gap-4">
-                            <div>
+                        @php
+                            $qzResult = ($quizResults ?? collect())->get($qz->id);
+                            $qzPct = $qzResult && $qzResult->total_questions > 0 ? (int) round($qzResult->score / $qzResult->total_questions * 100) : null;
+                            $qzCount = $qz->questions->count();
+                        @endphp
+                        <div x-show="activeSubjectData.course_id == {{ (int) $qz->course_id }}" class="p-4 bg-amber-50/60 rounded-2xl border border-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="space-y-1.5">
                                 <h4 class="font-heading font-extrabold text-sm text-gray-900">{{ $qz->title }}</h4>
                                 <p class="text-xs text-amber-900 font-medium">
-                                    {{ $qz->questions->count() }} Questions • {{ $qz->questions->count() }} Minutes
+                                    {{ $qzCount }} {{ Str::plural('Question', $qzCount) }} • {{ $qzCount }} {{ Str::plural('Minute', $qzCount) }}
                                 </p>
+                                @if($qzPct !== null)
+                                    <span class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-black">
+                                        Last score: {{ $qzResult->score }} / {{ $qzResult->total_questions }} ({{ $qzPct }}%)
+                                    </span>
+                                @else
+                                    <span class="inline-block px-2.5 py-0.5 rounded-full bg-white text-gray-500 border border-gray-200 text-[11px] font-bold">Not attempted yet</span>
+                                @endif
                             </div>
-                            <a href="{{ route('student.quiz.show', $qz->id) }}" class="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs transition-colors shrink-0 inline-block">Start Drill</a>
+                            <a href="{{ route('student.quiz.show', $qz->id) }}" class="py-2 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs transition-colors shrink-0 inline-block text-center">{{ $qzPct !== null ? 'Retake Drill' : 'Start Drill' }}</a>
                         </div>
                     @endif
                 @endforeach
