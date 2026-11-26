@@ -46,10 +46,21 @@ class CourseProgressTest extends TestCase
         return $quiz;
     }
 
+    /**
+     * The server grades quizzes, so send answers that produce $score: the
+     * first $score questions right, the rest wrong. $total is what the
+     * caller expects the quiz to have (the server uses the real count).
+     */
     private function submit(Quiz $quiz, int $score, int $total)
     {
+        $answers = [];
+        foreach ($quiz->questions()->orderBy('id')->get() as $i => $question) {
+            $correct = strtoupper($question->correct_option);
+            $answers[$question->id] = $i < $score ? $correct : ($correct === 'A' ? 'B' : 'A');
+        }
+
         return $this->actingAs($this->studentUser)
-            ->postJson(route('student.quiz.submit', $quiz->id), ['score' => $score, 'total_questions' => $total])
+            ->postJson(route('student.quiz.submit', $quiz->id), ['answers' => $answers])
             ->assertOk();
     }
 

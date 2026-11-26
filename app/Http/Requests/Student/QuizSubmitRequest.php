@@ -11,11 +11,14 @@ class QuizSubmitRequest extends FormRequest
         return true;
     }
 
+    /**
+     * The browser sends only the chosen options; the server grades them.
+     */
     public function rules(): array
     {
         return [
-            'score' => 'required|integer',
-            'total_questions' => 'required|integer',
+            'answers' => 'present|array',
+            'answers.*' => 'nullable|string|in:A,B,C,D,a,b,c,d',
         ];
     }
 }

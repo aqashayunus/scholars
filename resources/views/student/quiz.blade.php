@@ -22,7 +22,7 @@
                         ← Back to My Learning
                     </a>
                     <h2 class="font-heading font-black text-xl text-gray-900">{{ isset($quiz) ? $quiz->title : 'Smart Practice Drill' }}</h2>
-                    <p class="text-xs text-gray-500 font-medium">{{ isset($quiz) ? ($quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General') . ' • ' . ($quiz->course->name ?? '') : 'General Subject Practice' }} • <span x-text="questions.length"></span> Questions</p>
+                    <p class="text-xs text-gray-500 font-medium">{{ isset($quiz) ? ($quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General') . ' • ' . ($quiz->course->title ?? '') : 'General Subject Practice' }} • <span x-text="questions.length"></span> Questions</p>
                 </div>
 
                 {{-- Autosave & Timer Badges --}}
@@ -110,6 +110,12 @@
                     <span>Please select an answer to proceed. Answering is required.</span>
                 </div>
 
+                {{-- Submit Error Alert --}}
+                <div x-show="submitError" x-cloak class="p-3.5 bg-red-50 border border-red-100 rounded-2xl text-xs text-red-600 font-extrabold flex items-center gap-2">
+                    <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span x-text="submitError"></span>
+                </div>
+
                 {{-- Navigation Buttons --}}
                 <div class="flex items-center justify-between pt-4 border-t border-gray-100">
                     <button type="button" 
@@ -131,10 +137,11 @@
 
                         <button type="button" 
                                 x-show="currentQuestion === questions.length - 1"
-                                @click="submitQuiz()" 
-                                :class="!selectedAnswers[currentQuestion] ? 'opacity-60 cursor-not-allowed bg-emerald-400 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'"
+                                @click="submitQuiz()"
+                                :disabled="isSubmitting"
+                                :class="!selectedAnswers[currentQuestion] || isSubmitting ? 'opacity-60 cursor-not-allowed bg-emerald-400 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md'"
                                 class="py-2.5 px-6 rounded-2xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer">
-                            Submit Drill Result ✓
+                            <span x-text="isSubmitting ? 'Checking answers…' : 'Submit Drill Result ✓'"></span>
                         </button>
                     </div>
                 </div>
@@ -154,7 +161,7 @@
                     <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider">
                         Result Review Mode
                     </span>
-                    <h2 class="font-heading font-black text-2xl text-white">Mathematics Smart Drill Review</h2>
+                    <h2 class="font-heading font-black text-2xl text-white">{{ $quiz->title }} Review</h2>
                     <p class="text-xs text-gray-300 font-medium">Review your submitted choices and detailed teacher tips for each question.</p>
                 </div>
 
@@ -262,7 +269,7 @@
                 <div class="space-y-1">
                     <span :class="score >= 80 ? 'bg-amber-50 text-amber-700' : (score >= 60 ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-700')" class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">Drill Completed</span>
                     <h3 class="font-heading font-black text-2xl text-gray-900" x-text="score === 100 ? 'Perfect Score!' : (score >= 60 ? 'Great Job!' : 'Keep Practicing!')"></h3>
-                    <p class="text-xs text-gray-500 font-medium">Mathematics Chapter 3 Smart Drill Summary</p>
+                    <p class="text-xs text-gray-500 font-medium">{{ $quiz->title }} Summary</p>
                 </div>
 
                 {{-- Score & Dynamic XP Card --}}
@@ -309,7 +316,9 @@
     <script>
         function quizData() {
             return {
-                quizId: {{ isset($quiz) ? $quiz->id : 0 }},
+                quizId: {{ $quiz->id }},
+                isSubmitting: false,
+                submitError: '',
                 currentQuestion: 0,
                 selectedAnswers: {},
                 requireAnswerAlert: false,
@@ -319,49 +328,30 @@
                 score: 0,
                 correctCount: 0,
                 earnedXP: 0,
-                timerSeconds: {{ isset($quiz) && $quiz->questions->count() > 0 ? ($quiz->questions->count() * 60) : 300 }},
+                timerSeconds: {{ $quiz->questions->count() * 60 }},
                 timerInterval: null,
                 hasRestoredProgress: false,
                 saveStatus: 'saved',
                 
+                // No answer key here: correctAnswer and tip are filled in from
+                // the server's grading response after the student submits.
                 questions: [
-                    @if(isset($quiz) && $quiz->questions->count() > 0)
-                        @foreach($quiz->questions as $idx => $q)
-                        {
-                            id: {{ $q->id }},
-                            type: "{{ $q->type }}",
-                            image_path: "{{ $q->image_path }}",
-                            subject: "{{ $quiz->course->subject->display_name ?? $quiz->course->subject->name ?? 'General' }}",
-                            topic: "{{ $quiz->title }}",
-                            question: @json($q->question_text ?? ''),
-                            options: [
-                                { id: 'A', text: @json($q->option_a) },
-                                { id: 'B', text: @json($q->option_b) },
-                                { id: 'C', text: @json($q->option_c) },
-                                { id: 'D', text: @json($q->option_d) }
-                            ],
-                            correctAnswer: "{{ $q->correct_option }}",
-                            tip: @json($q->explanation ?? 'No tip available.')
-                        }{{ $loop->last ? '' : ',' }}
-                        @endforeach
-                    @else
-                        {
-                            id: 1,
-                            type: 'text',
-                            image_path: '',
-                            subject: 'Mathematics',
-                            topic: 'Algebra Practice',
-                            question: 'Solve for x: 3x + 9 = 24',
-                            options: [
-                                { id: 'A', text: 'x = 3' },
-                                { id: 'B', text: 'x = 5' },
-                                { id: 'C', text: 'x = 7' },
-                                { id: 'D', text: 'x = 9' }
-                            ],
-                            correctAnswer: 'B',
-                            tip: 'Tip: Subtract 9 from both sides first (3x = 15), then divide by 3 to find x = 5.'
-                        }
-                    @endif
+                    @foreach($quiz->questions as $q)
+                    {
+                        id: {{ $q->id }},
+                        type: @json($q->type),
+                        image_path: @json($q->image_path ?? ''),
+                        question: @json($q->question_text ?? ''),
+                        options: [
+                            { id: 'A', text: @json($q->option_a) },
+                            { id: 'B', text: @json($q->option_b) },
+                            { id: 'C', text: @json($q->option_c) },
+                            { id: 'D', text: @json($q->option_d) }
+                        ],
+                        correctAnswer: null,
+                        tip: ''
+                    }{{ $loop->last ? '' : ',' }}
+                    @endforeach
                 ],
 
                 init() {
@@ -446,50 +436,68 @@
                 },
 
                 submitQuiz() {
-                    for (let i = 0; i < this.questions.length; i++) {
-                        if (!this.selectedAnswers[i]) {
-                            this.currentQuestion = i;
-                            this.requireAnswerAlert = true;
-                            return;
+                    if (this.isSubmitting || this.isCompleted) return;
+
+                    // When time runs out, submit what we have; unanswered
+                    // questions count as wrong on the server.
+                    const timeUp = this.timerSeconds <= 0;
+                    if (!timeUp) {
+                        for (let i = 0; i < this.questions.length; i++) {
+                            if (!this.selectedAnswers[i]) {
+                                this.currentQuestion = i;
+                                this.requireAnswerAlert = true;
+                                return;
+                            }
                         }
                     }
 
-                    let correct = 0;
+                    // selectedAnswers is keyed by question position; the server
+                    // wants question id => option.
+                    const answers = {};
                     this.questions.forEach((q, idx) => {
-                        if (this.selectedAnswers[idx] === q.correctAnswer) {
-                            correct++;
-                        }
+                        answers[q.id] = this.selectedAnswers[idx] || null;
                     });
-                    this.correctCount = correct;
-                    this.score = Math.round((correct / this.questions.length) * 100);
-                    this.earnedXP = correct * 20;
 
-                    this.isCompleted = true;
-                    this.showModal = true;
+                    this.isSubmitting = true;
+                    this.submitError = '';
                     clearInterval(this.timerInterval);
-                    try {
-                        localStorage.removeItem('quiz_progress_' + this.quizId);
-                    } catch (e) {}
 
-                    // Save results to database if it's a dynamic quiz
-                    if (this.quizId > 0) {
-                        fetch(`/student/quiz/${this.quizId}/submit`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({
-                                score: this.correctCount,
-                                total_questions: this.questions.length
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => {
-                            console.log('Quiz score saved:', data);
-                        })
-                        .catch(err => console.error('Error saving quiz score:', err));
-                    }
+                    fetch(@json(route('student.quiz.submit', $quiz->id)), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        },
+                        body: JSON.stringify({ answers })
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        this.questions.forEach(q => {
+                            const r = data.review[q.id] || {};
+                            q.correctAnswer = r.correct_option || null;
+                            q.tip = r.explanation || 'No tip available.';
+                        });
+                        this.correctCount = data.score;
+                        this.score = data.total_questions > 0 ? Math.round((data.score / data.total_questions) * 100) : 0;
+                        this.earnedXP = data.score * 20;
+
+                        this.isCompleted = true;
+                        this.showModal = true;
+                        try {
+                            localStorage.removeItem('quiz_progress_' + this.quizId);
+                        } catch (e) {}
+                    })
+                    .catch(err => {
+                        console.error('Error submitting quiz:', err);
+                        this.submitError = 'We couldn\'t submit your answers. Check your connection and press Submit again. Your answers are kept.';
+                    })
+                    .finally(() => {
+                        this.isSubmitting = false;
+                    });
                 },
 
                 formatMath(text) {
@@ -537,6 +545,8 @@
                     this.score = 0;
                     this.correctCount = 0;
                     this.earnedXP = 0;
+                    this.submitError = '';
+                    this.questions.forEach(q => { q.correctAnswer = null; q.tip = ''; });
                     this.timerSeconds = this.questions.length * 60;
                     this.init();
                 }

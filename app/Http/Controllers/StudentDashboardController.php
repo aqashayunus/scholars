@@ -73,18 +73,22 @@ class StudentDashboardController extends Controller
     public function quiz(QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
-        $quizId = $quizzes->firstQuizId($student);
-        if ($quizId) {
-            return redirect()->route('student.quiz.show', $quizId);
-        }
+        $items = $quizzes->listQuizzes($student);
 
-        return view('student.quiz', compact('student'));
+        return view('student.quiz-index', compact('student', 'items'));
     }
 
     public function quizShow($id, QuizPerformanceService $quizzes)
     {
         $student = $this->getStudent();
-        $quiz = $quizzes->showQuiz($id);
+        $quiz = $quizzes->showQuiz($student, (int) $id);
+
+        if ($quiz->questions->isEmpty()) {
+            $items = $quizzes->listQuizzes($student);
+            $notice = "\"{$quiz->title}\" has no questions yet. Your teacher is still preparing it.";
+
+            return view('student.quiz-index', compact('student', 'items', 'notice'));
+        }
 
         return view('student.quiz', compact('student', 'quiz'));
     }
@@ -93,11 +97,9 @@ class StudentDashboardController extends Controller
     {
         $student = $this->getStudent();
 
-        $validated = $request->validated();
+        $result = $quizzes->submitQuiz($student, (int) $id, $request->validated()['answers'] ?? []);
 
-        $quizzes->submitQuiz($student, (int) $id, (int) $validated['score'], (int) $validated['total_questions']);
-
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true] + $result);
     }
 
     public function progress()
