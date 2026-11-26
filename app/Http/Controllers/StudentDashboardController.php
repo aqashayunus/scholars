@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Student\LinkParentRequest;
-use App\Http\Requests\Student\PayInvoiceRequest;
 use App\Http\Requests\Student\QuizSubmitRequest;
 use App\Http\Requests\Student\SubmitCorrectionRequestRequest;
 use App\Http\Requests\Student\SubmitTaskRequest;
@@ -235,22 +234,6 @@ class StudentDashboardController extends Controller
         $student = $this->getStudent();
 
         return view('student.fees', array_merge(['student' => $student], $billing->feesData($student)));
-    }
-
-    /**
-     * Process invoice payment by student.
-     */
-    public function payInvoice(PayInvoiceRequest $request, $id, BillingService $billing)
-    {
-        $student = $this->getStudent();
-        $paymentMethod = $request->input('payment_method', 'fpx');
-
-        $result = $billing->payInvoice($student, (int) $id, $paymentMethod, $request->file('proof_file'));
-
-        return match ($result['status']) {
-            'already_paid' => back()->with('info', $result['message']),
-            default => back()->with('success', $result['message']),
-        };
     }
 
     /**

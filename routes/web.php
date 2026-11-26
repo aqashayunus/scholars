@@ -175,7 +175,6 @@ Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->g
     Route::post('/fees/pay', [PaymentController::class, 'store'])->name('fees.pay');
     Route::post('/fees/{id}/pay', [ParentDashboardController::class, 'payChildInvoice'])->name('fees.pay.legacy');
     Route::get('/payments', [ParentDashboardController::class, 'payments'])->name('payments');
-    Route::post('/payments/pay', [ParentDashboardController::class, 'processPayment'])->name('payments.pay');
     Route::post('/payments/create-invoice', [ParentDashboardController::class, 'createCustomInvoice'])->name('payments.create-invoice');
 });
 

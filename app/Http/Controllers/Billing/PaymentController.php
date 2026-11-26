@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Billing;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\Billplz\BillplzService;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,7 +13,18 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
+    private const BILLPLZ_NOT_READY = 'Online banking (FPX) is not available yet. Please open the invoice and pay by bank transfer, then upload your payment slip.';
+
     public function __construct(private PaymentService $paymentService) {}
+
+    /**
+     * Billplz needs an API key; without one the checkout cannot start, so
+     * say so plainly instead of surfacing the gateway exception.
+     */
+    private function billplzReady(): bool
+    {
+        return (bool) app(BillplzService::class)->getApiKey();
+    }
 
     // ── Initiate Payment (single invoice) ────────────────────────────────────
 
@@ -37,6 +49,9 @@ class PaymentController extends Controller
 
         // Online FPX via Billplz
         if (in_array($paymentMethod, ['online', 'fpx'])) {
+            if (! $this->billplzReady()) {
+                return back()->with('error', self::BILLPLZ_NOT_READY);
+            }
             try {
                 $result = $this->paymentService->initiateBillplzPayment([$invoice->id], Auth::user());
 
@@ -98,6 +113,9 @@ class PaymentController extends Controller
 
         // Online FPX via Billplz
         if (in_array($paymentMethod, ['online', 'fpx'])) {
+            if (! $this->billplzReady()) {
+                return back()->with('error', self::BILLPLZ_NOT_READY);
+            }
             try {
                 $result = $this->paymentService->initiateBillplzPayment($request->invoice_ids, $user);
 

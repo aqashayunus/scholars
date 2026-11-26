@@ -359,10 +359,11 @@
                                             <span>Receipt</span>
                                         </button>
                                     @else
-                                        <button @click="openPayModal({{ $itemJson }})" class="py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                        {{-- Real payment happens on the invoice page (bank transfer + slip, or Billplz once live). --}}
+                                        <a href="{{ $p->invoice_id ? route('parent.fees.show', $p->invoice_id) : route('parent.fees') }}" class="py-1.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
                                             <span>Pay Now</span>
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                                        </button>
+                                        </a>
                                     @endif
                                 </td>
                             </tr>
@@ -431,10 +432,10 @@
                                     <span>View Receipt</span>
                                 </button>
                             @else
-                                <button @click="openPayModal({{ $itemJson }})" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-sm transition-all inline-flex items-center justify-center gap-1.5">
+                                <a href="{{ $p->invoice_id ? route('parent.fees.show', $p->invoice_id) : route('parent.fees') }}" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-sm transition-all inline-flex items-center justify-center gap-1.5">
                                     <span>Pay Now (RM {{ number_format((float) $p->amount, 2) }})</span>
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
-                                </button>
+                                </a>
                             @endif
                         </div>
                     </div>
@@ -462,24 +463,42 @@
                         </div>
                     </div>
 
+                    {{-- Same admin-set bank details as the invoice page (student/fees/show); never hard-coded. --}}
+                    @php
+                        $bankName    = \App\Models\Setting::get('billing.bank_name');
+                        $bankAccNum  = \App\Models\Setting::get('billing.bank_account_number');
+                        $bankAccName = \App\Models\Setting::get('billing.bank_account_name');
+                    @endphp
+                    @if($bankName || $bankAccNum)
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200/70 space-y-2.5 text-xs font-semibold text-gray-700">
-                        <div class="flex justify-between items-center">
+                        @if($bankName)
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-gray-400 font-bold">Bank:</span>
-                            <span class="text-gray-900 font-extrabold">Malayan Banking Berhad (Maybank)</span>
+                            <span class="text-gray-900 font-extrabold text-right">{{ $bankName }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
+                        @endif
+                        @if($bankAccName)
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-gray-400 font-bold">Account Name:</span>
-                            <span class="text-gray-900 font-extrabold">Olympian Scholars Sdn Bhd</span>
+                            <span class="text-gray-900 font-extrabold text-right">{{ $bankAccName }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
+                        @endif
+                        @if($bankAccNum)
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-gray-400 font-bold">Account Number:</span>
-                            <span class="text-blue-700 font-black font-mono text-sm">5140 8892 3410</span>
+                            <span class="text-blue-700 font-black font-mono text-sm">{{ $bankAccNum }}</span>
                         </div>
-                        <div class="flex justify-between items-center">
+                        @endif
+                        <div class="flex justify-between items-center gap-3">
                             <span class="text-gray-400 font-bold">Reference:</span>
                             <span class="text-gray-900 font-mono text-xs">Student Full Name / Invoice Ref</span>
                         </div>
                     </div>
+                    @else
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-200/70 text-xs font-semibold text-gray-500">
+                        Bank transfer details will appear here once our billing team publishes them. Please contact us for payment instructions.
+                    </div>
+                    @endif
                 </div>
 
                 <p class="text-[11px] text-gray-400 font-medium leading-relaxed">
@@ -530,163 +549,6 @@
         </div>
 
         {{-- ══════════════════════════════════════════════════════════════════
-             MODAL 1: CHECKOUT / PAY INVOICE MODAL
-             ══════════════════════════════════════════════════════════════════ --}}
-        <div x-show="showPayModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs" style="display: none;" x-transition>
-            <div @click.away="showPayModal = false" class="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl border border-gray-100 relative space-y-5 max-h-[90vh] overflow-y-auto">
-                
-                {{-- Modal Header --}}
-                <div class="flex items-center justify-between pb-3 border-b border-gray-100">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        </div>
-                        <div>
-                            <h3 class="font-heading font-black text-lg text-gray-900">Tuition Fee Checkout</h3>
-                            <p class="text-xs text-gray-400 font-medium" x-text="currentInvoice ? 'Invoice: ' + currentInvoice.reference_no : 'Secure Checkout'"></p>
-                        </div>
-                    </div>
-                    <button @click="showPayModal = false" class="text-gray-400 hover:text-gray-700 w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">✕</button>
-                </div>
-
-                {{-- Invoice Summary Box --}}
-                <div class="p-4 bg-blue-50/60 rounded-2xl border border-blue-100/80 space-y-2">
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500 font-medium">Item / Purpose:</span>
-                        <span class="font-bold text-gray-900 text-right truncate max-w-[240px]" x-text="currentInvoice ? currentInvoice.description : 'Monthly Tuition'"></span>
-                    </div>
-                    <div class="flex justify-between items-center text-xs">
-                        <span class="text-gray-500 font-medium">Payer Name:</span>
-                        <span class="font-bold text-gray-900">{{ auth()->user()->name }}</span>
-                    </div>
-                    <div class="pt-2 border-t border-blue-100 flex justify-between items-center">
-                        <span class="text-xs font-black text-gray-700 uppercase tracking-wider">Total Payable Amount:</span>
-                        <span class="text-xl font-black text-blue-700" x-text="currentInvoice ? 'RM ' + currentInvoice.amount : 'RM 0.00'"></span>
-                    </div>
-                </div>
-
-                <form method="POST" action="{{ route('parent.payments.pay') }}" @submit="isSubmitting = true">
-                    @csrf
-                    <input type="hidden" name="payment_ids" :value="currentInvoice ? currentInvoice.id : ''">
-                    <input type="hidden" name="payment_method" :value="paymentMethod">
-                    <input type="hidden" name="bank_name" :value="selectedBank">
-
-                    {{-- Payment Method Tabs --}}
-                    <div class="space-y-3">
-                        <label class="text-xs font-black text-gray-700 block uppercase tracking-wider">Select Payment Method</label>
-                        
-                        <div class="grid grid-cols-2 gap-2.5">
-                            {{-- FPX Online Banking --}}
-                            <div @click="paymentMethod = 'FPX Online Banking'" :class="paymentMethod === 'FPX Online Banking' ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-600' : 'border-gray-200 hover:border-gray-300 bg-white'" class="p-3 border rounded-2xl cursor-pointer transition-all flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-xs font-bold text-gray-900 block leading-tight">FPX Banking</span>
-                                    <span class="text-[10px] text-gray-400 font-medium">Maybank, CIMB, etc</span>
-                                </div>
-                            </div>
-
-                            {{-- Credit / Debit Card --}}
-                            <div @click="paymentMethod = 'Credit / Debit Card'" :class="paymentMethod === 'Credit / Debit Card' ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-600' : 'border-gray-200 hover:border-gray-300 bg-white'" class="p-3 border rounded-2xl cursor-pointer transition-all flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-xs font-bold text-gray-900 block leading-tight">Card (Visa/MC)</span>
-                                    <span class="text-[10px] text-gray-400 font-medium">Credit / Debit</span>
-                                </div>
-                            </div>
-
-                            {{-- DuitNow QR --}}
-                            <div @click="paymentMethod = 'DuitNow QR'" :class="paymentMethod === 'DuitNow QR' ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-600' : 'border-gray-200 hover:border-gray-300 bg-white'" class="p-3 border rounded-2xl cursor-pointer transition-all flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-xs font-bold text-gray-900 block leading-tight">DuitNow QR</span>
-                                    <span class="text-[10px] text-gray-400 font-medium">Instant QR Pay</span>
-                                </div>
-                            </div>
-
-                            {{-- Bank Transfer --}}
-                            <div @click="paymentMethod = 'Direct Bank Transfer'" :class="paymentMethod === 'Direct Bank Transfer' ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-600' : 'border-gray-200 hover:border-gray-300 bg-white'" class="p-3 border rounded-2xl cursor-pointer transition-all flex items-center gap-2.5">
-                                <div class="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <span class="text-xs font-bold text-gray-900 block leading-tight">Manual Transfer</span>
-                                    <span class="text-[10px] text-gray-400 font-medium">Maybank account</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Conditional Details per Payment Method --}}
-                    {{-- 1. FPX Banks --}}
-                    <div x-show="paymentMethod === 'FPX Online Banking'" class="pt-3 space-y-2">
-                        <label class="text-xs font-bold text-gray-600 block">Select Your Bank</label>
-                        <select x-model="selectedBank" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-3.5 py-2.5 pr-9 text-xs font-bold text-gray-900 focus:bg-white outline-none">
-                            <option value="Maybank2u">Maybank2u</option>
-                            <option value="CIMB Clicks">CIMB Clicks</option>
-                            <option value="Public Bank (PBE)">Public Bank (PBE)</option>
-                            <option value="RHB Now">RHB Now</option>
-                            <option value="Bank Islam">Bank Islam</option>
-                            <option value="Hong Leong Connect">Hong Leong Connect</option>
-                            <option value="AmBank">AmOnline</option>
-                            <option value="Affin Bank">Affin Always</option>
-                            <option value="Touch n Go eWallet">Touch 'n Go eWallet</option>
-                        </select>
-                    </div>
-
-                    {{-- 2. Credit Card --}}
-                    <div x-show="paymentMethod === 'Credit / Debit Card'" class="pt-3 space-y-3">
-                        <div>
-                            <label class="text-[11px] font-bold text-gray-500 block mb-1">Card Number</label>
-                            <input type="text" placeholder="4123 •••• •••• 8890" value="4123 4567 8901 8890" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-2.5 text-xs font-mono font-bold text-gray-900 focus:bg-white outline-none">
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-[11px] font-bold text-gray-500 block mb-1">Expiry (MM/YY)</label>
-                                <input type="text" placeholder="08/28" value="12/28" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-2.5 text-xs font-mono font-bold text-gray-900 focus:bg-white outline-none">
-                            </div>
-                            <div>
-                                <label class="text-[11px] font-bold text-gray-500 block mb-1">CVV</label>
-                                <input type="password" placeholder="•••" value="889" class="w-full bg-gray-50 border border-gray-200 rounded-2xl p-2.5 text-xs font-mono font-bold text-gray-900 focus:bg-white outline-none">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- 3. DuitNow QR --}}
-                    <div x-show="paymentMethod === 'DuitNow QR'" class="pt-3 flex flex-col items-center justify-center p-4 bg-gray-50 rounded-2xl border border-gray-200/70 text-center space-y-2">
-                        <div class="p-2.5 bg-white rounded-2xl shadow-xs border border-gray-100">
-                            <svg class="w-28 h-28 text-gray-800" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14-2h4v2h-4v-2zm-4 0h2v4h-2v-4zm2 4h4v4h-4v-4zm-2 2h2v2h-2v-2zm-6-6h2v2h-2v-2zm4-4h2v2h-2V8zm-2 2h2v2h-2v-2zm-2-2h2v2h-2V8z"/>
-                            </svg>
-                        </div>
-                        <span class="text-xs font-extrabold text-gray-900">Scan with any Malaysian Banking / eWallet App</span>
-                        <span class="text-[11px] text-gray-500 font-medium">Payment will be automatically detected and verified</span>
-                    </div>
-
-                    {{-- 4. Manual Bank Transfer Details --}}
-                    <div x-show="paymentMethod === 'Direct Bank Transfer'" class="pt-3 p-3.5 bg-gray-50 rounded-2xl border border-gray-200 text-xs space-y-1.5 font-medium text-gray-700">
-                        <p class="font-bold text-gray-900">Transfer to: <strong>Maybank 5140 8892 3410</strong></p>
-                        <p class="text-[11px] text-gray-500">Account: <strong>Olympian Scholars Sdn Bhd</strong></p>
-                        <p class="text-[11px] text-emerald-700 font-bold">Click Confirm below after initiating your online transfer.</p>
-                    </div>
-
-                    {{-- Submit Button --}}
-                    <div class="pt-4">
-                        <button type="submit" :disabled="isSubmitting" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center justify-center gap-2">
-                            <span x-text="isSubmitting ? 'Processing Payment...' : 'Confirm & Complete Payment'"></span>
-                            <svg x-show="!isSubmitting" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        {{-- ══════════════════════════════════════════════════════════════════
              MODAL 2: OFFICIAL TAX INVOICE & RECEIPT MODAL
              ══════════════════════════════════════════════════════════════════ --}}
         <div x-show="showReceiptModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-xs" style="display: none;" x-transition>
@@ -700,7 +562,7 @@
                         </div>
                         <div>
                             <h3 class="font-heading font-black text-base text-gray-900">Olympia Scholars</h3>
-                            <p class="text-[10px] text-gray-400 font-medium">Olympia Education Sdn Bhd • Co. Reg: 202401089823</p>
+                            <p class="text-[10px] text-gray-400 font-medium">Olympia Education Sdn Bhd</p>
                         </div>
                     </div>
                     <div class="text-right">

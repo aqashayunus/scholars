@@ -2659,12 +2659,6 @@ parameters:
 			path: app/Http/Controllers/ParentDashboardController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\ParentDashboardController\:\:processPayment\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/ParentDashboardController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\ParentDashboardController\:\:progress\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -2769,18 +2763,6 @@ parameters:
 		-
 			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:linkParent\(\) has no return type specified\.$#'
 			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StudentDashboardController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:payInvoice\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/StudentDashboardController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\StudentDashboardController\:\:payInvoice\(\) has parameter \$id with no type specified\.$#'
-			identifier: missingType.parameter
 			count: 1
 			path: app/Http/Controllers/StudentDashboardController.php
 
@@ -3607,12 +3589,6 @@ parameters:
 			path: app/Http/Requests/Parent/PayChildInvoiceRequest.php
 
 		-
-			message: '#^Method App\\Http\\Requests\\Parent\\ProcessPaymentRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Parent/ProcessPaymentRequest.php
-
-		-
 			message: '#^Method App\\Http\\Requests\\Parent\\StoreChildRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3623,12 +3599,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/Http/Requests/Student/LinkParentRequest.php
-
-		-
-			message: '#^Method App\\Http\\Requests\\Student\\PayInvoiceRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Http/Requests/Student/PayInvoiceRequest.php
 
 		-
 			message: '#^Method App\\Http\\Requests\\Student\\QuizSubmitRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
@@ -8481,7 +8451,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Invoice\:\:\$student\.$#'
 			identifier: property.notFound
-			count: 8
+			count: 3
 			path: app/Services/Parent/BillingService.php
 
 		-
@@ -8547,30 +8517,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Parent\\BillingService\:\:paymentsPageData\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Parent/BillingService.php
-
-		-
-			message: '#^Method App\\Services\\Parent\\BillingService\:\:processPayment\(\) has parameter \$paymentIds with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Parent/BillingService.php
-
-		-
-			message: '#^Method App\\Services\\Parent\\BillingService\:\:processPayment\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Parent/BillingService.php
-
-		-
-			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Parent/BillingService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<1, max\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Parent/BillingService.php
 
@@ -8973,24 +8919,6 @@ parameters:
 		-
 			message: '#^Method App\\Services\\Student\\BillingService\:\:feesData\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Student/BillingService.php
-
-		-
-			message: '#^Method App\\Services\\Student\\BillingService\:\:payInvoice\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: app/Services/Student/BillingService.php
-
-		-
-			message: '#^Parameter \#1 \$num of function number_format expects float, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/Student/BillingService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function str_pad expects string, int\<1, max\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/Student/BillingService.php
 

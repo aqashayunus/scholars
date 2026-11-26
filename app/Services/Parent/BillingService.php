@@ -8,7 +8,6 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\User;
-use App\Models\UserNotification;
 use App\Services\Billplz\BillplzService;
 use App\Services\PaymentService;
 use Illuminate\Http\UploadedFile;
@@ -197,7 +196,7 @@ class BillingService
     /**
      * Process a child invoice payment by a parent. Returns a result array;
      * the controller maps 'status' to the right redirect/back response
-     * (same convention as Student/BillingService::payInvoice()).
+     * (status: redirect_away, gateway_error, bank_transfer_submitted).
      */
     public function payInvoice(User $parent, array $childIds, int $invoiceId, string $paymentMethod, ?UploadedFile $proofFile): array
     {
@@ -227,7 +226,7 @@ class BillingService
             ]);
 
             // Invoice status is deliberately left untouched here, matching
-            // Student/BillingService::payInvoice()'s bank_transfer branch —
+            // the old student flow's bank_transfer branch —
             // 'pending_verification' is not a valid InvoiceStatus case (the
             // original code set this raw string directly, which crashed
             // with a ValueError the moment anything read the invoice back
@@ -255,88 +254,12 @@ class BillingService
             }
         }
 
-        // Mock fallback if gateway credentials not set
-        $refNo = 'TXN-FPX-'.strtoupper(substr(md5(uniqid()), 0, 8));
-        $receiptNo = 'RCP-'.date('Y').'-'.str_pad($invoice->id * 10 + rand(1, 9), 5, '0', STR_PAD_LEFT);
-
-        Payment::create([
-            'user_id' => $parent->id,
-            'invoice_id' => $invoice->id,
-            'student_id' => $invoice->student_id,
-            'payer_id' => $parent->id,
-            'payer_type' => 'parent',
-            'description' => "Payment for {$invoice->student->user->name} – {$invoice->title}",
-            'amount' => $invoice->total_amount,
-            'payment_method' => $paymentMethod,
-            'reference_no' => $refNo,
-            'receipt_number' => $receiptNo,
-            'status' => PaymentStatus::Successful,
-            'paid_at' => now(),
-        ]);
-
-        $invoice->status = InvoiceStatus::Paid;
-        $invoice->save();
-
-        UserNotification::create([
-            'user_id' => $parent->id,
-            'type' => 'payment',
-            'title' => 'PAYMENT SUCCESSFUL',
-            'message' => 'Payment of RM '.number_format($invoice->total_amount, 2)." for {$invoice->student->user->name} ('{$invoice->title}') has been processed. Receipt No: {$receiptNo}.",
-            'read_at' => null,
-        ]);
-
-        if ($invoice->student->user_id) {
-            UserNotification::create([
-                'user_id' => $invoice->student->user_id,
-                'type' => 'payment',
-                'title' => 'TUITION FEE PAID BY PARENT',
-                'message' => "Your parent ({$parent->name}) has completed the payment for '{$invoice->title}'. Receipt No: {$receiptNo}.",
-                'read_at' => null,
-            ]);
-        }
-
+        // No gateway configured: refuse. This used to fall back to a "mock"
+        // payment that marked the invoice Paid with a receipt although no
+        // money moved (found on prod 2026-11-26 while Billplz was not set up).
         return [
-            'status' => 'success',
-            'message' => "Payment for {$invoice->student->user->name} was successful! Receipt #{$receiptNo} has been generated.",
-        ];
-    }
-
-    /**
-     * Process simulated / gateway payment for one or more pending Payments.
-     */
-    public function processPayment(User $user, array $paymentIds, string $paymentMethod, ?string $bankName): array
-    {
-        $paymentsToPay = Payment::where('user_id', $user->id)
-            ->whereIn('id', $paymentIds)
-            // 'overdue' has never been a valid Payment status (enum:
-            // pending/successful/failed/cancelled).
-            ->where('status', PaymentStatus::Pending)
-            ->get();
-
-        if ($paymentsToPay->isEmpty()) {
-            return ['success' => false, 'message' => 'No eligible pending invoices found for payment.'];
-        }
-
-        $methodTitle = $paymentMethod;
-        if (! empty($bankName)) {
-            $methodTitle .= ' ('.$bankName.')';
-        }
-
-        $totalPaidAmount = 0;
-        foreach ($paymentsToPay as $p) {
-            $txnRef = 'OS-TXN-'.date('Ymd').'-'.strtoupper(Str::random(6));
-            $p->update([
-                'status' => PaymentStatus::Successful,
-                'payment_method' => $methodTitle,
-                'reference_no' => $txnRef,
-                'paid_at' => now(),
-            ]);
-            $totalPaidAmount += (float) $p->amount;
-        }
-
-        return [
-            'success' => true,
-            'message' => '✓ Payment of RM '.number_format($totalPaidAmount, 2)." completed successfully via {$methodTitle}! Official receipt generated.",
+            'status' => 'gateway_error',
+            'message' => 'Online payment is not available yet. Please pay by bank transfer and upload your payment slip.',
         ];
     }
 

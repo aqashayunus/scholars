@@ -6,7 +6,6 @@ use App\Enums\InvoiceStatus;
 use App\Http\Requests\Parent\ConnectChildRequest;
 use App\Http\Requests\Parent\CreateCustomInvoiceRequest;
 use App\Http\Requests\Parent\PayChildInvoiceRequest;
-use App\Http\Requests\Parent\ProcessPaymentRequest;
 use App\Http\Requests\Parent\StoreChildRequest;
 use App\Models\Invoice;
 use App\Models\Student;
@@ -309,28 +308,6 @@ class ParentDashboardController extends Controller
             ['children' => $children, 'child' => $child],
             $this->billing->paymentsPageData($user, $children, $child)
         ));
-    }
-
-    /**
-     * Process simulated / gateway payment for invoices.
-     */
-    public function processPayment(ProcessPaymentRequest $request)
-    {
-        $user = auth()->user();
-
-        $validated = $request->validated();
-
-        $paymentIds = is_array($validated['payment_ids'])
-            ? $validated['payment_ids']
-            : explode(',', (string) $validated['payment_ids']);
-
-        $result = $this->billing->processPayment($user, $paymentIds, $validated['payment_method'], $validated['bank_name'] ?? null);
-
-        if (! $result['success']) {
-            return redirect()->back()->withErrors(['payment_ids' => $result['message']]);
-        }
-
-        return redirect()->route('parent.payments')->with('success', $result['message']);
     }
 
     /**

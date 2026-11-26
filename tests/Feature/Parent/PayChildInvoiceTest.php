@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -107,38 +108,55 @@ class PayChildInvoiceTest extends TestCase
         $this->assertDatabaseCount('payments', 0);
     }
 
-    public function test_mock_fpx_fallback_marks_invoice_paid_and_notifies_parent_and_student(): void
+    /**
+     * 2026-11-26: with Billplz not configured this used to fall back to a
+     * "mock" payment that marked the invoice Paid with a receipt although
+     * no money moved. It must refuse instead.
+     */
+    public function test_fpx_without_billplz_is_refused_and_nothing_is_marked_paid(): void
     {
         $invoice = $this->makeInvoice();
 
-        $response = $this->actingAs($this->parent)
-            ->post(route('parent.fees.pay.legacy', $invoice->id), [
-                'payment_method' => 'fpx',
-            ]);
+        foreach (['fpx', 'online', 'card', 'Credit / Debit Card'] as $method) {
+            $this->actingAs($this->parent)
+                ->post(route('parent.fees.pay.legacy', $invoice->id), ['payment_method' => $method])
+                ->assertRedirect()
+                ->assertSessionHas('error', 'Online payment is not available yet. Please pay by bank transfer and upload your payment slip.');
+        }
 
-        $response->assertRedirect();
-        $response->assertSessionHas('success');
+        $this->assertEquals(InvoiceStatus::Issued, $invoice->fresh()->status);
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseMissing('user_notifications', ['type' => 'payment']);
+    }
 
-        $this->assertEquals(InvoiceStatus::Paid, $invoice->fresh()->status);
-
-        $this->assertDatabaseHas('payments', [
-            'invoice_id' => $invoice->id,
-            'student_id' => $this->student->id,
-            'payer_type' => 'parent',
-            'status' => PaymentStatus::Successful->value,
+    /**
+     * The parent Payments page "Pay Now" checkout was a simulation that set
+     * the parent's own Pending payments (e.g. an unverified bank slip) to
+     * Successful. The route is gone and the page links to the real invoice.
+     */
+    public function test_simulated_checkout_route_is_gone_and_a_pending_slip_stays_pending(): void
+    {
+        Storage::fake('public');
+        $invoice = $this->makeInvoice();
+        $this->actingAs($this->parent)->post(route('parent.fees.pay.legacy', $invoice->id), [
+            'payment_method' => 'bank_transfer',
+            'proof_file' => UploadedFile::fake()->image('slip.jpg'),
         ]);
+        $slip = Payment::where('invoice_id', $invoice->id)->firstOrFail();
 
-        $this->assertDatabaseHas('user_notifications', [
-            'user_id' => $this->parent->id,
-            'type' => 'payment',
-            'title' => 'PAYMENT SUCCESSFUL',
-        ]);
+        $this->assertFalse(Route::has('parent.payments.pay'));
+        $this->actingAs($this->parent)
+            ->post('/parent/payments/pay', ['payment_ids' => (string) $slip->id, 'payment_method' => 'FPX Online Banking'])
+            ->assertNotFound();
 
-        $this->assertDatabaseHas('user_notifications', [
-            'user_id' => $this->student->user_id,
-            'type' => 'payment',
-            'title' => 'TUITION FEE PAID BY PARENT',
-        ]);
+        $this->assertEquals(PaymentStatus::Pending, $slip->fresh()->status);
+        $this->assertEquals(InvoiceStatus::Issued, $invoice->fresh()->status);
+
+        $this->actingAs($this->parent)->get(route('parent.payments'))
+            ->assertOk()
+            ->assertSee(e(route('parent.fees.show', $invoice->id)), false)
+            ->assertDontSee('Confirm &amp; Complete Payment', false)
+            ->assertDontSee('5140 8892 3410');
     }
 
     public function test_parent_cannot_pay_invoice_for_a_child_that_is_not_their_own(): void
