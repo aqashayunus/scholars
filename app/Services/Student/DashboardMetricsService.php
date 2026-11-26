@@ -59,16 +59,21 @@ class DashboardMetricsService
             ->with('assignment.course.subject')
             ->latest()->take(6)->get();
 
-        // Real-time live class: fetch next upcoming or ongoing live session
+        // Next live class: the earliest one that hasn't ended yet (ongoing
+        // or upcoming). The end time is start + duration, so it's checked in
+        // PHP; the 12h look-back only bounds how long a class can be.
+        // Previously any class that started in the last 2h was shown, so an
+        // ended class stayed on the card as "UPCOMING" and hid the next one.
         $upcomingClass = LiveClass::whereHas('course', function ($q) use ($student) {
             $q->whereHas('enrollments', fn ($q2) => $q2->where('student_id', $student->id));
         })
             ->with('course.teacher.user', 'course.subject')
-            ->where(function ($q) {
-                $q->where('scheduled_at', '>=', now()->subMinutes(120));
-            })
+            ->where('status', '!=', 'cancelled')
+            ->where('scheduled_at', '>=', now()->subHours(12))
             ->orderBy('scheduled_at', 'asc')
-            ->first();
+            ->limit(20)
+            ->get()
+            ->first(fn (LiveClass $lc) => $lc->scheduled_at->copy()->addMinutes($lc->duration_minutes ?? 60)->gte(now()));
 
         // Check & create real-time class notifications (10 min before & Live now)
         $this->checkLiveClassNotifications($user, $student);

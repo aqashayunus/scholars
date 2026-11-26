@@ -2,6 +2,7 @@
 
 namespace App\Services\Student;
 
+use App\Models\AttendanceCorrectionRequest;
 use App\Models\LiveClass;
 use App\Models\Student;
 use App\Models\StudentAttendance;
@@ -86,6 +87,13 @@ class ClassScheduleService
         // Dynamic Month Attendance Analytics from unified helper
         $attendanceStats = $this->attendanceStats($student);
 
+        // The past-class cards show the student's latest attendance
+        // correction request per class (the view crashed without this).
+        $correctionRequests = AttendanceCorrectionRequest::where('student_id', $student->id)
+            ->whereIn('live_class_id', $pastClasses->pluck('id'))
+            ->latest('id')
+            ->get();
+
         return [
             'weekDays' => $weekDays,
             'upcomingClasses' => $upcomingClasses,
@@ -93,6 +101,7 @@ class ClassScheduleService
             'liveClasses' => $liveClasses,
             'attendanceStats' => $attendanceStats,
             'attendanceMap' => $attendanceMap,
+            'correctionRequests' => $correctionRequests,
         ];
     }
 
