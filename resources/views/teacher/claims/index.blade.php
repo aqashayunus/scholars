@@ -180,53 +180,53 @@
             </button>
         </div>
 
-        {{-- ── 1. TOP 4 KPI SUMMARY CARDS (Standardized matching Students & Classes) ── --}}
+        {{-- ── 1. KPI SUMMARY CARDS (Tasks & Assessments style) ── --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {{-- Total Claims --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Claims</p>
-                    <p class="text-2xl font-black text-gray-900 mt-0.5">RM {{ number_format($stats['total_amount'], 2) }}</p>
-                    <p class="text-[11px] text-gray-500 font-medium">{{ $stats['total_claims'] }} submission{{ $stats['total_claims'] === 1 ? '' : 's' }} recorded</p>
+                <div class="min-w-0">
+                    <p class="text-xl font-black text-gray-900 truncate">RM {{ number_format($stats['total_amount'], 2) }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Total Claims</p>
+                    <p class="text-[10px] text-gray-500 font-medium">{{ $stats['total_claims'] }} submission{{ $stats['total_claims'] === 1 ? '' : 's' }} recorded</p>
                 </div>
             </div>
 
             {{-- Pending Approval --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Pending Approval</p>
-                    <p class="text-2xl font-black text-amber-600 mt-0.5">RM {{ number_format($stats['pending_amount'], 2) }}</p>
-                    <p class="text-[11px] text-gray-500 font-medium">{{ $stats['pending_count'] }} awaiting review</p>
+                <div class="min-w-0">
+                    <p class="text-xl font-black text-amber-600 truncate">RM {{ number_format($stats['pending_amount'], 2) }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Pending Approval</p>
+                    <p class="text-[10px] text-gray-500 font-medium">{{ $stats['pending_count'] }} awaiting review</p>
                 </div>
             </div>
 
             {{-- Approved (Queued) --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Approved (Queued)</p>
-                    <p class="text-2xl font-black text-purple-600 mt-0.5">RM {{ number_format($stats['approved_amount'], 2) }}</p>
-                    <p class="text-[11px] text-gray-500 font-medium">{{ $stats['approved_count'] }} ready for payout</p>
+                <div class="min-w-0">
+                    <p class="text-xl font-black text-blue-600 truncate">RM {{ number_format($stats['approved_amount'], 2) }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Approved (Queued)</p>
+                    <p class="text-[10px] text-gray-500 font-medium">{{ $stats['approved_count'] }} ready for payout</p>
                 </div>
             </div>
 
             {{-- Paid Out --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                 </div>
-                <div>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Paid Out</p>
-                    <p class="text-2xl font-black text-emerald-600 mt-0.5">RM {{ number_format($stats['paid_amount'], 2) }}</p>
-                    <p class="text-[11px] text-gray-500 font-medium">{{ $stats['paid_count'] }} transferred</p>
+                <div class="min-w-0">
+                    <p class="text-xl font-black text-emerald-600 truncate">RM {{ number_format($stats['paid_amount'], 2) }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Paid Out</p>
+                    <p class="text-[10px] text-gray-500 font-medium">{{ $stats['paid_count'] }} transferred</p>
                 </div>
             </div>
         </div>
@@ -287,48 +287,51 @@
 
                                 {{-- Subject & Class Title --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap max-w-[220px]">
-                                    <div class="font-extrabold text-gray-900 truncate" :title="claim.class_title" x-text="claim.class_title"></div>
-                                    <div class="text-[11px] font-semibold text-blue-600 mt-0.5" x-text="claim.subject_name"></div>
+                                    <div class="font-bold text-gray-900 truncate" :title="claim.class_title" x-text="claim.class_title"></div>
+                                    <div class="text-[11px] text-gray-400 font-normal mt-0.5" x-text="claim.subject_name"></div>
                                 </td>
 
                                 {{-- Session Date --}}
-                                <td class="py-3.5 px-4 whitespace-nowrap text-gray-700 font-bold" x-text="claim.class_date_formatted"></td>
+                                <td class="py-3.5 px-4 whitespace-nowrap text-gray-700 font-medium" x-text="claim.class_date_formatted"></td>
 
                                 {{-- Duration --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap text-gray-500 font-medium" x-text="claim.duration_minutes + ' mins'"></td>
 
                                 {{-- Fee Amount --}}
-                                <td class="py-3.5 px-4 whitespace-nowrap font-black text-gray-900 text-xs sm:text-sm" x-text="'RM ' + claim.amount_formatted"></td>
+                                <td class="py-3.5 px-4 whitespace-nowrap font-bold text-gray-900" x-text="'RM ' + claim.amount_formatted"></td>
 
-                                {{-- Status --}}
+                                {{-- Status (plain text, a small dot carries the colour) --}}
                                 <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span :class="{
-                                        'bg-amber-50 text-amber-700 border-amber-200/60': claim.status === 'pending',
-                                        'bg-blue-50 text-blue-700 border-blue-200/60': claim.status === 'approved',
-                                        'bg-emerald-50 text-emerald-700 border-emerald-200/60': claim.status === 'paid',
-                                        'bg-rose-50 text-rose-700 border-rose-200/60': claim.status === 'rejected'
-                                    }" class="px-2.5 py-1 rounded-full font-black text-[10px] border inline-flex items-center gap-1 uppercase tracking-wider" x-text="claim.status === 'pending' ? 'Pending Review' : (claim.status.charAt(0).toUpperCase() + claim.status.slice(1))"></span>
+                                    <span class="inline-flex items-center gap-1.5 font-semibold text-gray-700">
+                                        <span :class="{
+                                            'bg-amber-500': claim.status === 'pending',
+                                            'bg-blue-600': claim.status === 'approved',
+                                            'bg-emerald-500': claim.status === 'paid',
+                                            'bg-red-500': claim.status === 'rejected'
+                                        }" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
+                                        <span x-text="claim.status === 'pending' ? 'Pending Review' : (claim.status.charAt(0).toUpperCase() + claim.status.slice(1))"></span>
+                                    </span>
                                 </td>
 
                                 {{-- Remarks --}}
-                                <td class="py-3.5 px-4 text-gray-600 max-w-[180px] truncate" :title="claim.admin_notes || (claim.status === 'paid' ? 'Transferred via ' + (claim.payment_method || 'Bank') : 'Under review by admin')">
+                                <td class="py-3.5 px-4 text-gray-500 max-w-[180px] truncate" :title="claim.admin_notes || (claim.status === 'paid' ? 'Transferred via ' + (claim.payment_method || 'Bank') : 'Under review by admin')">
                                     <template x-if="claim.status === 'paid'">
-                                        <span class="text-xs font-semibold text-emerald-700" x-text="'Paid: ' + (claim.payment_reference || 'Direct')"></span>
+                                        <span x-text="'Paid: ' + (claim.payment_reference || 'Direct')"></span>
                                     </template>
                                     <template x-if="claim.status === 'rejected'">
-                                        <span class="text-xs font-semibold text-rose-700" x-text="claim.admin_notes || 'Rejected'"></span>
+                                        <span class="text-red-600" x-text="claim.admin_notes || 'Rejected'"></span>
                                     </template>
                                     <template x-if="claim.status === 'approved'">
-                                        <span class="text-xs font-semibold text-blue-700">Authorized for payout</span>
+                                        <span>Authorized for payout</span>
                                     </template>
                                     <template x-if="claim.status === 'pending'">
-                                        <span class="text-xs text-gray-400 italic">Under review</span>
+                                        <span class="text-gray-400">Under review</span>
                                     </template>
                                 </td>
 
                                 {{-- Actions --}}
                                 <td class="py-3.5 px-4 text-right whitespace-nowrap">
-                                    <button type="button" @click="viewClaimDetails(claim)" class="w-8 h-8 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs" title="View Claim Details">
+                                    <button type="button" @click="viewClaimDetails(claim)" class="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 inline-flex items-center justify-center transition-all cursor-pointer" title="View Claim Details">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                                     </button>
                                 </td>
@@ -337,14 +340,8 @@
 
                         {{-- Empty States --}}
                         <tr x-show="claims.length === 0">
-                            <td colspan="8" class="py-12 text-center text-gray-400 font-medium">
-                                <div class="flex flex-col items-center justify-center gap-2">
-                                    <div class="w-12 h-12 rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center mx-auto mb-1">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                                    </div>
-                                    <p class="font-heading font-black text-sm text-gray-700">No class fee claims submitted yet</p>
-                                    <p class="text-xs text-gray-400">Click "Submit New Claim" to record your completed teaching sessions.</p>
-                                </div>
+                            <td colspan="8" class="py-8 text-center text-gray-400 font-semibold">
+                                No class fee claims submitted yet. Click <strong>+ Submit New Claim</strong> to record your completed teaching sessions.
                             </td>
                         </tr>
                         <tr x-show="claims.length > 0 && filteredClaims.length === 0">

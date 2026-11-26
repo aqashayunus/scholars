@@ -128,198 +128,178 @@
             </div>
 
             <button @click="showAddClassModal = true" class="py-2.5 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-extrabold shadow-sm transition-all cursor-pointer shrink-0 inline-flex items-center gap-1.5">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                 <span>Add Live Session</span>
             </button>
         </div>
 
-        {{-- ── 1. TOP 3 KPI SUMMARY CARDS ── --}}
+        {{-- ── 1. KPI SUMMARY CARDS ── --}}
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            
-            {{-- Active Course Sections --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+
+            {{-- Course Sections --}}
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-black text-gray-900">{{ $teacher->courses->count() }}</p>
-                    <p class="text-xs font-bold text-gray-400">Course Sections</p>
+                    <p class="text-xl font-black text-gray-900">{{ $teacher->courses->count() }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Course Sections</p>
+                    <p class="text-[10px] text-gray-500 font-medium">Assigned to you</p>
                 </div>
             </div>
 
-            {{-- Total Students --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/></svg>
+            {{-- Total Enrolled Students --}}
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-black text-gray-900">{{ $teacher->courses->sum(fn($c) => $c->enrollments->count()) }}</p>
-                    <p class="text-xs font-bold text-gray-400">Total Enrolled Students</p>
+                    <p class="text-xl font-black text-gray-900">{{ $teacher->courses->sum(fn($c) => $c->enrollments->count()) }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Enrolled Students</p>
+                    <p class="text-[10px] text-gray-500 font-medium">Across all sections</p>
                 </div>
             </div>
 
-            {{-- Upcoming Classes count --}}
-            <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition-all">
-                <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 shadow-sm">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            {{-- Scheduled Live Sessions --}}
+            <div class="bg-white rounded-3xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 hover:shadow-md transition-all">
+                <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 </div>
                 <div>
-                    <p class="text-2xl font-black text-gray-900">{{ $upcomingClasses->count() }}</p>
-                    <p class="text-xs font-bold text-gray-400">Scheduled Live Sessions</p>
+                    <p class="text-xl font-black text-gray-900">{{ $upcomingClasses->count() }}</p>
+                    <p class="text-[11px] font-bold text-gray-400">Scheduled Sessions</p>
+                    <p class="text-[10px] text-gray-500 font-medium">Coming up</p>
                 </div>
             </div>
         </div>
 
-        {{-- ── 2. SUB-TABS SWITCHER ── --}}
-        <div class="bg-white rounded-2xl p-1.5 border border-gray-100 shadow-sm flex flex-wrap gap-1">
-            <button @click="activeTab = 'courses'"
-                    :class="activeTab === 'courses' ? 'bg-blue-600 text-white shadow-sm font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-bold'"
-                    class="px-5 py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-                Course Sections & Tasks
-            </button>
-            <button @click="activeTab = 'upcoming'"
-                    :class="activeTab === 'upcoming' ? 'bg-blue-600 text-white shadow-sm font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-bold'"
-                    class="px-5 py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-                Scheduled Live Sessions ({{ $upcomingClasses->count() }})
-            </button>
-            <button @click="activeTab = 'past'"
-                    :class="activeTab === 'past' ? 'bg-blue-600 text-white shadow-sm font-extrabold' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-bold'"
-                    class="px-5 py-2.5 rounded-xl text-xs transition-all cursor-pointer">
-                Past Sessions
-            </button>
-        </div>
+        {{-- ── 2. TABS + LISTS (one card, like the Tasks table) ── --}}
+        <div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="px-6 pt-5 border-b border-gray-100 flex flex-wrap gap-5 text-xs font-extrabold">
+                <button @click="activeTab = 'courses'" :class="activeTab === 'courses' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'" class="pb-3 transition-colors cursor-pointer">
+                    Course Sections & Tasks ({{ $teacher->courses->count() }})
+                </button>
+                <button @click="activeTab = 'upcoming'" :class="activeTab === 'upcoming' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'" class="pb-3 transition-colors cursor-pointer">
+                    Scheduled Live Sessions ({{ $upcomingClasses->count() }})
+                </button>
+                <button @click="activeTab = 'past'" :class="activeTab === 'past' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-900 border-b-2 border-transparent'" class="pb-3 transition-colors cursor-pointer">
+                    Past Sessions
+                </button>
+            </div>
 
-        {{-- ── 3. COURSE SECTIONS TAB ── --}}
-        <div x-show="activeTab === 'courses'" class="space-y-4">
-            <div class="space-y-3">
+            {{-- ── 3. COURSE SECTIONS TAB ── --}}
+            <div x-show="activeTab === 'courses'" class="divide-y divide-gray-100 text-xs">
                 @forelse($teacher->courses as $course)
-                    <div class="p-5 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                        <div class="flex items-start sm:items-center gap-4">
-                            @php
-                                $subjectName = strtolower($course->subject->name ?? 'general');
-                                $iconColor = 'bg-blue-600';
-                                if (str_contains($subjectName, 'physics') || str_contains($subjectName, 'science')) { 
-                                    $iconColor = 'bg-purple-600';
-                                } elseif (str_contains($subjectName, 'english')) { 
-                                    $iconColor = 'bg-emerald-500';
-                                }
-                            @endphp
-                            <div class="w-12 h-12 rounded-2xl {{ $iconColor }} text-white font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
+                    @php $courseLabel = $course->subject->display_name ?? ($course->level . ' ' . ($course->subject->name ?? '')); @endphp
+                    <div class="px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:bg-gray-50/80 transition-colors">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 font-black text-xs flex items-center justify-center shrink-0">
                                 {{ strtoupper(substr($course->subject->name ?? 'G', 0, 2)) }}
                             </div>
-                            <div>
-                                <h4 class="font-heading font-black text-base text-gray-900">{{ $course->subject->display_name ?? ($course->level . ' ' . ($course->subject->name ?? '')) }} – {{ $course->title }}</h4>
-                                <p class="text-xs text-gray-400 font-medium mt-0.5">{{ $course->enrollments->count() }} Students • {{ $course->schedule ?? 'TBA' }}</p>
-                                <div class="mt-2 flex flex-wrap gap-2">
-                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-700">
-                                        {{ $course->assignments->count() }} Tasks Assigned
-                                    </span>
-                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-purple-50 text-purple-700">
-                                        {{ $course->liveClasses->count() }} Total Sessions
-                                    </span>
-                                </div>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-sm text-gray-900 leading-snug">{{ $courseLabel }} – {{ $course->title }}</h4>
+                                <p class="text-[11px] text-gray-400 font-normal mt-0.5">
+                                    {{ $course->enrollments->count() }} students • {{ $course->schedule ?? 'Schedule TBA' }} • {{ $course->assignments->count() }} tasks • {{ $course->liveClasses->count() }} sessions
+                                </p>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 shrink-0 sm:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-50">
-                            <button @click="openAddTask({{ $course->id }}, '{{ $course->subject->display_name ?? ($course->level . ' ' . ($course->subject->name ?? '')) }}')" class="py-2 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-extrabold text-xs rounded-xl border border-emerald-200/50 transition-colors cursor-pointer">
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button @click="openAddTask({{ $course->id }}, '{{ $courseLabel }}')" class="py-2 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-extrabold text-xs rounded-xl transition-colors cursor-pointer">
                                 + Assign Task
                             </button>
-                            <a href="{{ route('teacher.classes.show', $course->id) }}" class="py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-colors cursor-pointer">
+                            <a href="{{ route('teacher.classes.show', $course->id) }}" class="py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-sm transition-colors">
                                 Class Workspace
                             </a>
                         </div>
                     </div>
                 @empty
-                    <div class="p-8 text-center bg-white rounded-3xl border border-gray-100 text-gray-500 font-semibold">No assigned courses found.</div>
+                    <div class="px-6 py-8 text-center text-gray-400 font-semibold">No assigned courses found.</div>
                 @endforelse
             </div>
-        </div>
 
-        {{-- ── 4. UPCOMING SESSIONS TAB ── --}}
-        <div x-show="activeTab === 'upcoming'" x-cloak class="space-y-4">
-            <div class="space-y-3">
+            {{-- ── 4. UPCOMING SESSIONS TAB ── --}}
+            <div x-show="activeTab === 'upcoming'" x-cloak class="divide-y divide-gray-100 text-xs">
                 @forelse($upcomingClasses as $lc)
-                    <div class="p-5 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div class="flex items-start sm:items-center gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex flex-col items-center justify-center shrink-0 font-black text-sm border border-blue-100 shadow-3xs">
-                                <span>{{ $lc->scheduled_at->format('d') }}</span>
-                                <span class="text-[9px] uppercase tracking-wider font-extrabold mt-0.5">{{ $lc->scheduled_at->format('M') }}</span>
+                    <div class="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-gray-50/80 transition-colors">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-800 flex flex-col items-center justify-center shrink-0 leading-none">
+                                <span class="font-black text-sm">{{ $lc->scheduled_at->format('d') }}</span>
+                                <span class="text-[9px] uppercase tracking-wider font-extrabold text-gray-500 mt-0.5">{{ $lc->scheduled_at->format('M') }}</span>
                             </div>
-                            <div>
+                            <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <h4 class="font-heading font-black text-base text-gray-900">{{ $lc->title }}</h4>
+                                    <h4 class="font-bold text-sm text-gray-900">{{ $lc->title }}</h4>
                                     @if($lc->is_rescheduled)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">
-                                            Rescheduled
-                                        </span>
+                                        <span class="text-[10px] font-bold text-amber-600">Rescheduled</span>
                                     @endif
                                 </div>
-                                <p class="text-xs text-gray-500 font-semibold mt-0.5">{{ $lc->course?->subject?->display_name ?? (($lc->course?->level ?? '') . ' ' . ($lc->course?->subject?->name ?? '')) }}</p>
-                                <p class="text-xs text-gray-400 font-medium mt-0.5">{{ $lc->scheduled_at->format('l, g:i A') }} ({{ $lc->duration_minutes ?? '60' }} mins)</p>
+                                <p class="text-[11px] text-gray-400 font-normal mt-0.5">
+                                    {{ $lc->course?->subject?->display_name ?? (($lc->course?->level ?? '') . ' ' . ($lc->course?->subject?->name ?? '')) }} • {{ $lc->scheduled_at->format('l, g:i A') }} ({{ $lc->duration_minutes ?? '60' }} mins)
+                                </p>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2 border-t md:border-t-0 pt-3 md:pt-0 border-gray-50 flex-wrap">
+                        <div class="flex items-center gap-2 flex-wrap shrink-0">
                             @if($lc->meeting_url)
-                                <a href="{{ $lc->meeting_url }}" target="_blank" class="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs transition-colors">
+                                <a href="{{ $lc->meeting_url }}" target="_blank" class="py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition-colors">
                                     Start Meeting
                                 </a>
                             @else
-                                <a href="{{ route('teacher.classes.show', $lc->course_id ?? 0) }}" class="py-1.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/50 rounded-xl font-bold text-xs transition-colors">
+                                <a href="{{ route('teacher.classes.show', $lc->course_id ?? 0) }}" class="py-2 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-extrabold text-xs shadow-sm transition-colors">
                                     Class Workspace
                                 </a>
                             @endif
 
                             {{-- Reschedule Action --}}
-                            <button @click="openReschedule({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                            <button @click="openReschedule({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-2 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-extrabold text-xs cursor-pointer transition-colors">
                                 Reschedule
                             </button>
 
                             {{-- Cancel Action --}}
-                            <button @click="openCancel({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/50 rounded-xl font-bold text-xs cursor-pointer transition-colors">
+                            <button @click="openCancel({{ $lc->id }}, '{{ addslashes($lc->title) }}')" class="py-2 px-3.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 rounded-xl font-extrabold text-xs cursor-pointer transition-colors">
                                 Request Cancel
                             </button>
                         </div>
                     </div>
                 @empty
-                    <div class="p-8 text-center bg-white rounded-3xl border border-gray-100 text-gray-500 font-semibold">No scheduled live sessions ahead.</div>
+                    <div class="px-6 py-8 text-center text-gray-400 font-semibold">No scheduled live sessions ahead.</div>
                 @endforelse
             </div>
-        </div>
 
-        {{-- ── 5. PAST SESSIONS TAB ── --}}
-        <div x-show="activeTab === 'past'" x-cloak class="space-y-4">
-            <div class="space-y-3">
+            {{-- ── 5. PAST SESSIONS TAB ── --}}
+            <div x-show="activeTab === 'past'" x-cloak class="divide-y divide-gray-100 text-xs">
                 @forelse($pastClasses as $lc)
-                    <div class="p-5 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div class="flex items-start sm:items-center gap-4">
-                            <div class="w-12 h-12 rounded-2xl bg-gray-50 text-gray-500 flex flex-col items-center justify-center shrink-0 font-bold text-xs border border-gray-200">
-                                <span>{{ $lc->scheduled_at->format('d') }}</span>
-                                <span class="text-[8px] uppercase tracking-wider font-extrabold">{{ $lc->scheduled_at->format('M') }}</span>
+                    <div class="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3 hover:bg-gray-50/80 transition-colors">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-gray-50 text-gray-500 flex flex-col items-center justify-center shrink-0 leading-none border border-gray-100">
+                                <span class="font-black text-sm">{{ $lc->scheduled_at->format('d') }}</span>
+                                <span class="text-[9px] uppercase tracking-wider font-extrabold mt-0.5">{{ $lc->scheduled_at->format('M') }}</span>
                             </div>
-                            <div>
-                                <h4 class="font-heading font-black text-base text-gray-700">{{ $lc->title }}</h4>
-                                <p class="text-xs text-gray-400 font-semibold">{{ $lc->course?->subject?->display_name ?? (($lc->course?->level ?? '') . ' ' . ($lc->course?->subject?->name ?? '')) }}</p>
-                                <p class="text-xs text-gray-400 font-medium">{{ $lc->scheduled_at->format('j F Y, g:i A') }}</p>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-sm text-gray-700">{{ $lc->title }}</h4>
+                                <p class="text-[11px] text-gray-400 font-normal mt-0.5">
+                                    {{ $lc->course?->subject?->display_name ?? (($lc->course?->level ?? '') . ' ' . ($lc->course?->subject?->name ?? '')) }} • {{ $lc->scheduled_at->format('j F Y, g:i A') }}
+                                </p>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 shrink-0">
                             @if($lc->meeting_url)
-                                <a href="{{ $lc->meeting_url }}" target="_blank" class="py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl font-bold text-xs">
+                                <a href="{{ $lc->meeting_url }}" target="_blank" class="py-2 px-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-extrabold text-xs transition-colors">
                                     Watch Playback
                                 </a>
                             @else
-                                <span class="py-1.5 px-3 bg-gray-50 text-gray-400 rounded-xl text-xs font-semibold">No playback</span>
+                                <span class="font-semibold text-gray-400">No playback</span>
                             @endif
                         </div>
                     </div>
                 @empty
-                    <div class="p-8 text-center bg-white rounded-3xl border border-gray-100 text-gray-500 font-semibold">No past classes recorded.</div>
+                    <div class="px-6 py-8 text-center text-gray-400 font-semibold">No past classes recorded.</div>
                 @endforelse
             </div>
         </div>
+
 
         {{-- ── 6. ADD LIVE SESSION MODAL ── --}}
         <div x-show="showAddClassModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
