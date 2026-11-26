@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\BillingController;
 use App\Http\Controllers\Admin\ClassSchedulingController as AdminClassSchedulingController;
+use App\Http\Controllers\Admin\CourseRosterController as AdminCourseRosterController;
 use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
 use App\Http\Controllers\Admin\EmailManagementController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
@@ -283,6 +284,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/courses', [AdminCurriculumController::class, 'storeCourse'])->name('courses.store');
     Route::put('/courses/{id}', [AdminCurriculumController::class, 'updateCourse'])->name('courses.update');
     Route::delete('/courses/{id}', [AdminCurriculumController::class, 'destroyCourse'])->name('courses.destroy');
+
+    // Class roster (Course Catalog > Students): add / remove existing students
+    Route::get('/courses/{id}/students', [AdminCourseRosterController::class, 'index'])->whereNumber('id')->name('courses.students');
+    Route::post('/courses/{id}/students', [AdminCourseRosterController::class, 'store'])->whereNumber('id')->name('courses.students.store');
+    Route::delete('/courses/{id}/students/{studentId}', [AdminCourseRosterController::class, 'destroy'])->whereNumber(['id', 'studentId'])->name('courses.students.destroy');
 
     // Invoice Admin CRUD (View/Edit/Delete — separate from billing/store)
     Route::put('/invoices/{id}/admin-update', [AdminFinanceController::class, 'updateInvoice'])->name('invoices.admin-update');

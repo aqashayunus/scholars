@@ -1117,7 +1117,7 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                         <div>
                             <h2 class="font-semibold text-base text-gray-900">Curriculum &amp; Course Catalog Management</h2>
-                            <p class="text-xs text-gray-400 font-normal">Manage academic courses, configure tuition fees, and publish catalog offerings</p>
+                            <p class="text-xs text-gray-400 font-normal">Manage classes, assign teachers and publish catalog offerings. Monthly fees are set on each subject.</p>
                         </div>
                         <div class="flex items-center gap-2">
 
@@ -1165,13 +1165,16 @@
                                             {{ $c->schedule ?: 'Flexible Schedule' }}
                                         </td>
                                         <td class="py-3 px-4 font-normal text-gray-700 whitespace-nowrap">
-                                            {{ $c->enrollments_count }} Scholars
+                                            <span id="course-enrolled-count-{{ $c->id }}">{{ $c->enrollments_count }}</span> Scholars
                                         </td>
                                         <td class="py-3 px-4 font-normal text-gray-700 uppercase whitespace-nowrap">
                                             {{ $c->status ?? 'Active' }}
                                         </td>
                                         <td class="py-3 px-4 text-right">
                                             <div class="flex items-center justify-end gap-1.5">
+                                                <button type="button" onclick="openCourseRosterModal({{ $c->id }})" class="p-1.5 text-slate-500 hover:text-blue-600 rounded-lg transition cursor-pointer" title="Students in this class">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                                                </button>
                                                 <button onclick="openEditCourseModal({{ json_encode($c) }})" class="p-1.5 text-slate-500 hover:text-gray-900 rounded-lg transition cursor-pointer" title="Edit Course">
                                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                 </button>
@@ -5646,6 +5649,36 @@
     </div>
 
     {{-- 6. EDIT COURSE & PRICING MODAL --}}
+    {{-- CLASS ROSTER MODAL (Course Catalog > Students) --}}
+    <div id="courseRosterModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+                <div>
+                    <h3 class="font-semibold text-base text-gray-900">Students in <span id="roster_course_title">this class</span></h3>
+                    <p class="text-[11px] text-gray-500 font-normal">Add an existing student or remove one. Adding a student doesn't create an invoice.</p>
+                </div>
+                <button type="button" onclick="closeCourseRosterModal()" class="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer" title="Close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div id="roster_message" class="hidden p-3 rounded-xl text-xs font-medium"></div>
+
+            {{-- Add a student --}}
+            <div class="space-y-2">
+                <label for="roster_search" class="text-xs font-semibold text-gray-700">Add a student</label>
+                <input id="roster_search" type="text" oninput="renderRosterAvailable()" placeholder="Search by name or email..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                <div id="roster_available" class="max-h-40 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl"></div>
+            </div>
+
+            {{-- Current roster --}}
+            <div class="space-y-2 min-h-0 flex flex-col">
+                <div class="text-xs font-semibold text-gray-700">In this class (<span id="roster_enrolled_count">0</span>)</div>
+                <div id="roster_enrolled" class="overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-xl"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="editCourseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-gray-100">
@@ -10504,6 +10537,136 @@
             document.getElementById('editCourseModal').classList.remove('hidden');
         }
         function closeEditCourseModal() { document.getElementById('editCourseModal').classList.add('hidden'); }
+
+        // ── Class roster (Course Catalog > Students) ──
+        const rosterState = { courseId: null, enrolled: [], available: [], busy: false };
+
+        function openCourseRosterModal(courseId) {
+            rosterState.courseId = courseId;
+            rosterState.enrolled = [];
+            rosterState.available = [];
+            document.getElementById('roster_search').value = '';
+            document.getElementById('roster_course_title').textContent = 'this class';
+            showRosterMessage('Loading students...', 'info');
+            renderRoster();
+            document.getElementById('courseRosterModal').classList.remove('hidden');
+            rosterRequest('GET', `/admin/courses/${courseId}/students`).then(data => {
+                document.getElementById('roster_course_title').textContent = data.course.title;
+                applyRoster(data, null);
+            }).catch(() => {});
+        }
+        function closeCourseRosterModal() { document.getElementById('courseRosterModal').classList.add('hidden'); }
+
+        function rosterRequest(method, url, body) {
+            rosterState.busy = true;
+            return fetch(url, {
+                method,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: body ? JSON.stringify(body) : undefined
+            }).then(async res => {
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    const firstError = data.errors ? Object.values(data.errors)[0][0] : null;
+                    showRosterMessage(firstError || data.message || 'Something went wrong. Please try again.', 'error');
+                    throw new Error('HTTP ' + res.status);
+                }
+                return data;
+            }).finally(() => { rosterState.busy = false; });
+        }
+
+        function applyRoster(data, message) {
+            rosterState.enrolled = data.enrolled || [];
+            rosterState.available = data.available || [];
+            const countCell = document.getElementById('course-enrolled-count-' + rosterState.courseId);
+            if (countCell) countCell.textContent = rosterState.enrolled.length;
+            if (message) showRosterMessage(message, 'success'); else hideRosterMessage();
+            renderRoster();
+        }
+
+        function rosterAdd(studentId) {
+            if (rosterState.busy) return;
+            rosterRequest('POST', `/admin/courses/${rosterState.courseId}/students`, { student_id: studentId })
+                .then(data => applyRoster(data, data.message)).catch(() => {});
+        }
+
+        function rosterRemove(studentId, name) {
+            if (rosterState.busy) return;
+            if (!confirm(`Remove ${name} from this class?`)) return;
+            rosterRequest('DELETE', `/admin/courses/${rosterState.courseId}/students/${studentId}`)
+                .then(data => applyRoster(data, data.message)).catch(() => {});
+        }
+
+        function showRosterMessage(text, kind) {
+            const el = document.getElementById('roster_message');
+            el.textContent = text;
+            el.className = 'p-3 rounded-xl text-xs font-medium ' + ({
+                success: 'bg-emerald-50 text-emerald-800 border border-emerald-100',
+                error: 'bg-red-50 text-red-700 border border-red-100',
+                info: 'bg-gray-50 text-gray-600 border border-gray-100'
+            }[kind] || '');
+        }
+        function hideRosterMessage() { document.getElementById('roster_message').className = 'hidden'; }
+
+        function rosterRow(student, actionLabel, actionClass, onClick) {
+            const row = document.createElement('div');
+            row.className = 'flex items-center justify-between gap-3 px-3 py-2 text-xs';
+            const info = document.createElement('div');
+            const name = document.createElement('div');
+            name.className = 'font-semibold text-gray-900';
+            name.textContent = student.name;
+            const meta = document.createElement('div');
+            meta.className = 'text-[11px] text-gray-400';
+            meta.textContent = [student.email, student.level, student.enrolled_at ? 'since ' + student.enrolled_at : null].filter(Boolean).join(' • ');
+            info.append(name, meta);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'px-3 py-1 rounded-lg font-semibold text-xs cursor-pointer shrink-0 ' + actionClass;
+            btn.textContent = actionLabel;
+            btn.addEventListener('click', onClick);
+            row.append(info, btn);
+            return row;
+        }
+
+        function emptyRosterRow(text) {
+            const el = document.createElement('div');
+            el.className = 'px-3 py-3 text-xs text-gray-400 text-center';
+            el.textContent = text;
+            return el;
+        }
+
+        function renderRosterAvailable() {
+            const box = document.getElementById('roster_available');
+            const q = document.getElementById('roster_search').value.toLowerCase().trim();
+            box.replaceChildren();
+            if (!q) {
+                box.append(emptyRosterRow('Type a name or email to find a student.'));
+                return;
+            }
+            const matches = rosterState.available
+                .filter(s => (s.name + ' ' + (s.email || '')).toLowerCase().includes(q))
+                .slice(0, 20);
+            if (!matches.length) {
+                box.append(emptyRosterRow('No matching students who aren\'t already in this class.'));
+                return;
+            }
+            matches.forEach(s => box.append(rosterRow(s, 'Add', 'bg-blue-600 hover:bg-blue-700 text-white', () => rosterAdd(s.id))));
+        }
+
+        function renderRoster() {
+            renderRosterAvailable();
+            const box = document.getElementById('roster_enrolled');
+            box.replaceChildren();
+            document.getElementById('roster_enrolled_count').textContent = rosterState.enrolled.length;
+            if (!rosterState.enrolled.length) {
+                box.append(emptyRosterRow('No students in this class yet.'));
+                return;
+            }
+            rosterState.enrolled.forEach(s => box.append(rosterRow(s, 'Remove', 'bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-700', () => rosterRemove(s.id, s.name))));
+        }
 
         let activeCourseCatalogLevel = 'all';
         function setCourseCatalogFilter(level, btn) {

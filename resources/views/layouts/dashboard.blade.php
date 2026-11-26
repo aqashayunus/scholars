@@ -173,6 +173,7 @@
                                                 'invoice', 'payment' => auth()->check() && (auth()->user()->isParent() || auth()->user()->role === 'parent') ? route('parent.fees') : route('student.fees'),
                                                 'task' => route('student.tasks'),
                                                 'quiz' => route('student.quiz'),
+                                                'enrolment' => route('student.learning'),
                                                 default => '#',
                                             };
                                         @endphp
