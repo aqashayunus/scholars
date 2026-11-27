@@ -94,7 +94,9 @@
                 @empty
                     <p class="text-gray-500">No unpaid invoice. Nothing is billed by this clean-up. If the student should pay, create an invoice in Billing afterwards.</p>
                 @endforelse
-                @if($plan['invoices_reissue']->isNotEmpty())
+                @if($plan['invoices_reissue']->isNotEmpty() && ! $plan['reissue'])
+                    <p class="pt-1">Free trial is on, so <strong>no new invoice</strong> is issued and no email is sent.</p>
+                @elseif($plan['invoices_reissue']->isNotEmpty())
                     <p class="pt-1">
                         A corrected invoice is issued for the same package and month:
                         <span class="font-bold text-indigo-700">

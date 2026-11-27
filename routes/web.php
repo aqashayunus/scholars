@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Admin\BillingToolsController;
 use App\Http\Controllers\Admin\ClassSchedulingController as AdminClassSchedulingController;
 use App\Http\Controllers\Admin\CourseRosterController as AdminCourseRosterController;
 use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
@@ -427,7 +428,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
 
     // ── Billing Module ────────────────────────────────────────────────────────
     Route::prefix('billing')->name('billing.')->group(function () {
-        Route::get('/', [BillingController::class, 'index'])->name('dashboard');
+        // The standalone Billing page was retired 2026-11-27: everything lives
+        // in Admin Dashboard > Financials & Sales. Old links land there.
+        Route::get('/', fn () => redirect()->to(route('admin.dashboard').'#financials'))->name('dashboard');
+
+        // Financials tools: free-trial switch and bulk cancel of unpaid invoices
+        Route::post('/free-trial', [BillingToolsController::class, 'updateFreeTrial'])->name('free-trial.update');
+        Route::post('/invoices/cancel-unpaid', [BillingToolsController::class, 'cancelUnpaid'])->name('invoices.cancel-unpaid');
 
         // Invoices (Redirect all standalone views to unified admin dashboard table)
         Route::get('/invoices', function () {

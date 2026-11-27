@@ -13,11 +13,43 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceReminder;
 use App\Models\Setting;
 use App\Models\Student;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
+    // ── Free trial: pause automatic invoices ──────────────────────────────────
+
+    /** Setting key: last day (Y-m-d) of a free trial during which no invoice is issued automatically. */
+    public const FREE_TRIAL_UNTIL = 'billing.free_trial_until';
+
+    /** The free trial's last day while it is on (today or later), else null. */
+    public static function freeTrialUntil(): ?Carbon
+    {
+        $raw = Setting::get(self::FREE_TRIAL_UNTIL);
+        if (! is_string($raw) || $raw === '') {
+            return null;
+        }
+        try {
+            $until = Carbon::createFromFormat('Y-m-d', $raw)->endOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return now()->lte($until) ? $until : null;
+    }
+
+    /**
+     * Whether automatic invoices (registration, admin-created students with
+     * courses, level clean-up re-issue) are paused. Invoices an admin issues
+     * by hand are not affected.
+     */
+    public static function autoInvoicingPaused(): bool
+    {
+        return self::freeTrialUntil() !== null;
+    }
+
     // ── Invoice Generation ────────────────────────────────────────────────────
 
     /**

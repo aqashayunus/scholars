@@ -4,7 +4,6 @@ namespace App\Services\Admin;
 
 use App\Enums\EnrollmentStatus;
 use App\Enums\InvoiceStatus;
-use App\Enums\PaymentStatus;
 use App\Enums\StudentAssignmentStatus;
 use App\Http\Controllers\Auth\StudentRegistrationController;
 use App\Models\Course;
@@ -12,14 +11,13 @@ use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\FinancialAuditLog;
 use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Setting;
 use App\Models\Student;
 use App\Models\StudentAssignment;
 use App\Models\Subject;
+use App\Services\InvoiceCancellationService;
 use App\Services\InvoiceService;
 use App\Services\PackagePricingService;
-use App\Services\ReminderService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +44,7 @@ class LevelCleanupService
 {
     public function __construct(
         private InvoiceService $invoiceService,
-        private ReminderService $reminderService,
+        private InvoiceCancellationService $cancellation,
     ) {}
 
     /**
@@ -109,7 +107,7 @@ class LevelCleanupService
      * @return array{student: Student, level: string, keep: Collection<int, Enrollment>, remove: Collection<int, Enrollment>,
      *               add: Collection<int, array{subject: Subject, course: Course}>,
      *               assignments_remove: Collection<int, StudentAssignment>, invoices_reissue: Collection<int, Invoice>,
-     *               expected_total: ?float, blockers: list<string>, warnings: list<string>}
+     *               reissue: bool, expected_total: ?float, blockers: list<string>, warnings: list<string>}
      */
     public function plan(Student $student, string $level): array
     {
@@ -173,23 +171,23 @@ class LevelCleanupService
             })
             ->get();
 
-        // Invoices: only untouched unpaid ones are re-issued; any money stops the clean-up.
+        // Invoices: only untouched unpaid ones are cancelled (and re-issued
+        // unless a free trial is on); any money stops the clean-up.
         $invoicesReissue = collect();
         foreach ($student->invoices as $invoice) {
             if (in_array($invoice->status, [InvoiceStatus::Cancelled, InvoiceStatus::Draft], true)) {
                 continue;
             }
-            if ($invoice->status === InvoiceStatus::Paid || (float) $invoice->amount_paid > 0) {
-                $blockers[] = "Invoice {$invoice->invoice_number} has money paid on it. Sort it out in Billing first.";
-
-                continue;
-            }
-            if ($this->hasLivePayment($invoice)) {
-                $blockers[] = "Invoice {$invoice->invoice_number} has a payment waiting or recorded. Sort it out in Billing first.";
+            if ($msg = $this->cancellation->blocker($invoice)) {
+                $blockers[] = $msg;
 
                 continue;
             }
             $invoicesReissue->push($invoice);
+        }
+        $reissue = ! InvoiceService::autoInvoicingPaused();
+        if (! $reissue && $invoicesReissue->isNotEmpty()) {
+            $warnings[] = 'Free trial is on until '.InvoiceService::freeTrialUntil()?->format('j M Y').': the old invoice is cancelled and no new invoice is issued.';
         }
 
         $finalSubjects = $keep->map(fn ($e) => $e->course?->subject)->filter()
@@ -202,7 +200,7 @@ class LevelCleanupService
         }
 
         $expectedTotal = null;
-        if ($invoicesReissue->isNotEmpty()) {
+        if ($reissue && $invoicesReissue->isNotEmpty()) {
             if ($invoicesReissue->count() > 1) {
                 $warnings[] = 'The student has more than one unpaid invoice. They are all cancelled and replaced by one corrected invoice.';
             }
@@ -220,6 +218,7 @@ class LevelCleanupService
             'add' => $add,
             'assignments_remove' => $assignmentsRemove,
             'invoices_reissue' => $invoicesReissue,
+            'reissue' => $reissue,
             'expected_total' => $expectedTotal,
             'blockers' => array_values(array_unique($blockers)),
             'warnings' => array_values(array_unique($warnings)),
@@ -288,24 +287,12 @@ class LevelCleanupService
             $template = $plan['invoices_reissue']->first();
             foreach ($plan['invoices_reissue'] as $invoice) {
                 $backup('updated', $invoice);
-                $invoice->status = InvoiceStatus::Cancelled;
-                $invoice->notes = trim(($invoice->notes ? $invoice->notes."\n" : '')."Cancelled by level clean-up ({$oldLevel} -> {$level}).");
-                $invoice->save();
-                $this->reminderService->skipRemainingReminders($invoice);
+                $this->cancellation->cancel($invoice, "level clean-up ({$oldLevel} -> {$level}).", $adminUserId, ['batch' => $batch]);
                 $cancelled[] = $invoice->invoice_number;
-
-                FinancialAuditLog::create([
-                    'user_id' => $adminUserId,
-                    'action' => 'invoice_cancelled',
-                    'target_type' => 'Invoice',
-                    'target_id' => $invoice->id,
-                    'ip_address' => request()->ip(),
-                    'details' => json_encode(['invoice_number' => $invoice->invoice_number, 'reason' => 'level_cleanup', 'batch' => $batch]),
-                ]);
             }
 
             $newInvoice = null;
-            if ($template) {
+            if ($template && $plan['reissue']) {
                 $newInvoice = $this->invoiceService->generateForStudent(Student::findOrFail($student->id), $template->fee_structure_id);
                 // Keep the original billing period so the family sees the same month.
                 $newPeriod = $newInvoice->billing_period;
@@ -361,16 +348,6 @@ class LevelCleanupService
         }
 
         return false;
-    }
-
-    private function hasLivePayment(Invoice $invoice): bool
-    {
-        return Payment::where(function ($q) use ($invoice) {
-            $q->where('invoice_id', $invoice->id)
-                ->orWhereHas('invoices', fn ($i) => $i->where('invoices.id', $invoice->id));
-        })
-            ->whereNotIn('status', [PaymentStatus::Failed->value, PaymentStatus::Cancelled->value])
-            ->exists();
     }
 
     /** Best estimate of the corrected invoice, mirroring InvoiceService::generateForStudent(). */

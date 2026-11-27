@@ -420,7 +420,13 @@ class StudentRegistrationController extends Controller
         // Automatically link all global diagnostic tasks + course assignments to the student
         $student->syncGlobalAndCourseAssignments();
 
-        // Automatically generate tuition fee invoice for the enrolled subjects
+        // Automatically generate tuition fee invoice for the enrolled subjects,
+        // except during a free trial (Financials > Gateway & Bank Settings).
+        if (InvoiceService::autoInvoicingPaused()) {
+            Log::info("Auto-invoice skipped for student #{$student->id}: free trial until ".InvoiceService::freeTrialUntil()?->toDateString().'.');
+
+            return;
+        }
         try {
             app(InvoiceService::class)->generateForStudent($student, $feeStructureId);
         } catch (\Exception $e) {

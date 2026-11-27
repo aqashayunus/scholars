@@ -90,9 +90,10 @@ class BillingEnumRenderSmokeTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertOk();
     }
 
-    public function test_admin_billing_dashboard_renders(): void
+    public function test_retired_billing_dashboard_redirects_to_financials(): void
     {
-        $this->actingAs($this->admin)->get(route('admin.billing.dashboard'))->assertOk();
+        $this->actingAs($this->admin)->get(route('admin.billing.dashboard'))
+            ->assertRedirect(route('admin.dashboard').'#financials');
     }
 
     // Note: admin.billing.invoices / .show are deprecated redirect-only

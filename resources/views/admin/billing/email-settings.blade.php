@@ -7,7 +7,7 @@
                 <h2 class="font-heading font-black text-2xl text-gray-900">Email Reminder Settings</h2>
                 <p class="text-xs text-gray-500 font-medium mt-0.5">Configure automated invoice reminder emails sent to parents and students.</p>
             </div>
-            <a href="{{ route('admin.billing.dashboard') }}" class="text-sm text-indigo-600 hover:underline font-semibold">← Billing Dashboard</a>
+            <a href="{{ route('admin.dashboard') }}#financials" class="text-sm text-indigo-600 hover:underline font-semibold">← Financials &amp; Sales</a>
         </div>
 
         @if(session('success'))
@@ -122,7 +122,7 @@
                 <button type="submit" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-sm">
                     Save Settings
                 </button>
-                <a href="{{ route('admin.billing.dashboard') }}" class="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</a>
+                <a href="{{ route('admin.dashboard') }}#financials" class="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</a>
             </div>
         </form>
     </div>

@@ -2583,6 +2583,87 @@
         </div>
 
         <div id="tab-financials" class="admin-tab-content hidden space-y-6" x-data="financialsModuleData()">
+            {{-- ── Free trial status + bulk cancel of unpaid invoices ── --}}
+            @php
+                $freeTrialUntil = \App\Services\InvoiceService::freeTrialUntil();
+                $cancellableInvoices = app(\App\Services\InvoiceCancellationService::class)->cancellable();
+            @endphp
+            <div x-data="{ cancelModal: false }" class="space-y-3">
+                @if($freeTrialUntil)
+                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 rounded-2xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span><strong>Free trial on until {{ $freeTrialUntil->format('j M Y') }}.</strong>
+                            New registrations are enrolled without an invoice. Invoices you issue by hand still go out.</span>
+                        <button type="button" @click="finSubtab = 'settings'" class="font-bold text-emerald-800 hover:underline shrink-0 cursor-pointer">Change →</button>
+                    </div>
+                @endif
+                @if($cancellableInvoices->isNotEmpty())
+                    <div class="bg-white border border-gray-200/80 px-4 py-3 rounded-2xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+                        <span class="text-gray-700">{{ $cancellableInvoices->count() }} unpaid invoice(s) with nothing paid on them.</span>
+                        <button type="button" @click="cancelModal = true"
+                                class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold transition cursor-pointer shrink-0">
+                            Cancel unpaid invoices…
+                        </button>
+                    </div>
+                @endif
+
+                <div x-show="cancelModal" x-cloak class="fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-4" @click.self="cancelModal = false" @keydown.escape.window="cancelModal = false">
+                    <form method="POST" action="{{ route('admin.billing.invoices.cancel-unpaid') }}"
+                          class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden" @click.stop>
+                        @csrf
+                        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+                            <div>
+                                <h3 class="font-semibold text-base text-gray-900">Cancel unpaid invoices</h3>
+                                <p class="text-xs text-gray-400">Only invoices with nothing paid and no payment waiting. Reminders stop. No email is sent.</p>
+                            </div>
+                            <button type="button" @click="cancelModal = false" class="text-gray-400 hover:text-gray-600 text-xl leading-none cursor-pointer">&times;</button>
+                        </div>
+                        <div class="overflow-y-auto admin-scrollbar px-6 py-3">
+                            <table class="w-full text-left text-xs">
+                                <thead>
+                                    <tr class="text-gray-400 uppercase text-[10px] border-b border-gray-100">
+                                        <th class="py-2 pr-2 w-6"></th>
+                                        <th class="py-2 pr-2">Invoice</th>
+                                        <th class="py-2 pr-2">Student</th>
+                                        <th class="py-2 pr-2">Due</th>
+                                        <th class="py-2 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach($cancellableInvoices as $ci)
+                                        <tr>
+                                            <td class="py-2 pr-2">
+                                                <input type="checkbox" name="invoice_ids[]" value="{{ $ci->id }}" checked
+                                                       aria-label="Cancel {{ $ci->invoice_number }}" class="rounded border-gray-300">
+                                            </td>
+                                            <td class="py-2 pr-2 font-mono font-bold text-gray-900 whitespace-nowrap">{{ $ci->invoice_number }}</td>
+                                            <td class="py-2 pr-2">{{ $ci->student->user->name ?? 'Student #'.$ci->student_id }}</td>
+                                            <td class="py-2 pr-2 whitespace-nowrap">{{ $ci->due_date?->format('d M Y') }}</td>
+                                            <td class="py-2 text-right font-mono whitespace-nowrap">RM {{ number_format((float) $ci->total_amount, 2) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="px-6 py-4 border-t border-gray-100 space-y-3 shrink-0">
+                            <div>
+                                <label for="cancelReason" class="block text-xs font-semibold text-gray-800 mb-1">Reason (saved on each invoice)</label>
+                                <input id="cancelReason" type="text" name="reason" required maxlength="255"
+                                       value="Free trial {{ $freeTrialUntil ? 'until '.$freeTrialUntil->format('j M Y') : '' }} - no payment needed yet."
+                                       class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <label class="flex items-start gap-2 text-xs text-gray-800">
+                                <input type="checkbox" name="confirm" value="1" required class="mt-0.5 rounded border-gray-300">
+                                <span>I want to cancel the ticked invoices. This can't be undone from here; a new invoice would have to be issued.</span>
+                            </label>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" @click="cancelModal = false" class="px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl cursor-pointer">Keep them</button>
+                                <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold cursor-pointer">Cancel ticked invoices</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             {{-- Finance Sub-Navigation Bar --}}
             <div class="bg-white rounded-2xl border border-gray-200/80 p-2 shadow-xs flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-1.5 overflow-x-auto text-xs font-semibold">
@@ -2593,10 +2674,18 @@
                     <button type="button" @click="finSubtab = 'verifications'" :class="finSubtab === 'verifications' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'" class="px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
                         <span>Payment Verification</span>
                         @php
-                            $actionableFinCount = \App\Models\Payment::where('status', 'pending')->count()
-                                + \App\Models\Invoice::where('status', 'pending_verification')
-                                    ->whereDoesntHave('payments', fn($q) => $q->where('status', 'pending'))
-                                    ->count();
+                            // Payment Verification lists only invoices with a payment waiting to be
+                            // checked (pending), linked directly or through payment_invoices.
+                            $pendingStatus = \App\Enums\PaymentStatus::Pending->value;
+                            $pendingPaymentInvoiceIds = \App\Models\Payment::where('status', $pendingStatus)->pluck('invoice_id')
+                                ->merge(\Illuminate\Support\Facades\DB::table('payment_invoices')
+                                    ->join('payments', 'payments.id', '=', 'payment_invoices.payment_id')
+                                    ->where('payments.status', $pendingStatus)
+                                    ->pluck('payment_invoices.invoice_id'))
+                                ->filter()
+                                ->unique();
+                            $verificationInvoices = $allInvoices->whereIn('id', $pendingPaymentInvoiceIds->all())->values();
+                            $actionableFinCount = $verificationInvoices->count();
                         @endphp
                         @if($actionableFinCount > 0)
                             <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-red-500 text-white">{{ $actionableFinCount }}</span>
@@ -2842,7 +2931,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                         <h3 class="font-semibold text-base text-gray-900">Payment Verification &amp; Status Management</h3>
-                        <p class="text-xs text-gray-400">Manage payment status (Partially Paid, Full Paid, Issued, Overdue, Cancelled) and view receipts</p>
+                        <p class="text-xs text-gray-400">Invoices with a payment waiting to be verified. Check the receipt, then set the status. All invoices are under Student Invoices.</p>
                     </div>
                     <div class="flex items-center gap-2">
 
@@ -2850,7 +2939,7 @@
                     </div>
                 </div>
 
-                @if($allInvoices->isNotEmpty())
+                @if($verificationInvoices->isNotEmpty())
                     <div class="overflow-x-auto admin-scrollbar">
                         <table class="w-full text-left text-xs" id="verificationsTable">
                             <thead>
@@ -2866,7 +2955,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 font-medium text-gray-700">
-                                @foreach($allInvoices as $inv)
+                                @foreach($verificationInvoices as $inv)
                                     @php
                                         $statusTextColor = match($inv->status) {
                                             \App\Enums\InvoiceStatus::Paid           => 'text-emerald-700',
@@ -2963,7 +3052,7 @@
                     </div>
                 @else
                     <div class="p-10 text-center bg-gray-50/70 rounded-2xl text-xs text-gray-400 font-medium">
-                        No invoice records found.
+                        No payments waiting for verification.
                     </div>
                 @endif
 
@@ -3520,6 +3609,45 @@
 
             {{-- 5. SUBTAB: GATEWAY & COMPANY BANK CREDENTIALS --}}
             <div x-show="finSubtab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {{-- Free trial: pause automatic invoices --}}
+                <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-4 lg:col-span-2">
+                    <div>
+                        <h3 class="font-semibold text-base text-gray-900">Free Trial (no automatic invoices)</h3>
+                        <p class="text-xs text-gray-400">
+                            Until the last day you set, new registrations are enrolled without an invoice, and the Level Clean-up
+                            does not re-issue invoices. Invoices you issue by hand are not affected. It switches off by itself after that day.
+                        </p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-end gap-3 text-xs">
+                        <form method="POST" action="{{ route('admin.billing.free-trial.update') }}" class="flex flex-col sm:flex-row sm:items-end gap-3">
+                            @csrf
+                            <div>
+                                <label for="free_trial_until" class="block font-bold text-gray-700 mb-1">Last day of the free trial</label>
+                                <input id="free_trial_until" type="date" name="free_trial_until" required
+                                       min="{{ now()->toDateString() }}"
+                                       value="{{ $freeTrialUntil?->toDateString() }}"
+                                       class="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                                @error('free_trial_until')
+                                    <p class="text-rose-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold cursor-pointer">
+                                {{ $freeTrialUntil ? 'Update' : 'Turn on free trial' }}
+                            </button>
+                        </form>
+                        @if($freeTrialUntil)
+                            <form method="POST" action="{{ route('admin.billing.free-trial.update') }}">
+                                @csrf
+                                <input type="hidden" name="turn_off" value="1">
+                                <button type="submit" class="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl font-semibold cursor-pointer">Turn off now</button>
+                            </form>
+                        @endif
+                    </div>
+                    <p class="text-xs font-semibold {{ $freeTrialUntil ? 'text-emerald-700' : 'text-gray-500' }}">
+                        {{ $freeTrialUntil ? 'On until '.$freeTrialUntil->format('l, j M Y').'.' : 'Off: invoices are issued automatically on registration.' }}
+                    </p>
+                </div>
+
                 {{-- Public Bank Transfer Account Details --}}
                 <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-4">
                     <div>

@@ -31,36 +31,9 @@ class BillingController extends Controller
         private PaymentService $paymentService,
     ) {}
 
-    // ── Dashboard Stats ───────────────────────────────────────────────────────
-
-    public function index()
-    {
-        $stats = [
-            'total_invoices' => Invoice::count(),
-            'issued_invoices' => Invoice::where('status', InvoiceStatus::Issued)->count(),
-            'paid_invoices' => Invoice::where('status', InvoiceStatus::Paid)->count(),
-            'overdue_invoices' => Invoice::where('status', InvoiceStatus::Overdue)->count(),
-            'partial_invoices' => Invoice::where('status', InvoiceStatus::PartiallyPaid)->count(),
-            'outstanding_amount' => Invoice::whereIn('status', InvoiceStatus::unpaidStatuses())->get()->sum('outstanding_amount'),
-            'total_collected' => Payment::where('status', PaymentStatus::Successful)->sum('amount'),
-            'pending_payments' => Payment::where('status', PaymentStatus::Pending)->count(),
-        ];
-
-        $recentInvoices = Invoice::with(['student.user'])
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
-
-        $pendingPayments = Payment::with(['student.user', 'invoices'])
-            ->where('status', PaymentStatus::Pending)
-            ->orderByDesc('created_at')
-            ->limit(10)
-            ->get();
-
-        return view('admin.billing.dashboard', compact('stats', 'recentInvoices', 'pendingPayments'));
-    }
-
     // ── Invoice Management ────────────────────────────────────────────────────
+    // (The standalone Billing dashboard was retired 2026-11-27; /admin/billing
+    // now redirects to Admin Dashboard > Financials & Sales.)
 
     public function invoices(Request $request)
     {

@@ -63,7 +63,9 @@ class UserManagementService
                 }
 
                 try {
-                    app(InvoiceService::class)->generateForStudent($student);
+                    if (! InvoiceService::autoInvoicingPaused()) {
+                        app(InvoiceService::class)->generateForStudent($student);
+                    }
                 } catch (\Exception $e) {
                     Log::info("Admin auto-invoice note for student #{$student->id}: ".$e->getMessage());
                 }
