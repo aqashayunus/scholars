@@ -73,7 +73,7 @@ class RenewalAdminTest extends TestCase
             ->assertOk()
             ->assertSee('Continue Next School Year: Invitation')
             ->assertSee('Continue Next School Year: Reminder')
-            ->assertSee('Open Email Settings');
+            ->assertSee('Save School Year');
     }
 
     public function test_admin_sets_up_the_school_year(): void
@@ -98,7 +98,7 @@ class RenewalAdminTest extends TestCase
         $a = $this->enrolledStudent('Aina');
         $this->enrolledStudent('Batrisya');
 
-        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertSee('to 2 student(s)');
+        $this->actingAs($this->admin)->get(route('admin.dashboard'))->assertSee('Send Invitations (2)')->assertSee('Not invited');
 
         $this->actingAs($this->admin)->post(route('admin.renewals.invite'))->assertSessionHasErrors('confirm');
         $this->assertSame(0, StudentRenewal::count());
@@ -112,7 +112,7 @@ class RenewalAdminTest extends TestCase
         $this->assertNotNull(StudentRenewal::where('student_id', $a->id)->value('reminded_at'));
 
         $this->actingAs($this->admin)->get(route('admin.dashboard'))
-            ->assertSee('2 family(ies) have not replied')
+            ->assertSee('Send Reminder (2)')->assertSee('Awaiting reply')->assertSee('id="renewalsTable"', false)->assertSee('Email Settings')
             ->assertSee('Confirm for family');
     }
 
