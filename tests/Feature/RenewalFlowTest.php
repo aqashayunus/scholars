@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\EnrollmentStatus;
 use App\Models\Course;
+use App\Models\EmailAutomation;
 use App\Models\EmailLog;
 use App\Models\Enrollment;
 use App\Models\Invoice;
@@ -94,21 +95,76 @@ class RenewalFlowTest extends TestCase
         $this->assertSame(StudentRenewal::INVITED, $renewal->status);
         $logs = EmailLog::where('related_student_id', $this->student->id)->pluck('recipient_email')->all();
         $this->assertEqualsCanonicalizing(['aina@example.test', 'mum@example.test'], $logs);
-        $this->assertStringContainsString('Continue with Olympia Scholars in 2027', (string) EmailLog::first()->subject);
+        $log = EmailLog::first();
+        $this->assertSame('Continue with Olympia Scholars in 2027?', $log->subject);
+        $this->assertSame('renewal', $log->category);
+        $this->assertNotNull($log->email_automation_id); // sent through the Email Settings automation
 
         // Inviting again does not duplicate.
         $this->assertSame(0, app(RenewalService::class)->inviteAll(SchoolYear::current()));
     }
 
-    public function test_only_the_family_or_admin_can_open_the_page(): void
+    public function test_invitation_is_not_sent_when_switched_off_in_email_settings(): void
+    {
+        EmailAutomation::where('key', RenewalService::AUTOMATION_INVITE)->update(['is_enabled' => false]);
+
+        $this->invite();
+
+        $this->assertSame(0, EmailLog::count());
+    }
+
+    public function test_email_link_opens_manage_subscription_for_whoever_logs_in(): void
+    {
+        $go = route('subscription.go', $this->student->id);
+
+        $this->get($go)->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->create(['role' => 'parent']))->get($go)->assertForbidden();
+        $this->actingAs($this->parent)->get($go)
+            ->assertRedirect(route('parent.profile', ['tab' => 'subscription', 'child' => $this->student->id]));
+        $this->actingAs($this->student->user)->get($go)
+            ->assertRedirect(route('student.profile', ['tab' => 'subscription']));
+
+        // The pages themselves show the form.
+        $this->actingAs($this->parent)->get(route('parent.profile', ['tab' => 'subscription', 'child' => $this->student->id]))
+            ->assertOk()->assertSee('Form 5 (suggested)')->assertSee('Continue in 2027');
+        $this->actingAs($this->student->user)->get(route('student.profile', ['tab' => 'subscription']))
+            ->assertOk()->assertSee('Manage', false)->assertSee('Continue in 2027');
+    }
+
+    public function test_old_renew_links_send_families_to_their_profile_and_admin_to_the_admin_page(): void
     {
         $renewal = $this->invite();
 
-        $this->get(route('renew.show', $renewal->token))->assertRedirect(route('login'));
-        $this->actingAs(User::factory()->create(['role' => 'parent']))->get(route('renew.show', $renewal->token))->assertForbidden();
-        $this->actingAs($this->parent)->get(route('renew.show', $renewal->token))->assertOk()->assertSee('Form 5 (suggested)');
-        $this->actingAs($this->student->user)->get(route('renew.show', $renewal->token))->assertOk();
-        $this->actingAs(User::factory()->create(['role' => 'admin']))->get(route('renew.show', $renewal->token))->assertOk();
+        $this->actingAs($this->parent)->get(route('renew.show', $renewal->token))
+            ->assertRedirect(route('subscription.go', $this->student->id));
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get(route('renew.show', $renewal->token))
+            ->assertOk()->assertSee('Acting for the family');
+    }
+
+    public function test_a_family_can_renew_without_an_invitation(): void
+    {
+        $this->actingAs($this->student->user)->post(route('subscription.continue', $this->student->id), [
+            'level' => 'Form 5',
+            'subject_ids' => [$this->subjects['Form 5']['RF Maths']->id],
+        ])->assertRedirect(route('student.profile', ['tab' => 'subscription']));
+
+        $this->assertSame(StudentRenewal::CONFIRMED, $this->student->renewals()->sole()->status);
+        $this->assertSame(1, Invoice::where('student_id', $this->student->id)->count());
+    }
+
+    public function test_stop_can_be_undone_until_the_month_ends(): void
+    {
+        $this->actingAs($this->parent)->post(route('subscription.continue', $this->student->id), [
+            'level' => 'Form 5', 'subject_ids' => [$this->subjects['Form 5']['RF Maths']->id],
+        ]);
+        $this->actingAs($this->parent)->post(route('subscription.stop', $this->student->id));
+        $this->assertSame(StudentRenewal::STOPPED, $this->student->renewals()->sole()->status);
+
+        $this->actingAs($this->parent)->post(route('subscription.resume', $this->student->id))->assertSessionHas('subscription_success');
+
+        $renewal = $this->student->renewals()->sole();
+        $this->assertSame(StudentRenewal::CONFIRMED, $renewal->status);
+        $this->assertNull($renewal->stops_after);
     }
 
     public function test_confirming_moves_up_a_level_and_issues_the_january_invoice(): void
@@ -116,10 +172,10 @@ class RenewalFlowTest extends TestCase
         $renewal = $this->invite();
         $f5 = $this->subjects['Form 5'];
 
-        $this->actingAs($this->parent)->post(route('renew.confirm', $renewal->token), [
+        $this->actingAs($this->parent)->post(route('subscription.continue', $this->student->id), [
             'level' => 'Form 5',
             'subject_ids' => [$f5['RF Maths']->id, $f5['RF Science']->id],
-        ])->assertRedirect(route('renew.show', $renewal->token))->assertSessionHas('success');
+        ])->assertRedirect(route('parent.profile', ['tab' => 'subscription', 'child' => $this->student->id]))->assertSessionHas('subscription_success');
 
         $this->student->refresh();
         $this->assertSame('Form 5', $this->student->level);
@@ -157,7 +213,7 @@ class RenewalFlowTest extends TestCase
     {
         $renewal = $this->invite();
 
-        $this->actingAs($this->parent)->post(route('renew.confirm', $renewal->token), [
+        $this->actingAs($this->parent)->post(route('subscription.continue', $this->student->id), [
             'level' => 'Form 5',
             'subject_ids' => [$this->subjects['Form 4']['RF Maths']->id],
         ])->assertSessionHasErrors('subject_ids');
@@ -170,7 +226,7 @@ class RenewalFlowTest extends TestCase
     {
         $renewal = $this->invite();
 
-        $this->actingAs($this->parent)->post(route('renew.decline', $renewal->token))->assertSessionHas('success');
+        $this->actingAs($this->parent)->post(route('subscription.decline', $this->student->id))->assertSessionHas('subscription_success');
         $this->assertSame(StudentRenewal::DECLINED, $renewal->fresh()->status);
         $this->assertSame(2, $this->student->activeEnrollments()->count()); // trial continues
 
@@ -190,10 +246,10 @@ class RenewalFlowTest extends TestCase
 
         Carbon::setTestNow('2027-01-15 09:00:00');
         Setting::set(InvoiceService::FREE_TRIAL_UNTIL, '');
-        $this->actingAs($this->student->user)->post(route('renew.confirm', $renewal->token), [
+        $this->actingAs($this->student->user)->post(route('subscription.continue', $this->student->id), [
             'level' => 'Form 5',
             'subject_ids' => [$this->subjects['Form 5']['RF Maths']->id],
-        ])->assertSessionHas('success');
+        ])->assertSessionHas('subscription_success');
 
         $this->assertSame(1, $this->student->activeEnrollments()->count());
         $invoice = Invoice::where('student_id', $this->student->id)->sole();
@@ -204,12 +260,12 @@ class RenewalFlowTest extends TestCase
     public function test_stop_after_this_month(): void
     {
         $renewal = $this->invite();
-        $this->actingAs($this->parent)->post(route('renew.confirm', $renewal->token), [
+        $this->actingAs($this->parent)->post(route('subscription.continue', $this->student->id), [
             'level' => 'Form 5', 'subject_ids' => [$this->subjects['Form 5']['RF Maths']->id],
         ]);
 
         // Stopping in December: January (already invoiced) is the last month.
-        $this->actingAs($this->parent)->post(route('renew.stop', $renewal->token))->assertSessionHas('success');
+        $this->actingAs($this->parent)->post(route('subscription.stop', $this->student->id))->assertSessionHas('subscription_success');
         $renewal->refresh();
         $this->assertSame(StudentRenewal::STOPPED, $renewal->status);
         $this->assertSame('2027-01-01', $renewal->stops_after->toDateString());

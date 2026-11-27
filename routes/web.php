@@ -24,10 +24,12 @@ use App\Http\Controllers\InteractiveAssignmentController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ParentDashboardController;
 use App\Http\Controllers\ParentLinkRequestController;
+use App\Http\Controllers\ParentProfileController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordedClassController;
 use App\Http\Controllers\RenewalController;
 use App\Http\Controllers\StudentDashboardController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\TimetableController;
 use Illuminate\Support\Facades\Route;
@@ -180,6 +182,11 @@ Route::prefix('parent')->name('parent.')->middleware(['auth', 'role:parent'])->g
     Route::post('/fees/{id}/pay', [ParentDashboardController::class, 'payChildInvoice'])->name('fees.pay.legacy');
     Route::get('/payments', [ParentDashboardController::class, 'payments'])->name('payments');
     Route::post('/payments/create-invoice', [ParentDashboardController::class, 'createCustomInvoice'])->name('payments.create-invoice');
+
+    // Profile & Settings (details, password, Manage Subscription per child)
+    Route::get('/profile', [ParentProfileController::class, 'show'])->name('profile');
+    Route::patch('/profile', [ParentProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/password', [ParentProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 // ──────────────────────────────────────────────────
@@ -542,13 +549,19 @@ Route::prefix('billing/billplz')->name('billing.billplz.')->group(function () {
 });
 
 // ──────────────────────────────────────────────────
-// RENEWAL: "Continue in {school year}?" (student, linked parent or admin)
+// MANAGE SUBSCRIPTION: "Continue in {school year}?" (student, linked parent or admin)
 // ──────────────────────────────────────────────────
-Route::middleware('auth')->prefix('renew')->name('renew.')->group(function () {
-    Route::get('/{token}', [RenewalController::class, 'show'])->name('show');
-    Route::post('/{token}', [RenewalController::class, 'confirm'])->name('confirm');
-    Route::post('/{token}/decline', [RenewalController::class, 'decline'])->name('decline');
-    Route::post('/{token}/stop', [RenewalController::class, 'stop'])->name('stop');
+Route::middleware('auth')->group(function () {
+    // Email button -> the right Manage Subscription page for whoever logs in
+    Route::get('/my-subscription/{student}', [SubscriptionController::class, 'go'])->whereNumber('student')->name('subscription.go');
+    Route::prefix('subscription/{student}')->whereNumber('student')->name('subscription.')->group(function () {
+        Route::post('/continue', [SubscriptionController::class, 'continue'])->name('continue');
+        Route::post('/decline', [SubscriptionController::class, 'decline'])->name('decline');
+        Route::post('/stop', [SubscriptionController::class, 'stop'])->name('stop');
+        Route::post('/resume', [SubscriptionController::class, 'resume'])->name('resume');
+    });
+    // Admin > Renewals "Confirm for family" (families are sent to their profile)
+    Route::get('/renew/{token}', [RenewalController::class, 'show'])->name('renew.show');
 });
 
 // TIMETABLE & CALENDAR API (Authenticated)

@@ -79,12 +79,26 @@
                 class="px-5 py-2.5 rounded-xl text-sm transition-all">
                 Preferences
             </button>
-            <button @click="tab = 'security'" 
+            <button @click="tab = 'security'"
                 :class="tab === 'security' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
                 class="px-5 py-2.5 rounded-xl text-sm transition-all">
                 Password
             </button>
+            @isset($subscription)
+                <button @click="tab = 'subscription'"
+                    :class="tab === 'subscription' ? 'bg-indigo-600 text-white font-semibold shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'"
+                    class="px-5 py-2.5 rounded-xl text-sm transition-all">
+                    Subscription
+                </button>
+            @endisset
         </div>
+
+        {{-- ── TAB: MANAGE SUBSCRIPTION ── --}}
+        @isset($subscription)
+            <div x-show="tab === 'subscription'" x-cloak>
+                @include('subscription.panel', $subscription)
+            </div>
+        @endisset
 
         {{-- ── TAB 1: STUDENT DETAILS & PROFILE ── --}}
         <div x-show="tab === 'profile'" class="space-y-6">

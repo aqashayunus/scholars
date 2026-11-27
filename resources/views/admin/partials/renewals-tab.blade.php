@@ -74,6 +74,30 @@
         </div>
     </form>
 
+    @php
+        $emailWarnings = [];
+        foreach ([\App\Services\RenewalService::AUTOMATION_INVITE => 'invitation', \App\Services\RenewalService::AUTOMATION_REMIND => 'reminder'] as $autoKey => $autoLabel) {
+            $auto = \App\Services\RenewalService::automation($autoKey);
+            if (! $auto) {
+                $emailWarnings[] = "The {$autoLabel} email is missing (run the latest migration).";
+            } elseif (! $auto->is_enabled) {
+                $emailWarnings[] = "The {$autoLabel} email is switched off in Email Settings, so nothing will be sent.";
+            } elseif (! $auto->template || $auto->template->status !== \App\Models\EmailTemplate::STATUS_ACTIVE) {
+                $emailWarnings[] = "The {$autoLabel} email has no active template in Email Settings.";
+            }
+        }
+    @endphp
+    <div class="text-xs {{ $emailWarnings ? 'bg-amber-50 border border-amber-200 text-amber-900' : 'bg-gray-50 border border-gray-200 text-gray-600' }} rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+            @forelse($emailWarnings as $w)<p>⚠ {{ $w }}</p>@empty
+                <p>The wording of the invitation and reminder emails is edited in Email Settings (automations "Continue Next School Year"). Their button opens the family's Manage Subscription page.</p>
+            @endforelse
+        </div>
+        <a href="{{ route('admin.dashboard') }}#emailsettings" onclick="if(typeof switchTab==='function') switchTab('tab-emailsettings')"
+           class="font-bold hover:underline shrink-0">Open Email Settings →</a>
+    </div>
+
+
     @if($sy)
         {{-- Counts + send --}}
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">

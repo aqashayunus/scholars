@@ -239,6 +239,16 @@
                                 <a href="{{ route('student.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                     Profile & Settings
                                 </a>
+                                <a href="{{ route('student.profile', ['tab' => 'subscription']) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    Manage Subscription
+                                </a>
+                            @elseif(auth()->user()->isParent())
+                                <a href="{{ route('parent.profile') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    Profile & Settings
+                                </a>
+                                <a href="{{ route('parent.profile', ['tab' => 'subscription']) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                                    Manage Subscription
+                                </a>
                             @endif
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

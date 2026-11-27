@@ -13,6 +13,7 @@ use App\Models\Student;
 use App\Models\StudentTopicMastery;
 use App\Models\UserNotification;
 use App\Services\AttendanceService;
+use App\Services\RenewalService;
 use App\Services\Student\AchievementService;
 use App\Services\Student\AssignmentService;
 use App\Services\Student\BillingService;
@@ -154,7 +155,10 @@ class StudentDashboardController extends Controller
         $student = $this->getStudent();
         $activeTab = $request->query('tab', 'profile');
 
-        return view('student.profile', array_merge(['student' => $student], $profileService->profileData($student, $activeTab)));
+        return view('student.profile', array_merge(
+            ['student' => $student, 'subscription' => app(RenewalService::class)->panel($student)],
+            $profileService->profileData($student, $activeTab)
+        ));
     }
 
     /**

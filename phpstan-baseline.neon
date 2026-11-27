@@ -2677,21 +2677,9 @@ parameters:
 			path: app/Http/Controllers/RecordedClassController.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Student\:\:\$activeEnrollments\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/RenewalController.php
-
-		-
-			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Student model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
-			path: app/Http/Controllers/RenewalController.php
-
-		-
 			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
 			identifier: larastan.relationExistence
-			count: 2
+			count: 1
 			path: app/Http/Controllers/RenewalController.php
 
 		-
@@ -8857,14 +8845,14 @@ parameters:
 			path: app/Services/ReminderService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Student\:\:\$parents\.$#'
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$activeEnrollments\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Services/RenewalService.php
 
 		-
-			message: '#^Access to an undefined property App\\Models\\Student\:\:\$user\.$#'
-			identifier: property.notFound
+			message: '#^Relation ''activeEnrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
 			count: 1
 			path: app/Services/RenewalService.php
 
@@ -8887,9 +8875,15 @@ parameters:
 			path: app/Services/RenewalService.php
 
 		-
+			message: '#^Relation ''template'' is not found in App\\Models\\EmailAutomation model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/RenewalService.php
+
+		-
 			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
 			identifier: larastan.relationExistence
-			count: 4
+			count: 5
 			path: app/Services/RenewalService.php
 
 		-

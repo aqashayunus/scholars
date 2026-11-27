@@ -55,6 +55,13 @@ class EmailVariableRegistry
                 'meeting_url' => 'Live video session link',
                 'class_status' => 'Status of class (Upcoming / Rescheduled / Cancelled)',
             ],
+            'Renewal and Subscription' => [
+                'school_year' => 'School year families renew for (e.g. 2027)',
+                'reply_by_date' => 'Last day to answer "Continue?" (e.g. Sunday, 27 December 2026)',
+                'first_billing_month' => 'First month invoiced after confirming (e.g. January 2027)',
+                'subscription_url' => 'Link to the family\'s Manage Subscription page',
+                'recipient_name' => 'Name of the person receiving this email',
+            ],
             'General Institutional' => [
                 'current_date' => 'Current date formatted (e.g. 05 Oct 2026)',
                 'current_year' => 'Current four-digit year (e.g. 2026)',

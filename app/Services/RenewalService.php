@@ -6,7 +6,7 @@ use App\Enums\EnrollmentStatus;
 use App\Enums\InvoiceStatus;
 use App\Http\Controllers\Auth\StudentRegistrationController;
 use App\Models\Course;
-use App\Models\EmailTemplate;
+use App\Models\EmailAutomation;
 use App\Models\Enrollment;
 use App\Models\FeeStructure;
 use App\Models\Invoice;
@@ -16,7 +16,7 @@ use App\Models\StudentRenewal;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\Admin\LevelCleanupService;
-use App\Services\Email\EmailSendingService;
+use App\Services\Email\EmailAutomationService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -97,44 +97,42 @@ class RenewalService
         return $n;
     }
 
-    public function sendInvitation(StudentRenewal $renewal, SchoolYear $year, bool $isReminder): void
+    /** Email Settings automations used for the invitation and the reminder. */
+    public const AUTOMATION_INVITE = 'renewal_invitation';
+
+    public const AUTOMATION_REMIND = 'renewal_reminder';
+
+    /**
+     * Send "Continue in {year}?" through the Email Settings automation (edit
+     * the wording or switch it off there). The student and linked parents
+     * receive it; the button opens Manage Subscription.
+     *
+     * @return bool whether at least one email was queued
+     */
+    public function sendInvitation(StudentRenewal $renewal, SchoolYear $year, bool $isReminder): bool
     {
         $student = $renewal->student()->with(['user', 'parents'])->firstOrFail();
-        $childName = $student->user->name ?? 'your child';
-        $replyBy = $year->replyBy ? ' by '.$year->replyBy->format('l, j F Y') : '';
-        $template = new EmailTemplate([
-            'name' => 'Continue in '.$year->label,
-            'subject' => ($isReminder ? 'Reminder: ' : '')."Continue with Olympia Scholars in {$year->label}?",
-            'body' => "Dear {{recipient_name}},\n\n"
-                ."Thank you for learning with Olympia Scholars. Will {$childName} continue with us in {$year->label}?\n\n"
-                ."Please let us know{$replyBy}. Click the button below, confirm {$childName}'s Form / Year for {$year->label} and choose the subjects. "
-                .'The first monthly invoice is issued once you confirm.'
-                ."\n\nIf {$childName} will not continue, you can tell us on the same page.",
-            'cta_label' => 'Continue in '.$year->label,
-            'cta_url' => route('renew.show', $renewal->token),
-        ]);
 
-        $recipients = collect();
-        if ($student->user?->email) {
-            $recipients->push(['email' => $student->user->email, 'name' => $student->user->name, 'type' => 'student', 'user_id' => $student->user_id]);
-        }
-        foreach ($student->parents as $parent) {
-            if ($parent->email) {
-                $recipients->push(['email' => $parent->email, 'name' => $parent->name, 'type' => 'parent', 'user_id' => $parent->id]);
-            }
-        }
+        $result = EmailAutomationService::trigger(
+            $isReminder ? self::AUTOMATION_REMIND : self::AUTOMATION_INVITE,
+            [
+                'student' => $student,
+                'school_year' => $year->label,
+                'reply_by_date' => $year->replyBy ? $year->replyBy->format('l, j F Y') : 'the start of the school year',
+                'first_billing_month' => $year->firstMonthFor(now())->format('F Y'),
+                'subscription_url' => route('subscription.go', $student->id),
+            ],
+            // One invitation per renewal; one reminder per renewal per day.
+            $isReminder ? "renewal_remind_{$renewal->id}_".now()->toDateString() : "renewal_invite_{$renewal->id}",
+        );
 
-        foreach ($recipients->unique('email') as $r) {
-            EmailSendingService::send(
-                $r['email'],
-                (string) $template->subject,
-                $template,
-                ['recipient_name' => $r['name'], 'recipient_type' => $r['type'], 'student' => $student],
-                EmailTemplate::CATEGORY_RENEWAL,
-                $r['user_id'],
-                $student->id,
-            );
-        }
+        return $result === true || (is_array($result) && ($result['success'] ?? false));
+    }
+
+    /** The automation row, so Admin > Renewals can warn when it is switched off. */
+    public static function automation(string $key): ?EmailAutomation
+    {
+        return EmailAutomation::with('template')->where('key', $key)->first();
     }
 
     // ── The Continue page ────────────────────────────────────────────────────
@@ -303,6 +301,71 @@ class RenewalService
         if ($year && $year->replyBy && now()->gt($year->replyBy) && $renewal->student) {
             app(MonthlyBillingService::class)->pause($renewal->student, 'Not continuing in '.$renewal->school_year.'.', StudentRenewal::DECLINED);
         }
+    }
+
+    // ── Manage Subscription (profile tab) ────────────────────────────────────
+
+    /** This year's renewal row, created on first use (a family may renew without an invitation). */
+    public function ensureRenewal(Student $student, SchoolYear $year): StudentRenewal
+    {
+        return StudentRenewal::firstOrCreate(
+            ['student_id' => $student->id, 'school_year' => $year->label],
+            ['status' => StudentRenewal::INVITED]
+        );
+    }
+
+    /** Undo "stop after this month" while that month has not ended yet. */
+    public function resume(StudentRenewal $renewal, User $by): bool
+    {
+        if ($renewal->status !== StudentRenewal::STOPPED || ! $renewal->stops_after || $renewal->stops_after->lt(now()->startOfMonth())) {
+            return false;
+        }
+        $renewal->forceFill([
+            'status' => StudentRenewal::CONFIRMED,
+            'stops_after' => null,
+            'responded_at' => now(),
+            'responded_by_user_id' => $by->id,
+        ])->save();
+
+        return true;
+    }
+
+    /**
+     * Everything the Manage Subscription panel shows for one student.
+     *
+     * state: closed (no school year open) | form (can confirm) | confirmed | stopping (stopped, last month not over)
+     *
+     * @return array<string, mixed>
+     */
+    public function panel(Student $student): array
+    {
+        $student->loadMissing(['user', 'activeEnrollments.course.subject']);
+        $year = SchoolYear::current();
+        $renewal = $year ? $student->renewals()->where('school_year', $year->label)->first() : null;
+
+        $state = 'closed';
+        if ($year) {
+            $state = 'form';
+            if ($renewal?->status === StudentRenewal::CONFIRMED) {
+                $state = 'confirmed';
+            } elseif ($renewal?->status === StudentRenewal::STOPPED && $renewal->stops_after && $renewal->stops_after->gte(now()->startOfMonth())) {
+                $state = 'stopping';
+            }
+        }
+
+        $invoices = $student->invoices()->latest('id')->limit(6)->get();
+
+        return [
+            'student' => $student,
+            'year' => $year,
+            'renewal' => $renewal,
+            'state' => $state,
+            'choices' => $state === 'form' ? $this->choices() : null,
+            'suggestedLevel' => $renewal?->level ?: $this->suggestedLevel($student),
+            'currentSubjectNames' => $student->activeEnrollments->map(fn ($e) => $e->course?->subject?->name)->filter()->values()->all(),
+            'currentSubjects' => $student->activeEnrollments->map(fn ($e) => $e->course?->subject)->filter()->values(),
+            'invoices' => $invoices,
+        ];
     }
 
     /** "Stop after this month": the current (or first) billed month is the last one. */

@@ -67,6 +67,15 @@ class RenewalAdminTest extends TestCase
             ->assertSee('Not set up yet');
     }
 
+    public function test_renewal_emails_are_listed_in_email_settings(): void
+    {
+        $this->actingAs($this->admin)->get(route('admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Continue Next School Year: Invitation')
+            ->assertSee('Continue Next School Year: Reminder')
+            ->assertSee('Open Email Settings');
+    }
+
     public function test_admin_sets_up_the_school_year(): void
     {
         $this->saveYear()->assertRedirect(route('admin.dashboard').'#renewals');
