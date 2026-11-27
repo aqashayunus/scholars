@@ -12,6 +12,7 @@ use App\Models\StudentAssignment;
 use App\Models\Subject;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\Admin\LevelCleanupService;
 use App\Services\Email\EmailAutomationService;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
@@ -328,6 +329,20 @@ class StudentRegistrationController extends Controller
             // Priority 4: Fallback across all active subjects
             if (! $subject) {
                 $subject = (clone $baseQuery)->first();
+            }
+
+            // Never enrol into another Form / Year: the stage and name fallbacks
+            // above take the first match, which put a Form 3 student into
+            // Form 1 subjects. Skip instead, and leave a trace for admin.
+            // Only for concrete levels ("Form 3", "Year 5"); labels like "SPM" keep the old behaviour.
+            $concreteLevels = array_values(array_filter($levels, fn (string $l): bool => preg_match('/^(Form|Year) \d$/', $l) === 1));
+            if ($subject && $concreteLevels !== []) {
+                $fits = collect($concreteLevels)->contains(fn ($lvl) => LevelCleanupService::subjectFitsLevel($subject, $lvl));
+                if (! $fits) {
+                    Log::warning("[enrollInSubjects] Skipped \"{$subjectName}\" for student #{$student->id}: matched subject #{$subject->id} is {$subject->form_year}, student is ".implode(', ', $levels).'.');
+
+                    continue;
+                }
             }
 
             if (! $subject) {

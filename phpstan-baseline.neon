@@ -7027,6 +7027,66 @@ parameters:
 			path: app/Services/Admin/GigService.php
 
 		-
+			message: '#^Access to an undefined property App\\Models\\Course\:\:\$subject\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Enrollment\:\:\$course\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$enrollments\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Student\:\:\$invoices\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''assignment'' is not found in App\\Models\\StudentAssignment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''enrollments'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 3
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Payment model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''invoices'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''subject'' is not found in App\\Models\\Course model\.$#'
+			identifier: larastan.relationExistence
+			count: 1
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
+			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
+			identifier: larastan.relationExistence
+			count: 2
+			path: app/Services/Admin/LevelCleanupService.php
+
+		-
 			message: '#^Access to an undefined property App\\Models\\Student\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Student\>\:\:\$id\.$#'
 			identifier: property.notFound
 			count: 1

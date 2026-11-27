@@ -24,6 +24,18 @@
             </div>
         @endif
 
+        {{-- ── Students registered for several levels (one level only since 2026-11-27) ── --}}
+        @php $multiLevelCount = \App\Models\Student::where('level', 'like', '%,%')->count(); @endphp
+        @if($multiLevelCount > 0)
+            <div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-2xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span class="font-medium">{{ $multiLevelCount }} student(s) registered for more than one Form / Year and need one level.</span>
+                </div>
+                <a href="{{ route('admin.students.level-cleanup.index') }}" class="font-bold text-amber-800 hover:underline shrink-0">Open Level Clean-up →</a>
+            </div>
+        @endif
+
         @if(isset($errors) && $errors->any())
             <div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl text-xs space-y-1 shadow-2xs">
                 <p class="font-medium">Please review the form errors:</p>

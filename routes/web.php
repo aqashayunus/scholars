@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CourseRosterController as AdminCourseRosterContro
 use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController;
 use App\Http\Controllers\Admin\EmailManagementController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
+use App\Http\Controllers\Admin\LevelCleanupController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
@@ -288,6 +289,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/courses/{id}/students', [AdminCourseRosterController::class, 'index'])->whereNumber('id')->name('courses.students');
     Route::post('/courses/{id}/students', [AdminCourseRosterController::class, 'store'])->whereNumber('id')->name('courses.students.store');
     Route::delete('/courses/{id}/students/{studentId}', [AdminCourseRosterController::class, 'destroy'])->whereNumber(['id', 'studentId'])->name('courses.students.destroy');
+
+    // Level clean-up: students who registered for several levels -> one level
+    Route::get('/students/level-cleanup', [LevelCleanupController::class, 'index'])->name('students.level-cleanup.index');
+    Route::get('/students/{student}/level-cleanup', [LevelCleanupController::class, 'preview'])->whereNumber('student')->name('students.level-cleanup.preview');
+    Route::post('/students/{student}/level-cleanup', [LevelCleanupController::class, 'apply'])->whereNumber('student')->name('students.level-cleanup.apply');
 
     // Invoice Admin CRUD (View/Edit/Delete — separate from billing/store)
     Route::put('/invoices/{id}/admin-update', [AdminFinanceController::class, 'updateInvoice'])->name('invoices.admin-update');
