@@ -45,3 +45,15 @@ Schedule::command('emails:process-class-reminders')
     ->withoutOverlapping()
     ->runInBackground()
     ->appendOutputTo(storage_path('logs/class-reminders.log'));
+
+// ── Queue worker: send queued emails (invoice issued, reminders, renewals) ────
+// Nothing consumed the jobs table on the cPanel hosts (docs/architecture.md,
+// Phase 5a), so queued emails stayed "Queued" forever. The cron already runs
+// schedule:run, so the scheduler starts a short-lived worker every minute: it
+// drains the `emails` queue (invoice emails) and `default` (EmailSendingService)
+// and exits. withoutOverlapping keeps it to one worker at a time.
+Schedule::command('queue:work --queue=emails,default --stop-when-empty --max-time=50 --tries=3 --timeout=45')
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/queue-worker.log'));
