@@ -207,6 +207,7 @@ class ParentRegistrationController extends Controller
                     'state' => $validated['state'],
                     'country' => $validated['country'] ?? 'Malaysia',
                     'ic_number_hash' => $parentIcHash,
+                    'ic_masked' => $parentIcHash ? Student::maskedIc($validated['parent_ic_number']) : null,
                     'password' => Hash::make($validated['password']),
                 ]);
                 $parentUser->role = 'parent';
@@ -282,6 +283,7 @@ class ParentRegistrationController extends Controller
                     $student = new Student([
                         'user_id' => $childUser->id,
                         'ic_number_hash' => $childIcHash,
+                        'ic_masked' => Student::maskedIc($validated['child_ic_number']),
                         'gender' => $gender,
                         'date_of_birth' => $dob,
                         'level' => $validated['level'] ?? 'Form 5',

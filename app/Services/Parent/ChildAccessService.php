@@ -117,6 +117,7 @@ class ChildAccessService
                 $student = new Student([
                     'user_id' => $childUser->id,
                     'ic_number_hash' => $childIcHash,
+                    'ic_masked' => Student::maskedIc($validated['child_ic_number']),
                     'gender' => $gender,
                     'date_of_birth' => $dob,
                     'level' => $validated['level'],

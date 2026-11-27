@@ -169,6 +169,7 @@ class StudentRegistrationController extends Controller
                 $student = Student::create([
                     'user_id' => $user->id,
                     'ic_number_hash' => $icHash,
+                    'ic_masked' => Student::maskedIc($validated['ic_number']),
                     'gender' => $gender,
                     'nationality' => $validated['nationality'],
                     'state' => $validated['state'],

@@ -621,12 +621,15 @@
                                             : 'Parent / Guardian';
                                         $isPrimary = isset($p->pivot->is_primary) && $p->pivot->is_primary;
                                         $parentsData[] = [
+                                            'id' => $p->id,
                                             'name' => $p->name,
                                             'email' => $p->email ?? '—',
                                             'phone' => $p->phone ?? $st->parent_phone ?? '—',
                                             'relationship' => $rel,
                                             'is_primary' => $isPrimary,
                                             'status' => $p->pivot->status ?? 'active',
+                                            // Only a one-way hash of the IC is stored; ic_masked is "******-**-1234".
+                                            'ic' => $p->ic_masked ?: ($p->ic_number_hash ? 'On file (verify to show)' : ($p->passport_number ? 'Passport holder' : 'Not provided')),
                                         ];
                                     }
 
@@ -689,7 +692,11 @@
                                         'phone' => $studentPhone,
                                         'level' => $st->level ?: '—',
                                         'school' => $st->school_name ?: '—',
-                                        'gender' => $st->gender ?: '—',
+                                        'gender' => $st->gender ? ucfirst($st->gender) : '—',
+                                        'ic' => $st->ic_masked ?: ($st->ic_number_hash ? 'On file (verify to show)' : 'Not provided'),
+                                        'dob' => $st->date_of_birth ? $st->date_of_birth->format('d M Y').' (age '.$st->date_of_birth->age.')' : '—',
+                                        'nationality' => $st->nationality ?: '—',
+                                        'verify_ic_url' => route('admin.students.verify-ic', $st->id),
                                         'status' => $st->status ?: 'active',
                                         'joined_date' => $st->created_at ? $st->created_at->format('d M Y') : '—',
                                         'enrollments_count' => $totalEnrollments,
@@ -4977,6 +4984,29 @@
                             </div>
                         </div>
                     </div>
+                    {{-- Identity (IC is stored only as a one-way hash + masked "******-**-1234") --}}
+                    <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 border-t border-gray-200">
+                        <div class="p-3.5 space-y-2">
+                            <div class="flex items-baseline justify-between gap-4">
+                                <span class="text-gray-500 text-[11px] font-medium uppercase tracking-wider">IC Number</span>
+                                <span id="modalStudentIc" class="text-gray-900 font-mono text-right">—</span>
+                            </div>
+                            <div class="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
+                                <span class="text-gray-500 text-[11px] font-medium uppercase tracking-wider">Date of Birth</span>
+                                <span id="modalStudentDob" class="text-gray-900 font-normal text-right">—</span>
+                            </div>
+                        </div>
+                        <div class="p-3.5 space-y-2">
+                            <div class="flex items-baseline justify-between gap-4">
+                                <span class="text-gray-500 text-[11px] font-medium uppercase tracking-wider">Gender</span>
+                                <span id="modalStudentGender" class="text-gray-900 font-normal text-right">—</span>
+                            </div>
+                            <div class="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
+                                <span class="text-gray-500 text-[11px] font-medium uppercase tracking-wider">Nationality</span>
+                                <span id="modalStudentNationality" class="text-gray-900 font-normal text-right">—</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="px-4 py-2.5 bg-gray-50/70 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <span class="text-gray-500 text-[11px] font-medium uppercase tracking-wider">Account Access:</span>
@@ -5003,6 +5033,7 @@
                                 <tr>
                                     <th class="py-2.5 px-3.5">Parent / Guardian Name</th>
                                     <th class="py-2.5 px-3.5">Relationship</th>
+                                    <th class="py-2.5 px-3.5">IC Number</th>
                                     <th class="py-2.5 px-3.5">Email Address</th>
                                     <th class="py-2.5 px-3.5">Contact Phone</th>
                                     <th class="py-2.5 px-3.5 text-right">Role</th>
@@ -5013,6 +5044,23 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                {{-- Verify IC: the full IC is never stored, so admin checks a number someone gives them --}}
+                <div class="border border-gray-200 rounded-lg bg-white p-4 space-y-2.5">
+                    <div>
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-gray-700">Verify IC</span>
+                        <p class="text-[11px] text-gray-500 mt-0.5">The full IC is not stored. Type the IC you were given to check it matches the one registered. A match also saves the masked IC (last 4 digits) for display.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <label for="verifyIcWho" class="sr-only">Whose IC</label>
+                        <select id="verifyIcWho" class="border border-gray-200 rounded px-2.5 py-2 text-xs bg-white"></select>
+                        <label for="verifyIcInput" class="sr-only">IC number</label>
+                        <input id="verifyIcInput" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 080512-10-1234" maxlength="14"
+                               class="flex-1 border border-gray-200 rounded px-3 py-2 text-xs font-mono" onkeydown="if(event.key==='Enter'){event.preventDefault();verifyLinkageIc();}">
+                        <button type="button" onclick="verifyLinkageIc()" class="px-3.5 py-2 rounded bg-gray-900 hover:bg-black text-white text-xs font-semibold cursor-pointer">Check</button>
+                    </div>
+                    <p id="verifyIcResult" class="text-xs font-semibold hidden" role="status"></p>
                 </div>
 
                 {{-- 3. Assigned Subject Teachers (Clean Corporate Tabular List) --}}
@@ -10052,6 +10100,41 @@
         }
 
         // ── Student Linkage & Relationships Modal ──────────────────────────────
+        // Admin > Student Relationship & Linkages > Verify IC
+        async function verifyLinkageIc() {
+            const cfg = window.__linkageVerify || {};
+            const input = document.getElementById('verifyIcInput');
+            const who = document.getElementById('verifyIcWho');
+            const res = document.getElementById('verifyIcResult');
+            if (!cfg.url || !input || !who || !res) return;
+            const show = (ok, text) => {
+                res.classList.remove('hidden', 'text-emerald-700', 'text-rose-700', 'text-gray-600');
+                res.classList.add(ok === null ? 'text-gray-600' : (ok ? 'text-emerald-700' : 'text-rose-700'));
+                res.textContent = text;
+            };
+            if (input.value.replace(/\D/g, '').length !== 12) { show(false, 'Enter the 12-digit IC number.'); return; }
+            show(null, 'Checking…');
+            try {
+                const r = await fetch(cfg.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    body: JSON.stringify({ ic: input.value, who: who.value }),
+                });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok) { show(false, j.message || 'Could not check the IC.'); return; }
+                show(j.match, j.message);
+                if (j.match && j.masked) {
+                    const cell = who.value === 'student'
+                        ? document.getElementById(cfg.studentIcId)
+                        : document.querySelector('[data-parent-ic="' + who.value.split(':')[1] + '"]');
+                    if (cell) cell.textContent = j.masked;
+                }
+            } catch (e) {
+                show(false, 'Could not check the IC. Please try again.');
+            }
+        }
+
         function openStudentLinkageModal(btn) {
             try {
                 const raw = btn.getAttribute('data-linkage');
@@ -10071,6 +10154,24 @@
                 setTxt('modalStudentPhone', data.phone);
                 setTxt('modalStudentLevel', data.level);
                 setTxt('modalStudentSchool', data.school);
+                setTxt('modalStudentIc', data.ic);
+                setTxt('modalStudentDob', data.dob);
+                setTxt('modalStudentGender', data.gender);
+                setTxt('modalStudentNationality', data.nationality);
+
+                // Verify IC box: who can be checked (student + each linked parent)
+                window.__linkageVerify = { url: data.verify_ic_url, studentIcId: 'modalStudentIc' };
+                const who = document.getElementById('verifyIcWho');
+                if (who) {
+                    who.innerHTML = '';
+                    const opt = (value, label) => { const o = document.createElement('option'); o.value = value; o.textContent = label; who.appendChild(o); };
+                    opt('student', 'Student: ' + (data.name || 'Student'));
+                    (data.parents || []).forEach(p => { if (p.id) opt('parent:' + p.id, (p.relationship || 'Parent') + ': ' + p.name); });
+                }
+                const vIn = document.getElementById('verifyIcInput');
+                if (vIn) vIn.value = '';
+                const vRes = document.getElementById('verifyIcResult');
+                if (vRes) { vRes.classList.add('hidden'); vRes.textContent = ''; }
 
                 // Access Restriction Status Badge & Details
                 const restrBadge = document.getElementById('modalStudentRestrictionBadge');
@@ -10112,6 +10213,7 @@
                             tr.innerHTML = `
                                 <td class="py-2.5 px-3.5 font-medium text-gray-900">${escapeModalHtml(p.name)}</td>
                                 <td class="py-2.5 px-3.5 text-gray-700">${escapeModalHtml(p.relationship)}</td>
+                                <td class="py-2.5 px-3.5 text-gray-700 font-mono" data-parent-ic="${escapeModalHtml(String(p.id || ''))}">${escapeModalHtml(p.ic || '—')}</td>
                                 <td class="py-2.5 px-3.5 text-gray-600">${escapeModalHtml(p.email || '—')}</td>
                                 <td class="py-2.5 px-3.5 text-gray-600">${escapeModalHtml(p.phone || '—')}</td>
                                 <td class="py-2.5 px-3.5 text-right text-gray-700 font-normal">${p.is_primary ? 'Primary Contact' : 'Secondary Contact'}</td>
@@ -10121,7 +10223,7 @@
                     } else {
                         if (parentBadge) parentBadge.textContent = '0 Linked';
                         parentsContainer.innerHTML = `
-                            <tr><td colspan="5" class="py-3 px-3.5 text-center text-gray-400 italic">No parent or guardian records linked.</td></tr>
+                            <tr><td colspan="6" class="py-3 px-3.5 text-center text-gray-400 italic">No parent or guardian records linked.</td></tr>
                         `;
                     }
                 }

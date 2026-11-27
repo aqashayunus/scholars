@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
 use App\Http\Controllers\Admin\LevelCleanupController;
 use App\Http\Controllers\Admin\RenewalAdminController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\StudentIcController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
 use App\Http\Controllers\Auth\StudentRegistrationController;
@@ -305,6 +306,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::post('/renewals/invite', [RenewalAdminController::class, 'invite'])->name('renewals.invite');
     Route::post('/renewals/remind', [RenewalAdminController::class, 'remind'])->name('renewals.remind');
     Route::post('/renewals/{renewal}/stop', [RenewalAdminController::class, 'stop'])->whereNumber('renewal')->name('renewals.stop');
+
+    // Student Relationship & Linkages > Verify IC (only a hash is stored)
+    Route::post('/students/{student}/verify-ic', [StudentIcController::class, 'verify'])
+        ->whereNumber('student')->middleware('throttle:20,1')->name('students.verify-ic');
 
     // Level clean-up: students who registered for several levels -> one level
     Route::get('/students/level-cleanup', [LevelCleanupController::class, 'index'])->name('students.level-cleanup.index');

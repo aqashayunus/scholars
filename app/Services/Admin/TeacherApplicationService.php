@@ -5,6 +5,7 @@ namespace App\Services\Admin;
 use App\Enums\TeacherApplicationStatus;
 use App\Mail\WelcomeMail;
 use App\Models\Course;
+use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\TeacherApplication;
 use App\Models\User;
@@ -119,6 +120,7 @@ class TeacherApplicationService
 
         if (! $takenByOther) {
             $user->ic_number_hash = $hash;
+            $user->ic_masked = Student::maskedIc($icNumber);
         }
     }
 

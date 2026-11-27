@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string|null $ic_masked Masked IC, e.g. "******-**-1234" (the full IC is never stored)
+ */
 class Student extends Model
 {
     use HasFactory;
@@ -15,7 +18,7 @@ class Student extends Model
     protected $fillable = [
         'user_id', 'level', 'school_name', 'programme',
         'total_points', 'streak_days', 'last_active_at', 'parent_phone',
-        'ic_number_hash', 'gender', 'nationality', 'state', 'date_of_birth',
+        'ic_number_hash', 'ic_masked', 'gender', 'nationality', 'state', 'date_of_birth',
         'parent_user_id',
     ];
 
@@ -45,6 +48,7 @@ class Student extends Model
     public function setIcNumber(string $ic): void
     {
         $this->ic_number_hash = self::hashIc($ic);
+        $this->ic_masked = self::maskedIc($ic);
     }
 
     /**

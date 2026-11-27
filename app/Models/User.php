@@ -8,12 +8,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property string|null $ic_masked Masked IC, e.g. "******-**-1234" (the full IC is never stored)
+ */
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'avatar', 'ic_number_hash',
+        'name', 'email', 'password', 'phone', 'avatar', 'ic_number_hash', 'ic_masked',
         'nationality_type', 'passport_number', 'address_line_1', 'address_line_2',
         'postcode', 'city', 'state', 'country',
     ];
@@ -55,6 +58,7 @@ class User extends Authenticatable
     public function setIcNumber(string $ic): void
     {
         $this->ic_number_hash = self::hashIc($ic);
+        $this->ic_masked = Student::maskedIc($ic);
     }
 
     /**
