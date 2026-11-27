@@ -20,9 +20,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class StudentRegistrationController extends Controller
 {
+    /** Levels a student can self-register for (matches levelsForType() in the form). */
+    public const REGISTRABLE_LEVELS = [
+        'Year 4', 'Year 5', 'Year 6',
+        'Form 1', 'Form 2', 'Form 3', 'Form 4', 'Form 5',
+    ];
+
     /**
      * Show the student registration form.
      */
@@ -78,9 +85,11 @@ class StudentRegistrationController extends Controller
             'nationality' => ['required', 'string', 'max:50'],
             'state' => ['required', 'string', 'max:50'],
             'programme' => ['required', 'string', 'max:50'],
-            'level' => ['nullable', 'string', 'max:100'],
-            'levels' => ['nullable', 'array'],
-            'levels.*' => ['string', 'max:50'],
+            // One Form / Year per registration. The next year is a renewal,
+            // not a second level on the same account.
+            'level' => ['nullable', 'string', Rule::in(self::REGISTRABLE_LEVELS)],
+            'levels' => ['nullable', 'array', 'max:1'],
+            'levels.*' => ['string', Rule::in(self::REGISTRABLE_LEVELS)],
             'school_name' => ['nullable', 'string', 'max:255'],
             'fee_structure_id' => ['nullable', 'integer', 'exists:fee_structures,id'],
             'subjects' => ['nullable', 'array'],
@@ -103,18 +112,29 @@ class StudentRegistrationController extends Controller
             'password.confirmed' => 'Passwords do not match. Please re-enter.',
             'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character.',
             'programme.required' => 'Please select an education level.',
+            'level.in' => 'Please choose one Form / Year.',
+            'levels.max' => 'You can register for one Form / Year only. You can renew for the next year later.',
+            'levels.*.in' => 'Please choose one Form / Year.',
         ]);
 
-        // Normalise multiple levels or single level
-        $inputLevels = $request->input('levels');
-        if (! empty($inputLevels) && is_array($inputLevels)) {
-            $validated['levels'] = array_values(array_filter($inputLevels));
-            $validated['level'] = implode(', ', $validated['levels']);
-        } elseif (! empty($validated['level'])) {
-            $validated['levels'] = array_values(array_filter(array_map('trim', explode(',', $validated['level']))));
-        } else {
-            $validated['level'] = 'Form 5';
-            $validated['levels'] = ['Form 5'];
+        // Resolve the single level ("level" field, or the legacy one-item "levels[]").
+        $level = $validated['level'] ?? (! empty($validated['levels']) ? $validated['levels'][0] : null);
+        if (! $level) {
+            return back()->withInput()->withErrors([
+                'level' => 'Please choose your Form / Year.',
+            ]);
+        }
+        $validated['level'] = $level;
+        $validated['levels'] = [$level];
+
+        // Subjects named for another Form / Year (e.g. "Bahasa Melayu - Form 5"
+        // from a Form 4 student) would otherwise be enrolled by the name fallback.
+        foreach ($validated['subjects'] ?? [] as $subjectName) {
+            if (preg_match('/\b(Form [1-5]|Year [1-6])\b/', $subjectName, $m) && $m[1] !== $level) {
+                return back()->withInput()->withErrors([
+                    'subjects' => "\"{$subjectName}\" is not for {$level}. Please choose subjects for your Form / Year only.",
+                ]);
+            }
         }
 
         // Normalise IC and check uniqueness

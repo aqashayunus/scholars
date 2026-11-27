@@ -26,6 +26,8 @@
     if (!is_array($oldLevels)) {
         $oldLevels = [];
     }
+    // One level per registration: keep only the first if old input had several.
+    $oldLevels = array_slice(array_values($oldLevels), 0, 1);
     if (empty($oldLevels)) {
         $oldLevels = ($selectedProgramme ?? 'secondary') === 'primary' ? ['Year 4'] : ['Form 1'];
     }
@@ -96,24 +98,21 @@ function studentRegData() {
             this.$watch('selectedEducationType', (newVal, oldVal) => {
                 if (oldVal !== undefined && newVal !== oldVal) {
                     const validLevels = this.levelsForType();
-                    this.selectedLevels = this.selectedLevels.filter(lvl => validLevels.includes(lvl));
+                    this.selectedLevels = this.selectedLevels.filter(lvl => validLevels.includes(lvl)).slice(0, 1);
                     if (this.selectedLevels.length === 0 && validLevels.length > 0) {
                         this.selectedLevels = [validLevels[0]];
                     }
-                    this.selectedLevel = this.selectedLevels.join(', ');
+                    this.selectedLevel = this.selectedLevels[0] || '';
                     this.selectedSubjects = [];
                     this.syncFeeStructureForLevel();
                 }
             });
         },
 
-        toggleLevel(lvl) {
-            if (this.selectedLevels.includes(lvl)) {
-                this.selectedLevels = this.selectedLevels.filter(l => l !== lvl);
-            } else {
-                this.selectedLevels.push(lvl);
-            }
-            this.selectedLevel = this.selectedLevels.join(', ');
+        selectLevel(lvl) {
+            // Only one Form / Year per registration; the next year is a renewal.
+            this.selectedLevels = [lvl];
+            this.selectedLevel = lvl;
             this.pruneSelectedSubjects();
             this.syncFeeStructureForLevel();
             if (this.selectedPlanType === 'package' && this.selectedSubjects.length === 0) {
@@ -432,7 +431,7 @@ function studentRegData() {
             }
             if (this.step === 2) {
                 if (!this.selectedLevels || this.selectedLevels.length === 0) {
-                    alert('Please select at least one Form / Year before continuing.');
+                    alert('Please select your Form / Year before continuing.');
                     return;
                 }
             }
@@ -644,38 +643,28 @@ function studentRegData() {
                 </div>
 
                 <div>
-                    <div class="flex items-center justify-between mb-1.5">
-                        <label class="block text-sm font-semibold text-charcoal">
-                            Form / Year <span class="text-red-500">*</span>
-                        </label>
-                        <span class="text-xs font-semibold text-primary"
-                              x-show="selectedLevels.length > 0"
-                              x-text="selectedLevels.length + ' selected'"></span>
-                    </div>
+                    <label class="block text-sm font-semibold text-charcoal mb-1.5">
+                        Form / Year <span class="text-red-500">*</span>
+                    </label>
                     <p class="text-xs text-muted mb-2.5">
-                        Select one or more forms/years you wish to access (e.g. Form 4 &amp; Form 5).
+                        Choose your current Form / Year. Access is for one school year; you can renew for the next year.
                     </p>
 
-                    {{-- Hidden input for backward compatibility --}}
-                    <input type="hidden" name="level" :value="selectedLevels.join(', ')">
-
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5" role="radiogroup">
                         <template x-for="lvl in levelsForType()" :key="lvl">
                             <label class="relative cursor-pointer select-none group">
-                                <input type="checkbox" name="levels[]" :value="lvl"
+                                <input type="radio" name="level" :value="lvl"
                                        :checked="selectedLevels.includes(lvl)"
-                                       @change="toggleLevel(lvl)"
+                                       @change="selectLevel(lvl)"
                                        class="sr-only peer">
-                                <div class="p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-2"
+                                <div class="p-3 rounded-xl border-2 transition-all flex items-center justify-between gap-2 peer-focus-visible:ring-2 peer-focus-visible:ring-primary"
                                      :class="selectedLevels.includes(lvl)
                                          ? 'border-primary bg-primary-50/70 text-primary font-bold shadow-xs'
                                          : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50/50'">
                                     <div class="flex items-center gap-2.5 min-w-0">
-                                        <div class="w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors"
-                                             :class="selectedLevels.includes(lvl) ? 'bg-primary border-primary text-white' : 'border-gray-300 bg-white group-hover:border-gray-400'">
-                                            <svg x-show="selectedLevels.includes(lvl)" class="w-3 h-3 stroke-current" fill="none" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
-                                            </svg>
+                                        <div class="w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors"
+                                             :class="selectedLevels.includes(lvl) ? 'border-primary' : 'border-gray-300 bg-white group-hover:border-gray-400'">
+                                            <div x-show="selectedLevels.includes(lvl)" class="w-2 h-2 rounded-full bg-primary"></div>
                                         </div>
                                         <span class="text-xs sm:text-sm font-semibold truncate" x-text="lvl"></span>
                                     </div>
@@ -685,7 +674,7 @@ function studentRegData() {
                     </div>
 
                     <div x-show="selectedLevels.length === 0" x-cloak class="mt-2 text-xs text-red-500 font-medium">
-                        * Please select at least one Form / Year.
+                        * Please select your Form / Year.
                     </div>
                 </div>
 

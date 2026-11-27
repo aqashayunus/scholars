@@ -41,27 +41,68 @@ class CustomRegistrationTest extends TestCase
         $follow->assertSee('Form 4', false);
     }
 
-    public function test_student_can_register_with_multiple_forms_or_years(): void
+    private function studentPayload(array $overrides = []): array
     {
-        $response = $this->post(route('register.student.submit'), [
-            'name' => 'SPM Multi-Year Scholar',
+        return array_merge([
+            'name' => 'SPM Scholar',
             'ic_number' => '090101-10-9876',
-            'email' => 'spm_multi_year@example.com',
+            'email' => 'spm_scholar@example.com',
             'phone' => '+60 12-345 6789',
             'nationality' => 'Malaysian',
             'state' => 'Kuala Lumpur',
             'programme' => 'secondary',
-            'levels' => ['Form 4', 'Form 5'],
             'school_name' => 'SMK Taman Melawati',
             'password' => 'StrongPass123!',
             'password_confirmation' => 'StrongPass123!',
-        ]);
+        ], $overrides);
+    }
+
+    public function test_student_registers_with_a_single_level(): void
+    {
+        $response = $this->post(route('register.student.submit'), $this->studentPayload(['level' => 'Form 4']));
 
         $response->assertRedirect();
-        $this->assertDatabaseHas('students', [
-            'level' => 'Form 4, Form 5',
-            'school_name' => 'SMK Taman Melawati',
-        ]);
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('students', ['level' => 'Form 4', 'school_name' => 'SMK Taman Melawati']);
+    }
+
+    public function test_student_cannot_register_with_multiple_levels(): void
+    {
+        $response = $this->from(route('register.student'))
+            ->post(route('register.student.submit'), $this->studentPayload(['levels' => ['Form 4', 'Form 5']]));
+
+        $response->assertRedirect(route('register.student'));
+        $response->assertSessionHasErrors(['levels']);
+        $this->assertDatabaseMissing('users', ['email' => 'spm_scholar@example.com']);
+    }
+
+    public function test_student_cannot_sneak_multiple_levels_through_the_level_field(): void
+    {
+        $response = $this->from(route('register.student'))
+            ->post(route('register.student.submit'), $this->studentPayload(['level' => 'Form 4, Form 5']));
+
+        $response->assertSessionHasErrors(['level']);
+        $this->assertDatabaseMissing('users', ['email' => 'spm_scholar@example.com']);
+    }
+
+    public function test_student_cannot_pick_subjects_from_another_level(): void
+    {
+        $response = $this->from(route('register.student'))
+            ->post(route('register.student.submit'), $this->studentPayload([
+                'level' => 'Form 4',
+                'subjects' => ['Bahasa Melayu - Form 4', 'Bahasa Melayu - Form 5'],
+            ]));
+
+        $response->assertSessionHasErrors(['subjects']);
+        $this->assertDatabaseMissing('users', ['email' => 'spm_scholar@example.com']);
+    }
+
+    public function test_registration_form_offers_one_level_choice(): void
+    {
+        $html = $this->get(route('register.student'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('type="radio" name="level"', $html);
+        $this->assertStringNotContainsString('name="levels[]"', $html);
     }
 
     public function test_parent_registration_screen_renders_successfully(): void

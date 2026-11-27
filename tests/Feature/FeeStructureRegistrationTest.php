@@ -132,9 +132,10 @@ class FeeStructureRegistrationTest extends TestCase
     }
 
     /**
-     * Test student registering with multiple levels (Form 4 & Form 5).
+     * Registering for several levels at once (Form 4 & Form 5) is refused:
+     * one level per registration, renew for the next year.
      */
-    public function test_student_registration_with_multi_year_selection_enrolls_and_creates_invoice(): void
+    public function test_student_registration_with_multi_year_selection_is_refused(): void
     {
         $teacherUser = User::factory()->create(['role' => 'teacher']);
         Teacher::firstOrCreate(['user_id' => $teacherUser->id], [
@@ -180,20 +181,9 @@ class FeeStructureRegistrationTest extends TestCase
         ];
 
         $response = $this->post(route('register.student.submit'), $payload);
-        $response->assertRedirect();
+        $response->assertSessionHasErrors(['levels']);
 
-        $user = User::where('email', 'multi_year_test@example.com')->first();
-        $this->assertNotNull($user);
-
-        $student = Student::where('user_id', $user->id)->first();
-        $this->assertNotNull($student);
-        $this->assertEquals('Form 4, Form 5', $student->level);
-
-        // Assert student is enrolled in courses for both subjects
-        $enrolledCourseIds = $student->enrollments->pluck('course_id');
-        $enrolledSubjectIds = Course::whereIn('id', $enrolledCourseIds)->pluck('subject_id')->toArray();
-
-        $this->assertContains($bmF4->id, $enrolledSubjectIds);
-        $this->assertContains($bmF5->id, $enrolledSubjectIds);
+        $this->assertNull(User::where('email', 'multi_year_test@example.com')->first());
+        $this->assertSame(0, Course::whereIn('subject_id', [$bmF4->id, $bmF5->id])->count());
     }
 }
