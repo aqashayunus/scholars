@@ -62,8 +62,8 @@ class RenewalAdminTest extends TestCase
     {
         $this->actingAs($this->admin)->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('id="tab-renewals"', false)
-            ->assertSee('id="nav-renewals"', false)
+            ->assertSee('id="renewals-panel"', false)->assertSee('Renewals &amp; Subscriptions', false)
+            ->assertDontSee('id="nav-renewals"', false)
             ->assertSee('Not set up yet');
     }
 
@@ -78,7 +78,7 @@ class RenewalAdminTest extends TestCase
 
     public function test_admin_sets_up_the_school_year(): void
     {
-        $this->saveYear()->assertRedirect(route('admin.dashboard').'#renewals');
+        $this->saveYear()->assertRedirect(route('admin.dashboard').'#financials-renewals');
 
         $year = SchoolYear::current();
         $this->assertSame('2027', $year?->label);

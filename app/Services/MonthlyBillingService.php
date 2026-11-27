@@ -45,7 +45,7 @@ class MonthlyBillingService
 
         $year = SchoolYear::current();
         if (! $year) {
-            $result['skipped_reason'] = 'The school year is not set up (Admin > Renewals).';
+            $result['skipped_reason'] = 'The school year is not set up (Admin > Financials & Sales > Renewals & Subscriptions).';
 
             return $result;
         }
@@ -110,7 +110,7 @@ class MonthlyBillingService
         $result = ['cancelled' => [], 'needs_admin' => []];
 
         // Starts together with renewals: nothing is auto-cancelled until the
-        // school year is set up in Admin > Renewals.
+        // school year is set up in Admin > Financials & Sales > Renewals & Subscriptions.
         if (! SchoolYear::current()) {
             return $result;
         }

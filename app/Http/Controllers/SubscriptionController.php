@@ -98,7 +98,7 @@ class SubscriptionController extends Controller
                 return route('renew.show', $this->renewals->ensureRenewal($student, $year)->token);
             }
 
-            return route('admin.dashboard').'#renewals';
+            return route('admin.dashboard').'#financials-renewals';
         }
         if ($user->isParent()) {
             return route('parent.profile', ['tab' => 'subscription', 'child' => $student->id]);

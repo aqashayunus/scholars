@@ -84,6 +84,6 @@ class RenewalAdminController extends Controller
 
     private function back(): RedirectResponse
     {
-        return redirect()->to(route('admin.dashboard').'#renewals');
+        return redirect()->to(route('admin.dashboard').'#financials-renewals');
     }
 }

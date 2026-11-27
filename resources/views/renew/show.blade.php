@@ -9,7 +9,7 @@
                     Acting for the family of #{{ $student->id }} {{ $student->user->name ?? '' }}. They see the same page under Profile &amp; Settings &gt; Subscription.
                 </p>
             </div>
-            <a href="{{ route('admin.dashboard') }}#renewals" class="text-sm text-indigo-600 hover:underline font-semibold shrink-0">← Renewals</a>
+            <a href="{{ route('admin.dashboard') }}#financials-renewals" class="text-sm text-indigo-600 hover:underline font-semibold shrink-0">← Renewals &amp; Subscriptions</a>
         </div>
 
         @include('subscription.panel')

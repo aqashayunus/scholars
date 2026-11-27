@@ -10,7 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * /renew/{token}: admin's "Confirm for family" page in Admin > Renewals.
+ * /renew/{token}: admin's "Confirm for family" page in Admin > Financials & Sales > Renewals & Subscriptions.
  * Families who open an older link land on their own Manage Subscription
  * (student or parent profile, Subscription tab).
  */

@@ -32,13 +32,13 @@ return new class extends Migration
     private const AUTOMATIONS = [
         'renewal_invitation' => [
             'name' => 'Continue Next School Year: Invitation',
-            'trigger_event' => 'When admin sends "Continue in {school year}?" from Admin > Renewals',
+            'trigger_event' => 'When admin sends "Continue in {school year}?" from Financials & Sales > Renewals & Subscriptions',
             'description' => 'Asks the student and linked parents to confirm the next school year on Manage Subscription.',
             'template_key' => 'renewal_continue_invitation',
         ],
         'renewal_reminder' => [
             'name' => 'Continue Next School Year: Reminder',
-            'trigger_event' => 'When admin sends a reminder from Admin > Renewals',
+            'trigger_event' => 'When admin sends a reminder from Financials & Sales > Renewals & Subscriptions',
             'description' => 'Reminds families who have not answered the invitation yet.',
             'template_key' => 'renewal_continue_reminder',
         ],

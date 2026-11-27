@@ -129,7 +129,7 @@ class RenewalService
         return $result === true || (is_array($result) && ($result['success'] ?? false));
     }
 
-    /** The automation row, so Admin > Renewals can warn when it is switched off. */
+    /** The automation row, so Admin > Financials & Sales > Renewals & Subscriptions can warn when it is switched off. */
     public static function automation(string $key): ?EmailAutomation
     {
         return EmailAutomation::with('template')->where('key', $key)->first();

@@ -386,24 +386,6 @@
                     @endif
                 </a>
 
-                {{-- Renewals: "Continue in {school year}?" and monthly billing --}}
-                @php
-                    $renewalYear = \App\Services\SchoolYear::current();
-                    $unansweredRenewals = $renewalYear
-                        ? \App\Models\StudentRenewal::where('school_year', $renewalYear->label)->where('status', \App\Models\StudentRenewal::INVITED)->count()
-                        : 0;
-                @endphp
-                <a href="{{ route('admin.dashboard') }}#renewals" onclick="if(typeof switchTab==='function') switchTab('tab-renewals')"
-                   class="sidebar-admin-link flex items-center justify-between" id="nav-renewals">
-                    <div class="flex items-center gap-3">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        <span>Renewals</span>
-                    </div>
-                    @if($unansweredRenewals > 0)
-                        <span class="min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-extrabold leading-none" title="{{ $unansweredRenewals }} families have not replied">{{ $unansweredRenewals }}</span>
-                    @endif
-                </a>
-
                 {{-- Recent Audit Logs --}}
                 <a href="{{ route('admin.dashboard') }}#logs" onclick="if(typeof switchTab==='function') switchTab('tab-logs')" class="sidebar-admin-link" id="nav-logs">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>

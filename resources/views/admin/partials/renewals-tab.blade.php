@@ -1,4 +1,4 @@
-{{-- Admin Dashboard > Renewals (phase 3, decision 2026-11-27) --}}
+{{-- Admin Dashboard > Financials & Sales > Renewals & Subscriptions (phase 3, 2026-11-27; moved out of its own tab 2026-11-28) --}}
 @php
     $sy = \App\Services\SchoolYear::current();
     $renewalService = app(\App\Services\RenewalService::class);
@@ -18,7 +18,7 @@
         'stopped' => 'bg-rose-50 text-rose-700',
     ];
 @endphp
-<div id="tab-renewals" class="admin-tab-content hidden space-y-6">
+<div id="renewals-panel" class="space-y-6">
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
             <h2 class="font-semibold text-lg text-gray-900">Renewals{{ $sy ? ' · '.$sy->label : '' }}</h2>

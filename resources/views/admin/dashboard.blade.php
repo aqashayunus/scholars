@@ -2089,7 +2089,7 @@
         <script>
             function financialsModuleData() {
                 return {
-                    finSubtab: 'invoices',
+                    finSubtab: ['#renewals', '#financials-renewals'].includes(window.location.hash) ? 'renewals' : 'invoices',
                     showInvoiceModal: false,
                     showFeeModal: false,
                     showSettingsModal: false,
@@ -2589,8 +2589,6 @@
 
         </div>
 
-        @include('admin.partials.renewals-tab')
-
         <div id="tab-financials" class="admin-tab-content hidden space-y-6" x-data="financialsModuleData()">
             {{-- ── Free trial status + bulk cancel of unpaid invoices ── --}}
             @php
@@ -2709,6 +2707,18 @@
                     <button type="button" @click="finSubtab = 'ledger'" :class="finSubtab === 'ledger' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'" class="px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
                         <span>Payments Ledger</span>
                         <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold" :class="finSubtab === 'ledger' ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'">{{ $allPayments->count() }}</span>
+                    </button>
+                    <button type="button" @click="finSubtab = 'renewals'" :class="finSubtab === 'renewals' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'" class="px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
+                        <span>Renewals &amp; Subscriptions</span>
+                        @php
+                            $finRenewalYear = \App\Services\SchoolYear::current();
+                            $finUnanswered = $finRenewalYear
+                                ? \App\Models\StudentRenewal::where('school_year', $finRenewalYear->label)->where('status', \App\Models\StudentRenewal::INVITED)->count()
+                                : 0;
+                        @endphp
+                        @if($finUnanswered > 0)
+                            <span class="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-blue-500 text-white" title="{{ $finUnanswered }} families have not replied">{{ $finUnanswered }}</span>
+                        @endif
                     </button>
                     <button type="button" @click="finSubtab = 'settings'" :class="finSubtab === 'settings' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'" class="px-3.5 py-2 rounded-xl transition cursor-pointer flex items-center gap-1.5">
                         <span>Gateway &amp; Bank Settings</span>
@@ -3617,6 +3627,11 @@
             </div>
 
             {{-- 5. SUBTAB: GATEWAY & COMPANY BANK CREDENTIALS --}}
+            {{-- SUBTAB: RENEWALS & SUBSCRIPTIONS (school year, "Continue?" invitations, who is billed) --}}
+            <div x-show="finSubtab === 'renewals'" x-cloak>
+                @include('admin.partials.renewals-tab')
+            </div>
+
             <div x-show="finSubtab === 'settings'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Free trial: pause automatic invoices --}}
                 <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-4 lg:col-span-2">
@@ -12967,6 +12982,9 @@
                     activeSubTab = rawHash;
                 } else if (rawHash.startsWith('emailsettings-')) {
                     activeTab = 'tab-emailsettings';
+                } else if (rawHash === 'renewals' || rawHash === 'financials-renewals') {
+                    // Renewals lives in Financials & Sales > Renewals & Subscriptions (2026-11-28)
+                    activeTab = 'tab-financials';
                 } else if (document.getElementById('tab-' + rawHash)) {
                     activeTab = 'tab-' + rawHash;
                     if (activeTab === 'tab-courses') {
