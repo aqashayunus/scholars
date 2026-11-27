@@ -6,6 +6,7 @@ use App\Enums\StudentStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Student extends Model
 {
@@ -191,6 +192,16 @@ class Student extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * "Continue in {school year}?" answers, one per school year.
+     *
+     * @return HasMany<StudentRenewal, $this>
+     */
+    public function renewals(): HasMany
+    {
+        return $this->hasMany(StudentRenewal::class);
     }
 
     public function payments()

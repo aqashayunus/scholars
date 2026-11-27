@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Cancelling unpaid invoices safely: only invoices with no money on them and
@@ -69,17 +70,30 @@ class InvoiceCancellationService
         $invoice->save();
         $this->reminderService->skipRemainingReminders($invoice);
 
-        FinancialAuditLog::create([
-            'user_id' => $adminUserId,
-            'action' => 'invoice_cancelled',
-            'target_type' => 'Invoice',
-            'target_id' => $invoice->id,
-            'ip_address' => request()->ip(),
-            'details' => json_encode(array_merge(
-                ['invoice_number' => $invoice->invoice_number, 'reason' => $reason],
-                $auditExtra
-            )),
-        ]);
+        // financial_audit_logs.user_id is a required FK. System jobs (no admin)
+        // are logged against the student's own user, marked actor=system, the
+        // same way InvoiceService logs invoice_issued.
+        $userId = $adminUserId ?? $invoice->student?->user_id;
+        if ($userId === null) {
+            Log::warning("[InvoiceCancellation] {$invoice->invoice_number} cancelled ({$reason}); no user to audit-log against.");
+
+            return;
+        }
+        try {
+            FinancialAuditLog::create([
+                'user_id' => $userId,
+                'action' => 'invoice_cancelled',
+                'target_type' => 'Invoice',
+                'target_id' => $invoice->id,
+                'ip_address' => request()->ip(),
+                'details' => json_encode(array_merge(
+                    ['invoice_number' => $invoice->invoice_number, 'reason' => $reason, 'actor' => $adminUserId ? 'admin' : 'system'],
+                    $auditExtra
+                )),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error("[InvoiceCancellation] Audit log failed for {$invoice->invoice_number}: ".$e->getMessage());
+        }
     }
 
     /**

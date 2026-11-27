@@ -63,9 +63,16 @@ class InvoiceService
      *   5. Dispatch the "invoice issued" email (queued)
      *   6. Write audit log
      *
+     * Options (all optional):
+     *   - billing_period: e.g. "January 2027" (default: this month)
+     *   - due_date: Y-m-d (default: today + billing.invoice_due_days)
+     *   - notes: saved on the invoice
+     *
+     * @param  array{billing_period?: string, due_date?: string, notes?: string}  $options
+     *
      * @throws \RuntimeException if the student has no active enrollments with a configured fee.
      */
-    public function generateForStudent(Student $student, ?int $feeStructureId = null): Invoice
+    public function generateForStudent(Student $student, ?int $feeStructureId = null, array $options = []): Invoice
     {
         // Load active enrollments with their course and subject
         $student->loadMissing('activeEnrollments.course.subject');
@@ -86,13 +93,14 @@ class InvoiceService
         }
 
         $dueDays = (int) Setting::get('billing.invoice_due_days', 7);
-        $billingPeriod = now()->format('F Y');    // e.g. "September 2026"
+        $billingPeriod = $options['billing_period'] ?? now()->format('F Y');    // e.g. "September 2026"
         $issueDate = now()->toDateString();
-        $dueDate = now()->addDays($dueDays)->toDateString();
+        $dueDate = $options['due_date'] ?? now()->addDays($dueDays)->toDateString();
+        $notes = $options['notes'] ?? null;
 
         $feeStructure = $feeStructureId ? FeeStructure::where('is_active', true)->find($feeStructureId) : null;
 
-        return DB::transaction(function () use ($student, $subjects, $billingPeriod, $issueDate, $dueDate, $feeStructure) {
+        return DB::transaction(function () use ($student, $subjects, $billingPeriod, $issueDate, $dueDate, $feeStructure, $notes) {
             $studentName = $student->user->name ?? "Student #{$student->id}";
             $invoiceNumber = $this->generateInvoiceNumber();
 
@@ -229,6 +237,11 @@ class InvoiceService
                         'amount' => $fee,
                     ]);
                 }
+            }
+
+            if ($notes) {
+                $invoice->notes = $notes;
+                $invoice->save();
             }
 
             // Schedule all reminder records

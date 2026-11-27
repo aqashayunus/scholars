@@ -19,6 +19,13 @@ Artisan::command('inspire', function () {
 //   Arguments: C:\xampp\htdocs\olympiascholar\artisan schedule:run
 //   Schedule:  Every 1 minute
 //
+// Billing: monthly invoices on the 1st, plus daily 14-day auto-cancel and
+// pausing unanswered "Continue?" renewals. Runs before the 08:00 reminders.
+Schedule::command('billing:run')
+    ->dailyAt('07:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/billing-run.log'));
+
 Schedule::command('invoices:process-reminders')
     ->dailyAt('08:00')
     ->withoutOverlapping()
