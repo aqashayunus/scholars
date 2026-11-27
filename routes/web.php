@@ -25,6 +25,7 @@ use App\Http\Controllers\ParentDashboardController;
 use App\Http\Controllers\ParentLinkRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RecordedClassController;
+use App\Http\Controllers\RenewalController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\TimetableController;
@@ -534,6 +535,15 @@ Route::prefix('billing/billplz')->name('billing.billplz.')->group(function () {
 });
 
 // ──────────────────────────────────────────────────
+// RENEWAL: "Continue in {school year}?" (student, linked parent or admin)
+// ──────────────────────────────────────────────────
+Route::middleware('auth')->prefix('renew')->name('renew.')->group(function () {
+    Route::get('/{token}', [RenewalController::class, 'show'])->name('show');
+    Route::post('/{token}', [RenewalController::class, 'confirm'])->name('confirm');
+    Route::post('/{token}/decline', [RenewalController::class, 'decline'])->name('decline');
+    Route::post('/{token}/stop', [RenewalController::class, 'stop'])->name('stop');
+});
+
 // TIMETABLE & CALENDAR API (Authenticated)
 // ──────────────────────────────────────────────────
 Route::middleware('auth')->group(function () {

@@ -157,23 +157,56 @@ class MonthlyBillingService
         $paused = [];
         $renewals = StudentRenewal::with('student.user')
             ->where('school_year', $year->label)
-            ->where('status', StudentRenewal::INVITED)
+            ->whereIn('status', [StudentRenewal::INVITED, StudentRenewal::DECLINED])
             ->get();
         foreach ($renewals as $renewal) {
-            if (! $renewal->student) {
+            if (! $renewal->student || ! $renewal->student->activeEnrollments()->exists()) {
                 continue;
             }
             $paused[] = '#'.$renewal->student_id.' '.($renewal->student->user->name ?? '');
             if (! $dryRun) {
-                $this->pause($renewal->student, 'No reply to "Continue in '.$year->label.'?" by '.$year->replyBy->format('j M Y').'.');
+                $renewal->status === StudentRenewal::DECLINED
+                    ? $this->pause($renewal->student, 'Not continuing in '.$year->label.'.', StudentRenewal::DECLINED)
+                    : $this->pause($renewal->student, 'No reply to "Continue in '.$year->label.'?" by '.$year->replyBy->format('j M Y').'.');
             }
         }
 
         return $paused;
     }
 
-    /** Pause a student's classes (keeps the login) and mark this year's renewal as lapsed. */
-    public function pause(Student $student, string $reason): void
+    /**
+     * Students who chose "stop after this month": once that month is over,
+     * their classes are paused (no more invoices are issued for them anyway).
+     *
+     * @return list<string>
+     */
+    public function closeStopped(?Carbon $today = null, bool $dryRun = false): array
+    {
+        $thisMonth = ($today ?? now())->copy()->startOfMonth()->toDateString();
+        $paused = [];
+        $renewals = StudentRenewal::with('student.user')
+            ->where('status', StudentRenewal::STOPPED)
+            ->whereNotNull('stops_after')
+            ->whereDate('stops_after', '<', $thisMonth)
+            ->get();
+        foreach ($renewals as $renewal) {
+            if (! $renewal->student || ! $renewal->student->activeEnrollments()->exists()) {
+                continue;
+            }
+            $paused[] = '#'.$renewal->student_id.' '.($renewal->student->user->name ?? '');
+            if (! $dryRun) {
+                $this->pause($renewal->student, 'Stopped after '.$renewal->stops_after?->format('F Y').'.', StudentRenewal::STOPPED);
+            }
+        }
+
+        return $paused;
+    }
+
+    /**
+     * Pause a student's classes (keeps the login) and record why on this
+     * year's renewal (status lapsed, or the given status, e.g. declined).
+     */
+    public function pause(Student $student, string $reason, string $status = StudentRenewal::LAPSED): void
     {
         Enrollment::where('student_id', $student->id)
             ->where('status', EnrollmentStatus::Active->value)
@@ -183,10 +216,10 @@ class MonthlyBillingService
         if ($year) {
             $renewal = StudentRenewal::firstOrCreate(
                 ['student_id' => $student->id, 'school_year' => $year->label],
-                ['status' => StudentRenewal::LAPSED]
+                ['status' => $status]
             );
             $renewal->forceFill([
-                'status' => StudentRenewal::LAPSED,
+                'status' => $status,
                 'paused_at' => now(),
                 'pause_reason' => $reason,
             ])->save();

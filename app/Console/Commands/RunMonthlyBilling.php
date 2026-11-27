@@ -50,8 +50,14 @@ class RunMonthlyBilling extends Command
         }
 
         $paused = $billing->closeUnanswered(null, $dry);
-        $this->line('No reply to "Continue?" after the reply-by date: '.count($paused).' paused');
+        $this->line('No reply / not continuing after the reply-by date: '.count($paused).' paused');
         foreach ($paused as $p) {
+            $this->line("  - {$p}");
+        }
+
+        $stopped = $billing->closeStopped(null, $dry);
+        $this->line('Stopped families whose last month has ended: '.count($stopped).' paused');
+        foreach ($stopped as $p) {
             $this->line("  - {$p}");
         }
 
