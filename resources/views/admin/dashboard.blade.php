@@ -2582,6 +2582,8 @@
 
         </div>
 
+        @include('admin.partials.renewals-tab')
+
         <div id="tab-financials" class="admin-tab-content hidden space-y-6" x-data="financialsModuleData()">
             {{-- ── Free trial status + bulk cancel of unpaid invoices ── --}}
             @php

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CurriculumController as AdminCurriculumController
 use App\Http\Controllers\Admin\EmailManagementController;
 use App\Http\Controllers\Admin\FinanceController as AdminFinanceController;
 use App\Http\Controllers\Admin\LevelCleanupController;
+use App\Http\Controllers\Admin\RenewalAdminController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\Auth\ParentRegistrationController;
@@ -291,6 +292,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
     Route::get('/courses/{id}/students', [AdminCourseRosterController::class, 'index'])->whereNumber('id')->name('courses.students');
     Route::post('/courses/{id}/students', [AdminCourseRosterController::class, 'store'])->whereNumber('id')->name('courses.students.store');
     Route::delete('/courses/{id}/students/{studentId}', [AdminCourseRosterController::class, 'destroy'])->whereNumber(['id', 'studentId'])->name('courses.students.destroy');
+
+    // Renewals: school year, "Continue in {year}?" invitations, stop billing
+    Route::post('/renewals/settings', [RenewalAdminController::class, 'saveSettings'])->name('renewals.settings');
+    Route::post('/renewals/invite', [RenewalAdminController::class, 'invite'])->name('renewals.invite');
+    Route::post('/renewals/remind', [RenewalAdminController::class, 'remind'])->name('renewals.remind');
+    Route::post('/renewals/{renewal}/stop', [RenewalAdminController::class, 'stop'])->whereNumber('renewal')->name('renewals.stop');
 
     // Level clean-up: students who registered for several levels -> one level
     Route::get('/students/level-cleanup', [LevelCleanupController::class, 'index'])->name('students.level-cleanup.index');
