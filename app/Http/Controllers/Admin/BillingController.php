@@ -224,27 +224,8 @@ class BillingController extends Controller
     }
 
     // ── Payment Management ────────────────────────────────────────────────────
-
-    public function payments(Request $request)
-    {
-        $query = Payment::with(['payer', 'student.user', 'invoices'])
-            ->orderByDesc('created_at');
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $payments = $query->paginate(25)->withQueryString();
-
-        return view('admin.billing.payments.index', compact('payments'));
-    }
-
-    public function paymentShow(Payment $payment)
-    {
-        $payment->loadMissing(['payer', 'student.user', 'invoices.items', 'verifier']);
-
-        return view('admin.billing.payments.show', compact('payment'));
-    }
+    // (The standalone All Payments page was retired 2026-11-27; the same list is
+    // Admin Dashboard > Financials & Sales > Payments Ledger.)
 
     public function verifyPayment(Request $request, Payment $payment)
     {

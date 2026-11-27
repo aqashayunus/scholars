@@ -295,18 +295,6 @@ parameters:
 			path: app/Http/Controllers/Admin/BillingController.php
 
 		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:paymentShow\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
-			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:payments\(\) has no return type specified\.$#'
-			identifier: missingType.return
-			count: 1
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
 			message: '#^Method App\\Http\\Controllers\\Admin\\BillingController\:\:recordInvoicePaymentQuick\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -415,19 +403,7 @@ parameters:
 			path: app/Http/Controllers/Admin/BillingController.php
 
 		-
-			message: '#^Relation ''invoices'' is not found in App\\Models\\Payment model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
 			message: '#^Relation ''items'' is not found in App\\Models\\Invoice model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
-			message: '#^Relation ''payer'' is not found in App\\Models\\Payment model\.$#'
 			identifier: larastan.relationExistence
 			count: 2
 			path: app/Http/Controllers/Admin/BillingController.php
@@ -451,21 +427,9 @@ parameters:
 			path: app/Http/Controllers/Admin/BillingController.php
 
 		-
-			message: '#^Relation ''student'' is not found in App\\Models\\Payment model\.$#'
-			identifier: larastan.relationExistence
-			count: 2
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
 			message: '#^Relation ''user'' is not found in App\\Models\\Student model\.$#'
 			identifier: larastan.relationExistence
 			count: 3
-			path: app/Http/Controllers/Admin/BillingController.php
-
-		-
-			message: '#^Relation ''verifier'' is not found in App\\Models\\Payment model\.$#'
-			identifier: larastan.relationExistence
-			count: 1
 			path: app/Http/Controllers/Admin/BillingController.php
 
 		-

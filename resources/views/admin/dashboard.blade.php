@@ -3648,7 +3648,12 @@
                     </p>
                 </div>
 
-                {{-- Public Bank Transfer Account Details --}}
+                {{-- Company Bank Account Details: hidden 2026-11-27 until Scholars has an
+                     official bank account (Sisi). Families see the billing.bank_* details
+                     (Email & Billing settings) instead; these company_bank_* settings are not
+                     shown on any live page. Flip $showCompanyBankCard to bring the card back. --}}
+                @php $showCompanyBankCard = false; @endphp
+                @if($showCompanyBankCard)
                 <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-4">
                     <div>
                         <h3 class="font-semibold text-base text-gray-900">Company Bank Account Details</h3>
@@ -3687,6 +3692,7 @@
                         </div>
                     </form>
                 </div>
+                @endif
 
                 {{-- Billplz FPX Payment Gateway Configuration --}}
                 <div class="bg-white rounded-2xl border border-gray-200/80 shadow-xs p-6 space-y-5">

@@ -34,11 +34,12 @@ class BillingService
             ->latest('id')
             ->get();
 
-        // Public Company Bank details for manual bank transfer
+        // Bank details for manual bank transfer: the same billing.bank_* settings
+        // the invoice page and emails use. No made-up fallback account.
         $bankDetails = [
-            'bank_name' => Setting::get('company_bank_name', 'Maybank Islamic Berhad'),
-            'account_name' => Setting::get('company_bank_account_name', 'Olympia Scholars Academy Sdn Bhd'),
-            'account_number' => Setting::get('company_bank_account_number', '5642 8901 2345'),
+            'bank_name' => Setting::get('billing.bank_name', ''),
+            'account_name' => Setting::get('billing.bank_account_name', ''),
+            'account_number' => Setting::get('billing.bank_account_number', ''),
             'instructions' => Setting::get('company_bank_instructions', 'Please include your Student Name & Invoice No in the transfer reference.'),
         ];
 

@@ -102,19 +102,15 @@ class BillingEnumRenderSmokeTest extends TestCase
     // test_admin_dashboard_billing_section_renders above). Pre-existing app
     // behavior, not part of this enum conversion — nothing to smoke-test here.
 
-    public function test_admin_billing_payments_index_renders(): void
+    public function test_retired_payments_pages_redirect_to_financials(): void
     {
-        $this->actingAs($this->admin)->get(route('admin.billing.payments'))->assertOk();
-    }
+        $payment = Payment::factory()->create();
 
-    // Note: admin.billing.payment.show (routes/web.php) is a closure that
-    // unconditionally redirects to admin/dashboard#financials — it never
-    // invokes BillingController::paymentShow() or renders
-    // admin/billing/payments/show.blade.php. Both are genuinely unreachable
-    // dead code (confirmed: no other route references either). Still fixed
-    // the enum-safety issues there during this pass since it costs nothing
-    // and guards against a latent bug if the route is ever wired up — but
-    // there is nothing to smoke-test here today.
+        $this->actingAs($this->admin)->get(route('admin.billing.payments'))
+            ->assertRedirect(route('admin.dashboard').'#financials');
+        $this->actingAs($this->admin)->get(route('admin.billing.payment.show', $payment))
+            ->assertRedirect(route('admin.dashboard').'#financials');
+    }
 
     public function test_parent_fees_page_renders(): void
     {

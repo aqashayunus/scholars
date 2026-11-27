@@ -453,7 +453,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->grou
         })->name('invoices.reminders');
 
         // Payments
-        Route::get('/payments', [BillingController::class, 'payments'])->name('payments');
+        // Standalone All Payments page retired 2026-11-27: Financials > Payments Ledger.
+        Route::get('/payments', fn () => redirect()->to(route('admin.dashboard').'#financials'))->name('payments');
         Route::get('/payments/{payment}', function () {
             return redirect()->to(route('admin.dashboard').'#financials');
         })->name('payment.show');
